@@ -1,4 +1,7 @@
+import io.gitlab.arturbosch.detekt.Detekt
+import io.gitlab.arturbosch.detekt.DetektPlugin
 import io.gitlab.arturbosch.detekt.extensions.DetektExtension
+import org.jlleitschuh.gradle.ktlint.KtlintPlugin
 
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 plugins {
