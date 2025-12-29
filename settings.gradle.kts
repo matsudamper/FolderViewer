@@ -1,3 +1,5 @@
+@file:Suppress("UnstableApiUsage")
+
 pluginManagement {
     repositories {
         google {
@@ -23,6 +25,7 @@ rootProject.name = "FolderViewer"
 include(":app")
 include(":navigation")
 include(":ui")
+include(":repository")
 
 // Include ComposablePreviewScanner Paparazzi plugin
 includeBuild("paparazzi-plugin")
