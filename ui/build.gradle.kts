@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.paparazzi)
+    id("io.github.sergio-sastre.composable-preview-scanner.paparazzi-plugin")
 }
 
 android {
@@ -28,6 +29,12 @@ kotlin {
     }
 }
 
+composablePreviewPaparazzi {
+    enable = true
+    packages = listOf("net.matsudamper.folderviewer.ui")
+    includePrivatePreviews = false
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -38,4 +45,8 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    
+    // Paparazzi screenshot testing
+    testImplementation(libs.composable.preview.scanner.android)
+    testImplementation(libs.junit)
 }

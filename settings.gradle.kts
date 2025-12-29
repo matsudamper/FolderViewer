@@ -23,3 +23,6 @@ rootProject.name = "FolderViewer"
 include(":app")
 include(":navigation")
 include(":ui")
+
+// Include ComposablePreviewScanner Paparazzi plugin
+includeBuild("paparazzi-plugin")
