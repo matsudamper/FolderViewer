@@ -22,6 +22,7 @@ subprojects {
     }
     configure<DetektExtension> {
         config.setFrom(rootProject.files("detekt.yml"))
+        parallel = true
     }
     tasks.withType<Detekt>().configureEach {
         reports {
