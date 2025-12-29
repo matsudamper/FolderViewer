@@ -13,7 +13,7 @@ kotlinxSerialization = "1.9.0"
 ktlint = "1.8.0"
 ktlintGradle = "14.0.1"
 detekt = "1.23.8"
-detektCompose = "0.5.3"
+detektCompose = "0.4.28"
 smbj = "0.14.0"
 
 [libraries]
