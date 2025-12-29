@@ -28,20 +28,20 @@ class MainActivity : ComponentActivity() {
                     NavHost(
                         navController = navController,
                         startDestination = Home,
-                        modifier = Modifier.padding(innerPadding)
+                        modifier = Modifier.padding(innerPadding),
                     ) {
                         composable<Home> {
                             HomeScreen(
                                 onNavigateToSettings = {
                                     navController.navigate(Settings)
-                                }
+                                },
                             )
                         }
                         composable<Settings> {
                             SettingsScreen(
                                 onBack = {
                                     navController.popBackStack()
-                                }
+                                },
                             )
                         }
                     }

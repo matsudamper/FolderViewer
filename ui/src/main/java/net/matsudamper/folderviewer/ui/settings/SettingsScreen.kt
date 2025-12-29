@@ -14,7 +14,7 @@ import androidx.compose.ui.tooling.preview.Preview
 fun SettingsScreen(onBack: () -> Unit) {
     Box(
         modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(text = "Settings Screen")
@@ -29,6 +29,6 @@ fun SettingsScreen(onBack: () -> Unit) {
 @Composable
 fun SettingsScreenPreview() {
     SettingsScreen(
-        onBack = {}
+        onBack = {},
     )
 }

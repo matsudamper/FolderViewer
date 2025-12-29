@@ -30,18 +30,18 @@ fun HomeScreen(
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_settings),
-                            contentDescription = "Settings"
+                            contentDescription = "Settings",
                         )
                     }
-                }
+                },
             )
-        }
+        },
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
-            contentAlignment = Alignment.Center
+            contentAlignment = Alignment.Center,
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(text = "Home Screen")
@@ -54,6 +54,6 @@ fun HomeScreen(
 @Composable
 fun HomeScreenPreview() {
     HomeScreen(
-        onNavigateToSettings = {}
+        onNavigateToSettings = {},
     )
 }
