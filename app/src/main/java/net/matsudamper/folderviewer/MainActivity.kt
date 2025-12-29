@@ -40,9 +40,6 @@ class MainActivity : ComponentActivity() {
                     ) {
                         composable<Home> {
                             HomeScreen(
-                                onNavigateToDetail = {
-                                    navController.navigate(Detail)
-                                },
                                 onNavigateToSettings = {
                                     navController.navigate(Settings)
                                 }
@@ -66,15 +63,11 @@ class MainActivity : ComponentActivity() {
 object Home
 
 @Serializable
-object Detail
-
-@Serializable
 object Settings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onNavigateToDetail: () -> Unit,
     onNavigateToSettings: () -> Unit,
 ) {
     Scaffold(
@@ -100,9 +93,6 @@ fun HomeScreen(
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(text = "Home Screen")
-                Button(onClick = onNavigateToDetail) {
-                    Text(text = "Go to Detail")
-                }
             }
         }
     }
