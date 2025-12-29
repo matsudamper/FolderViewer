@@ -9,11 +9,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -37,11 +42,21 @@ class MainActivity : ComponentActivity() {
                             HomeScreen(
                                 onNavigateToDetail = {
                                     navController.navigate(Detail)
+                                },
+                                onNavigateToSettings = {
+                                    navController.navigate(Settings)
                                 }
                             )
                         }
                         composable<Detail> {
                             DetailScreen(
+                                onBack = {
+                                    navController.popBackStack()
+                                }
+                            )
+                        }
+                        composable<Settings> {
+                            SettingsScreen(
                                 onBack = {
                                     navController.popBackStack()
                                 }
@@ -60,16 +75,41 @@ object Home
 @Serializable
 object Detail
 
+@Serializable
+object Settings
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(onNavigateToDetail: () -> Unit) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "Home Screen")
-            Button(onClick = onNavigateToDetail) {
-                Text(text = "Go to Detail")
+fun HomeScreen(
+    onNavigateToDetail: () -> Unit,
+    onNavigateToSettings: () -> Unit,
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("FolderViewer") },
+                actions = {
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_settings),
+                            contentDescription = "Settings"
+                        )
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(text = "Home Screen")
+                Button(onClick = onNavigateToDetail) {
+                    Text(text = "Go to Detail")
+                }
             }
         }
     }
@@ -83,6 +123,21 @@ fun DetailScreen(onBack: () -> Unit) {
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(text = "Detail Screen")
+            Button(onClick = onBack) {
+                Text(text = "Back")
+            }
+        }
+    }
+}
+
+@Composable
+fun SettingsScreen(onBack: () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(text = "Settings Screen")
             Button(onClick = onBack) {
                 Text(text = "Back")
             }
