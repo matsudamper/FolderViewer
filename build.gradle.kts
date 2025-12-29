@@ -11,15 +11,13 @@ plugins {
     alias(libs.plugins.detekt) apply false
 }
 
-val ktlintVersion = libs.versions.ktlint.get()
-
 subprojects {
     apply(plugin = "org.jlleitschuh.gradle.ktlint")
     apply(plugin = "io.gitlab.arturbosch.detekt")
 
     configure<org.jlleitschuh.gradle.ktlint.KtlintExtension> {
         verbose.set(true)
-        version.set(ktlintVersion)
+        version.set(rootProject.libs.versions.ktlint.get())
         outputToConsole.set(true)
     }
     configure<DetektExtension> {
