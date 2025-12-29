@@ -23,6 +23,15 @@ subprojects {
     configure<DetektExtension> {
         config.setFrom(rootProject.files("detekt.yml"))
     }
+    tasks.withType<Detekt>().configureEach {
+        reports {
+            html.required.set(false)
+            txt.required.set(true)
+            txt.outputLocation.set(file("build/reports/detekt.txt"))
+            sarif.required.set(false)
+            md.required.set(false)
+        }
+    }
 
     dependencies {
         "detektPlugins"(rootProject.libs.detekt.compose)
