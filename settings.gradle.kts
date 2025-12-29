@@ -21,4 +21,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "FolderViewer"
 include(":app")
- 
+include(":navigation")
+include(":ui")
