@@ -17,6 +17,6 @@ class SmbFileRepository : FileRepository {
 
     override suspend fun getFileContent(path: String): InputStream {
         // TODO: Implement SMB file content retrieval
-        return InputStream.nullInputStream()
+        TODO()
     }
 }
