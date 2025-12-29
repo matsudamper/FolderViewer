@@ -12,8 +12,8 @@ plugins {
 }
 
 subprojects {
-    apply(plugin = "org.jlleitschuh.gradle.ktlint")
-    apply(plugin = "io.gitlab.arturbosch.detekt")
+    pluginManager.apply(DetektPlugin::class.java)
+    pluginManager.apply(KtlintPlugin::class.java)
 
     configure<org.jlleitschuh.gradle.ktlint.KtlintExtension> {
         verbose.set(true)
