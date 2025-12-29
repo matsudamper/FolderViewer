@@ -7,3 +7,9 @@ object Home
 
 @Serializable
 object Settings
+
+@Serializable
+object StorageTypeSelection
+
+@Serializable
+object SmbAdd

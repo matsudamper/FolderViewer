@@ -1,0 +1,116 @@
+package net.matsudamper.folderviewer.repository
+
+import android.content.Context
+import androidx.datastore.core.CorruptionException
+import androidx.datastore.core.DataStore
+import androidx.datastore.core.Serializer
+import androidx.datastore.dataStore
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
+import java.io.InputStream
+import java.io.OutputStream
+import java.util.UUID
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import com.google.protobuf.InvalidProtocolBufferException
+import net.matsudamper.folderviewer.repository.proto.SmbConfigurationProto
+import net.matsudamper.folderviewer.repository.proto.StorageConfigurationProto
+import net.matsudamper.folderviewer.repository.proto.StorageListProto
+
+private const val DataStorageFileName = "storage_list.pb"
+private const val SecurePrefFileName = "secure_storage_creds"
+
+private val Context.dataStore: DataStore<StorageListProto> by dataStore(
+    fileName = DataStorageFileName,
+    serializer = StorageListSerializer,
+)
+
+class StorageRepository(private val context: Context) {
+
+    private val masterKey = MasterKey.Builder(context)
+        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+        .build()
+
+    private val sharedPreferences = EncryptedSharedPreferences.create(
+        context,
+        SecurePrefFileName,
+        masterKey,
+        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+    )
+
+    val storageList: Flow<List<StorageConfiguration>> = context.dataStore.data
+        .map { proto ->
+            proto.listList.mapNotNull { it.toDomain() }
+        }
+
+    suspend fun addSmbStorage(name: String, ip: String, username: String, password: String) {
+        val id = UUID.randomUUID().toString()
+        val config = StorageConfiguration.Smb(
+            id = id,
+            name = name,
+            ip = ip,
+            username = username,
+        )
+
+        // パスワードを安全に保存する
+        sharedPreferences.edit()
+            .putString(id, password)
+            .apply()
+
+        // DataStoreを更新する
+        context.dataStore.updateData { currentList ->
+            currentList.toBuilder()
+                .addList(config.toProto())
+                .build()
+        }
+    }
+
+    fun getPassword(id: String): String? {
+        return sharedPreferences.getString(id, null)
+    }
+
+    private fun StorageConfigurationProto.toDomain(): StorageConfiguration? {
+        return when (configCase) {
+            StorageConfigurationProto.ConfigCase.SMB -> {
+                StorageConfiguration.Smb(
+                    id = id,
+                    name = name,
+                    ip = smb.ip,
+                    username = smb.username,
+                )
+            }
+
+            StorageConfigurationProto.ConfigCase.CONFIG_NOT_SET, null -> null
+        }
+    }
+
+    private fun StorageConfiguration.Smb.toProto(): StorageConfigurationProto {
+        return StorageConfigurationProto.newBuilder()
+            .setId(id)
+            .setName(name)
+            .setSmb(
+                SmbConfigurationProto.newBuilder()
+                    .setIp(ip)
+                    .setUsername(username)
+                    .build(),
+            )
+            .build()
+    }
+}
+
+internal object StorageListSerializer : Serializer<StorageListProto> {
+    override val defaultValue: StorageListProto = StorageListProto.getDefaultInstance()
+
+    override suspend fun readFrom(input: InputStream): StorageListProto {
+        try {
+            return StorageListProto.parseFrom(input)
+        } catch (exception: InvalidProtocolBufferException) {
+            throw CorruptionException("Cannot read proto.", exception)
+        }
+    }
+
+    override suspend fun writeTo(t: StorageListProto, output: OutputStream) {
+        t.writeTo(output)
+    }
+}

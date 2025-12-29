@@ -1,0 +1,10 @@
+コメントやコミットメッセージはすべて日本語で記述する。
+
+Composeの記述は以下のルールに従う。
+https://github.com/androidx/androidx/blob/androidx-main/compose/docs/compose-api-guidelines.md
+
+private/internalをできる限り使用し、最小限のアクセスに絞ること。
+
+ツールを使用する際は、必ず関数呼び出しの前に思考プロセス（thought）を記述してください。
+
+@Suppressの使用は禁止

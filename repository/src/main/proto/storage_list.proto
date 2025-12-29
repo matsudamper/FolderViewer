@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+option java_package = "net.matsudamper.folderviewer.repository.proto";
+option java_multiple_files = true;
+
+message StorageListProto {
+  repeated StorageConfigurationProto list = 1;
+}
+
+message StorageConfigurationProto {
+  string id = 1;
+  string name = 2;
+  oneof config {
+    SmbConfigurationProto smb = 3;
+  }
+}
+
+message SmbConfigurationProto {
+  string ip = 1;
+  string username = 2;
+}

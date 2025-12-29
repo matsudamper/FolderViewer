@@ -4,12 +4,12 @@ import java.io.InputStream
 
 class SmbFileRepository : FileRepository {
     override suspend fun getFiles(path: String): List<FileItem> {
-        // TODO: Implement SMB file listing
+        // TODO: SMBファイル一覧の実装
         return emptyList()
     }
 
     override suspend fun getFileContent(path: String): InputStream {
-        // TODO: Implement SMB file content retrieval
+        // TODO: SMBファイルコンテンツ取得の実装
         TODO()
     }
 }
