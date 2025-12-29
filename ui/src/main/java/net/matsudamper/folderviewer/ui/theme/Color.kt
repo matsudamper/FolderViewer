@@ -1,3 +1,4 @@
+@file:Suppress("MagicNumber")
 package net.matsudamper.folderviewer.ui.theme
 
 import androidx.compose.ui.graphics.Color
