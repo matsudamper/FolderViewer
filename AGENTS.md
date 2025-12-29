@@ -4,5 +4,5 @@
 # ビルドコマンド
 編集後のチェックコマンド
 ```shell
-./gradlew assembleDebug ktlintCheck
+./gradlew assembleDebug ktlintCheck detekt
 ```
