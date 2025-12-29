@@ -18,7 +18,7 @@ subprojects {
     apply(plugin = "io.gitlab.arturbosch.detekt")
 
     configure<org.jlleitschuh.gradle.ktlint.KtlintExtension> {
-        debug.set(true)
+        verbose.set(true)
         version.set(ktlintVersion)
         outputToConsole.set(true)
     }
