@@ -12,5 +12,5 @@ data class FileItem(
     val path: String,
     val isDirectory: Boolean,
     val size: Long,
-    val lastModified: Long
+    val lastModified: Long,
 )

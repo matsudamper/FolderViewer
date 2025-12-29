@@ -46,6 +46,7 @@ fun FolderViewerTheme(
         }
 
         darkTheme -> DarkColorScheme
+
         else -> LightColorScheme
     }
 

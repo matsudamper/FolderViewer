@@ -21,8 +21,10 @@ import net.matsudamper.folderviewer.ui.R
 @Composable
 fun HomeScreen(
     onNavigateToSettings: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 title = { Text("FolderViewer") },
@@ -52,7 +54,7 @@ fun HomeScreen(
 
 @Preview(showBackground = true)
 @Composable
-fun HomeScreenPreview() {
+private fun HomeScreenPreview() {
     HomeScreen(
         onNavigateToSettings = {},
     )
