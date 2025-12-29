@@ -1,0 +1,36 @@
+build:
+  maxIssues: 0
+
+complexity:
+  LongMethod:
+    ignoreAnnotated:
+      - 'androidx.compose.runtime.Composable'
+  LongParameterList:
+    ignoreAnnotated:
+      - 'androidx.compose.runtime.Composable'
+    ignoreDefaultParameters: true
+
+naming:
+  FunctionNaming:
+    ignoreAnnotated:
+      - 'androidx.compose.runtime.Composable'
+  TopLevelPropertyNaming:
+    constantPattern: '[A-Z][A-Za-z0-9]*'
+
+style:
+  MagicNumber:
+    ignorePropertyDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+    ignoreAnnotation: true
+    ignoreEnums: true
+    ignoreNamedArgument: true
+    ignoreNumbers: ['-1', '0', '1', '2']
+  UnusedPrivateMember:
+    ignoreAnnotated:
+      - 'androidx.compose.runtime.Preview'
+      - 'androidx.compose.ui.tooling.preview.Preview'
+
+# Compose specific rules
+# Documentation: https://mrmans0n.github.io/compose-rules/detekt/
+Compose:
+  active: true

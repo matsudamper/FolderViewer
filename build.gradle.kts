@@ -23,7 +23,7 @@ subprojects {
         outputToConsole.set(true)
     }
     configure<DetektExtension> {
-
+        config.setFrom(rootProject.files("detekt.yml"))
     }
 
     dependencies {
