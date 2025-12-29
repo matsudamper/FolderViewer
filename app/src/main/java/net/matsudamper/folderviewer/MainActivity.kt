@@ -48,13 +48,6 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
-                        composable<Detail> {
-                            DetailScreen(
-                                onBack = {
-                                    navController.popBackStack()
-                                }
-                            )
-                        }
                         composable<Settings> {
                             SettingsScreen(
                                 onBack = {
@@ -114,22 +107,6 @@ fun HomeScreen(
         }
     }
 }
-
-@Composable
-fun DetailScreen(onBack: () -> Unit) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "Detail Screen")
-            Button(onClick = onBack) {
-                Text(text = "Back")
-            }
-        }
-    }
-}
-
 @Composable
 fun SettingsScreen(onBack: () -> Unit) {
     Box(
