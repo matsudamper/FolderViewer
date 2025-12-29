@@ -18,6 +18,8 @@ naming:
     constantPattern: '[A-Z][A-Za-z0-9]*'
 
 style:
+  ForbiddenComment:
+    active: false
   MagicNumber:
     ignorePropertyDeclaration: true
     ignoreCompanionObjectPropertyDeclaration: true
