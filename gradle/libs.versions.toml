@@ -14,6 +14,7 @@ ktlint = "1.8.0"
 ktlintGradle = "14.0.1"
 detekt = "1.23.8"
 detektCompose = "0.5.3"
+paparazzi = "1.3.4"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -43,3 +44,4 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlintGradle" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+paparazzi = { id = "app.cash.paparazzi", version.ref = "paparazzi" }
