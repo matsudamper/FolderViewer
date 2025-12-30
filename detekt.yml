@@ -6,9 +6,7 @@ complexity:
     ignoreAnnotated:
       - 'androidx.compose.runtime.Composable'
   LongParameterList:
-    ignoreAnnotated:
-      - 'androidx.compose.runtime.Composable'
-    ignoreDefaultParameters: true
+    active: false
 
 naming:
   FunctionNaming:
