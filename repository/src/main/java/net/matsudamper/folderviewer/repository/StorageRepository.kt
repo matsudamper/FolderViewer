@@ -1,14 +1,13 @@
 package net.matsudamper.folderviewer.repository
 
 import android.content.Context
+import androidx.core.content.edit
 import androidx.datastore.core.CorruptionException
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.Serializer
 import androidx.datastore.dataStore
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
-import com.google.protobuf.InvalidProtocolBufferException
-import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.UUID
@@ -16,6 +15,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import com.google.protobuf.InvalidProtocolBufferException
+import dagger.hilt.android.qualifiers.ApplicationContext
 import net.matsudamper.folderviewer.repository.proto.SmbConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.StorageConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.StorageListProto
@@ -32,7 +33,6 @@ private val Context.dataStore: DataStore<StorageListProto> by dataStore(
 class StorageRepository @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
-
     private val masterKey = MasterKey.Builder(context)
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
         .build()
@@ -60,9 +60,9 @@ class StorageRepository @Inject constructor(
         )
 
         // パスワードを安全に保存する
-        sharedPreferences.edit()
-            .putString(id, password)
-            .apply()
+        sharedPreferences.edit {
+            putString(id, password)
+        }
 
         // DataStoreを更新する
         context.dataStore.updateData { currentList ->
