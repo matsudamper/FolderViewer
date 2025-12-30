@@ -12,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
 import dagger.hilt.android.AndroidEntryPoint
 import net.matsudamper.folderviewer.navigation.FileBrowser
 import net.matsudamper.folderviewer.navigation.Home
@@ -63,6 +62,9 @@ fun AppContent(
                     onStorageClick = { storage ->
                         navController.navigate(FileBrowser(storage.id))
                     },
+                    onEditStorageClick = { storage ->
+                        navController.navigate(SmbAdd(storageId = storage.id))
+                    },
                 )
             }
             composable<Settings> {
@@ -75,7 +77,7 @@ fun AppContent(
             composable<StorageTypeSelection> {
                 StorageTypeSelectionScreen(
                     onSmbClick = {
-                        navController.navigate(SmbAdd)
+                        navController.navigate(SmbAdd())
                     },
                     onBack = {
                         navController.popBackStack()

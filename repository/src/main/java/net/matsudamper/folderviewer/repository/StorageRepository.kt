@@ -73,6 +73,30 @@ class StorageRepository @Inject constructor(
         }
     }
 
+    suspend fun updateSmbStorage(id: String, name: String, ip: String, username: String, password: String) {
+        val config = StorageConfiguration.Smb(
+            id = id,
+            name = name,
+            ip = ip,
+            username = username,
+        )
+
+        sharedPreferences.edit {
+            putString(id, password)
+        }
+
+        context.dataStore.updateData { currentList ->
+            val index = currentList.listList.indexOfFirst { it.id == id }
+            if (index >= 0) {
+                currentList.toBuilder()
+                    .setList(index, config.toProto())
+                    .build()
+            } else {
+                currentList
+            }
+        }
+    }
+
     fun getPassword(id: String): String? {
         return sharedPreferences.getString(id, null)
     }
