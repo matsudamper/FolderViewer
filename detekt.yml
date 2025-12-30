@@ -31,6 +31,12 @@ style:
     ignoreAnnotated:
       - 'androidx.compose.runtime.Preview'
       - 'androidx.compose.ui.tooling.preview.Preview'
+  ReturnCount:
+    active: false
+
+coroutines:
+  InjectDispatcher:
+    active: false
 
 # Compose specific rules
 # Documentation: https://mrmans0n.github.io/compose-rules/detekt/

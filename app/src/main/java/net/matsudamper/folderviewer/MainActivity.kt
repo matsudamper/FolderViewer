@@ -12,11 +12,14 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import dagger.hilt.android.AndroidEntryPoint
+import net.matsudamper.folderviewer.navigation.FileBrowser
 import net.matsudamper.folderviewer.navigation.Home
 import net.matsudamper.folderviewer.navigation.Settings
 import net.matsudamper.folderviewer.navigation.SmbAdd
 import net.matsudamper.folderviewer.navigation.StorageTypeSelection
+import net.matsudamper.folderviewer.ui.browser.FileBrowserScreen
 import net.matsudamper.folderviewer.ui.home.HomeScreen
 import net.matsudamper.folderviewer.ui.settings.SettingsScreen
 import net.matsudamper.folderviewer.ui.storage.SmbAddScreen
@@ -57,6 +60,9 @@ fun AppContent(
                     onAddStorageClick = {
                         navController.navigate(StorageTypeSelection)
                     },
+                    onStorageClick = { storage ->
+                        navController.navigate(FileBrowser(storage.id))
+                    },
                 )
             }
             composable<Settings> {
@@ -83,6 +89,13 @@ fun AppContent(
                     },
                     onSaveSuccess = {
                         navController.popBackStack(Home, inclusive = false)
+                    },
+                )
+            }
+            composable<FileBrowser> {
+                FileBrowserScreen(
+                    onBack = {
+                        navController.popBackStack()
                     },
                 )
             }

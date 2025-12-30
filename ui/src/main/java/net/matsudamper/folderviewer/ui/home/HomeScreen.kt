@@ -1,5 +1,6 @@
 package net.matsudamper.folderviewer.ui.home
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +34,7 @@ import net.matsudamper.folderviewer.ui.R
 fun HomeScreen(
     onNavigateToSettings: () -> Unit,
     onAddStorageClick: () -> Unit,
+    onStorageClick: (StorageConfiguration) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
@@ -42,6 +44,7 @@ fun HomeScreen(
         storages = storages,
         onNavigateToSettings = onNavigateToSettings,
         onAddStorageClick = onAddStorageClick,
+        onStorageClick = onStorageClick,
         modifier = modifier,
     )
 }
@@ -52,6 +55,7 @@ fun HomeScreenContent(
     storages: List<StorageConfiguration>,
     onNavigateToSettings: () -> Unit,
     onAddStorageClick: () -> Unit,
+    onStorageClick: (StorageConfiguration) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -89,7 +93,10 @@ fun HomeScreenContent(
                 verticalArrangement = Arrangement.spacedBy(PaddingSmall),
             ) {
                 items(storages) { storage ->
-                    StorageItem(storage = storage)
+                    StorageItem(
+                        storage = storage,
+                        onClick = { onStorageClick(storage) },
+                    )
                 }
             }
         }
@@ -99,9 +106,14 @@ fun HomeScreenContent(
 @Composable
 fun StorageItem(
     storage: StorageConfiguration,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(modifier = modifier.fillMaxWidth()) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+    ) {
         Column(modifier = Modifier.padding(PaddingNormal)) {
             Text(text = storage.name, style = MaterialTheme.typography.titleMedium)
             val type = when (storage) {
@@ -126,6 +138,7 @@ private fun HomeScreenPreview() {
         ),
         onNavigateToSettings = {},
         onAddStorageClick = {},
+        onStorageClick = {},
     )
 }
 

@@ -1,0 +1,10 @@
+package net.matsudamper.folderviewer.ui.browser
+
+import net.matsudamper.folderviewer.repository.FileItem
+
+data class FileBrowserUiState(
+    val isLoading: Boolean = false,
+    val currentPath: String = "",
+    val files: List<FileItem> = emptyList(),
+    val error: String? = null,
+)

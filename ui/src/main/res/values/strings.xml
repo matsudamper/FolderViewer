@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="no_files">ファイルがありません</string>
+    <string name="root">Root</string>
+    <string name="back">Back</string>
+    <string name="folder_viewer">FolderViewer</string>
+    <string name="settings">Settings</string>
+    <string name="add_storage">Add Storage</string>
+</resources>

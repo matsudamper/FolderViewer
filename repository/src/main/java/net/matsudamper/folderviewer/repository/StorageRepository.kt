@@ -14,6 +14,7 @@ import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import com.google.protobuf.InvalidProtocolBufferException
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -76,6 +77,14 @@ class StorageRepository @Inject constructor(
         return sharedPreferences.getString(id, null)
     }
 
+    suspend fun getFileRepository(id: String): FileRepository? {
+        val proto = context.dataStore.data.first()
+        val configProto = proto.listList.find { it.id == id } ?: return null
+        val config = configProto.toDomain() as? StorageConfiguration.Smb ?: return null
+        val password = getPassword(id) ?: return null
+        return SmbFileRepository(config, password)
+    }
+
     private fun StorageConfigurationProto.toDomain(): StorageConfiguration? {
         return when (configCase) {
             StorageConfigurationProto.ConfigCase.SMB -> {
@@ -109,10 +118,13 @@ internal object StorageListSerializer : Serializer<StorageListProto> {
     override val defaultValue: StorageListProto = StorageListProto.getDefaultInstance()
 
     override suspend fun readFrom(input: InputStream): StorageListProto {
+        @Suppress("TooGenericExceptionCaught")
         try {
             return StorageListProto.parseFrom(input)
         } catch (exception: InvalidProtocolBufferException) {
             throw CorruptionException("Cannot read proto.", exception)
+        } catch (exception: Exception) {
+            throw CorruptionException("Unexpected error reading proto.", exception)
         }
     }
 

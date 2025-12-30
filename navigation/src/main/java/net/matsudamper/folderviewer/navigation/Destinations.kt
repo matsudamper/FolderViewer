@@ -13,3 +13,6 @@ object StorageTypeSelection
 
 @Serializable
 object SmbAdd
+
+@Serializable
+data class FileBrowser(val id: String)

@@ -39,7 +39,7 @@ fun SmbAddScreen(
     modifier: Modifier = Modifier,
     viewModel: SmbAddViewModel = hiltViewModel(),
 ) {
-    LaunchedEffect(viewModel.event) {
+    LaunchedEffect(viewModel.event, onSaveSuccess) {
         viewModel.event.collect { event ->
             when (event) {
                 SmbAddViewModel.Event.SaveSuccess -> {
