@@ -12,26 +12,26 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import dagger.hilt.android.AndroidEntryPoint
 import net.matsudamper.folderviewer.navigation.Home
 import net.matsudamper.folderviewer.navigation.Settings
 import net.matsudamper.folderviewer.navigation.SmbAdd
 import net.matsudamper.folderviewer.navigation.StorageTypeSelection
-import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.ui.home.HomeScreen
 import net.matsudamper.folderviewer.ui.settings.SettingsScreen
 import net.matsudamper.folderviewer.ui.storage.SmbAddScreen
 import net.matsudamper.folderviewer.ui.storage.StorageTypeSelectionScreen
 import net.matsudamper.folderviewer.ui.theme.FolderViewerTheme
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val storageRepository = StorageRepository(applicationContext)
 
         setContent {
             FolderViewerTheme {
-                AppContent(storageRepository)
+                AppContent()
             }
         }
     }
@@ -39,7 +39,6 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AppContent(
-    storageRepository: StorageRepository,
     modifier: Modifier = Modifier,
 ) {
     val navController = rememberNavController()
@@ -52,7 +51,6 @@ fun AppContent(
         ) {
             composable<Home> {
                 HomeScreen(
-                    storageRepository = storageRepository,
                     onNavigateToSettings = {
                         navController.navigate(Settings)
                     },
@@ -80,8 +78,6 @@ fun AppContent(
             }
             composable<SmbAdd> {
                 SmbAddScreen(
-                    storageRepository = storageRepository,
-                    navController = navController,
                     onBack = {
                         navController.popBackStack()
                     },

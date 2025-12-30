@@ -28,26 +28,17 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
-import net.matsudamper.folderviewer.repository.StorageRepository
+import androidx.hilt.navigation.compose.hiltViewModel
 import net.matsudamper.folderviewer.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmbAddScreen(
-    storageRepository: StorageRepository,
-    navController: NavController,
     onBack: () -> Unit,
     onSaveSuccess: () -> Unit,
     modifier: Modifier = Modifier,
+    viewModel: SmbAddViewModel = hiltViewModel(),
 ) {
-    val viewModel = viewModel<SmbAddViewModel>(
-        initializer = {
-            SmbAddViewModel(storageRepository)
-        },
-    )
-
     LaunchedEffect(viewModel.event) {
         viewModel.event.collect { event ->
             when (event) {

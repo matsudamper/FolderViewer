@@ -8,9 +8,12 @@ import androidx.datastore.dataStore
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.google.protobuf.InvalidProtocolBufferException
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.UUID
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import net.matsudamper.folderviewer.repository.proto.SmbConfigurationProto
@@ -25,7 +28,10 @@ private val Context.dataStore: DataStore<StorageListProto> by dataStore(
     serializer = StorageListSerializer,
 )
 
-class StorageRepository(private val context: Context) {
+@Singleton
+class StorageRepository @Inject constructor(
+    @ApplicationContext private val context: Context,
+) {
 
     private val masterKey = MasterKey.Builder(context)
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)

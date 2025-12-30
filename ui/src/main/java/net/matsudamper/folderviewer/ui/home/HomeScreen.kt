@@ -25,23 +25,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import net.matsudamper.folderviewer.repository.StorageConfiguration
-import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.ui.R
 
 @Composable
 fun HomeScreen(
-    storageRepository: StorageRepository,
     onNavigateToSettings: () -> Unit,
     onAddStorageClick: () -> Unit,
     modifier: Modifier = Modifier,
+    viewModel: HomeViewModel = hiltViewModel(),
 ) {
-    val viewModel = viewModel<HomeViewModel>(
-        initializer = {
-            HomeViewModel(storageRepository)
-        },
-    )
     val storages by viewModel.storages.collectAsState()
 
     HomeScreenContent(
