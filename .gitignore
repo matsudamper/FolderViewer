@@ -11,6 +11,7 @@
 /.idea/deploymentTargetSelector.xml
 /.idea/markdown.xml
 /.idea/appInsightsSettings.xml
+/.idea/deviceManager.xml
 .DS_Store
 /build
 /captures
