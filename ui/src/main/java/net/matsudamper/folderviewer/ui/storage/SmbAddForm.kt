@@ -18,11 +18,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import net.matsudamper.folderviewer.repository.StorageRepository
 
 @Composable
 internal fun SmbAddForm(
     uiState: SmbAddViewModel.UiState,
-    onSave: (String, String, String, String) -> Unit,
+    onSave: (StorageRepository.SmbStorageInput) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var name by remember(uiState.name) { mutableStateOf(uiState.name) }
@@ -65,7 +66,16 @@ internal fun SmbAddForm(
         )
         Spacer(modifier = Modifier.height(SpacerLarge))
         Button(
-            onClick = { onSave(name, ip, username, password) },
+            onClick = {
+                onSave(
+                    StorageRepository.SmbStorageInput(
+                        name = name,
+                        ip = ip,
+                        username = username,
+                        password = password,
+                    ),
+                )
+            },
             enabled = name.isNotBlank() && ip.isNotBlank(), // 基本的なバリデーション
             modifier = Modifier.fillMaxWidth(),
         ) {

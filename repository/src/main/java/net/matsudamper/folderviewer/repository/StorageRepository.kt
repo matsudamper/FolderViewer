@@ -51,45 +51,45 @@ class StorageRepository @Inject constructor(
             proto.listList.mapNotNull { it.toDomain() }
         }
 
-    suspend fun addSmbStorage(name: String, ip: String, username: String, password: String) {
+    suspend fun addSmbStorage(config: SmbStorageInput) {
         val id = UUID.randomUUID().toString()
-        val config = StorageConfiguration.Smb(
+        val smbConfig = StorageConfiguration.Smb(
             id = id,
-            name = name,
-            ip = ip,
-            username = username,
+            name = config.name,
+            ip = config.ip,
+            username = config.username,
         )
 
         // パスワードを安全に保存する
         sharedPreferences.edit {
-            putString(id, password)
+            putString(id, config.password)
         }
 
         // DataStoreを更新する
         context.dataStore.updateData { currentList ->
             currentList.toBuilder()
-                .addList(config.toProto())
+                .addList(smbConfig.toProto())
                 .build()
         }
     }
 
-    suspend fun updateSmbStorage(id: String, name: String, ip: String, username: String, password: String) {
-        val config = StorageConfiguration.Smb(
+    suspend fun updateSmbStorage(id: String, config: SmbStorageInput) {
+        val smbConfig = StorageConfiguration.Smb(
             id = id,
-            name = name,
-            ip = ip,
-            username = username,
+            name = config.name,
+            ip = config.ip,
+            username = config.username,
         )
 
         sharedPreferences.edit {
-            putString(id, password)
+            putString(id, config.password)
         }
 
         context.dataStore.updateData { currentList ->
             val index = currentList.listList.indexOfFirst { it.id == id }
             if (index >= 0) {
                 currentList.toBuilder()
-                    .setList(index, config.toProto())
+                    .setList(index, smbConfig.toProto())
                     .build()
             } else {
                 currentList
@@ -136,6 +136,13 @@ class StorageRepository @Inject constructor(
             )
             .build()
     }
+
+    data class SmbStorageInput(
+        val name: String,
+        val ip: String,
+        val username: String,
+        val password: String,
+    )
 }
 
 internal object StorageListSerializer : Serializer<StorageListProto> {

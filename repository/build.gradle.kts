@@ -30,6 +30,7 @@ kotlin {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.smbj)
+    implementation(libs.smbj.rpc)
     implementation(libs.androidx.datastore)
     implementation(libs.androidx.security.crypto)
     implementation(libs.kotlinx.serialization.json)

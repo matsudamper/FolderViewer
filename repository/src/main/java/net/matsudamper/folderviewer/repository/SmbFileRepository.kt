@@ -1,16 +1,15 @@
 package net.matsudamper.folderviewer.repository
 
-import java.io.InputStream
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.withContext
 import com.hierynomus.msfscc.FileAttributes
 import com.hierynomus.smbj.SMBClient
 import com.hierynomus.smbj.auth.AuthenticationContext
 import com.hierynomus.smbj.session.Session
 import com.hierynomus.smbj.share.DiskShare
+import com.rapid7.client.dcerpc.mssrvs.ServerService
+import com.rapid7.client.dcerpc.transport.SMBTransportFactories
+import java.io.InputStream
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class SmbFileRepository(
     private val config: StorageConfiguration.Smb,
@@ -36,31 +35,27 @@ class SmbFileRepository(
         }
     }
 
-    private suspend fun enumerateShares(session: Session): List<FileItem> = coroutineScope {
-        CommonShares.map { shareName ->
-            async {
-                @Suppress("TooGenericExceptionCaught", "SwallowedException")
-                try {
-                    // 短時間でタイムアウトするように設定したいが、smbj の API ではセッションレベルでの制御が主。
-                    // 共有が存在しない場合、迅速にエラーを返すことを期待。
-                    session.connectShare(shareName).use { share ->
-                        if (share is DiskShare) {
-                            FileItem(
-                                name = shareName,
-                                path = shareName,
-                                isDirectory = true,
-                                size = 0,
-                                lastModified = 0,
-                            )
-                        } else {
-                            null
-                        }
-                    }
-                } catch (e: Exception) {
-                    null
+    private fun enumerateShares(session: Session): List<FileItem> {
+        return try {
+            val transport = SMBTransportFactories.SRVSVC.getTransport(session)
+            val serverService = ServerService(transport)
+            val shares = serverService.shares1
+
+            shares
+                .filter { it.type == 0 } // STYPE_DISKTREE
+                .map {
+                    FileItem(
+                        name = it.netName,
+                        path = it.netName,
+                        isDirectory = true,
+                        size = 0,
+                        lastModified = 0,
+                    )
                 }
-            }
-        }.awaitAll().filterNotNull()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
     }
 
     private fun listShareItems(session: Session, path: String): List<FileItem> {
@@ -99,11 +94,5 @@ class SmbFileRepository(
 
     companion object {
         private const val PathSplitLimit = 2
-        private val CommonShares = listOf(
-            "Data", "Shared", "Public", "Storage", "homes", "users",
-            "media", "video", "music", "photos", "backups", "share",
-            "NAS", "Cloud", "External", "USB", "Transfer", "Temp",
-            "common", "backup", "files", "documents", "work", "projects",
-        )
     }
 }

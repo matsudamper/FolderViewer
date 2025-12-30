@@ -18,6 +18,7 @@ ktlintGradle = "14.0.1"
 detekt = "1.23.8"
 detektCompose = "0.4.28"
 smbj = "0.14.0"
+rapid7Dcerpc = "0.12.13"
 datastore = "1.1.2"
 securityCrypto = "1.1.0-alpha06"
 protobuf = "4.26.1"
@@ -48,7 +49,7 @@ kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 ktlint-cli = { group = "com.pinterest.ktlint", name = "ktlint-cli", version.ref = "ktlint" }
 detekt-compose = { group = "io.nlopez.compose.rules", name = "detekt", version.ref = "detektCompose" }
 smbj = { group = "com.hierynomus", name = "smbj", version.ref = "smbj" }
-smbj-rpc = { group = "com.hierynomus", name = "smbj-rpc", version = "0.1.1" }
+smbj-rpc = { group = "com.rapid7.client", name = "dcerpc", version.ref = "rapid7Dcerpc" }
 androidx-datastore = { group = "androidx.datastore", name = "datastore", version.ref = "datastore" }
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
 protobuf-kotlin-lite = { group = "com.google.protobuf", name = "protobuf-kotlin-lite", version.ref = "protobuf" }

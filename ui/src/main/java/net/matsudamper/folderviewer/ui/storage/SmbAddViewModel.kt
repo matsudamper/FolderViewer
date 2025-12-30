@@ -44,11 +44,12 @@ class SmbAddViewModel @Inject constructor(
                 val storage = storageRepository.storageList.first()
                     .find { it.id == storageId } as? StorageConfiguration.Smb
                 if (storage != null) {
+                    val password = storageRepository.getPassword(storage.id) ?: ""
                     _uiState.value = UiState(
                         name = storage.name,
                         ip = storage.ip,
                         username = storage.username,
-                        password = storageRepository.getPassword(storage.id) ?: "",
+                        password = password,
                         isEditMode = true,
                         isLoading = false,
                     )
@@ -59,12 +60,12 @@ class SmbAddViewModel @Inject constructor(
         }
     }
 
-    fun onSave(name: String, ip: String, username: String, password: String) {
+    fun onSave(input: StorageRepository.SmbStorageInput) {
         viewModelScope.launch {
             if (storageId == null) {
-                storageRepository.addSmbStorage(name, ip, username, password)
+                storageRepository.addSmbStorage(input)
             } else {
-                storageRepository.updateSmbStorage(storageId, name, ip, username, password)
+                storageRepository.updateSmbStorage(storageId, input)
             }
             _event.send(Event.SaveSuccess)
         }
