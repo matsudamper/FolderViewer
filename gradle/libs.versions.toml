@@ -20,7 +20,7 @@ detektCompose = "0.4.28"
 smbj = "0.14.0"
 datastore = "1.1.2"
 securityCrypto = "1.1.0-alpha06"
-protobuf = "4.26.1"
+protobuf = "4.33.2"
 protobufPlugin = "0.9.4"
 
 [libraries]
