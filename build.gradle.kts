@@ -1,6 +1,7 @@
 import io.gitlab.arturbosch.detekt.Detekt
 import io.gitlab.arturbosch.detekt.DetektPlugin
 import io.gitlab.arturbosch.detekt.extensions.DetektExtension
+import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 import org.jlleitschuh.gradle.ktlint.KtlintPlugin
 
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
@@ -37,6 +38,11 @@ subprojects {
             txt.outputLocation.set(file("build/reports/detekt.txt"))
             sarif.required.set(false)
             md.required.set(false)
+        }
+    }
+    tasks.withType<KotlinJvmCompile> {
+        compilerOptions {
+            allWarningsAsErrors.set(true)
         }
     }
 
