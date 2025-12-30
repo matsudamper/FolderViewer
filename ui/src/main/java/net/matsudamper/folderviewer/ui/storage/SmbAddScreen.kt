@@ -11,11 +11,14 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,15 +28,36 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmbAddScreen(
-    onSave: (name: String, ip: String, user: String, pass: String) -> Unit,
+    storageRepository: StorageRepository,
+    navController: NavController,
     onBack: () -> Unit,
+    onSaveSuccess: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val viewModel = viewModel<SmbAddViewModel>(
+        initializer = {
+            SmbAddViewModel(storageRepository)
+        },
+    )
+
+    LaunchedEffect(viewModel.event) {
+        viewModel.event.collect { event ->
+            when (event) {
+                SmbAddViewModel.Event.SaveSuccess -> {
+                    onSaveSuccess()
+                }
+            }
+        }
+    }
+
     var name by remember { mutableStateOf("") }
     var ip by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
@@ -45,8 +69,8 @@ fun SmbAddScreen(
             TopAppBar(
                 title = { Text("Add SMB Storage") },
                 navigationIcon = {
-                    androidx.compose.material3.IconButton(onClick = onBack) {
-                        androidx.compose.material3.Icon(
+                    IconButton(onClick = onBack) {
+                        Icon(
                             painter = painterResource(id = R.drawable.ic_arrow_back),
                             contentDescription = "Back",
                         )
@@ -59,7 +83,7 @@ fun SmbAddScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(16.dp)
+                .padding(PaddingNormal)
                 .verticalScroll(rememberScrollState()),
         ) {
             OutlinedTextField(
@@ -68,21 +92,21 @@ fun SmbAddScreen(
                 label = { Text("Display Name") },
                 modifier = Modifier.fillMaxWidth(),
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(PaddingSmall))
             OutlinedTextField(
                 value = ip,
                 onValueChange = { ip = it },
                 label = { Text("IP Address / Hostname") },
                 modifier = Modifier.fillMaxWidth(),
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(PaddingSmall))
             OutlinedTextField(
                 value = username,
                 onValueChange = { username = it },
                 label = { Text("Username") },
                 modifier = Modifier.fillMaxWidth(),
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(PaddingSmall))
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
@@ -91,9 +115,9 @@ fun SmbAddScreen(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 modifier = Modifier.fillMaxWidth(),
             )
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(SpacerLarge))
             Button(
-                onClick = { onSave(name, ip, username, password) },
+                onClick = { viewModel.onSave(name, ip, username, password) },
                 enabled = name.isNotBlank() && ip.isNotBlank(), // 基本的なバリデーション
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -102,3 +126,7 @@ fun SmbAddScreen(
         }
     }
 }
+
+private val PaddingNormal = 16.dp
+private val PaddingSmall = 8.dp
+private val SpacerLarge = 24.dp

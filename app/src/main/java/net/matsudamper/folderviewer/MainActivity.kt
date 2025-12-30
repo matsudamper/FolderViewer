@@ -8,14 +8,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import kotlinx.coroutines.launch
 import net.matsudamper.folderviewer.navigation.Home
 import net.matsudamper.folderviewer.navigation.Settings
 import net.matsudamper.folderviewer.navigation.SmbAdd
@@ -47,8 +43,6 @@ fun AppContent(
     modifier: Modifier = Modifier,
 ) {
     val navController = rememberNavController()
-    val scope = rememberCoroutineScope()
-    val storages by storageRepository.storageList.collectAsState(initial = emptyList())
 
     Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
         NavHost(
@@ -58,7 +52,7 @@ fun AppContent(
         ) {
             composable<Home> {
                 HomeScreen(
-                    storages = storages,
+                    storageRepository = storageRepository,
                     onNavigateToSettings = {
                         navController.navigate(Settings)
                     },
@@ -86,14 +80,13 @@ fun AppContent(
             }
             composable<SmbAdd> {
                 SmbAddScreen(
-                    onSave = { name, ip, user, pass ->
-                        scope.launch {
-                            storageRepository.addSmbStorage(name, ip, user, pass)
-                            navController.popBackStack(Home, inclusive = false)
-                        }
-                    },
+                    storageRepository = storageRepository,
+                    navController = navController,
                     onBack = {
                         navController.popBackStack()
+                    },
+                    onSaveSuccess = {
+                        navController.popBackStack(Home, inclusive = false)
                     },
                 )
             }

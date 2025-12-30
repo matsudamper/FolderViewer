@@ -1,7 +1,9 @@
 package net.matsudamper.folderviewer.ui.home
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -12,20 +14,47 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import net.matsudamper.folderviewer.repository.StorageConfiguration
+import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.ui.R
+
+@Composable
+fun HomeScreen(
+    storageRepository: StorageRepository,
+    onNavigateToSettings: () -> Unit,
+    onAddStorageClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val viewModel = viewModel<HomeViewModel>(
+        initializer = {
+            HomeViewModel(storageRepository)
+        },
+    )
+    val storages by viewModel.storages.collectAsState()
+
+    HomeScreenContent(
+        storages = storages,
+        onNavigateToSettings = onNavigateToSettings,
+        onAddStorageClick = onAddStorageClick,
+        modifier = modifier,
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(
+fun HomeScreenContent(
     storages: List<StorageConfiguration>,
     onNavigateToSettings: () -> Unit,
     onAddStorageClick: () -> Unit,
@@ -62,8 +91,8 @@ fun HomeScreen(
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(PaddingNormal),
+                verticalArrangement = Arrangement.spacedBy(PaddingSmall),
             ) {
                 items(storages) { storage ->
                     StorageItem(storage = storage)
@@ -79,12 +108,12 @@ fun StorageItem(
     modifier: Modifier = Modifier,
 ) {
     Card(modifier = modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = storage.name, style = androidx.compose.material3.MaterialTheme.typography.titleMedium)
+        Column(modifier = Modifier.padding(PaddingNormal)) {
+            Text(text = storage.name, style = MaterialTheme.typography.titleMedium)
             val type = when (storage) {
                 is StorageConfiguration.Smb -> "SMB: ${storage.ip}"
             }
-            Text(text = type, style = androidx.compose.material3.MaterialTheme.typography.bodyMedium)
+            Text(text = type, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
@@ -92,7 +121,7 @@ fun StorageItem(
 @Preview(showBackground = true)
 @Composable
 private fun HomeScreenPreview() {
-    HomeScreen(
+    HomeScreenContent(
         storages = listOf(
             StorageConfiguration.Smb(
                 id = "1",
@@ -105,3 +134,6 @@ private fun HomeScreenPreview() {
         onAddStorageClick = {},
     )
 }
+
+private val PaddingNormal = 16.dp
+private val PaddingSmall = 8.dp

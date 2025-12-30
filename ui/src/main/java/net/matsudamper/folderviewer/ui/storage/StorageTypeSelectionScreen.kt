@@ -1,12 +1,17 @@
 package net.matsudamper.folderviewer.ui.storage
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -29,8 +34,8 @@ fun StorageTypeSelectionScreen(
             TopAppBar(
                 title = { Text("Select Storage Type") },
                 navigationIcon = {
-                    androidx.compose.material3.IconButton(onClick = onBack) {
-                        androidx.compose.material3.Icon(
+                    IconButton(onClick = onBack) {
+                        Icon(
                             painter = painterResource(id = R.drawable.ic_arrow_back),
                             contentDescription = "Back",
                         )
@@ -46,8 +51,8 @@ fun StorageTypeSelectionScreen(
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
-                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(PaddingNormal),
+                verticalArrangement = Arrangement.spacedBy(PaddingSmall),
             ) {
                 item {
                     Card(
@@ -56,8 +61,8 @@ fun StorageTypeSelectionScreen(
                     ) {
                         Text(
                             text = "SMB",
-                            modifier = Modifier.padding(16.dp),
-                            style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.padding(PaddingNormal),
+                            style = MaterialTheme.typography.titleMedium,
                         )
                     }
                 }
@@ -65,3 +70,6 @@ fun StorageTypeSelectionScreen(
         }
     }
 }
+
+private val PaddingNormal = 16.dp
+private val PaddingSmall = 8.dp

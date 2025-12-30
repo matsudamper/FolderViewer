@@ -7,12 +7,12 @@ import androidx.datastore.core.Serializer
 import androidx.datastore.dataStore
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.google.protobuf.InvalidProtocolBufferException
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import com.google.protobuf.InvalidProtocolBufferException
 import net.matsudamper.folderviewer.repository.proto.SmbConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.StorageConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.StorageListProto
