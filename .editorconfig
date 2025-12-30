@@ -16,6 +16,7 @@ ktlint_standard_parameter-list-wrapping = disabled
 ktlint_standard_package-name = disabled
 ktlint_standard_annotation = disabled
 ktlint_standard_function-naming = disabled
+ktlint_standard_property-naming = disabled
 ktlint_standard_class-signature = disabled
 ktlint_standard_function-expression-body = disabled
 
