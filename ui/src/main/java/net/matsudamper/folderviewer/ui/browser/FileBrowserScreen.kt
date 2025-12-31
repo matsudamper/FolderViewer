@@ -6,10 +6,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import coil.ImageLoader
+import net.matsudamper.folderviewer.repository.FileRepository
 
 @Composable
 fun FileBrowserScreen(
     uiState: FileBrowserUiState,
+    fileRepository: FileRepository?,
     callbacks: FileBrowserUiState.Callbacks,
     onErrorMessageShown: () -> Unit,
     modifier: Modifier = Modifier,
@@ -27,9 +31,21 @@ fun FileBrowserScreen(
         onErrorMessageShown()
     }
 
+    val context = LocalContext.current
+    val imageLoader = remember(fileRepository) {
+        ImageLoader.Builder(context)
+            .components {
+                if (fileRepository != null) {
+                    add(FileRepositoryImageFetcher.Factory(fileRepository))
+                }
+            }
+            .build()
+    }
+
     FileBrowserScreenContent(
         modifier = modifier,
         uiState = uiState,
+        imageLoader = imageLoader,
         snackbarHostState = snackbarHostState,
         callbacks = callbacks,
     )

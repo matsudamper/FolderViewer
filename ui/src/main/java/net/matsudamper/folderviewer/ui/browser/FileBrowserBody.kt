@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import coil.ImageLoader
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.ui.R
 
@@ -21,6 +22,7 @@ import net.matsudamper.folderviewer.ui.R
 @Composable
 internal fun FileBrowserBody(
     uiState: FileBrowserUiState,
+    imageLoader: ImageLoader,
     onFileClick: (FileItem) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
@@ -53,6 +55,7 @@ internal fun FileBrowserBody(
                     items(uiState.files) { file ->
                         FileListItem(
                             file = file,
+                            imageLoader = imageLoader,
                             onClick = { onFileClick(file) },
                         )
                     }

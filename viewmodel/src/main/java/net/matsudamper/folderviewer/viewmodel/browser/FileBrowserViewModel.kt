@@ -45,19 +45,20 @@ class FileBrowserViewModel @Inject constructor(
             }
         }.asStateFlow()
 
-    private var fileRepository: FileRepository? = null
+    private val _fileRepository = MutableStateFlow<FileRepository?>(null)
+    val fileRepository: StateFlow<FileRepository?> = _fileRepository.asStateFlow()
 
     init {
         loadFiles("")
     }
 
     private suspend fun getRepository(): FileRepository {
-        val current = fileRepository
+        val current = _fileRepository.value
         if (current != null) return current
 
         val newRepo = storageRepository.getFileRepository(args.id)
             ?: throw IllegalStateException("Storage not found")
-        fileRepository = newRepo
+        _fileRepository.value = newRepo
         return newRepo
     }
 

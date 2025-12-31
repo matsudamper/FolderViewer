@@ -123,6 +123,7 @@ fun AppContent(
             composable<FileBrowser> {
                 val viewModel: FileBrowserViewModel = hiltViewModel()
                 val uiState by viewModel.uiState.collectAsState()
+                val fileRepository by viewModel.fileRepository.collectAsState()
 
                 val callbacks = remember(viewModel) {
                     object : FileBrowserUiState.Callbacks {
@@ -135,6 +136,7 @@ fun AppContent(
 
                 FileBrowserScreen(
                     uiState = uiState,
+                    fileRepository = fileRepository,
                     callbacks = callbacks,
                     onErrorMessageShown = viewModel::errorMessageShown,
                 )
