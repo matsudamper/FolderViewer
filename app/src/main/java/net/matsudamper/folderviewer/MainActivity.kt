@@ -50,116 +50,113 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun AppContent(
+private fun AppContent(
     modifier: Modifier = Modifier,
 ) {
     val navController = rememberNavController()
+    NavHost(
+        navController = navController,
+        startDestination = Home,
+        modifier = modifier,
+    ) {
+        composable<Home> {
+            val viewModel: HomeViewModel = hiltViewModel()
+            val uiState by viewModel.uiState.collectAsState()
 
-    Scaffold(modifier = modifier.fillMaxSize()) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = Home,
-            modifier = Modifier.padding(innerPadding),
-        ) {
-            composable<Home> {
-                val viewModel: HomeViewModel = hiltViewModel()
-                val uiState by viewModel.uiState.collectAsState()
+            HomeScreen(
+                uiState = uiState,
+                onNavigateToSettings = {
+                    navController.navigate(Settings)
+                },
+                onAddStorageClick = {
+                    navController.navigate(StorageTypeSelection)
+                },
+                onStorageClick = { storage ->
+                    navController.navigate(FileBrowser(storage.id))
+                },
+                onEditStorageClick = { storage ->
+                    navController.navigate(SmbAdd(storageId = storage.id))
+                },
+            )
+        }
+        composable<Settings> {
+            SettingsScreen(
+                onBack = {
+                    navController.popBackStack()
+                },
+            )
+        }
+        composable<StorageTypeSelection> {
+            StorageTypeSelectionScreen(
+                onSmbClick = {
+                    navController.navigate(SmbAdd())
+                },
+                onBack = {
+                    navController.popBackStack()
+                },
+            )
+        }
+        composable<SmbAdd> {
+            val viewModel: SmbAddViewModel = hiltViewModel()
+            val uiState by viewModel.uiState.collectAsState()
 
-                HomeScreen(
-                    uiState = uiState,
-                    onNavigateToSettings = {
-                        navController.navigate(Settings)
-                    },
-                    onAddStorageClick = {
-                        navController.navigate(StorageTypeSelection)
-                    },
-                    onStorageClick = { storage ->
-                        navController.navigate(FileBrowser(storage.id))
-                    },
-                    onEditStorageClick = { storage ->
-                        navController.navigate(SmbAdd(storageId = storage.id))
-                    },
-                )
-            }
-            composable<Settings> {
-                SettingsScreen(
-                    onBack = {
-                        navController.popBackStack()
-                    },
-                )
-            }
-            composable<StorageTypeSelection> {
-                StorageTypeSelectionScreen(
-                    onSmbClick = {
-                        navController.navigate(SmbAdd())
-                    },
-                    onBack = {
-                        navController.popBackStack()
-                    },
-                )
-            }
-            composable<SmbAdd> {
-                val viewModel: SmbAddViewModel = hiltViewModel()
-                val uiState by viewModel.uiState.collectAsState()
-
-                LaunchedEffect(viewModel.event) {
-                    viewModel.event.collect { event ->
-                        when (event) {
-                            SmbAddViewModel.Event.SaveSuccess -> {
-                                navController.popBackStack(Home, inclusive = false)
-                            }
+            LaunchedEffect(viewModel.event) {
+                viewModel.event.collect { event ->
+                    when (event) {
+                        SmbAddViewModel.Event.SaveSuccess -> {
+                            navController.popBackStack(Home, inclusive = false)
                         }
                     }
                 }
-
-                SmbAddScreen(
-                    uiState = uiState,
-                    onSave = viewModel::onSave,
-                    onBack = {
-                        navController.popBackStack()
-                    },
-                )
             }
-            composable<FileBrowser> {
-                val viewModel: FileBrowserViewModel = hiltViewModel()
-                val uiState by viewModel.uiState.collectAsState()
-                val fileRepository by viewModel.fileRepository.collectAsState()
 
-                LaunchedEffect(viewModel.event) {
-                    viewModel.event.collect { event ->
-                        when (event) {
-                            is FileBrowserViewModel.Event.PopBackStack -> {
-                                navController.popBackStack()
-                            }
+            SmbAddScreen(
+                uiState = uiState,
+                onSave = viewModel::onSave,
+                onBack = {
+                    navController.popBackStack()
+                },
+            )
+        }
+        composable<FileBrowser> {
+            val viewModel: FileBrowserViewModel = hiltViewModel()
+            val uiState by viewModel.uiState.collectAsState()
+            val fileRepository by viewModel.fileRepository.collectAsState()
 
-                            is FileBrowserViewModel.Event.NavigateToImageViewer -> {
-                                navController.navigate(
-                                    ImageViewer(
-                                        id = viewModel.storageId,
-                                        path = event.path,
-                                    ),
-                                )
-                            }
+            LaunchedEffect(viewModel.event) {
+                viewModel.event.collect { event ->
+                    when (event) {
+                        is FileBrowserViewModel.Event.PopBackStack -> {
+                            navController.popBackStack()
+                        }
+
+                        is FileBrowserViewModel.Event.NavigateToImageViewer -> {
+                            navController.navigate(
+                                ImageViewer(
+                                    id = viewModel.storageId,
+                                    path = event.path,
+                                ),
+                            )
                         }
                     }
                 }
-
-                FileBrowserScreen(
-                    uiState = uiState,
-                    fileRepository = fileRepository,
-                    onErrorMessageShown = viewModel::errorMessageShown,
-                )
             }
-            composable<ImageViewer> {
-                val viewModel: ImageViewerViewModel = hiltViewModel()
-                val fileRepository by viewModel.fileRepository.collectAsState()
 
-                ImageViewerScreen(
-                    fileRepository = fileRepository,
-                    path = viewModel.path,
-                    onBack = { navController.popBackStack() },
-                )
-            }
+            FileBrowserScreen(
+                uiState = uiState,
+                fileRepository = fileRepository,
+                onErrorMessageShown = viewModel::errorMessageShown,
+            )
+        }
+        composable<ImageViewer> {
+            val viewModel: ImageViewerViewModel = hiltViewModel()
+            val fileRepository by viewModel.fileRepository.collectAsState()
+
+            ImageViewerScreen(
+                fileRepository = fileRepository,
+                path = viewModel.path,
+                onBack = { navController.popBackStack() },
+            )
         }
     }
 }
