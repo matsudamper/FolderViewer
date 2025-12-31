@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 @Composable
 fun StorageTypeSelectionScreen(
     onSmbClick: () -> Unit,
+    onSftpClick: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -20,6 +21,7 @@ fun StorageTypeSelectionScreen(
         StorageTypeSelectionBody(
             modifier = Modifier.padding(innerPadding),
             onSmbClick = onSmbClick,
+            onSftpClick = onSftpClick,
         )
     }
 }

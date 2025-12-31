@@ -19,6 +19,7 @@ detekt = "1.23.8"
 detektCompose = "0.4.28"
 smbj = "0.14.0"
 rapid7Dcerpc = "0.12.13"
+jsch = "0.2.20"
 datastore = "1.1.2"
 securityCrypto = "1.1.0-alpha06"
 protobuf = "4.33.2"
@@ -50,6 +51,7 @@ ktlint-cli = { group = "com.pinterest.ktlint", name = "ktlint-cli", version.ref 
 detekt-compose = { group = "io.nlopez.compose.rules", name = "detekt", version.ref = "detektCompose" }
 smbj = { group = "com.hierynomus", name = "smbj", version.ref = "smbj" }
 smbj-rpc = { group = "com.rapid7.client", name = "dcerpc", version.ref = "rapid7Dcerpc" }
+jsch = { group = "com.github.mwiede", name = "jsch", version.ref = "jsch" }
 androidx-datastore = { group = "androidx.datastore", name = "datastore", version.ref = "datastore" }
 androidx-security-crypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
 protobuf-kotlin-lite = { group = "com.google.protobuf", name = "protobuf-kotlin-lite", version.ref = "protobuf" }

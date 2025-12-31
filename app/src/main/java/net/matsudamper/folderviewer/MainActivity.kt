@@ -16,11 +16,13 @@ import dagger.hilt.android.AndroidEntryPoint
 import net.matsudamper.folderviewer.navigation.FileBrowser
 import net.matsudamper.folderviewer.navigation.Home
 import net.matsudamper.folderviewer.navigation.Settings
+import net.matsudamper.folderviewer.navigation.SftpAdd
 import net.matsudamper.folderviewer.navigation.SmbAdd
 import net.matsudamper.folderviewer.navigation.StorageTypeSelection
 import net.matsudamper.folderviewer.ui.browser.FileBrowserScreen
 import net.matsudamper.folderviewer.ui.home.HomeScreen
 import net.matsudamper.folderviewer.ui.settings.SettingsScreen
+import net.matsudamper.folderviewer.ui.storage.SftpAddScreen
 import net.matsudamper.folderviewer.ui.storage.SmbAddScreen
 import net.matsudamper.folderviewer.ui.storage.StorageTypeSelectionScreen
 import net.matsudamper.folderviewer.ui.theme.FolderViewerTheme
@@ -63,7 +65,12 @@ fun AppContent(
                         navController.navigate(FileBrowser(storage.id))
                     },
                     onEditStorageClick = { storage ->
-                        navController.navigate(SmbAdd(storageId = storage.id))
+                        when (storage) {
+                            is net.matsudamper.folderviewer.repository.StorageConfiguration.Smb ->
+                                navController.navigate(SmbAdd(storageId = storage.id))
+                            is net.matsudamper.folderviewer.repository.StorageConfiguration.Sftp ->
+                                navController.navigate(SftpAdd(storageId = storage.id))
+                        }
                     },
                 )
             }
@@ -79,6 +86,9 @@ fun AppContent(
                     onSmbClick = {
                         navController.navigate(SmbAdd())
                     },
+                    onSftpClick = {
+                        navController.navigate(SftpAdd())
+                    },
                     onBack = {
                         navController.popBackStack()
                     },
@@ -86,6 +96,16 @@ fun AppContent(
             }
             composable<SmbAdd> {
                 SmbAddScreen(
+                    onBack = {
+                        navController.popBackStack()
+                    },
+                    onSaveSuccess = {
+                        navController.popBackStack(Home, inclusive = false)
+                    },
+                )
+            }
+            composable<SftpAdd> {
+                SftpAddScreen(
                     onBack = {
                         navController.popBackStack()
                     },

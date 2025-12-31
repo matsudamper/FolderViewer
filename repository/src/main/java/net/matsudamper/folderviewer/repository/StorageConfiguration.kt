@@ -16,6 +16,17 @@ sealed interface StorageConfiguration {
         // パスワードはDataStoreに平文で保存すべきではない。
         // IDをキーとしてEncryptedSharedPreferencesに保存する。
     ) : StorageConfiguration
+
+    @Serializable
+    data class Sftp(
+        override val id: String,
+        override val name: String,
+        val host: String,
+        val port: Int,
+        val username: String,
+        // パスワードはDataStoreに平文で保存すべきではない。
+        // IDをキーとしてEncryptedSharedPreferencesに保存する。
+    ) : StorageConfiguration
 }
 
 @Serializable
