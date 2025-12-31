@@ -14,11 +14,12 @@ import net.matsudamper.folderviewer.repository.FileRepository
 fun FileBrowserScreen(
     uiState: FileBrowserUiState,
     fileRepository: FileRepository?,
-    callbacks: FileBrowserUiState.Callbacks,
     onErrorMessageShown: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val currentPath = uiState.currentPath
+    val callbacks = uiState.callbacks
+
     BackHandler(enabled = currentPath.isNotEmpty()) {
         callbacks.onUpClick()
     }
@@ -47,6 +48,5 @@ fun FileBrowserScreen(
         uiState = uiState,
         imageLoader = imageLoader,
         snackbarHostState = snackbarHostState,
-        callbacks = callbacks,
     )
 }

@@ -9,6 +9,7 @@ data class FileBrowserUiState(
     val currentPath: String = "",
     val files: List<FileItem> = emptyList(),
     val error: String? = null,
+    val callbacks: Callbacks,
 ) {
     @Immutable
     interface Callbacks {

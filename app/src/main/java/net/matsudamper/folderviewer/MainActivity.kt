@@ -11,7 +11,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
@@ -24,9 +23,7 @@ import net.matsudamper.folderviewer.navigation.ImageViewer
 import net.matsudamper.folderviewer.navigation.Settings
 import net.matsudamper.folderviewer.navigation.SmbAdd
 import net.matsudamper.folderviewer.navigation.StorageTypeSelection
-import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.ui.browser.FileBrowserScreen
-import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.ImageViewerScreen
 import net.matsudamper.folderviewer.ui.home.HomeScreen
 import net.matsudamper.folderviewer.ui.settings.SettingsScreen
@@ -128,39 +125,28 @@ fun AppContent(
                 val uiState by viewModel.uiState.collectAsState()
                 val fileRepository by viewModel.fileRepository.collectAsState()
 
-                val storageId = viewModel.storageId
+                LaunchedEffect(viewModel.event) {
+                    viewModel.event.collect { event ->
+                        when (event) {
+                            is FileBrowserViewModel.Event.PopBackStack -> {
+                                navController.popBackStack()
+                            }
 
-                val callbacks = remember(viewModel, storageId) {
-                    object : FileBrowserUiState.Callbacks {
-                        override val onBack: () -> Unit = { navController.popBackStack() }
-                        override val onFileClick: (FileItem) -> Unit = { file ->
-                            if (file.isDirectory) {
-                                viewModel.onFileClick(file)
-                            } else {
-                                val name = file.name.lowercase()
-                                val isImage = name.endsWith(".jpg") || name.endsWith(".jpeg") ||
-                                    name.endsWith(".png") || name.endsWith(".bmp") ||
-                                    name.endsWith(".gif") || name.endsWith(".webp")
-
-                                if (isImage) {
-                                    navController.navigate(
-                                        ImageViewer(
-                                            id = storageId,
-                                            path = file.path,
-                                        ),
-                                    )
-                                }
+                            is FileBrowserViewModel.Event.NavigateToImageViewer -> {
+                                navController.navigate(
+                                    ImageViewer(
+                                        id = viewModel.storageId,
+                                        path = event.path,
+                                    ),
+                                )
                             }
                         }
-                        override val onUpClick: () -> Unit = viewModel::onBackClick
-                        override val onRefresh: () -> Unit = viewModel::onRefresh
                     }
                 }
 
                 FileBrowserScreen(
                     uiState = uiState,
                     fileRepository = fileRepository,
-                    callbacks = callbacks,
                     onErrorMessageShown = viewModel::errorMessageShown,
                 )
             }

@@ -13,9 +13,9 @@ internal fun FileBrowserScreenContent(
     uiState: FileBrowserUiState,
     imageLoader: ImageLoader,
     snackbarHostState: SnackbarHostState,
-    callbacks: FileBrowserUiState.Callbacks,
     modifier: Modifier = Modifier,
 ) {
+    val callbacks = uiState.callbacks
     Scaffold(
         modifier = modifier,
         topBar = {

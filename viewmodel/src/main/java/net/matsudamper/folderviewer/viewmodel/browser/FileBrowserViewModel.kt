@@ -6,9 +6,11 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,11 +28,57 @@ class FileBrowserViewModel @Inject constructor(
     private val args = savedStateHandle.toRoute<FileBrowser>()
     val storageId: String = args.id
 
+    sealed interface Event {
+        data object PopBackStack : Event
+        data class NavigateToImageViewer(val path: String) : Event
+    }
+
+    private val _event = Channel<Event>(Channel.BUFFERED)
+    val event = _event.receiveAsFlow()
+
+    private val callbacks = object : FileBrowserUiState.Callbacks {
+        override val onBack: () -> Unit = {
+            viewModelScope.launch { _event.send(Event.PopBackStack) }
+        }
+        override val onFileClick: (FileItem) -> Unit = { file ->
+            if (file.isDirectory) {
+                loadFiles(file.path)
+            } else {
+                val name = file.name.lowercase()
+                val isImage = name.endsWith(".jpg") || name.endsWith(".jpeg") ||
+                    name.endsWith(".png") || name.endsWith(".bmp") ||
+                    name.endsWith(".gif") || name.endsWith(".webp")
+
+                if (isImage) {
+                    viewModelScope.launch {
+                        _event.send(Event.NavigateToImageViewer(file.path))
+                    }
+                }
+            }
+        }
+        override val onUpClick: () -> Unit = {
+            val currentPath = viewModelStateFlow.value.currentPath
+            if (currentPath.isEmpty()) {
+                viewModelScope.launch { _event.send(Event.PopBackStack) }
+            } else {
+                val parentPath = currentPath.substringBeforeLast('/', missingDelimiterValue = "")
+                if (parentPath == currentPath) {
+                    loadFiles("")
+                } else {
+                    loadFiles(parentPath)
+                }
+            }
+        }
+        override val onRefresh: () -> Unit = {
+            this@FileBrowserViewModel.onRefresh()
+        }
+    }
+
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> =
         MutableStateFlow(ViewModelState())
 
     val uiState: StateFlow<FileBrowserUiState> =
-        MutableStateFlow(FileBrowserUiState()).also { mutableUiState ->
+        MutableStateFlow(FileBrowserUiState(callbacks = callbacks)).also { mutableUiState ->
             viewModelScope.launch {
                 viewModelStateFlow.collect { viewModelState ->
                     mutableUiState.update {
@@ -101,28 +149,6 @@ class FileBrowserViewModel @Inject constructor(
                     error = e.message ?: "Unknown error",
                 )
             }
-        }
-    }
-
-    fun onFileClick(file: FileItem) {
-        if (file.isDirectory) {
-            loadFiles(file.path)
-        }
-    }
-
-    fun onBackClick() {
-        val currentPath = viewModelStateFlow.value.currentPath
-        if (currentPath.isEmpty()) {
-            // 呼び出し元で画面を閉じる処理を行うため、ここでは何もしない
-            return
-        }
-
-        val parentPath = currentPath.substringBeforeLast('/', missingDelimiterValue = "")
-        if (parentPath == currentPath) {
-            // ルートの場合
-            loadFiles("")
-        } else {
-            loadFiles(parentPath)
         }
     }
 
