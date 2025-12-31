@@ -24,6 +24,7 @@ securityCrypto = "1.1.0-alpha06"
 protobuf = "4.33.2"
 protobufPlugin = "0.9.6"
 coil = "2.7.0"
+zoomable = "2.9.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -58,6 +59,7 @@ androidx-security-crypto = { group = "androidx.security", name = "security-crypt
 protobuf-kotlin-lite = { group = "com.google.protobuf", name = "protobuf-kotlin-lite", version.ref = "protobuf" }
 protobuf-protoc = { group = "com.google.protobuf", name = "protoc", version.ref = "protobuf" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+zoomable = { group = "net.engawapg.lib", name = "zoomable", version.ref = "zoomable" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

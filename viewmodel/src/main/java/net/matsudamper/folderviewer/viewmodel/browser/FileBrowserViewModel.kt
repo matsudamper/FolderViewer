@@ -24,6 +24,7 @@ class FileBrowserViewModel @Inject constructor(
     private val storageRepository: StorageRepository,
 ) : ViewModel() {
     private val args = savedStateHandle.toRoute<FileBrowser>()
+    val storageId: String = args.id
 
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> =
         MutableStateFlow(ViewModelState())
