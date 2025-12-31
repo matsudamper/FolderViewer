@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import com.google.protobuf.InvalidProtocolBufferException
 import dagger.hilt.android.qualifiers.ApplicationContext
+import net.matsudamper.folderviewer.repository.proto.SftpConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.SmbConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.StorageConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.StorageListProto
@@ -97,6 +98,54 @@ class StorageRepository @Inject constructor(
         }
     }
 
+    suspend fun addSftpStorage(config: SftpStorageInput) {
+        val id = UUID.randomUUID().toString()
+        val sftpConfig = StorageConfiguration.Sftp(
+            id = id,
+            name = config.name,
+            host = config.host,
+            port = config.port,
+            username = config.username,
+        )
+
+        // パスワードを安全に保存する
+        sharedPreferences.edit {
+            putString(id, config.password)
+        }
+
+        // DataStoreを更新する
+        context.dataStore.updateData { currentList ->
+            currentList.toBuilder()
+                .addList(sftpConfig.toProto())
+                .build()
+        }
+    }
+
+    suspend fun updateSftpStorage(id: String, config: SftpStorageInput) {
+        val sftpConfig = StorageConfiguration.Sftp(
+            id = id,
+            name = config.name,
+            host = config.host,
+            port = config.port,
+            username = config.username,
+        )
+
+        sharedPreferences.edit {
+            putString(id, config.password)
+        }
+
+        context.dataStore.updateData { currentList ->
+            val index = currentList.listList.indexOfFirst { it.id == id }
+            if (index >= 0) {
+                currentList.toBuilder()
+                    .setList(index, sftpConfig.toProto())
+                    .build()
+            } else {
+                currentList
+            }
+        }
+    }
+
     fun getPassword(id: String): String? {
         return sharedPreferences.getString(id, null)
     }
@@ -104,9 +153,12 @@ class StorageRepository @Inject constructor(
     suspend fun getFileRepository(id: String): FileRepository? {
         val proto = context.dataStore.data.first()
         val configProto = proto.listList.find { it.id == id } ?: return null
-        val config = configProto.toDomain() as? StorageConfiguration.Smb ?: return null
+        val config = configProto.toDomain() ?: return null
         val password = getPassword(id) ?: return null
-        return SmbFileRepository(config, password)
+        return when (config) {
+            is StorageConfiguration.Smb -> SmbFileRepository(config, password)
+            is StorageConfiguration.Sftp -> SftpFileRepository(config, password)
+        }
     }
 
     private fun StorageConfigurationProto.toDomain(): StorageConfiguration? {
@@ -117,6 +169,16 @@ class StorageRepository @Inject constructor(
                     name = name,
                     ip = smb.ip,
                     username = smb.username,
+                )
+            }
+
+            StorageConfigurationProto.ConfigCase.SFTP -> {
+                StorageConfiguration.Sftp(
+                    id = id,
+                    name = name,
+                    host = sftp.host,
+                    port = sftp.port,
+                    username = sftp.username,
                 )
             }
 
@@ -137,9 +199,31 @@ class StorageRepository @Inject constructor(
             .build()
     }
 
+    private fun StorageConfiguration.Sftp.toProto(): StorageConfigurationProto {
+        return StorageConfigurationProto.newBuilder()
+            .setId(id)
+            .setName(name)
+            .setSftp(
+                SftpConfigurationProto.newBuilder()
+                    .setHost(host)
+                    .setPort(port)
+                    .setUsername(username)
+                    .build(),
+            )
+            .build()
+    }
+
     data class SmbStorageInput(
         val name: String,
         val ip: String,
+        val username: String,
+        val password: String,
+    )
+
+    data class SftpStorageInput(
+        val name: String,
+        val host: String,
+        val port: Int,
         val username: String,
         val password: String,
     )

@@ -12,10 +12,17 @@ message StorageConfigurationProto {
   string name = 2;
   oneof config {
     SmbConfigurationProto smb = 3;
+    SftpConfigurationProto sftp = 4;
   }
 }
 
 message SmbConfigurationProto {
   string ip = 1;
   string username = 2;
+}
+
+message SftpConfigurationProto {
+  string host = 1;
+  int32 port = 2;
+  string username = 3;
 }

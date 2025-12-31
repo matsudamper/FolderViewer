@@ -15,4 +15,7 @@ object StorageTypeSelection
 data class SmbAdd(val storageId: String? = null)
 
 @Serializable
+data class SftpAdd(val storageId: String? = null)
+
+@Serializable
 data class FileBrowser(val id: String)

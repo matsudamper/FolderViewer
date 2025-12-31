@@ -1,0 +1,79 @@
+package net.matsudamper.folderviewer.ui.storage
+
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import javax.inject.Inject
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.launch
+import dagger.hilt.android.lifecycle.HiltViewModel
+import net.matsudamper.folderviewer.repository.StorageConfiguration
+import net.matsudamper.folderviewer.repository.StorageRepository
+
+@HiltViewModel
+class SftpAddViewModel @Inject constructor(
+    private val storageRepository: StorageRepository,
+    savedStateHandle: SavedStateHandle,
+) : ViewModel() {
+    private val storageId: String? = savedStateHandle["storageId"]
+
+    private val _event = Channel<Event>()
+    val event = _event.receiveAsFlow()
+
+    private val _uiState = MutableStateFlow(UiState())
+    val uiState: StateFlow<UiState> = _uiState.asStateFlow()
+
+    data class UiState(
+        val name: String = "",
+        val host: String = "",
+        val port: String = "22",
+        val username: String = "",
+        val password: String = "",
+        val isEditMode: Boolean = false,
+        val isLoading: Boolean = false,
+    )
+
+    init {
+        if (storageId != null) {
+            viewModelScope.launch {
+                _uiState.value = _uiState.value.copy(isLoading = true)
+                val storage = storageRepository.storageList.first()
+                    .find { it.id == storageId } as? StorageConfiguration.Sftp
+                if (storage != null) {
+                    val password = storageRepository.getPassword(storage.id) ?: ""
+                    _uiState.value = UiState(
+                        name = storage.name,
+                        host = storage.host,
+                        port = storage.port.toString(),
+                        username = storage.username,
+                        password = password,
+                        isEditMode = true,
+                        isLoading = false,
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(isLoading = false)
+                }
+            }
+        }
+    }
+
+    fun onSave(input: StorageRepository.SftpStorageInput) {
+        viewModelScope.launch {
+            if (storageId == null) {
+                storageRepository.addSftpStorage(input)
+            } else {
+                storageRepository.updateSftpStorage(storageId, input)
+            }
+            _event.send(Event.SaveSuccess)
+        }
+    }
+
+    sealed interface Event {
+        data object SaveSuccess : Event
+    }
+}

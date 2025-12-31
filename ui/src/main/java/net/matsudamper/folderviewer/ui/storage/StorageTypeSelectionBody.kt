@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 @Composable
 internal fun StorageTypeSelectionBody(
     onSmbClick: () -> Unit,
+    onSftpClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -20,6 +21,11 @@ internal fun StorageTypeSelectionBody(
         ListItem(
             headlineContent = { Text("SMB (Windows Share / NAS)") },
             modifier = Modifier.clickable(onClick = onSmbClick),
+        )
+        HorizontalDivider()
+        ListItem(
+            headlineContent = { Text("SFTP (SSH File Transfer Protocol)") },
+            modifier = Modifier.clickable(onClick = onSftpClick),
         )
         HorizontalDivider()
     }
