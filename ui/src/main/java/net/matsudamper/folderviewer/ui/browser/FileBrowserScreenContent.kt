@@ -6,22 +6,21 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import net.matsudamper.folderviewer.repository.FileItem
 
 @Composable
 internal fun FileBrowserScreenContent(
     uiState: FileBrowserUiState,
     snackbarHostState: SnackbarHostState,
-    onBack: () -> Unit,
-    onFileClick: (FileItem) -> Unit,
-    onUpClick: () -> Unit,
+    callbacks: FileBrowserUiState.Callbacks,
+    modifier: Modifier = Modifier,
 ) {
     Scaffold(
+        modifier = modifier,
         topBar = {
             FileBrowserTopBar(
                 currentPath = uiState.currentPath,
-                onBack = onBack,
-                onUpClick = onUpClick,
+                onBack = callbacks.onBack,
+                onUpClick = callbacks.onUpClick,
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -29,7 +28,8 @@ internal fun FileBrowserScreenContent(
         FileBrowserBody(
             modifier = Modifier.padding(innerPadding),
             uiState = uiState,
-            onFileClick = onFileClick,
+            onFileClick = callbacks.onFileClick,
+            onRefresh = callbacks.onRefresh,
         )
     }
 }

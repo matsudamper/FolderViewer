@@ -33,38 +33,53 @@ class FileBrowserViewModel @Inject constructor(
         loadFiles("")
     }
 
+    private suspend fun getRepository(): FileRepository {
+        val current = fileRepository
+        if (current != null) return current
+
+        val newRepo = storageRepository.getFileRepository(args.id)
+            ?: throw IllegalStateException("Storage not found")
+        fileRepository = newRepo
+        return newRepo
+    }
+
     private fun loadFiles(path: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-            try {
-                if (fileRepository == null) {
-                    fileRepository = storageRepository.getFileRepository(args.id)
-                }
+            fetchFilesInternal(path)
+        }
+    }
 
-                val repository = fileRepository
-                if (repository == null) {
-                    _uiState.update { it.copy(isLoading = false, error = "Storage not found") }
-                    return@launch
-                }
+    fun onRefresh() {
+        val path = _uiState.value.currentPath
+        viewModelScope.launch {
+            _uiState.update { it.copy(isRefreshing = true, error = null) }
+            fetchFilesInternal(path)
+        }
+    }
 
-                val files = repository.getFiles(path)
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        currentPath = path,
-                        files = files,
-                    )
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (@Suppress("TooGenericExceptionCaught") e: Exception) {
-                e.printStackTrace()
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        error = e.message ?: "Unknown error",
-                    )
-                }
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun fetchFilesInternal(path: String) {
+        try {
+            val repository = getRepository()
+            val files = repository.getFiles(path)
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    isRefreshing = false,
+                    currentPath = path,
+                    files = files,
+                )
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    isRefreshing = false,
+                    error = e.message ?: "Unknown error",
+                )
             }
         }
     }
