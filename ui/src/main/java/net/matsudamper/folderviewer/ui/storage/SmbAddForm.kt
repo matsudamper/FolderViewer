@@ -22,7 +22,7 @@ import net.matsudamper.folderviewer.repository.StorageRepository
 
 @Composable
 internal fun SmbAddForm(
-    uiState: SmbAddViewModel.UiState,
+    uiState: SmbAddUiState,
     onSave: (StorageRepository.SmbStorageInput) -> Unit,
     modifier: Modifier = Modifier,
 ) {

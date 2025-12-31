@@ -51,6 +51,7 @@ dependencies {
     implementation(project(":navigation"))
     implementation(project(":ui"))
     implementation(project(":repository"))
+    implementation(project(":viewmodel"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

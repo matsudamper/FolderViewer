@@ -7,26 +7,21 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import net.matsudamper.folderviewer.repository.StorageConfiguration
 import net.matsudamper.folderviewer.ui.R
 
 @Composable
 fun HomeScreen(
+    uiState: HomeUiState,
     onNavigateToSettings: () -> Unit,
     onAddStorageClick: () -> Unit,
     onStorageClick: (StorageConfiguration) -> Unit,
     onEditStorageClick: (StorageConfiguration) -> Unit,
-    viewModel: HomeViewModel = hiltViewModel(),
 ) {
-    val storages by viewModel.storages.collectAsState()
-
     HomeScreenContent(
-        storages = storages,
+        storages = uiState.storages,
         onNavigateToSettings = onNavigateToSettings,
         onAddStorageClick = onAddStorageClick,
         onStorageClick = onStorageClick,

@@ -10,8 +10,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -22,28 +20,16 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.ui.R
 
 @Composable
 fun SmbAddScreen(
+    uiState: SmbAddUiState,
+    onSave: (StorageRepository.SmbStorageInput) -> Unit,
     onBack: () -> Unit,
-    onSaveSuccess: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: SmbAddViewModel = hiltViewModel(),
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-
-    LaunchedEffect(viewModel.event, onSaveSuccess) {
-        viewModel.event.collect { event ->
-            when (event) {
-                SmbAddViewModel.Event.SaveSuccess -> {
-                    onSaveSuccess()
-                }
-            }
-        }
-    }
-
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -61,7 +47,7 @@ fun SmbAddScreen(
             SmbAddForm(
                 modifier = Modifier.padding(innerPadding),
                 uiState = uiState,
-                onSave = viewModel::onSave,
+                onSave = onSave,
             )
         }
     }

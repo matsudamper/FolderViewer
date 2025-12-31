@@ -8,7 +8,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -18,12 +23,17 @@ import net.matsudamper.folderviewer.navigation.Home
 import net.matsudamper.folderviewer.navigation.Settings
 import net.matsudamper.folderviewer.navigation.SmbAdd
 import net.matsudamper.folderviewer.navigation.StorageTypeSelection
+import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.ui.browser.FileBrowserScreen
+import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.home.HomeScreen
 import net.matsudamper.folderviewer.ui.settings.SettingsScreen
 import net.matsudamper.folderviewer.ui.storage.SmbAddScreen
 import net.matsudamper.folderviewer.ui.storage.StorageTypeSelectionScreen
 import net.matsudamper.folderviewer.ui.theme.FolderViewerTheme
+import net.matsudamper.folderviewer.viewmodel.browser.FileBrowserViewModel
+import net.matsudamper.folderviewer.viewmodel.home.HomeViewModel
+import net.matsudamper.folderviewer.viewmodel.storage.SmbAddViewModel
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -52,7 +62,11 @@ fun AppContent(
             modifier = Modifier.padding(innerPadding),
         ) {
             composable<Home> {
+                val viewModel: HomeViewModel = hiltViewModel()
+                val uiState by viewModel.uiState.collectAsState()
+
                 HomeScreen(
+                    uiState = uiState,
                     onNavigateToSettings = {
                         navController.navigate(Settings)
                     },
@@ -85,20 +99,44 @@ fun AppContent(
                 )
             }
             composable<SmbAdd> {
+                val viewModel: SmbAddViewModel = hiltViewModel()
+                val uiState by viewModel.uiState.collectAsState()
+
+                LaunchedEffect(viewModel.event) {
+                    viewModel.event.collect { event ->
+                        when (event) {
+                            SmbAddViewModel.Event.SaveSuccess -> {
+                                navController.popBackStack(Home, inclusive = false)
+                            }
+                        }
+                    }
+                }
+
                 SmbAddScreen(
+                    uiState = uiState,
+                    onSave = viewModel::onSave,
                     onBack = {
                         navController.popBackStack()
-                    },
-                    onSaveSuccess = {
-                        navController.popBackStack(Home, inclusive = false)
                     },
                 )
             }
             composable<FileBrowser> {
+                val viewModel: FileBrowserViewModel = hiltViewModel()
+                val uiState by viewModel.uiState.collectAsState()
+
+                val callbacks = remember(viewModel) {
+                    object : FileBrowserUiState.Callbacks {
+                        override val onBack: () -> Unit = { navController.popBackStack() }
+                        override val onFileClick: (FileItem) -> Unit = viewModel::onFileClick
+                        override val onUpClick: () -> Unit = viewModel::onBackClick
+                        override val onRefresh: () -> Unit = viewModel::onRefresh
+                    }
+                }
+
                 FileBrowserScreen(
-                    onBack = {
-                        navController.popBackStack()
-                    },
+                    uiState = uiState,
+                    callbacks = callbacks,
+                    onErrorMessageShown = viewModel::errorMessageShown,
                 )
             }
         }
