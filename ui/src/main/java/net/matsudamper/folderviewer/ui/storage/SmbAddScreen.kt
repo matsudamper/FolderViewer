@@ -66,35 +66,3 @@ fun SmbAddScreen(
         }
     }
 }
-
-@Composable
-internal fun PasswordTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: @Composable () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var passwordVisible by remember { mutableStateOf(false) }
-
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = label,
-        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-        trailingIcon = {
-            val image = if (passwordVisible) {
-                painterResource(id = R.drawable.ic_visibility)
-            } else {
-                painterResource(id = R.drawable.ic_visibility_off)
-            }
-
-            val description = if (passwordVisible) "Hide password" else "Show password"
-
-            IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                Icon(painter = image, contentDescription = description)
-            }
-        },
-        modifier = modifier,
-    )
-}

@@ -1,5 +1,6 @@
 package net.matsudamper.folderviewer.repository
 
+import android.util.Log
 import com.jcraft.jsch.ChannelSftp
 import com.jcraft.jsch.JSch
 import com.jcraft.jsch.Session
@@ -13,32 +14,33 @@ class SftpFileRepository(
     private val password: String,
 ) : FileRepository {
     private val jsch = JSch()
-    private var session: Session? = null
-    private var channelSftp: ChannelSftp? = null
 
-    private suspend fun ensureConnected() = withContext(Dispatchers.IO) {
-        if (session?.isConnected == true && channelSftp?.isConnected == true) {
-            return@withContext
-        }
-
+    private suspend fun createConnection(): Pair<Session, ChannelSftp> = withContext(Dispatchers.IO) {
         // セッションを作成して接続
-        session = jsch.getSession(config.username, config.host, config.port).apply {
+        val session = jsch.getSession(config.username, config.host, config.port).apply {
             setPassword(password)
-            setConfig("StrictHostKeyChecking", "no") // 本番環境では適切なホストキー検証を実装すべき
+            // TODO: 本番環境では適切なホストキー検証を実装すべき
+            // known_hostsファイルを使用するか、ホストキーを保存・検証するメカニズムを追加する
+            setConfig("StrictHostKeyChecking", "no")
             connect()
         }
 
         // SFTPチャネルを開く
-        channelSftp = (session?.openChannel("sftp") as? ChannelSftp)?.apply {
+        val channelSftp = (session.openChannel("sftp") as? ChannelSftp)?.apply {
             connect()
-        }
+        } ?: throw IllegalStateException("Failed to open SFTP channel")
+
+        Pair(session, channelSftp)
     }
 
     override suspend fun getFiles(path: String): List<FileItem> = withContext(Dispatchers.IO) {
-        ensureConnected()
-        val channel = channelSftp ?: return@withContext emptyList()
-
+        var session: Session? = null
+        var channel: ChannelSftp? = null
         try {
+            val (s, c) = createConnection()
+            session = s
+            channel = c
+
             val normalizedPath = if (path.isEmpty()) "." else path
             @Suppress("UNCHECKED_CAST")
             val entries = channel.ls(normalizedPath) as? Vector<ChannelSftp.LsEntry>
@@ -63,23 +65,41 @@ class SftpFileRepository(
                     )
                 }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "Failed to list files at path: $path for ${config.host}:${config.port}", e)
             emptyList()
+        } finally {
+            channel?.disconnect()
+            session?.disconnect()
         }
     }
 
     override suspend fun getFileContent(path: String): InputStream = withContext(Dispatchers.IO) {
-        ensureConnected()
-        val channel = channelSftp ?: throw IllegalStateException("SFTP channel not connected")
-        channel.get(path)
-    }
+        val (session, channel) = try {
+            createConnection()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to connect to SFTP server ${config.host}:${config.port}", e)
+            throw IllegalStateException(
+                "Failed to connect to SFTP server ${config.host}:${config.port}. " +
+                    "Please check your credentials and network connection.",
+                e,
+            )
+        }
 
-    fun disconnect() {
-        channelSftp?.disconnect()
-        session?.disconnect()
+        try {
+            channel.get(path)
+        } catch (e: Exception) {
+            channel.disconnect()
+            session.disconnect()
+            Log.e(TAG, "Failed to retrieve file at path: $path from ${config.host}:${config.port}", e)
+            throw IllegalStateException(
+                "Failed to retrieve file at path: $path. The file may not exist or you may not have permission to access it.",
+                e,
+            )
+        }
     }
 
     companion object {
+        private const val TAG = "SftpFileRepository"
         private const val MillisPerSecond = 1000L
     }
 }
