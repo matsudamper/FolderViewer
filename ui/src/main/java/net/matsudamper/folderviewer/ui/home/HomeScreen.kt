@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import net.matsudamper.folderviewer.ui.R
+import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
 
 @Composable
 public fun HomeScreen(
@@ -34,6 +35,7 @@ internal fun HomeTopBar(
     onNavigateToSettings: () -> Unit,
 ) {
     TopAppBar(
+        colors = MyTopAppBarDefaults.topAppBarColors(),
         title = { Text("FolderViewer") },
         actions = {
             IconButton(onClick = onNavigateToSettings) {

@@ -8,6 +8,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.painterResource
 import net.matsudamper.folderviewer.ui.R
+import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -15,6 +16,7 @@ internal fun StorageTypeSelectionTopBar(
     onBack: () -> Unit,
 ) {
     TopAppBar(
+        colors = MyTopAppBarDefaults.topAppBarColors(),
         title = { Text("Select Storage Type") },
         navigationIcon = {
             IconButton(onClick = onBack) {
