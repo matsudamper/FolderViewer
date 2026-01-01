@@ -191,7 +191,7 @@ class FileBrowserViewModel @Inject constructor(
             }
         }
     }
-    
+
     sealed interface Event {
         data object PopBackStack : Event
         data class NavigateToFileBrowser(
