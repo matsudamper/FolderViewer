@@ -8,13 +8,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import net.matsudamper.folderviewer.repository.StorageConfiguration
 
 @Composable
 internal fun StorageList(
-    storages: List<StorageConfiguration>,
-    onStorageClick: (StorageConfiguration) -> Unit,
-    onEditStorageClick: (StorageConfiguration) -> Unit,
+    storages: List<UiStorageConfiguration>,
+    onStorageClick: (UiStorageConfiguration) -> Unit,
+    onEditStorageClick: (UiStorageConfiguration) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(

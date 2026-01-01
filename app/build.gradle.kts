@@ -9,9 +9,7 @@ plugins {
 
 android {
     namespace = "net.matsudamper.folderviewer"
-    compileSdk {
-        version = release(36)
-    }
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "net.matsudamper.folderviewer"
@@ -52,6 +50,7 @@ dependencies {
     implementation(project(":ui"))
     implementation(project(":repository"))
     implementation(project(":viewmodel"))
+    implementation(project(":coil"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -66,6 +65,7 @@ dependencies {
     ksp(libs.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.coil.compose)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

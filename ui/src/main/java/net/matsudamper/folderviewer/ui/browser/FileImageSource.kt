@@ -1,10 +1,8 @@
 package net.matsudamper.folderviewer.ui.browser
 
-import net.matsudamper.folderviewer.repository.FileItem
+public sealed interface FileImageSource {
+    public val path: String
 
-sealed interface FileImageSource {
-    val fileItem: FileItem
-
-    data class Thumbnail(override val fileItem: FileItem) : FileImageSource
-    data class Original(override val fileItem: FileItem) : FileImageSource
+    public data class Thumbnail(override val path: String) : FileImageSource
+    public data class Original(override val path: String) : FileImageSource
 }

@@ -30,7 +30,6 @@ kotlin {
 }
 
 dependencies {
-    implementation(project(":repository"))
     implementation(project(":navigation"))
     implementation(project(":coil"))
     implementation(libs.androidx.core.ktx)

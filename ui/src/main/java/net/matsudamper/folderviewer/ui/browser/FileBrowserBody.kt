@@ -19,7 +19,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import coil.ImageLoader
-import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -28,7 +27,7 @@ internal fun FileBrowserBody(
     uiState: FileBrowserUiState,
     imageLoader: ImageLoader,
     contentPadding: PaddingValues,
-    onFileClick: (FileItem) -> Unit,
+    onFileClick: (UiFileItem) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {

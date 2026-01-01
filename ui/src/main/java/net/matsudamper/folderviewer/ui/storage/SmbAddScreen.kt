@@ -20,13 +20,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.ui.R
 
 @Composable
-fun SmbAddScreen(
+public fun SmbAddScreen(
     uiState: SmbAddUiState,
-    onSave: (StorageRepository.SmbStorageInput) -> Unit,
+    onSave: (SmbInput) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {

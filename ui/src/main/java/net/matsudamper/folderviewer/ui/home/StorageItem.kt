@@ -17,12 +17,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import net.matsudamper.folderviewer.repository.StorageConfiguration
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun StorageItem(
-    storage: StorageConfiguration,
+    storage: UiStorageConfiguration,
     onClick: () -> Unit,
     onEditClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -50,12 +49,12 @@ internal fun StorageItem(
 
 @Composable
 private fun StorageItemContent(
-    storage: StorageConfiguration,
+    storage: UiStorageConfiguration,
 ) {
     Column(modifier = Modifier.padding(PaddingNormal)) {
         Text(text = storage.name, style = MaterialTheme.typography.titleMedium)
         val type = when (storage) {
-            is StorageConfiguration.Smb -> "SMB: ${storage.ip}"
+            is UiStorageConfiguration.Smb -> "SMB: ${storage.ip}"
         }
         Text(text = type, style = MaterialTheme.typography.bodyMedium)
     }

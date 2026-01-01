@@ -4,15 +4,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import net.matsudamper.folderviewer.repository.StorageConfiguration
 
 @Composable
 fun HomeScreenContent(
-    storages: List<StorageConfiguration>,
+    storages: List<UiStorageConfiguration>,
     onNavigateToSettings: () -> Unit,
     onAddStorageClick: () -> Unit,
-    onStorageClick: (StorageConfiguration) -> Unit,
-    onEditStorageClick: (StorageConfiguration) -> Unit,
+    onStorageClick: (UiStorageConfiguration) -> Unit,
+    onEditStorageClick: (UiStorageConfiguration) -> Unit,
 ) {
     Scaffold(
         topBar = {

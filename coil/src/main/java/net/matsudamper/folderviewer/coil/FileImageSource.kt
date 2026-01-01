@@ -1,10 +1,8 @@
 package net.matsudamper.folderviewer.coil
 
-import net.matsudamper.folderviewer.repository.FileItem
-
 sealed interface FileImageSource {
-    val fileItem: FileItem
+    val path: String
 
-    data class Thumbnail(override val fileItem: FileItem) : FileImageSource
-    data class Original(override val fileItem: FileItem) : FileImageSource
+    data class Thumbnail(override val path: String) : FileImageSource
+    data class Original(override val path: String) : FileImageSource
 }

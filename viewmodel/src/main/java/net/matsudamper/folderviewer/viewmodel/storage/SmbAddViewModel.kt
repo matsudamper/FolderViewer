@@ -16,6 +16,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import net.matsudamper.folderviewer.repository.StorageConfiguration
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.ui.storage.SmbAddUiState
+import net.matsudamper.folderviewer.ui.storage.SmbInput
 
 @HiltViewModel
 class SmbAddViewModel @Inject constructor(
@@ -82,12 +83,18 @@ class SmbAddViewModel @Inject constructor(
         }
     }
 
-    fun onSave(input: StorageRepository.SmbStorageInput) {
+    fun onSave(input: SmbInput) {
+        val repoInput = StorageRepository.SmbStorageInput(
+            name = input.name,
+            ip = input.ip,
+            username = input.username,
+            password = input.password,
+        )
         viewModelScope.launch {
             if (storageId == null) {
-                storageRepository.addSmbStorage(input)
+                storageRepository.addSmbStorage(repoInput)
             } else {
-                storageRepository.updateSmbStorage(storageId, input)
+                storageRepository.updateSmbStorage(storageId, repoInput)
             }
             _event.send(Event.SaveSuccess)
         }

@@ -16,8 +16,8 @@ import net.matsudamper.folderviewer.repository.FileRepository
 import okio.buffer
 import okio.source
 
-object CoilImageLoaderFactory {
-    fun create(context: Context, fileRepository: FileRepository?): ImageLoader {
+public object CoilImageLoaderFactory {
+    public fun create(context: Context, fileRepository: FileRepository?): ImageLoader {
         return ImageLoader.Builder(context)
             .components {
                 if (fileRepository != null) {
@@ -47,14 +47,19 @@ private class FileRepositoryImageFetcher(
     private val fileRepository: FileRepository,
 ) : Fetcher {
     override suspend fun fetch(): FetchResult {
+        val path = when (fileImageSource) {
+            is FileImageSource.Thumbnail -> fileImageSource.path
+            is FileImageSource.Original -> fileImageSource.path
+        }
+
         val inputStream = when (fileImageSource) {
             is FileImageSource.Thumbnail -> {
-                fileRepository.getThumbnailContent(fileImageSource.fileItem.path)
-                    ?: fileRepository.getFileContent(fileImageSource.fileItem.path)
+                fileRepository.getThumbnailContent(path)
+                    ?: fileRepository.getFileContent(path)
             }
 
             is FileImageSource.Original -> {
-                fileRepository.getFileContent(fileImageSource.fileItem.path)
+                fileRepository.getFileContent(path)
             }
         }
         val bufferedSource = inputStream.source().buffer()

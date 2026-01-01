@@ -14,12 +14,11 @@ import androidx.compose.ui.unit.dp
 import coil.ImageLoader
 import coil.compose.AsyncImage
 import net.matsudamper.folderviewer.coil.FileImageSource
-import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.ui.R
 
 @Composable
 internal fun FileListItem(
-    file: FileItem,
+    file: UiFileItem,
     imageLoader: ImageLoader,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -35,7 +34,7 @@ internal fun FileListItem(
         leadingContent = {
             if (isImage) {
                 AsyncImage(
-                    model = FileImageSource.Thumbnail(file),
+                    model = FileImageSource.Thumbnail(file.path),
                     contentDescription = null,
                     imageLoader = imageLoader,
                     modifier = Modifier.size(24.dp),

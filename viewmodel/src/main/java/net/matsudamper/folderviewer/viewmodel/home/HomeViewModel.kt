@@ -12,6 +12,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import net.matsudamper.folderviewer.repository.StorageConfiguration
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.ui.home.HomeUiState
+import net.matsudamper.folderviewer.ui.home.UiStorageConfiguration
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -29,7 +30,18 @@ class HomeViewModel @Inject constructor(
             viewModelStateFlow.collect { viewModelState ->
                 mutableUiState.update {
                     it.copy(
-                        storages = viewModelState.storages,
+                        storages = viewModelState.storages.map { storage ->
+                            when (storage) {
+                                is StorageConfiguration.Smb -> {
+                                    UiStorageConfiguration.Smb(
+                                        id = storage.id,
+                                        name = storage.name,
+                                        ip = storage.ip,
+                                        username = storage.username,
+                                    )
+                                }
+                            }
+                        },
                     )
                 }
             }

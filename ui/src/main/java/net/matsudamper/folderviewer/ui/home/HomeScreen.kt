@@ -9,16 +9,15 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import net.matsudamper.folderviewer.repository.StorageConfiguration
 import net.matsudamper.folderviewer.ui.R
 
 @Composable
-fun HomeScreen(
+public fun HomeScreen(
     uiState: HomeUiState,
     onNavigateToSettings: () -> Unit,
     onAddStorageClick: () -> Unit,
-    onStorageClick: (StorageConfiguration) -> Unit,
-    onEditStorageClick: (StorageConfiguration) -> Unit,
+    onStorageClick: (UiStorageConfiguration) -> Unit,
+    onEditStorageClick: (UiStorageConfiguration) -> Unit,
 ) {
     HomeScreenContent(
         storages = uiState.storages,
@@ -59,5 +58,5 @@ internal fun HomeFab(
     }
 }
 
-internal val PaddingNormal = 16.dp
-internal val PaddingSmall = 8.dp
+internal val PaddingNormal: androidx.compose.ui.unit.Dp = 16.dp
+internal val PaddingSmall: androidx.compose.ui.unit.Dp = 8.dp

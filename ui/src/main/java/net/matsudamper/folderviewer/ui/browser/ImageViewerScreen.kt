@@ -16,40 +16,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import coil.ImageLoader
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import coil.size.Size
 import net.engawapg.lib.zoomable.rememberZoomState
 import net.engawapg.lib.zoomable.zoomable
-import net.matsudamper.folderviewer.coil.CoilImageLoaderFactory
 import net.matsudamper.folderviewer.coil.FileImageSource
-import net.matsudamper.folderviewer.repository.FileItem
-import net.matsudamper.folderviewer.repository.FileRepository
 
 @Composable
-fun ImageViewerScreen(
-    fileRepository: FileRepository?,
+public fun ImageViewerScreen(
+    imageLoader: ImageLoader,
     path: String,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
-    val imageLoader = remember(fileRepository) {
-        CoilImageLoaderFactory.create(context, fileRepository)
-    }
 
     // pathからファイル名を抽出（簡易的に）
     val fileName = remember(path) {
         path.substringAfterLast('/').substringAfterLast('\\')
-    }
-    val dummyFileItem = remember(path, fileName) {
-        FileItem(
-            name = fileName,
-            path = path,
-            isDirectory = false,
-            size = 0,
-            lastModified = 0,
-        )
     }
 
     val zoomState = rememberZoomState()
@@ -70,42 +56,38 @@ fun ImageViewerScreen(
                 .zoomable(zoomState),
             contentAlignment = Alignment.Center,
         ) {
-            if (fileRepository == null) {
+            var isLoading by remember { mutableStateOf(true) }
+            var isError by remember { mutableStateOf(false) }
+
+            val imageRequest = remember(path, context) {
+                ImageRequest.Builder(context)
+                    .data(FileImageSource.Original(path))
+                    .size(Size.ORIGINAL)
+                    .build()
+            }
+
+            val painter = rememberAsyncImagePainter(
+                model = imageRequest,
+                imageLoader = imageLoader,
+                onState = { state ->
+                    isLoading = state is AsyncImagePainter.State.Loading
+                    isError = state is AsyncImagePainter.State.Error
+                },
+            )
+
+            Image(
+                painter = painter,
+                contentDescription = fileName,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize(),
+            )
+
+            if (isLoading) {
                 CircularProgressIndicator()
-            } else {
-                var isLoading by remember { mutableStateOf(true) }
-                var isError by remember { mutableStateOf(false) }
+            }
 
-                val imageRequest = remember(dummyFileItem, context) {
-                    ImageRequest.Builder(context)
-                        .data(FileImageSource.Original(dummyFileItem))
-                        .size(Size.ORIGINAL)
-                        .build()
-                }
-
-                val painter = rememberAsyncImagePainter(
-                    model = imageRequest,
-                    imageLoader = imageLoader,
-                    onState = { state ->
-                        isLoading = state is AsyncImagePainter.State.Loading
-                        isError = state is AsyncImagePainter.State.Error
-                    },
-                )
-
-                Image(
-                    painter = painter,
-                    contentDescription = fileName,
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxSize(),
-                )
-
-                if (isLoading) {
-                    CircularProgressIndicator()
-                }
-
-                if (isError) {
-                    Text("Failed to load image")
-                }
+            if (isError) {
+                Text("Failed to load image")
             }
         }
     }

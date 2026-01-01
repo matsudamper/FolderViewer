@@ -21,19 +21,19 @@ import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.FileSortConfig
 import net.matsudamper.folderviewer.ui.browser.FileSortKey
+import net.matsudamper.folderviewer.ui.browser.UiFileItem
 
 @HiltViewModel
 class FileBrowserViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val storageRepository: StorageRepository,
 ) : ViewModel() {
-    private val args = savedStateHandle.toRoute<FileBrowser>()
+    val storageId: String = savedStateHandle.toRoute<FileBrowser>().storageId
 
     sealed interface Event {
         data object PopBackStack : Event
         data class NavigateToImageViewer(
             val path: String,
-            val storageId: String,
         ) : Event
     }
 
@@ -45,21 +45,20 @@ class FileBrowserViewModel @Inject constructor(
             viewModelScope.launch { _event.send(Event.PopBackStack) }
         }
 
-        override fun onFileClick(file: FileItem) {
+        override fun onFileClick(file: UiFileItem) {
             if (file.isDirectory) {
                 loadFiles(file.path)
             } else {
                 val name = file.name.lowercase()
                 val isImage = name.endsWith(".jpg") || name.endsWith(".jpeg") ||
-                        name.endsWith(".png") || name.endsWith(".bmp") ||
-                        name.endsWith(".gif") || name.endsWith(".webp")
+                    name.endsWith(".png") || name.endsWith(".bmp") ||
+                    name.endsWith(".gif") || name.endsWith(".webp")
 
                 if (isImage) {
                     viewModelScope.launch {
                         _event.send(
                             Event.NavigateToImageViewer(
                                 file.path,
-                                storageId = args.storageId,
                             ),
                         )
                     }
@@ -112,7 +111,16 @@ class FileBrowserViewModel @Inject constructor(
                             isLoading = viewModelState.isLoading,
                             isRefreshing = viewModelState.isRefreshing,
                             currentPath = viewModelState.currentPath,
-                            files = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig)),
+                            files = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig))
+                                .map { fileItem ->
+                                    UiFileItem(
+                                        name = fileItem.name,
+                                        path = fileItem.path,
+                                        isDirectory = fileItem.isDirectory,
+                                        size = fileItem.size,
+                                        lastModified = fileItem.lastModified,
+                                    )
+                                },
                             error = viewModelState.error,
                             sortConfig = viewModelState.sortConfig,
                         )
@@ -144,7 +152,7 @@ class FileBrowserViewModel @Inject constructor(
         val current = _fileRepository.value
         if (current != null) return current
 
-        val newRepo = storageRepository.getFileRepository(args.storageId)
+        val newRepo = storageRepository.getFileRepository(storageId)
             ?: throw IllegalStateException("Storage not found")
         _fileRepository.value = newRepo
         return newRepo
