@@ -12,7 +12,6 @@ import coil.ImageLoader
 public fun FileBrowserScreen(
     uiState: FileBrowserUiState,
     imageLoader: ImageLoader,
-    onErrorMessageShown: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val currentPath = uiState.currentPath
@@ -27,7 +26,7 @@ public fun FileBrowserScreen(
     LaunchedEffect(errorMessage) {
         errorMessage ?: return@LaunchedEffect
         snackbarHostState.showSnackbar(errorMessage)
-        onErrorMessageShown()
+        callbacks.onErrorShown()
     }
 
     FileBrowserScreenContent(

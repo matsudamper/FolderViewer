@@ -18,6 +18,7 @@ public data class FileBrowserUiState(
         public fun onUpClick()
         public fun onRefresh()
         public fun onSortConfigChanged(config: FileSortConfig)
+        public fun onErrorShown()
     }
 }
 

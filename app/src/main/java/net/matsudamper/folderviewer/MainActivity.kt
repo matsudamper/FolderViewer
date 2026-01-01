@@ -150,7 +150,6 @@ private fun AppContent(
             FileBrowserScreen(
                 uiState = uiState,
                 imageLoader = imageLoader,
-                onErrorMessageShown = viewModel::errorMessageShown,
             )
         }
         composable<ImageViewer> {

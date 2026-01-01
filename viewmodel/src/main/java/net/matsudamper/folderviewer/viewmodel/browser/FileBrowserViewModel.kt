@@ -87,6 +87,10 @@ class FileBrowserViewModel @Inject constructor(
         override fun onSortConfigChanged(config: FileSortConfig) {
             viewModelStateFlow.update { it.copy(sortConfig = config) }
         }
+
+        override fun onErrorShown() {
+            viewModelStateFlow.update { it.copy(error = null) }
+        }
     }
 
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> =
@@ -197,10 +201,6 @@ class FileBrowserViewModel @Inject constructor(
                 )
             }
         }
-    }
-
-    fun errorMessageShown() {
-        viewModelStateFlow.update { it.copy(error = null) }
     }
 
     private data class ViewModelState(
