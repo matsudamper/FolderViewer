@@ -15,8 +15,6 @@ android {
         applicationId = "net.matsudamper.folderviewer"
         minSdk = 28
         targetSdk = 36
-        
-        // CI環境ではVERSION環境変数を使用、ローカルではデフォルト値を使用
         val ciVersion = System.getenv("VERSION")?.toIntOrNull()
         versionCode = ciVersion ?: 1
         versionName = if (ciVersion != null) "Release-$ciVersion" else "1.0"
