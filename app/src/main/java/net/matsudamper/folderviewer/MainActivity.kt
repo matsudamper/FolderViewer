@@ -133,7 +133,7 @@ private fun AppContent(
                         is FileBrowserViewModel.Event.NavigateToImageViewer -> {
                             navController.navigate(
                                 ImageViewer(
-                                    id = viewModel.storageId,
+                                    id = event.storageId,
                                     path = event.path,
                                 ),
                             )
