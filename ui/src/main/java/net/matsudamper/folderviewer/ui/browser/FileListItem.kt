@@ -34,7 +34,7 @@ internal fun FileListItem(
         leadingContent = {
             if (isImage) {
                 AsyncImage(
-                    model = file,
+                    model = FileImageSource.Thumbnail(file),
                     contentDescription = null,
                     imageLoader = imageLoader,
                     modifier = Modifier.size(24.dp),

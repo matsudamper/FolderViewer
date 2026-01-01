@@ -8,7 +8,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -17,15 +16,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import coil.ImageLoader
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
+import coil.size.Precision
+import coil.size.Size
 import net.engawapg.lib.zoomable.rememberZoomState
 import net.engawapg.lib.zoomable.zoomable
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
-import net.matsudamper.folderviewer.ui.R
 
 @Composable
 fun ImageViewerScreen(
@@ -45,14 +45,18 @@ fun ImageViewerScreen(
     }
 
     // pathからファイル名を抽出（簡易的）
-    val fileName = path.substringAfterLast('/').substringAfterLast('\\')
-    val dummyFileItem = FileItem(
-        name = fileName,
-        path = path,
-        isDirectory = false,
-        size = 0,
-        lastModified = 0,
-    )
+    val fileName = remember(path) {
+        path.substringAfterLast('/').substringAfterLast('\\')
+    }
+    val dummyFileItem = remember(path, fileName) {
+        FileItem(
+            name = fileName,
+            path = path,
+            isDirectory = false,
+            size = 0,
+            lastModified = 0,
+        )
+    }
 
     val zoomState = rememberZoomState()
 
@@ -78,8 +82,16 @@ fun ImageViewerScreen(
                 var isLoading by remember { mutableStateOf(true) }
                 var isError by remember { mutableStateOf(false) }
 
+                val imageRequest = remember(dummyFileItem) {
+                    ImageRequest.Builder(context)
+                        .data(FileImageSource.Original(dummyFileItem))
+                        .size(Size.ORIGINAL)
+                        .precision(Precision.EXACT)
+                        .build()
+                }
+
                 val painter = rememberAsyncImagePainter(
-                    model = dummyFileItem,
+                    model = imageRequest,
                     imageLoader = imageLoader,
                     onState = { state ->
                         isLoading = state is AsyncImagePainter.State.Loading

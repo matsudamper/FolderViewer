@@ -7,30 +7,42 @@ import coil.fetch.FetchResult
 import coil.fetch.Fetcher
 import coil.fetch.SourceResult
 import coil.request.Options
-import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
 import okio.buffer
 import okio.source
 
 class FileRepositoryImageFetcher(
-    private val fileItem: FileItem,
+    private val fileImageSource: FileImageSource,
     private val options: Options,
     private val fileRepository: FileRepository,
 ) : Fetcher {
     override suspend fun fetch(): FetchResult {
-        val inputStream = fileRepository.getFileContent(fileItem.path)
-        val source = inputStream.source().buffer()
+        val inputStream = when (fileImageSource) {
+            is FileImageSource.Thumbnail -> {
+                fileRepository.getThumbnailContent(fileImageSource.fileItem.path)
+                    ?: fileRepository.getFileContent(fileImageSource.fileItem.path)
+            }
+
+            is FileImageSource.Original -> {
+                fileRepository.getFileContent(fileImageSource.fileItem.path)
+            }
+        }
+        val bufferedSource = inputStream.source().buffer()
 
         return SourceResult(
-            source = ImageSource(source, options.context),
+            source = ImageSource(bufferedSource, options.context),
             mimeType = null,
             dataSource = DataSource.NETWORK,
         )
     }
 
-    class Factory(private val fileRepository: FileRepository) : Fetcher.Factory<FileItem> {
-        override fun create(data: FileItem, options: Options, imageLoader: ImageLoader): Fetcher {
-            return FileRepositoryImageFetcher(data, options, fileRepository)
+    class Factory(private val fileRepository: FileRepository) : Fetcher.Factory<Any> {
+        override fun create(data: Any, options: Options, imageLoader: ImageLoader): Fetcher? {
+            return if (data is FileImageSource) {
+                FileRepositoryImageFetcher(data, options, fileRepository)
+            } else {
+                null
+            }
         }
     }
 }
