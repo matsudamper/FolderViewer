@@ -83,7 +83,17 @@ class FileBrowserViewModel @Inject constructor(
         MutableStateFlow(ViewModelState())
 
     val uiState: StateFlow<FileBrowserUiState> =
-        MutableStateFlow(FileBrowserUiState(callbacks = callbacks)).also { mutableUiState ->
+        MutableStateFlow(
+            FileBrowserUiState(
+                isLoading = false,
+                isRefreshing = false,
+                currentPath = "",
+                files = emptyList(),
+                error = null,
+                sortConfig = FileSortConfig(),
+                callbacks = callbacks,
+            ),
+        ).also { mutableUiState ->
             viewModelScope.launch {
                 viewModelStateFlow.collect { viewModelState ->
                     mutableUiState.update {

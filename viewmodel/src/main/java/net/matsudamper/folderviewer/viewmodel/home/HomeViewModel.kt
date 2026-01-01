@@ -20,7 +20,11 @@ class HomeViewModel @Inject constructor(
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> =
         MutableStateFlow(ViewModelState())
 
-    val uiState: StateFlow<HomeUiState> = MutableStateFlow(HomeUiState()).also { mutableUiState ->
+    val uiState: StateFlow<HomeUiState> = MutableStateFlow(
+        HomeUiState(
+            storages = emptyList(),
+        ),
+    ).also { mutableUiState ->
         viewModelScope.launch {
             viewModelStateFlow.collect { viewModelState ->
                 mutableUiState.update {

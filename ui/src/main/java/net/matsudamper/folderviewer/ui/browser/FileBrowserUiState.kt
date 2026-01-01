@@ -4,12 +4,12 @@ import androidx.compose.runtime.Immutable
 import net.matsudamper.folderviewer.repository.FileItem
 
 data class FileBrowserUiState(
-    val isLoading: Boolean = false,
-    val isRefreshing: Boolean = false,
-    val currentPath: String = "",
-    val files: List<FileItem> = emptyList(),
-    val error: String? = null,
-    val sortConfig: FileSortConfig = FileSortConfig(),
+    val isLoading: Boolean,
+    val isRefreshing: Boolean,
+    val currentPath: String,
+    val files: List<FileItem>,
+    val error: String?,
+    val sortConfig: FileSortConfig,
     val callbacks: Callbacks,
 ) {
     @Immutable

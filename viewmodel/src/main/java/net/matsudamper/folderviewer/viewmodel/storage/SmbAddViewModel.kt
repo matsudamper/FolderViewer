@@ -31,7 +31,16 @@ class SmbAddViewModel @Inject constructor(
         MutableStateFlow(ViewModelState())
 
     val uiState: StateFlow<SmbAddUiState> =
-        MutableStateFlow(SmbAddUiState()).also { mutableUiState ->
+        MutableStateFlow(
+            SmbAddUiState(
+                name = "",
+                ip = "",
+                username = "",
+                password = "",
+                isEditMode = false,
+                isLoading = false,
+            ),
+        ).also { mutableUiState ->
             viewModelScope.launch {
                 viewModelStateFlow.collect { viewModelState ->
                     mutableUiState.update {
