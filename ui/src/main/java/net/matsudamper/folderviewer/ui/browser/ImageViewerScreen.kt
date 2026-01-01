@@ -2,6 +2,7 @@ package net.matsudamper.folderviewer.ui.browser
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
@@ -55,8 +56,7 @@ public fun ImageViewerScreen(
                 .zoomable(zoomState),
             contentAlignment = Alignment.Center,
         ) {
-            var isLoading by remember { mutableStateOf(true) }
-            var isError by remember { mutableStateOf(false) }
+            var imageState: AsyncImagePainter.State by remember { mutableStateOf(AsyncImagePainter.State.Empty) }
 
             val imageRequest = remember(path, context) {
                 ImageRequest.Builder(context)
@@ -69,8 +69,7 @@ public fun ImageViewerScreen(
                 model = imageRequest,
                 imageLoader = imageLoader,
                 onState = { state ->
-                    isLoading = state is AsyncImagePainter.State.Loading
-                    isError = state is AsyncImagePainter.State.Error
+                    imageState = state
                 },
             )
 
@@ -81,12 +80,19 @@ public fun ImageViewerScreen(
                 modifier = Modifier.fillMaxSize(),
             )
 
-            if (isLoading) {
-                CircularProgressIndicator()
-            }
+            when (val imageState = imageState) {
+                is AsyncImagePainter.State.Loading -> {
+                    CircularProgressIndicator()
+                }
 
-            if (isError) {
-                Text("Failed to load image")
+                is AsyncImagePainter.State.Error -> {
+                    Column {
+                        Text("Failed to load image")
+                        Text(imageState.result.throwable.message ?: "No Error Message")
+                    }
+                }
+
+                else -> Unit
             }
         }
     }
