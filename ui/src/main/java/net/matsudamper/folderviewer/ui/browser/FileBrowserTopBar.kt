@@ -7,7 +7,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -26,15 +25,14 @@ import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun FileBrowserTopBar(
-    currentPath: String,
+    title: String,
     onBack: () -> Unit,
-    onUpClick: () -> Unit,
     modifier: Modifier = Modifier,
     sortConfig: FileSortConfig? = null,
     onSortConfigChanged: ((FileSortConfig) -> Unit)? = null,
 ) {
     val scrollState = rememberScrollState()
-    LaunchedEffect(currentPath) {
+    LaunchedEffect(title) {
         snapshotFlow { scrollState.maxValue }
             .collect { maxValue ->
                 scrollState.scrollTo(maxValue)
@@ -47,12 +45,12 @@ internal fun FileBrowserTopBar(
         title = {
             Text(
                 modifier = Modifier.horizontalScroll(scrollState),
-                text = currentPath.ifEmpty { stringResource(R.string.root) },
+                text = title,
                 maxLines = 1,
             )
         },
         navigationIcon = {
-            IconButton(onClick = if (currentPath.isEmpty()) onBack else onUpClick) {
+            IconButton(onClick = onBack) {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_arrow_back),
                     contentDescription = stringResource(R.string.back),

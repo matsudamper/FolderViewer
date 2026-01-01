@@ -10,6 +10,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -91,6 +92,7 @@ class FileBrowserViewModel @Inject constructor(
                 isLoading = false,
                 isRefreshing = false,
                 currentPath = arg.path,
+                title = arg.path,
                 files = emptyList(),
                 error = null,
                 sortConfig = FileSortConfig(),
@@ -104,6 +106,11 @@ class FileBrowserViewModel @Inject constructor(
                             isLoading = viewModelState.isLoading,
                             isRefreshing = viewModelState.isRefreshing,
                             currentPath = viewModelState.currentPath,
+                            title = if (viewModelState.currentPath.isEmpty()) {
+                                viewModelState.storageName ?: viewModelState.currentPath
+                            } else {
+                                viewModelState.currentPath
+                            },
                             files = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig))
                                 .map { fileItem ->
                                     UiFileItem(
@@ -127,6 +134,16 @@ class FileBrowserViewModel @Inject constructor(
 
     init {
         loadFiles(arg.path)
+        loadStorageName()
+    }
+
+    private fun loadStorageName() {
+        viewModelScope.launch {
+            val storage = storageRepository.storageList.first().find { it.id == arg.storageId }
+            if (storage != null) {
+                viewModelStateFlow.update { it.copy(storageName = storage.name) }
+            }
+        }
     }
 
     private fun createComparator(config: FileSortConfig): Comparator<FileItem> {
@@ -208,6 +225,7 @@ class FileBrowserViewModel @Inject constructor(
         val isLoading: Boolean = false,
         val isRefreshing: Boolean = false,
         val currentPath: String = "",
+        val storageName: String? = null,
         val rawFiles: List<FileItem> = emptyList(),
         val sortConfig: FileSortConfig = FileSortConfig(),
         val error: String? = null,

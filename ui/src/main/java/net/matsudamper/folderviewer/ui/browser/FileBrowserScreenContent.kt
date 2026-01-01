@@ -19,9 +19,8 @@ internal fun FileBrowserScreenContent(
         modifier = modifier,
         topBar = {
             FileBrowserTopBar(
-                currentPath = uiState.currentPath,
+                title = uiState.title,
                 onBack = callbacks::onBack,
-                onUpClick = callbacks::onUpClick,
                 sortConfig = uiState.sortConfig,
                 onSortConfigChanged = callbacks::onSortConfigChanged,
             )

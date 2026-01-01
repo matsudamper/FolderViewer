@@ -43,9 +43,8 @@ public fun ImageViewerScreen(
     Scaffold(
         topBar = {
             FileBrowserTopBar(
-                currentPath = fileName,
+                title = fileName,
                 onBack = onBack,
-                onUpClick = onBack,
             )
         },
     ) { innerPadding ->
