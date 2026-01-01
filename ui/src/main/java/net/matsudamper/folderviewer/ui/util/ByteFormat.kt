@@ -15,7 +15,7 @@ public fun formatBytes(bytes: Long): String {
 
     val units = arrayOf("KB", "MB", "GB", "TB", "PB")
     val digitGroups = minOf(
-        (log10(bytes.toDouble()) / log10(1024.0)).toInt(),
+        (log10(bytes.toDouble()) / log10(1024.0)).toInt().coerceAtLeast(1),
         units.size,
     )
 
