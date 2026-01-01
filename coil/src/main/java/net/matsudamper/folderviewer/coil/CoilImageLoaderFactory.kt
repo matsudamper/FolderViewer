@@ -20,17 +20,20 @@ import okio.buffer
 import okio.source
 
 public object CoilImageLoaderFactory {
+    private const val MEMORY_CACHE_SIZE_PERCENT = 0.25
+    private const val DISK_CACHE_SIZE_PERCENT = 0.02
+
     public fun create(context: Context, fileRepository: FileRepository?): ImageLoader {
         return ImageLoader.Builder(context)
             .memoryCache {
                 MemoryCache.Builder(context)
-                    .maxSizePercent(0.25)
+                    .maxSizePercent(MEMORY_CACHE_SIZE_PERCENT)
                     .build()
             }
             .diskCache {
                 DiskCache.Builder()
                     .directory(context.cacheDir.resolve("image_cache"))
-                    .maxSizePercent(0.02)
+                    .maxSizePercent(DISK_CACHE_SIZE_PERCENT)
                     .build()
             }
             .components {
