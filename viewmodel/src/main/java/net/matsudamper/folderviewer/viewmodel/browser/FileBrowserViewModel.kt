@@ -106,10 +106,8 @@ class FileBrowserViewModel @Inject constructor(
                             isLoading = viewModelState.isLoading,
                             isRefreshing = viewModelState.isRefreshing,
                             currentPath = viewModelState.currentPath,
-                            title = if (viewModelState.currentPath.isEmpty()) {
+                            title = viewModelState.currentPath.ifEmpty {
                                 viewModelState.storageName ?: viewModelState.currentPath
-                            } else {
-                                viewModelState.currentPath
                             },
                             files = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig))
                                 .map { fileItem ->
