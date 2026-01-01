@@ -72,7 +72,7 @@ private fun AppContent(
                     navController.navigate(StorageTypeSelection)
                 },
                 onStorageClick = { storage ->
-                    navController.navigate(FileBrowser(storage.id))
+                    navController.navigate(FileBrowser(storageId = storage.id))
                 },
                 onEditStorageClick = { storage ->
                     navController.navigate(SmbAdd(storageId = storage.id))
@@ -128,6 +128,15 @@ private fun AppContent(
                     when (event) {
                         is FileBrowserViewModel.Event.PopBackStack -> {
                             navController.popBackStack()
+                        }
+
+                        is FileBrowserViewModel.Event.NavigateToFileBrowser -> {
+                            navController.navigate(
+                                FileBrowser(
+                                    storageId = event.storageId,
+                                    path = event.path,
+                                ),
+                            )
                         }
 
                         is FileBrowserViewModel.Event.NavigateToImageViewer -> {

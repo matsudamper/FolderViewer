@@ -33,6 +33,10 @@ class FileBrowserViewModel @Inject constructor(
 
     sealed interface Event {
         data object PopBackStack : Event
+        data class NavigateToFileBrowser(
+            val path: String,
+            val storageId: String,
+        ) : Event
         data class NavigateToImageViewer(
             val path: String,
             val storageId: String,
@@ -49,7 +53,14 @@ class FileBrowserViewModel @Inject constructor(
 
         override fun onFileClick(file: UiFileItem) {
             if (file.isDirectory) {
-                loadFiles(file.path)
+                viewModelScope.launch {
+                    _event.send(
+                        Event.NavigateToFileBrowser(
+                            path = file.path,
+                            storageId = arg.storageId,
+                        ),
+                    )
+                }
             } else {
                 val isImage = FileUtil.isImage(file.name.lowercase())
 
@@ -67,17 +78,7 @@ class FileBrowserViewModel @Inject constructor(
         }
 
         override fun onUpClick() {
-            val currentPath = viewModelStateFlow.value.currentPath
-            if (currentPath.isEmpty()) {
-                viewModelScope.launch { _event.send(Event.PopBackStack) }
-            } else {
-                val parentPath = currentPath.substringBeforeLast('/', missingDelimiterValue = "")
-                if (parentPath == currentPath) {
-                    loadFiles("")
-                } else {
-                    loadFiles(parentPath)
-                }
-            }
+            viewModelScope.launch { _event.send(Event.PopBackStack) }
         }
 
         override fun onRefresh() {
@@ -94,14 +95,14 @@ class FileBrowserViewModel @Inject constructor(
     }
 
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> =
-        MutableStateFlow(ViewModelState())
+        MutableStateFlow(ViewModelState(currentPath = arg.path))
 
     val uiState: StateFlow<FileBrowserUiState> =
         MutableStateFlow(
             FileBrowserUiState(
                 isLoading = false,
                 isRefreshing = false,
-                currentPath = "",
+                currentPath = arg.path,
                 files = emptyList(),
                 error = null,
                 sortConfig = FileSortConfig(),
@@ -137,7 +138,7 @@ class FileBrowserViewModel @Inject constructor(
     val fileRepository: StateFlow<FileRepository?> = _fileRepository.asStateFlow()
 
     init {
-        loadFiles("")
+        loadFiles(arg.path)
     }
 
     private fun createComparator(config: FileSortConfig): Comparator<FileItem> {
