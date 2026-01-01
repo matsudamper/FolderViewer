@@ -16,11 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import coil.ImageLoader
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
-import coil.size.Precision
 import coil.size.Size
 import net.engawapg.lib.zoomable.rememberZoomState
 import net.engawapg.lib.zoomable.zoomable
@@ -35,13 +33,7 @@ fun ImageViewerScreen(
 ) {
     val context = LocalContext.current
     val imageLoader = remember(fileRepository) {
-        ImageLoader.Builder(context)
-            .components {
-                if (fileRepository != null) {
-                    add(FileRepositoryImageFetcher.Factory(fileRepository))
-                }
-            }
-            .build()
+        FileRepositoryImageFetcher.createLoader(context, fileRepository)
     }
 
     // pathからファイル名を抽出（簡易的）
@@ -82,11 +74,12 @@ fun ImageViewerScreen(
                 var isLoading by remember { mutableStateOf(true) }
                 var isError by remember { mutableStateOf(false) }
 
-                val imageRequest = remember(dummyFileItem) {
+                val imageRequest = remember(dummyFileItem, context) {
                     ImageRequest.Builder(context)
                         .data(FileImageSource.Original(dummyFileItem))
+                        // ここで Size.ORIGINAL を指定しても、ImageLoader 側の
+                        // MaxSizeInterceptor によって自動的に 4096px 以下に制限されます。
                         .size(Size.ORIGINAL)
-                        .precision(Precision.EXACT)
                         .build()
                 }
 
