@@ -13,6 +13,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil.ImageLoader
 import coil.compose.AsyncImage
+import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.ui.R
 

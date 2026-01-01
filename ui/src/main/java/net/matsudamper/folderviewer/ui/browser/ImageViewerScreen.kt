@@ -22,6 +22,8 @@ import coil.request.ImageRequest
 import coil.size.Size
 import net.engawapg.lib.zoomable.rememberZoomState
 import net.engawapg.lib.zoomable.zoomable
+import net.matsudamper.folderviewer.coil.CoilImageLoaderFactory
+import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
 
@@ -33,10 +35,10 @@ fun ImageViewerScreen(
 ) {
     val context = LocalContext.current
     val imageLoader = remember(fileRepository) {
-        FileRepositoryImageFetcher.createLoader(context, fileRepository)
+        CoilImageLoaderFactory.create(context, fileRepository)
     }
 
-    // pathからファイル名を抽出（簡易的）
+    // pathからファイル名を抽出（簡易的に）
     val fileName = remember(path) {
         path.substringAfterLast('/').substringAfterLast('\\')
     }
@@ -77,8 +79,6 @@ fun ImageViewerScreen(
                 val imageRequest = remember(dummyFileItem, context) {
                     ImageRequest.Builder(context)
                         .data(FileImageSource.Original(dummyFileItem))
-                        // ここで Size.ORIGINAL を指定しても、ImageLoader 側の
-                        // MaxSizeInterceptor によって自動的に 4096px 以下に制限されます。
                         .size(Size.ORIGINAL)
                         .build()
                 }
