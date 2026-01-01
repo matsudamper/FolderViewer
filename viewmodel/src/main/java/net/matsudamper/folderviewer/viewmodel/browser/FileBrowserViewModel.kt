@@ -28,11 +28,13 @@ class FileBrowserViewModel @Inject constructor(
     private val storageRepository: StorageRepository,
 ) : ViewModel() {
     private val args = savedStateHandle.toRoute<FileBrowser>()
-    val storageId: String = args.id
 
     sealed interface Event {
         data object PopBackStack : Event
-        data class NavigateToImageViewer(val path: String) : Event
+        data class NavigateToImageViewer(
+            val path: String,
+            val storageId: String,
+        ) : Event
     }
 
     private val _event = Channel<Event>(Channel.BUFFERED)
@@ -48,12 +50,17 @@ class FileBrowserViewModel @Inject constructor(
             } else {
                 val name = file.name.lowercase()
                 val isImage = name.endsWith(".jpg") || name.endsWith(".jpeg") ||
-                    name.endsWith(".png") || name.endsWith(".bmp") ||
-                    name.endsWith(".gif") || name.endsWith(".webp")
+                        name.endsWith(".png") || name.endsWith(".bmp") ||
+                        name.endsWith(".gif") || name.endsWith(".webp")
 
                 if (isImage) {
                     viewModelScope.launch {
-                        _event.send(Event.NavigateToImageViewer(file.path))
+                        _event.send(
+                            Event.NavigateToImageViewer(
+                                file.path,
+                                storageId = args.storageId,
+                            ),
+                        )
                     }
                 }
             }
@@ -133,7 +140,7 @@ class FileBrowserViewModel @Inject constructor(
         val current = _fileRepository.value
         if (current != null) return current
 
-        val newRepo = storageRepository.getFileRepository(args.id)
+        val newRepo = storageRepository.getFileRepository(args.storageId)
             ?: throw IllegalStateException("Storage not found")
         _fileRepository.value = newRepo
         return newRepo
