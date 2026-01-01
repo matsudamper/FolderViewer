@@ -31,18 +31,6 @@ class FileBrowserViewModel @Inject constructor(
 ) : ViewModel() {
     private val arg: FileBrowser = savedStateHandle.toRoute<FileBrowser>()
 
-    sealed interface Event {
-        data object PopBackStack : Event
-        data class NavigateToFileBrowser(
-            val path: String,
-            val storageId: String,
-        ) : Event
-        data class NavigateToImageViewer(
-            val path: String,
-            val storageId: String,
-        ) : Event
-    }
-
     private val _event = Channel<Event>(Channel.BUFFERED)
     val event = _event.receiveAsFlow()
 
@@ -202,6 +190,18 @@ class FileBrowserViewModel @Inject constructor(
                 )
             }
         }
+    }
+    
+    sealed interface Event {
+        data object PopBackStack : Event
+        data class NavigateToFileBrowser(
+            val path: String,
+            val storageId: String,
+        ) : Event
+        data class NavigateToImageViewer(
+            val path: String,
+            val storageId: String,
+        ) : Event
     }
 
     private data class ViewModelState(
