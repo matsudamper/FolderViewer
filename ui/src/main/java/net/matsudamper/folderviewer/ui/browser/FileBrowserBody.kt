@@ -52,7 +52,10 @@ internal fun FileBrowserBody(
 
             else -> {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(uiState.files) { file ->
+                    items(
+                        items = uiState.files,
+                        key = { it.path },
+                    ) { file ->
                         FileListItem(
                             file = file,
                             imageLoader = imageLoader,
