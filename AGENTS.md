@@ -19,3 +19,8 @@ Function call is missing a thought_signature in functionCall parts. This is requ
 ```shell
 ./gradlew assembleDebug ktlintCheck detektMain detektTest
 ```
+
+フォーマット用コマンド
+```shell
+./gradlew ktlintFormat
+```
