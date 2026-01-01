@@ -1,5 +1,6 @@
 package net.matsudamper.folderviewer.ui.util
 
+import kotlin.math.abs
 import kotlin.math.log10
 import kotlin.math.pow
 
@@ -13,7 +14,7 @@ public fun formatBytes(bytes: Long): String {
     if (bytes == 0L) return "0 bytes"
     
     val isNegative = bytes < 0
-    val absoluteBytes = if (isNegative) -bytes else bytes
+    val absoluteBytes = abs(bytes)
     
     if (absoluteBytes < 1024) {
         return if (isNegative) "-$absoluteBytes bytes" else "$absoluteBytes bytes"
