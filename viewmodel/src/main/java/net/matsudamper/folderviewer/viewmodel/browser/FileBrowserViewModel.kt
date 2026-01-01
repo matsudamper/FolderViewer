@@ -22,6 +22,7 @@ import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.FileSortConfig
 import net.matsudamper.folderviewer.ui.browser.FileSortKey
 import net.matsudamper.folderviewer.ui.browser.UiFileItem
+import net.matsudamper.folderviewer.viewmodel.FileUtil
 
 @HiltViewModel
 class FileBrowserViewModel @Inject constructor(
@@ -136,10 +137,10 @@ class FileBrowserViewModel @Inject constructor(
     }
 
     private fun createComparator(config: FileSortConfig): Comparator<FileItem> {
-        val comparator = when (config.key) {
+        val comparator: Comparator<FileItem> = when (config.key) {
             FileSortKey.Name -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.name }
-            FileSortKey.Date -> compareBy<FileItem> { it.lastModified }
-            FileSortKey.Size -> compareBy<FileItem> { it.size }
+            FileSortKey.Date -> compareBy { it.lastModified }
+            FileSortKey.Size -> compareBy { it.size }
         }
 
         val orderComparator = if (config.isAscending) comparator else comparator.reversed()
