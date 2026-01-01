@@ -28,14 +28,13 @@ import net.engawapg.lib.zoomable.zoomable
 import net.matsudamper.folderviewer.coil.FileImageSource
 
 @Composable
-public fun ImageViewerScreen(
+fun ImageViewerScreen(
     imageLoader: ImageLoader,
     path: String,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
 
-    // pathからファイル名を抽出（簡易的に）
     val fileName = remember(path) {
         path.substringAfterLast('/').substringAfterLast('\\')
     }
@@ -81,18 +80,18 @@ public fun ImageViewerScreen(
                 modifier = Modifier.fillMaxSize(),
             )
 
-            when (val imageState = imageState) {
+            when (val state = imageState) {
                 is AsyncImagePainter.State.Loading -> {
                     CircularProgressIndicator()
                 }
 
                 is AsyncImagePainter.State.Error -> {
-                    LaunchedEffect(imageState) {
-                        imageState.result.throwable.printStackTrace()
+                    LaunchedEffect(state) {
+                        state.result.throwable.printStackTrace()
                     }
                     Column {
                         Text("Failed to load image")
-                        Text(imageState.result.throwable.message ?: "No Error Message")
+                        Text(state.result.throwable.message ?: "No Error Message")
                     }
                 }
 

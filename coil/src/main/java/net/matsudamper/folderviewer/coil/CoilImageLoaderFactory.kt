@@ -12,6 +12,7 @@ import coil.request.ImageResult
 import coil.request.Options
 import coil.size.Dimension
 import coil.size.Precision
+import coil.size.Size
 import net.matsudamper.folderviewer.repository.FileRepository
 import okio.buffer
 import okio.source
@@ -62,6 +63,7 @@ private class FileRepositoryImageFetcher(
                 fileRepository.getFileContent(path)
             }
         }
+
         val bufferedSource = inputStream.source().buffer()
 
         return SourceResult(
@@ -79,19 +81,19 @@ private class MaxSizeInterceptor(private val maxSize: Int) : Interceptor {
 
         val isWidthTooLarge = when (val width = size.width) {
             is Dimension.Pixels -> width.px > maxSize
-            else -> true
+            else -> false
         }
         val isHeightTooLarge = when (val height = size.height) {
             is Dimension.Pixels -> height.px > maxSize
-            else -> true
+            else -> false
         }
 
         return if (isWidthTooLarge || isHeightTooLarge) {
+            val newSize = Size(maxSize, maxSize)
             val newRequest = request.newBuilder()
-                .size(maxSize)
                 .precision(Precision.INEXACT)
                 .build()
-            chain.proceed(newRequest)
+            chain.withSize(newSize).proceed(newRequest)
         } else {
             chain.proceed(request)
         }

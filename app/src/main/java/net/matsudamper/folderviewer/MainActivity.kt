@@ -4,11 +4,15 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -153,13 +157,23 @@ private fun AppContent(
 
             val context = LocalContext.current
             val imageLoader = remember(fileRepository) {
-                CoilImageLoaderFactory.create(context, fileRepository)
+                if (fileRepository != null) {
+                    CoilImageLoaderFactory.create(context, fileRepository)
+                } else {
+                    null
+                }
             }
 
-            FileBrowserScreen(
-                uiState = uiState,
-                imageLoader = imageLoader,
-            )
+            if (imageLoader != null) {
+                FileBrowserScreen(
+                    uiState = uiState,
+                    imageLoader = imageLoader,
+                )
+            } else {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
         }
         composable<ImageViewer> {
             val viewModel: ImageViewerViewModel = hiltViewModel()
@@ -167,14 +181,24 @@ private fun AppContent(
 
             val context = LocalContext.current
             val imageLoader = remember(fileRepository) {
-                CoilImageLoaderFactory.create(context, fileRepository)
+                if (fileRepository != null) {
+                    CoilImageLoaderFactory.create(context, fileRepository)
+                } else {
+                    null
+                }
             }
 
-            ImageViewerScreen(
-                imageLoader = imageLoader,
-                path = viewModel.path,
-                onBack = { navController.popBackStack() },
-            )
+            if (imageLoader != null) {
+                ImageViewerScreen(
+                    imageLoader = imageLoader,
+                    path = viewModel.path,
+                    onBack = { navController.popBackStack() },
+                )
+            } else {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
         }
     }
 }
