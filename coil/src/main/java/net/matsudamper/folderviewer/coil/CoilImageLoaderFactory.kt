@@ -20,7 +20,12 @@ import okio.buffer
 import okio.source
 
 public object CoilImageLoaderFactory {
+    // メモリキャッシュサイズ: アプリメモリの25%を使用
+    // 画像ビューアアプリとして、画像表示のパフォーマンスを優先
     private const val MEMORY_CACHE_SIZE_PERCENT = 0.25
+
+    // ディスクキャッシュサイズ: キャッシュディレクトリの2%を使用
+    // ネットワークストレージからの読み込みを減らすために有効化
     private const val DISK_CACHE_SIZE_PERCENT = 0.02
 
     public fun create(context: Context, fileRepository: FileRepository?): ImageLoader {
