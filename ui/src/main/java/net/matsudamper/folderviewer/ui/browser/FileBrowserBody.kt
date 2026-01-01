@@ -1,7 +1,9 @@
 package net.matsudamper.folderviewer.ui.browser
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -23,6 +25,7 @@ import net.matsudamper.folderviewer.ui.R
 internal fun FileBrowserBody(
     uiState: FileBrowserUiState,
     imageLoader: ImageLoader,
+    contentPadding: PaddingValues,
     onFileClick: (FileItem) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
@@ -35,7 +38,9 @@ internal fun FileBrowserBody(
         when {
             uiState.isLoading -> {
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(contentPadding),
                     contentAlignment = Alignment.Center,
                 ) {
                     CircularProgressIndicator()
@@ -46,6 +51,7 @@ internal fun FileBrowserBody(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .padding(contentPadding)
                         .verticalScroll(rememberScrollState()),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -56,7 +62,10 @@ internal fun FileBrowserBody(
             }
 
             else -> {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = contentPadding,
+                ) {
                     items(
                         items = uiState.files,
                         key = { it.path },
