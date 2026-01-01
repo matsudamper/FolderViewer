@@ -14,7 +14,10 @@ public fun formatBytes(bytes: Long): String {
     if (bytes < 1024) return "$bytes bytes"
 
     val units = arrayOf("KB", "MB", "GB", "TB", "PB")
-    val digitGroups = (log10(bytes.toDouble()) / log10(1024.0)).toInt()
+    val digitGroups = minOf(
+        (log10(bytes.toDouble()) / log10(1024.0)).toInt(),
+        units.size,
+    )
 
     val size = bytes / 1024.0.pow(digitGroups.toDouble())
 
