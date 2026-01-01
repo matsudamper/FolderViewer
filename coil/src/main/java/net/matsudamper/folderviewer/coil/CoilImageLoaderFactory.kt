@@ -4,10 +4,12 @@ import android.content.Context
 import coil.ImageLoader
 import coil.decode.DataSource
 import coil.decode.ImageSource
+import coil.disk.DiskCache
 import coil.fetch.FetchResult
 import coil.fetch.Fetcher
 import coil.fetch.SourceResult
 import coil.intercept.Interceptor
+import coil.memory.MemoryCache
 import coil.request.ImageResult
 import coil.request.Options
 import coil.size.Dimension
@@ -20,6 +22,17 @@ import okio.source
 public object CoilImageLoaderFactory {
     public fun create(context: Context, fileRepository: FileRepository?): ImageLoader {
         return ImageLoader.Builder(context)
+            .memoryCache {
+                MemoryCache.Builder(context)
+                    .maxSizePercent(0.25)
+                    .build()
+            }
+            .diskCache {
+                DiskCache.Builder()
+                    .directory(context.cacheDir.resolve("image_cache"))
+                    .maxSizePercent(0.02)
+                    .build()
+            }
             .components {
                 if (fileRepository != null) {
                     add(FileRepositoryImageFetcherFactory(fileRepository))
