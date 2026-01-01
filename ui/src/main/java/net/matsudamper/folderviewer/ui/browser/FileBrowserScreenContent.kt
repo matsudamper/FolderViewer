@@ -22,6 +22,8 @@ internal fun FileBrowserScreenContent(
                 currentPath = uiState.currentPath,
                 onBack = callbacks.onBack,
                 onUpClick = callbacks.onUpClick,
+                sortConfig = uiState.sortConfig,
+                onSortConfigChanged = callbacks.onSortConfigChanged,
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },

@@ -6,4 +6,10 @@
     <string name="folder_viewer">FolderViewer</string>
     <string name="settings">Settings</string>
     <string name="add_storage">Add Storage</string>
+    <string name="sort_by">並び替え</string>
+    <string name="sort_name">名前</string>
+    <string name="sort_date">日付</string>
+    <string name="sort_size">サイズ</string>
+    <string name="sort_asc">昇順</string>
+    <string name="sort_desc">降順</string>
 </resources>

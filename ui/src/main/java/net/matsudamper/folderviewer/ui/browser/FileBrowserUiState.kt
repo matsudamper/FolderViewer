@@ -9,6 +9,7 @@ data class FileBrowserUiState(
     val currentPath: String = "",
     val files: List<FileItem> = emptyList(),
     val error: String? = null,
+    val sortConfig: FileSortConfig = FileSortConfig(),
     val callbacks: Callbacks,
 ) {
     @Immutable
@@ -17,5 +18,17 @@ data class FileBrowserUiState(
         val onFileClick: (FileItem) -> Unit
         val onUpClick: () -> Unit
         val onRefresh: () -> Unit
+        val onSortConfigChanged: (FileSortConfig) -> Unit
     }
+}
+
+data class FileSortConfig(
+    val key: FileSortKey = FileSortKey.Name,
+    val isAscending: Boolean = true,
+)
+
+enum class FileSortKey {
+    Name,
+    Date,
+    Size,
 }

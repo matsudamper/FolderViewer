@@ -19,6 +19,8 @@ import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
+import net.matsudamper.folderviewer.ui.browser.FileSortConfig
+import net.matsudamper.folderviewer.ui.browser.FileSortKey
 
 @HiltViewModel
 class FileBrowserViewModel @Inject constructor(
@@ -72,6 +74,9 @@ class FileBrowserViewModel @Inject constructor(
         override val onRefresh: () -> Unit = {
             this@FileBrowserViewModel.onRefresh()
         }
+        override val onSortConfigChanged: (FileSortConfig) -> Unit = { config ->
+            viewModelStateFlow.update { it.copy(sortConfig = config) }
+        }
     }
 
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> =
@@ -86,8 +91,9 @@ class FileBrowserViewModel @Inject constructor(
                             isLoading = viewModelState.isLoading,
                             isRefreshing = viewModelState.isRefreshing,
                             currentPath = viewModelState.currentPath,
-                            files = viewModelState.files,
+                            files = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig)),
                             error = viewModelState.error,
+                            sortConfig = viewModelState.sortConfig,
                         )
                     }
                 }
@@ -99,6 +105,18 @@ class FileBrowserViewModel @Inject constructor(
 
     init {
         loadFiles("")
+    }
+
+    private fun createComparator(config: FileSortConfig): Comparator<FileItem> {
+        val comparator = when (config.key) {
+            FileSortKey.Name -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.name }
+            FileSortKey.Date -> compareBy<FileItem> { it.lastModified }
+            FileSortKey.Size -> compareBy<FileItem> { it.size }
+        }
+
+        val orderComparator = if (config.isAscending) comparator else comparator.reversed()
+
+        return compareByDescending<FileItem> { it.isDirectory }.then(orderComparator)
     }
 
     private suspend fun getRepository(): FileRepository {
@@ -136,7 +154,7 @@ class FileBrowserViewModel @Inject constructor(
                     isLoading = false,
                     isRefreshing = false,
                     currentPath = path,
-                    files = files,
+                    rawFiles = files,
                 )
             }
         } catch (e: CancellationException) {
@@ -160,7 +178,8 @@ class FileBrowserViewModel @Inject constructor(
         val isLoading: Boolean = false,
         val isRefreshing: Boolean = false,
         val currentPath: String = "",
-        val files: List<FileItem> = emptyList(),
+        val rawFiles: List<FileItem> = emptyList(),
+        val sortConfig: FileSortConfig = FileSortConfig(),
         val error: String? = null,
     )
 }
