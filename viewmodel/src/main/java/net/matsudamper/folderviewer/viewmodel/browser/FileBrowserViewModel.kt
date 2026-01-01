@@ -41,10 +41,11 @@ class FileBrowserViewModel @Inject constructor(
     val event = _event.receiveAsFlow()
 
     private val callbacks = object : FileBrowserUiState.Callbacks {
-        override val onBack: () -> Unit = {
+        override fun onBack() {
             viewModelScope.launch { _event.send(Event.PopBackStack) }
         }
-        override val onFileClick: (FileItem) -> Unit = { file ->
+
+        override fun onFileClick(file: FileItem) {
             if (file.isDirectory) {
                 loadFiles(file.path)
             } else {
@@ -65,7 +66,8 @@ class FileBrowserViewModel @Inject constructor(
                 }
             }
         }
-        override val onUpClick: () -> Unit = {
+
+        override fun onUpClick() {
             val currentPath = viewModelStateFlow.value.currentPath
             if (currentPath.isEmpty()) {
                 viewModelScope.launch { _event.send(Event.PopBackStack) }
@@ -78,10 +80,12 @@ class FileBrowserViewModel @Inject constructor(
                 }
             }
         }
-        override val onRefresh: () -> Unit = {
+
+        override fun onRefresh() {
             this@FileBrowserViewModel.onRefresh()
         }
-        override val onSortConfigChanged: (FileSortConfig) -> Unit = { config ->
+
+        override fun onSortConfigChanged(config: FileSortConfig) {
             viewModelStateFlow.update { it.copy(sortConfig = config) }
         }
     }

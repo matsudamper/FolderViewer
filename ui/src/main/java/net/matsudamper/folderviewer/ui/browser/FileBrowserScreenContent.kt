@@ -20,10 +20,10 @@ internal fun FileBrowserScreenContent(
         topBar = {
             FileBrowserTopBar(
                 currentPath = uiState.currentPath,
-                onBack = callbacks.onBack,
-                onUpClick = callbacks.onUpClick,
+                onBack = callbacks::onBack,
+                onUpClick = callbacks::onUpClick,
                 sortConfig = uiState.sortConfig,
-                onSortConfigChanged = callbacks.onSortConfigChanged,
+                onSortConfigChanged = callbacks::onSortConfigChanged,
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -32,8 +32,8 @@ internal fun FileBrowserScreenContent(
             modifier = Modifier,
             uiState = uiState,
             imageLoader = imageLoader,
-            onFileClick = callbacks.onFileClick,
-            onRefresh = callbacks.onRefresh,
+            onFileClick = callbacks::onFileClick,
+            onRefresh = callbacks::onRefresh,
             contentPadding = innerPadding,
         )
     }

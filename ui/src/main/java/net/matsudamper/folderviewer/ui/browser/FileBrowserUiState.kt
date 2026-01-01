@@ -14,11 +14,11 @@ data class FileBrowserUiState(
 ) {
     @Immutable
     interface Callbacks {
-        val onBack: () -> Unit
-        val onFileClick: (FileItem) -> Unit
-        val onUpClick: () -> Unit
-        val onRefresh: () -> Unit
-        val onSortConfigChanged: (FileSortConfig) -> Unit
+        fun onBack()
+        fun onFileClick(file: FileItem)
+        fun onUpClick()
+        fun onRefresh()
+        fun onSortConfigChanged(config: FileSortConfig)
     }
 }
 
