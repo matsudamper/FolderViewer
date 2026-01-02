@@ -41,3 +41,16 @@ jobs:
           files: app/build/outputs/apk/release/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Increment VERSION
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CURRENT_VERSION: ${{ vars.VERSION }}
+        run: |
+          # 現在のバージョンをインクリメント
+          NEW_VERSION=$((CURRENT_VERSION + 1))
+          echo "Current version: $CURRENT_VERSION"
+          echo "New version: $NEW_VERSION"
+          
+          # GitHub CLIを使用してEnvironment変数を更新
+          gh variable set VERSION --body "$NEW_VERSION" --env Release
