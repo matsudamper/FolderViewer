@@ -4,13 +4,10 @@ import android.content.Context
 import coil.ImageLoader
 import coil.decode.DataSource
 import coil.decode.ImageSource
-import coil.disk.DiskCache
 import coil.fetch.FetchResult
 import coil.fetch.Fetcher
 import coil.fetch.SourceResult
 import coil.intercept.Interceptor
-import coil.memory.MemoryCache
-import coil.request.CachePolicy
 import coil.request.ImageResult
 import coil.request.Options
 import coil.size.Dimension
@@ -21,36 +18,15 @@ import okio.buffer
 import okio.source
 
 public object CoilImageLoaderFactory {
-    // メモリキャッシュサイズ: アプリメモリの25%を使用
-    // 画像ビューアアプリとして、画像表示のパフォーマンスを優先
-    private const val MEMORY_CACHE_SIZE_PERCENT = 0.25
-
-    // ディスクキャッシュサイズ: キャッシュディレクトリの2%を使用
-    // ネットワークストレージからの読み込みを減らすために有効化
-    // サムネイルのみキャッシュし、オリジナル画像はキャッシュしない
-    private const val DISK_CACHE_SIZE_PERCENT = 0.02
-    
     // ディスクキャッシュのディレクトリ名
     private const val DISK_CACHE_DIRECTORY_NAME = "image_cache"
 
     public fun create(context: Context, fileRepository: FileRepository?): ImageLoader {
         return ImageLoader.Builder(context)
-            .memoryCache {
-                MemoryCache.Builder(context)
-                    .maxSizePercent(MEMORY_CACHE_SIZE_PERCENT)
-                    .build()
-            }
-            .diskCache {
-                DiskCache.Builder()
-                    .directory(context.cacheDir.resolve(DISK_CACHE_DIRECTORY_NAME))
-                    .maxSizePercent(DISK_CACHE_SIZE_PERCENT)
-                    .build()
-            }
             .components {
                 if (fileRepository != null) {
                     add(FileRepositoryImageFetcherFactory(fileRepository))
                 }
-                add(ThumbnailOnlyCacheInterceptor())
                 add(MaxSizeInterceptor(4096))
             }
             .build()
@@ -64,24 +40,6 @@ public object CoilImageLoaderFactory {
         if (cacheDir.exists()) {
             cacheDir.deleteRecursively()
         }
-    }
-}
-
-private class ThumbnailOnlyCacheInterceptor : Interceptor {
-    override suspend fun intercept(chain: Interceptor.Chain): ImageResult {
-        val request = chain.request
-        
-        // FileImageSource.Originalの場合はキャッシュを無効化
-        val newRequest = if (request.data is FileImageSource.Original) {
-            request.newBuilder()
-                .memoryCachePolicy(CachePolicy.DISABLED)
-                .diskCachePolicy(CachePolicy.DISABLED)
-                .build()
-        } else {
-            request
-        }
-        
-        return chain.proceed(newRequest)
     }
 }
 
