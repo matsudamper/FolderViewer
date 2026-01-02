@@ -12,8 +12,10 @@ fun HomeScreenContent(
     onAddStorageClick: () -> Unit,
     onStorageClick: (UiStorageConfiguration) -> Unit,
     onEditStorageClick: (UiStorageConfiguration) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Scaffold(
+        modifier = modifier,
         topBar = {
             HomeTopBar(onNavigateToSettings = onNavigateToSettings)
         },

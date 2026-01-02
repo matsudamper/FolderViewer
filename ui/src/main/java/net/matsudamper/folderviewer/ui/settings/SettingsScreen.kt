@@ -35,7 +35,6 @@ fun SettingsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
     LaunchedEffect(uiEvent) {
         uiEvent.collect { event ->
             when (event) {

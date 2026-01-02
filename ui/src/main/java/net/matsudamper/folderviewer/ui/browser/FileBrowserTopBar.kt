@@ -29,7 +29,7 @@ internal fun FileBrowserTopBar(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     sortConfig: FileSortConfig? = null,
-    onSortConfigChanged: ((FileSortConfig) -> Unit)? = null,
+    onSortConfigChange: ((FileSortConfig) -> Unit)? = null,
 ) {
     val scrollState = rememberScrollState()
     LaunchedEffect(title) {
@@ -58,7 +58,7 @@ internal fun FileBrowserTopBar(
             }
         },
         actions = {
-            if (sortConfig != null && onSortConfigChanged != null) {
+            if (sortConfig != null && onSortConfigChange != null) {
                 var showSortMenu by remember { mutableStateOf(false) }
                 IconButton(onClick = { showSortMenu = true }) {
                     Icon(
@@ -73,7 +73,7 @@ internal fun FileBrowserTopBar(
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.sort_name)) },
                         onClick = {
-                            onSortConfigChanged(sortConfig.copy(key = FileSortKey.Name))
+                            onSortConfigChange(sortConfig.copy(key = FileSortKey.Name))
                             showSortMenu = false
                         },
                         leadingIcon = {
@@ -88,7 +88,7 @@ internal fun FileBrowserTopBar(
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.sort_date)) },
                         onClick = {
-                            onSortConfigChanged(sortConfig.copy(key = FileSortKey.Date))
+                            onSortConfigChange(sortConfig.copy(key = FileSortKey.Date))
                             showSortMenu = false
                         },
                         leadingIcon = {
@@ -103,7 +103,7 @@ internal fun FileBrowserTopBar(
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.sort_size)) },
                         onClick = {
-                            onSortConfigChanged(sortConfig.copy(key = FileSortKey.Size))
+                            onSortConfigChange(sortConfig.copy(key = FileSortKey.Size))
                             showSortMenu = false
                         },
                         leadingIcon = {
@@ -118,7 +118,7 @@ internal fun FileBrowserTopBar(
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.sort_asc)) },
                         onClick = {
-                            onSortConfigChanged(sortConfig.copy(isAscending = true))
+                            onSortConfigChange(sortConfig.copy(isAscending = true))
                             showSortMenu = false
                         },
                         leadingIcon = {
@@ -133,7 +133,7 @@ internal fun FileBrowserTopBar(
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.sort_desc)) },
                         onClick = {
-                            onSortConfigChanged(sortConfig.copy(isAscending = false))
+                            onSortConfigChange(sortConfig.copy(isAscending = false))
                             showSortMenu = false
                         },
                         leadingIcon = {
