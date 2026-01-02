@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import coil.ImageLoader
 import coil.compose.AsyncImage
 import net.matsudamper.folderviewer.ui.R
+import net.matsudamper.folderviewer.ui.util.formatBytes
 
 @Composable
 internal fun FileListItem(
@@ -47,7 +48,7 @@ internal fun FileListItem(
         headlineContent = { Text(file.name) },
         supportingContent = {
             if (!file.isDirectory) {
-                Text("${file.size} bytes")
+                Text(formatBytes(file.size))
             }
         },
     )
