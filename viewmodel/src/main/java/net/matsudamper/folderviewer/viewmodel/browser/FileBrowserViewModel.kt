@@ -218,7 +218,7 @@ class FileBrowserViewModel @Inject constructor(
                     isRefreshing = false,
                 )
             }
-            uiChannelEvent.emit(FileBrowserUiEvent.ShowSnackbar(e.message ?: "Unknown error"))
+            uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar(e.message ?: "Unknown error"))
         }
     }
 
@@ -241,6 +241,9 @@ class FileBrowserViewModel @Inject constructor(
         val currentPath: String = "",
         val storageName: String? = null,
         val rawFiles: List<FileItem> = emptyList(),
-        val sortConfig: FileSortConfig = FileSortConfig(),
+        val sortConfig: FileSortConfig = FileSortConfig(
+            key = FileSortKey.Name,
+            isAscending = true,
+        ),
     )
 }
