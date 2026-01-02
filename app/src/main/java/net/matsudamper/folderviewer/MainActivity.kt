@@ -38,6 +38,7 @@ import net.matsudamper.folderviewer.viewmodel.home.HomeViewModel
 import net.matsudamper.folderviewer.viewmodel.settings.SettingsViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.SmbAddViewModel
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.ui.platform.LocalContext
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
