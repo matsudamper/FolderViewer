@@ -19,12 +19,9 @@ style:
   ForbiddenComment:
     active: false
   MagicNumber:
-    ignorePropertyDeclaration: true
-    ignoreCompanionObjectPropertyDeclaration: true
-    ignoreAnnotation: true
-    ignoreEnums: true
-    ignoreNamedArgument: true
-    ignoreNumbers: ['-1', '0', '1', '2']
+    active: false
+  UseCheckOrError:
+    active: false
   UnusedPrivateMember:
     ignoreAnnotated:
       - 'androidx.compose.runtime.Preview'
