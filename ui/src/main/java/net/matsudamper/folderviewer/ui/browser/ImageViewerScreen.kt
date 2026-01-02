@@ -30,25 +30,26 @@ import coil.request.ImageRequest
 import coil.size.Size
 import net.engawapg.lib.zoomable.rememberZoomState
 import net.engawapg.lib.zoomable.zoomable
-import net.matsudamper.folderviewer.coil.FileImageSource
 
 @Composable
 fun ImageViewerScreen(
+    uiState: ImageViewerUiState,
     imageLoader: ImageLoader,
-    path: String,
     onBack: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val imageSource = uiState.imageSource
 
-    val fileName = remember(path) {
-        path.substringAfterLast('/').substringAfterLast('\\')
+    val fileName = remember(imageSource.path) {
+        imageSource.path.substringAfterLast('/').substringAfterLast('\\')
     }
 
     val zoomState = rememberZoomState()
     var showTopBar by remember { mutableStateOf(false) }
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -64,9 +65,9 @@ fun ImageViewerScreen(
         ) {
             var imageState: AsyncImagePainter.State by remember { mutableStateOf(AsyncImagePainter.State.Empty) }
 
-            val imageRequest = remember(path, context) {
+            val imageRequest = remember(imageSource, context) {
                 ImageRequest.Builder(context)
-                    .data(FileImageSource.Original(path))
+                    .data(imageSource)
                     .size(Size.ORIGINAL)
                     .build()
             }

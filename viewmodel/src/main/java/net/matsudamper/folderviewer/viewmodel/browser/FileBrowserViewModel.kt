@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
+import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.navigation.FileBrowser
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
@@ -38,7 +39,9 @@ class FileBrowserViewModel @Inject constructor(
 
     private val callbacks = object : FileBrowserUiState.Callbacks {
         override fun onBack() {
-            viewModelScope.launch { _event.send(Event.PopBackStack) }
+            viewModelScope.launch {
+                _event.send(Event.PopBackStack)
+            }
         }
 
         override fun onFileClick(file: UiFileItem) {
@@ -68,7 +71,9 @@ class FileBrowserViewModel @Inject constructor(
         }
 
         override fun onUpClick() {
-            viewModelScope.launch { _event.send(Event.PopBackStack) }
+            viewModelScope.launch {
+                _event.send(Event.PopBackStack)
+            }
         }
 
         override fun onRefresh() {
@@ -112,12 +117,21 @@ class FileBrowserViewModel @Inject constructor(
                             },
                             files = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig))
                                 .map { fileItem ->
+                                    val isImage = FileUtil.isImage(fileItem.name.lowercase())
                                     UiFileItem(
                                         name = fileItem.name,
                                         path = fileItem.path,
                                         isDirectory = fileItem.isDirectory,
                                         size = fileItem.size,
                                         lastModified = fileItem.lastModified,
+                                        imageSource = if (isImage) {
+                                            FileImageSource.Thumbnail(
+                                                storageId = arg.storageId,
+                                                path = fileItem.path,
+                                            )
+                                        } else {
+                                            null
+                                        },
                                     )
                                 },
                             error = viewModelState.error,
@@ -129,7 +143,6 @@ class FileBrowserViewModel @Inject constructor(
         }.asStateFlow()
 
     private val _fileRepository = MutableStateFlow<FileRepository?>(null)
-    val fileRepository: StateFlow<FileRepository?> = _fileRepository.asStateFlow()
 
     init {
         loadFiles(arg.path)

@@ -2,7 +2,7 @@ package net.matsudamper.folderviewer.ui.browser
 
 import androidx.compose.runtime.Immutable
 
-public data class FileBrowserUiState(
+data class FileBrowserUiState(
     val isLoading: Boolean,
     val isRefreshing: Boolean,
     val currentPath: String,
@@ -13,22 +13,22 @@ public data class FileBrowserUiState(
     val callbacks: Callbacks,
 ) {
     @Immutable
-    public interface Callbacks {
-        public fun onBack()
-        public fun onFileClick(file: UiFileItem)
-        public fun onUpClick()
-        public fun onRefresh()
-        public fun onSortConfigChanged(config: FileSortConfig)
-        public fun onErrorShown()
+    interface Callbacks {
+        fun onBack()
+        fun onFileClick(file: UiFileItem)
+        fun onUpClick()
+        fun onRefresh()
+        fun onSortConfigChanged(config: FileSortConfig)
+        fun onErrorShown()
     }
 }
 
-public data class FileSortConfig(
+data class FileSortConfig(
     val key: FileSortKey = FileSortKey.Name,
     val isAscending: Boolean = true,
 )
 
-public enum class FileSortKey {
+enum class FileSortKey {
     Name,
     Date,
     Size,
