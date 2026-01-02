@@ -16,8 +16,3 @@ sealed interface StorageConfiguration {
         val password: String,
     ) : StorageConfiguration
 }
-
-@Serializable
-internal data class StorageList(
-    val list: List<StorageConfiguration> = emptyList(),
-)
