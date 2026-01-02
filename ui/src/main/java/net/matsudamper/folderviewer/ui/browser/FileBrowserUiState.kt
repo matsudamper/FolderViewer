@@ -6,6 +6,7 @@ public data class FileBrowserUiState(
     val isLoading: Boolean,
     val isRefreshing: Boolean,
     val currentPath: String,
+    val title: String,
     val files: List<UiFileItem>,
     val error: String?,
     val sortConfig: FileSortConfig,

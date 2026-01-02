@@ -9,7 +9,7 @@ import androidx.compose.ui.Modifier
 import coil.ImageLoader
 
 @Composable
-public fun FileBrowserScreen(
+fun FileBrowserScreen(
     uiState: FileBrowserUiState,
     imageLoader: ImageLoader,
     modifier: Modifier = Modifier,

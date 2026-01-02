@@ -1,13 +1,20 @@
 package net.matsudamper.folderviewer.ui.browser
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,38 +33,36 @@ import net.engawapg.lib.zoomable.zoomable
 import net.matsudamper.folderviewer.coil.FileImageSource
 
 @Composable
-public fun ImageViewerScreen(
+fun ImageViewerScreen(
     imageLoader: ImageLoader,
     path: String,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
 
-    // pathからファイル名を抽出（簡易的に）
     val fileName = remember(path) {
         path.substringAfterLast('/').substringAfterLast('\\')
     }
 
     val zoomState = rememberZoomState()
+    var showTopBar by remember { mutableStateOf(false) }
 
     Scaffold(
-        topBar = {
-            FileBrowserTopBar(
-                currentPath = fileName,
-                onBack = onBack,
-                onUpClick = onBack,
-            )
-        },
+        modifier = Modifier.fillMaxSize(),
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .zoomable(zoomState),
+                .zoomable(
+                    zoomState=zoomState,
+                    onTap = {
+                        showTopBar = !showTopBar
+                    },
+                ),
             contentAlignment = Alignment.Center,
         ) {
-            var isLoading by remember { mutableStateOf(true) }
-            var isError by remember { mutableStateOf(false) }
+            var imageState: AsyncImagePainter.State by remember { mutableStateOf(AsyncImagePainter.State.Empty) }
 
             val imageRequest = remember(path, context) {
                 ImageRequest.Builder(context)
@@ -70,8 +75,7 @@ public fun ImageViewerScreen(
                 model = imageRequest,
                 imageLoader = imageLoader,
                 onState = { state ->
-                    isLoading = state is AsyncImagePainter.State.Loading
-                    isError = state is AsyncImagePainter.State.Error
+                    imageState = state
                 },
             )
 
@@ -82,13 +86,34 @@ public fun ImageViewerScreen(
                 modifier = Modifier.fillMaxSize(),
             )
 
-            if (isLoading) {
-                CircularProgressIndicator()
-            }
+            when (val state = imageState) {
+                is AsyncImagePainter.State.Loading -> {
+                    CircularProgressIndicator()
+                }
 
-            if (isError) {
-                Text("Failed to load image")
+                is AsyncImagePainter.State.Error -> {
+                    LaunchedEffect(state) {
+                        state.result.throwable.printStackTrace()
+                    }
+                    Column {
+                        Text("Failed to load image")
+                        Text(state.result.throwable.message ?: "No Error Message")
+                    }
+                }
+
+                else -> Unit
             }
+        }
+
+        AnimatedVisibility(
+            visible = showTopBar,
+            enter = fadeIn() + slideInVertically { height -> -height },
+            exit = fadeOut() + slideOutVertically { height -> -height },
+        ) {
+            FileBrowserTopBar(
+                title = fileName,
+                onBack = onBack,
+            )
         }
     }
 }
