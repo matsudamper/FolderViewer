@@ -53,16 +53,7 @@ private class FileRepositoryImageFetcher(
             is FileImageSource.Original -> fileImageSource.path
         }
 
-        val inputStream = when (fileImageSource) {
-            is FileImageSource.Thumbnail -> {
-                fileRepository.getThumbnailContent(path)
-                    ?: fileRepository.getFileContent(path)
-            }
-
-            is FileImageSource.Original -> {
-                fileRepository.getFileContent(path)
-            }
-        }
+        val inputStream = fileRepository.getFileContent(path)
 
         val bufferedSource = inputStream.source().buffer()
 
