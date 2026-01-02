@@ -10,6 +10,7 @@ import coil.fetch.Fetcher
 import coil.fetch.SourceResult
 import coil.intercept.Interceptor
 import coil.memory.MemoryCache
+import coil.request.CachePolicy
 import coil.request.ImageResult
 import coil.request.Options
 import coil.size.Dimension
@@ -26,6 +27,7 @@ public object CoilImageLoaderFactory {
 
     // ディスクキャッシュサイズ: キャッシュディレクトリの2%を使用
     // ネットワークストレージからの読み込みを減らすために有効化
+    // サムネイルのみキャッシュし、オリジナル画像はキャッシュしない
     private const val DISK_CACHE_SIZE_PERCENT = 0.02
 
     public fun create(context: Context, fileRepository: FileRepository?): ImageLoader {
@@ -45,9 +47,28 @@ public object CoilImageLoaderFactory {
                 if (fileRepository != null) {
                     add(FileRepositoryImageFetcherFactory(fileRepository))
                 }
+                add(ThumbnailOnlyCacheInterceptor())
                 add(MaxSizeInterceptor(4096))
             }
             .build()
+    }
+}
+
+private class ThumbnailOnlyCacheInterceptor : Interceptor {
+    override suspend fun intercept(chain: Interceptor.Chain): ImageResult {
+        val request = chain.request
+        
+        // FileImageSource.Originalの場合はキャッシュを無効化
+        val newRequest = if (request.data is FileImageSource.Original) {
+            request.newBuilder()
+                .memoryCachePolicy(CachePolicy.DISABLED)
+                .diskCachePolicy(CachePolicy.DISABLED)
+                .build()
+        } else {
+            request
+        }
+        
+        return chain.proceed(newRequest)
     }
 }
 
