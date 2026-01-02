@@ -73,7 +73,10 @@ private class FileRepositoryImageFetcher(
         val fileRepository = storageRepository.getFileRepository(storageId)
             ?: throw IllegalStateException("Storage not found: $storageId")
 
-        val inputStream = fileRepository.getFileContent(path)
+        val inputStream = when (fileImageSource) {
+            is FileImageSource.Thumbnail -> fileRepository.getThumbnail(path)
+            is FileImageSource.Original -> fileRepository.getFileContent(path)
+        }
 
         val bufferedSource = inputStream.source().buffer()
 

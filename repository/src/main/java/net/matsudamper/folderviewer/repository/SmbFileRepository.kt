@@ -38,7 +38,15 @@ class SmbFileRepository(
         }
     }
 
-    override suspend fun getFileContent(path: String): InputStream = withContext(Dispatchers.IO) {
+    override suspend fun getFileContent(path: String): InputStream = getFileContentInternal(path)
+
+    override suspend fun getThumbnail(path: String): InputStream =
+        getFileContentInternal(path, maxReadSize = 1024 * 1024)
+
+    private suspend fun getFileContentInternal(
+        path: String,
+        maxReadSize: Long? = null,
+    ): InputStream = withContext(Dispatchers.IO) {
         val connection = client.connect(config.ip)
         try {
             val session = connection.authenticate(
@@ -69,11 +77,41 @@ class SmbFileRepository(
 
             // Return a wrapper stream that closes everything
             object : InputStream() {
-                override fun read(): Int = smbStream.read()
-                override fun read(b: ByteArray): Int = smbStream.read(b)
-                override fun read(b: ByteArray, off: Int, len: Int): Int = smbStream.read(b, off, len)
-                override fun skip(n: Long): Long = smbStream.skip(n)
-                override fun available(): Int = smbStream.available()
+                private var bytesRead: Long = 0
+
+                override fun read(): Int {
+                    if (maxReadSize != null && bytesRead >= maxReadSize) return -1
+                    val result = smbStream.read()
+                    if (result != -1) bytesRead++
+                    return result
+                }
+
+                override fun read(b: ByteArray): Int {
+                    return read(b, 0, b.size)
+                }
+
+                override fun read(b: ByteArray, off: Int, len: Int): Int {
+                    if (maxReadSize != null && bytesRead >= maxReadSize) return -1
+                    val remaining = maxReadSize?.let { it - bytesRead } ?: Long.MAX_VALUE
+                    val toRead = if (len > remaining) remaining.toInt() else len
+                    val result = smbStream.read(b, off, toRead)
+                    if (result != -1) bytesRead += result
+                    return result
+                }
+
+                override fun skip(n: Long): Long {
+                    val remaining = maxReadSize?.let { it - bytesRead } ?: Long.MAX_VALUE
+                    val toSkip = if (n > remaining) remaining else n
+                    val result = smbStream.skip(toSkip)
+                    bytesRead += result
+                    return result
+                }
+
+                override fun available(): Int {
+                    val available = smbStream.available()
+                    val remaining = maxReadSize?.let { (it - bytesRead).toInt() } ?: Int.MAX_VALUE
+                    return if (available > remaining) remaining else available
+                }
                 override fun close() {
                     try {
                         smbStream.close()
