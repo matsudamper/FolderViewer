@@ -4,26 +4,21 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import javax.inject.Inject
+import coil.ImageLoader
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
-import net.matsudamper.folderviewer.coil.CoilImageLoaderFactory
 import net.matsudamper.folderviewer.navigation.FileBrowser
 import net.matsudamper.folderviewer.navigation.Home
 import net.matsudamper.folderviewer.navigation.ImageViewer
@@ -42,16 +37,20 @@ import net.matsudamper.folderviewer.viewmodel.browser.ImageViewerViewModel
 import net.matsudamper.folderviewer.viewmodel.home.HomeViewModel
 import net.matsudamper.folderviewer.viewmodel.settings.SettingsViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.SmbAddViewModel
+import androidx.compose.material3.SnackbarHostState
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @Inject
+    lateinit var imageLoader: ImageLoader
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
         setContent {
             FolderViewerTheme {
-                AppContent()
+                AppContent(imageLoader = imageLoader)
             }
         }
     }
@@ -59,6 +58,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun AppContent(
+    imageLoader: ImageLoader,
     modifier: Modifier = Modifier,
 ) {
     val navController = rememberNavController()
@@ -157,7 +157,6 @@ private fun AppContent(
         composable<FileBrowser> {
             val viewModel: FileBrowserViewModel = hiltViewModel()
             val uiState by viewModel.uiState.collectAsState()
-            val fileRepository by viewModel.fileRepository.collectAsState()
 
             LaunchedEffect(viewModel.event) {
                 viewModel.event.collect { event ->
@@ -187,50 +186,32 @@ private fun AppContent(
                 }
             }
 
-            val context = LocalContext.current
-            val imageLoader = remember(fileRepository) {
-                if (fileRepository != null) {
-                    CoilImageLoaderFactory.create(context, fileRepository)
-                } else {
-                    null
-                }
-            }
-
-            if (imageLoader != null) {
-                FileBrowserScreen(
-                    uiState = uiState,
-                    imageLoader = imageLoader,
-                )
-            } else {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            }
+            FileBrowserScreen(
+                uiState = uiState,
+                imageLoader = imageLoader,
+            )
         }
         composable<ImageViewer> {
             val viewModel: ImageViewerViewModel = hiltViewModel()
-            val fileRepository by viewModel.fileRepository.collectAsState()
+            val uiState by viewModel.uiState.collectAsState()
 
-            val context = LocalContext.current
-            val imageLoader = remember(fileRepository) {
-                if (fileRepository != null) {
-                    CoilImageLoaderFactory.create(context, fileRepository)
-                } else {
-                    null
+            LaunchedEffect(viewModel.event) {
+                viewModel.event.collect { event ->
+                    when (event) {
+                        is ImageViewerViewModel.Event.PopBackStack -> {
+                            navController.popBackStack()
+                        }
+                    }
                 }
             }
 
-            if (imageLoader != null) {
-                ImageViewerScreen(
-                    imageLoader = imageLoader,
-                    path = viewModel.path,
-                    onBack = { navController.popBackStack() },
-                )
-            } else {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            }
+            ImageViewerScreen(
+                uiState = uiState,
+                imageLoader = imageLoader,
+                onBack = {
+                    uiState.callbacks.onBack()
+                },
+            )
         }
     }
 }

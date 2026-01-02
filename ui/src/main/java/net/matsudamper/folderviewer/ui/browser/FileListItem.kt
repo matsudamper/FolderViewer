@@ -6,15 +6,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil.ImageLoader
 import coil.compose.AsyncImage
-import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.ui.R
+import net.matsudamper.folderviewer.ui.util.formatBytes
 
 @Composable
 internal fun FileListItem(
@@ -23,18 +22,13 @@ internal fun FileListItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val isImage = remember(file.name) {
-        val name = file.name.lowercase()
-        name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png") ||
-            name.endsWith(".bmp") || name.endsWith(".gif") || name.endsWith(".webp")
-    }
-
     ListItem(
         modifier = modifier.clickable(onClick = onClick),
         leadingContent = {
-            if (isImage) {
+            val imageSource = file.imageSource
+            if (imageSource != null) {
                 AsyncImage(
-                    model = FileImageSource.Thumbnail(file.path),
+                    model = imageSource,
                     contentDescription = null,
                     imageLoader = imageLoader,
                     modifier = Modifier.size(24.dp),
@@ -54,7 +48,7 @@ internal fun FileListItem(
         headlineContent = { Text(file.name) },
         supportingContent = {
             if (!file.isDirectory) {
-                Text("${file.size} bytes")
+                Text(formatBytes(file.size))
             }
         },
     )

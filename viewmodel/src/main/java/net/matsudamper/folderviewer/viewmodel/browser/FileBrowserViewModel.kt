@@ -15,9 +15,11 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
+import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.navigation.FileBrowser
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
+import net.matsudamper.folderviewer.repository.FileRepositoryResult
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.FileSortConfig
@@ -37,7 +39,9 @@ class FileBrowserViewModel @Inject constructor(
 
     private val callbacks = object : FileBrowserUiState.Callbacks {
         override fun onBack() {
-            viewModelScope.launch { _event.send(Event.PopBackStack) }
+            viewModelScope.launch {
+                _event.send(Event.PopBackStack)
+            }
         }
 
         override fun onFileClick(file: UiFileItem) {
@@ -67,7 +71,9 @@ class FileBrowserViewModel @Inject constructor(
         }
 
         override fun onUpClick() {
-            viewModelScope.launch { _event.send(Event.PopBackStack) }
+            viewModelScope.launch {
+                _event.send(Event.PopBackStack)
+            }
         }
 
         override fun onRefresh() {
@@ -111,12 +117,21 @@ class FileBrowserViewModel @Inject constructor(
                             },
                             files = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig))
                                 .map { fileItem ->
+                                    val isImage = FileUtil.isImage(fileItem.name.lowercase())
                                     UiFileItem(
                                         name = fileItem.name,
                                         path = fileItem.path,
                                         isDirectory = fileItem.isDirectory,
                                         size = fileItem.size,
                                         lastModified = fileItem.lastModified,
+                                        imageSource = if (isImage) {
+                                            FileImageSource.Thumbnail(
+                                                storageId = arg.storageId,
+                                                path = fileItem.path,
+                                            )
+                                        } else {
+                                            null
+                                        },
                                     )
                                 },
                             error = viewModelState.error,
@@ -128,7 +143,6 @@ class FileBrowserViewModel @Inject constructor(
         }.asStateFlow()
 
     private val _fileRepository = MutableStateFlow<FileRepository?>(null)
-    val fileRepository: StateFlow<FileRepository?> = _fileRepository.asStateFlow()
 
     init {
         loadFiles(arg.path)
@@ -185,14 +199,27 @@ class FileBrowserViewModel @Inject constructor(
     private suspend fun fetchFilesInternal(path: String) {
         try {
             val repository = getRepository()
-            val files = repository.getFiles(path)
-            viewModelStateFlow.update {
-                it.copy(
-                    isLoading = false,
-                    isRefreshing = false,
-                    currentPath = path,
-                    rawFiles = files,
-                )
+            when (val result = repository.getFiles(path)) {
+                is FileRepositoryResult.Success -> {
+                    viewModelStateFlow.update {
+                        it.copy(
+                            isLoading = false,
+                            isRefreshing = false,
+                            currentPath = path,
+                            rawFiles = result.value,
+                        )
+                    }
+                }
+
+                is FileRepositoryResult.Error -> {
+                    viewModelStateFlow.update {
+                        it.copy(
+                            isLoading = false,
+                            isRefreshing = false,
+                            error = result.throwable.message ?: "Unknown error",
+                        )
+                    }
+                }
             }
         } catch (e: CancellationException) {
             throw e

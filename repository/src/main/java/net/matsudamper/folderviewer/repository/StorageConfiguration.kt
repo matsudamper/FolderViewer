@@ -13,12 +13,6 @@ sealed interface StorageConfiguration {
         override val name: String,
         val ip: String,
         val username: String,
-        // パスワードはDataStoreに平文で保存すべきではない。
-        // IDをキーとしてEncryptedSharedPreferencesに保存する。
+        val password: String,
     ) : StorageConfiguration
 }
-
-@Serializable
-internal data class StorageList(
-    val list: List<StorageConfiguration> = emptyList(),
-)

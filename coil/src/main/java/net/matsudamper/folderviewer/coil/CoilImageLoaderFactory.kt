@@ -8,22 +8,23 @@ import coil.fetch.FetchResult
 import coil.fetch.Fetcher
 import coil.fetch.SourceResult
 import coil.intercept.Interceptor
+import coil.key.Keyer
 import coil.request.ImageResult
 import coil.request.Options
 import coil.size.Dimension
 import coil.size.Precision
 import coil.size.Size
-import net.matsudamper.folderviewer.repository.FileRepository
+import net.matsudamper.folderviewer.repository.FileRepositoryResult
+import net.matsudamper.folderviewer.repository.StorageRepository
 import okio.buffer
 import okio.source
 
-public object CoilImageLoaderFactory {
-    public fun create(context: Context, fileRepository: FileRepository?): ImageLoader {
+object CoilImageLoaderFactory {
+    fun create(context: Context, storageRepository: StorageRepository): ImageLoader {
         return ImageLoader.Builder(context)
             .components {
-                if (fileRepository != null) {
-                    add(FileRepositoryImageFetcherFactory(fileRepository))
-                }
+                add(FileImageSourceKeyer())
+                add(FileRepositoryImageFetcherFactory(storageRepository))
                 add(MaxSizeInterceptor(4096))
             }
             .build()
@@ -41,12 +42,21 @@ public object CoilImageLoaderFactory {
     }
 }
 
+private class FileImageSourceKeyer : Keyer<FileImageSource> {
+    override fun key(data: FileImageSource, options: Options): String? {
+        return when (data) {
+            is FileImageSource.Thumbnail -> "thumbnail:${data.storageId}:${data.path}"
+            is FileImageSource.Original -> null
+        }
+    }
+}
+
 private class FileRepositoryImageFetcherFactory(
-    private val fileRepository: FileRepository,
+    private val storageRepository: StorageRepository,
 ) : Fetcher.Factory<Any> {
     override fun create(data: Any, options: Options, imageLoader: ImageLoader): Fetcher? {
         return if (data is FileImageSource) {
-            FileRepositoryImageFetcher(data, options, fileRepository)
+            FileRepositoryImageFetcher(data, options, storageRepository)
         } else {
             null
         }
@@ -56,23 +66,19 @@ private class FileRepositoryImageFetcherFactory(
 private class FileRepositoryImageFetcher(
     private val fileImageSource: FileImageSource,
     private val options: Options,
-    private val fileRepository: FileRepository,
+    private val storageRepository: StorageRepository,
 ) : Fetcher {
     override suspend fun fetch(): FetchResult {
-        val path = when (fileImageSource) {
-            is FileImageSource.Thumbnail -> fileImageSource.path
-            is FileImageSource.Original -> fileImageSource.path
-        }
+        val path = fileImageSource.path
+        val storageId = fileImageSource.storageId
 
-        val inputStream = when (fileImageSource) {
-            is FileImageSource.Thumbnail -> {
-                fileRepository.getThumbnailContent(path)
-                    ?: fileRepository.getFileContent(path)
-            }
+        val fileRepository = storageRepository.getFileRepository(storageId)
+            ?: throw IllegalStateException("Storage not found: $storageId")
 
-            is FileImageSource.Original -> {
-                fileRepository.getFileContent(path)
-            }
+        val result = fileRepository.getFileContent(path)
+        val inputStream = when (result) {
+            is FileRepositoryResult.Success -> result.value
+            is FileRepositoryResult.Error -> throw result.throwable
         }
 
         val bufferedSource = inputStream.source().buffer()
