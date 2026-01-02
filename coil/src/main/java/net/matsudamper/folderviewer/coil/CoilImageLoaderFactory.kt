@@ -18,9 +18,6 @@ import okio.buffer
 import okio.source
 
 public object CoilImageLoaderFactory {
-    // ディスクキャッシュのディレクトリ名
-    private const val DISK_CACHE_DIRECTORY_NAME = "image_cache"
-
     public fun create(context: Context, fileRepository: FileRepository?): ImageLoader {
         return ImageLoader.Builder(context)
             .components {
@@ -34,14 +31,20 @@ public object CoilImageLoaderFactory {
 
     /**
      * ディスクキャッシュをクリアする
-     * Coilのキャッシュディレクトリをクリアします
+     * Coilが実際に使用しているキャッシュディレクトリを取得して削除します
      */
     public fun clearDiskCache(context: Context) {
-        // Coilのキャッシュディレクトリ
-        val cacheDir = context.cacheDir.resolve(DISK_CACHE_DIRECTORY_NAME)
-        if (cacheDir.exists()) {
-            cacheDir.deleteRecursively()
+        // Coilのデフォルト設定でImageLoaderを作成し、実際のキャッシュディレクトリを取得
+        val tempImageLoader = ImageLoader.Builder(context).build()
+        val diskCache = tempImageLoader.diskCache
+        
+        if (diskCache != null) {
+            // ディスクキャッシュをクリア
+            diskCache.clear()
         }
+        
+        // ImageLoaderをシャットダウン
+        tempImageLoader.shutdown()
     }
 }
 
