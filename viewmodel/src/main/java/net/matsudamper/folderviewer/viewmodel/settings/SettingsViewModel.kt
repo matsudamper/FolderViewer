@@ -29,7 +29,11 @@ class SettingsViewModel @Inject constructor(
                 CoilImageLoaderFactory.clearDiskCache(context)
                 _event.emit(Event.CacheClearSuccess)
             } catch (e: Exception) {
-                _event.emit(Event.CacheClearError(e.message ?: "Unknown error"))
+                _event.emit(
+                    Event.CacheClearError(
+                        e.message ?: context.getString(net.matsudamper.folderviewer.ui.R.string.unknown_error),
+                    ),
+                )
             }
         }
     }

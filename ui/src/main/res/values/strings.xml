@@ -14,4 +14,7 @@
     <string name="sort_desc">降順</string>
     <string name="disk_cache_cleared">ディスクキャッシュをクリアしました</string>
     <string name="disk_cache_clear_error">ディスクキャッシュのクリアに失敗しました</string>
+    <string name="unknown_error">不明なエラー</string>
+    <string name="cache">キャッシュ</string>
+    <string name="clear_disk_cache">ディスクキャッシュをクリア</string>
 </resources>

@@ -35,7 +35,7 @@ fun SettingsScreen(
         modifier = modifier,
         topBar = {
             FileBrowserTopBar(
-                title = "設定",
+                title = stringResource(R.string.settings),
                 onBack = onBack,
             )
         },
@@ -55,12 +55,12 @@ fun SettingsScreen(
                 verticalArrangement = Arrangement.Top,
                 horizontalAlignment = Alignment.Start,
             ) {
-                Text(text = "キャッシュ")
+                Text(text = stringResource(R.string.cache))
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = onClearDiskCache,
                 ) {
-                    Text(text = "ディスクキャッシュをクリア")
+                    Text(text = stringResource(R.string.clear_disk_cache))
                 }
             }
         }
