@@ -5,7 +5,7 @@ import java.io.InputStream
 interface FileRepository {
     suspend fun getFiles(path: String): List<FileItem>
     suspend fun getFileContent(path: String): InputStream
-    suspend fun getThumbnail(path: String): InputStream
+    suspend fun getThumbnail(path: String, thumbnailSize: Int): InputStream
 }
 
 data class FileItem(

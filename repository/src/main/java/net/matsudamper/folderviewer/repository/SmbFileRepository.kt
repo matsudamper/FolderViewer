@@ -45,7 +45,7 @@ class SmbFileRepository(
 
     override suspend fun getFileContent(path: String): InputStream = getFileContentInternal(path)
 
-    override suspend fun getThumbnail(path: String): InputStream = withContext(Dispatchers.IO) {
+    override suspend fun getThumbnail(path: String, thumbnailSize: Int): InputStream = withContext(Dispatchers.IO) {
         val connection = client.connect(config.ip)
         try {
             val session = connection.authenticate(
@@ -84,7 +84,7 @@ class SmbFileRepository(
                 }
 
                 val decodeOptions = BitmapFactory.Options().apply {
-                    inSampleSize = calculateInSampleSize(minOf(width, height), THUMBNAIL_SIZE)
+                    inSampleSize = calculateInSampleSize(minOf(width, height), thumbnailSize)
                 }
 
                 val bitmap = file.inputStream.use { inputStream ->
@@ -266,7 +266,6 @@ class SmbFileRepository(
 
     companion object {
         private const val PATH_SPLIT_LIMIT = 2
-        private const val THUMBNAIL_SIZE = 256
         private const val MAX_THUMBNAIL_READ_SIZE = 1024 * 1024 // 1MB
     }
 }

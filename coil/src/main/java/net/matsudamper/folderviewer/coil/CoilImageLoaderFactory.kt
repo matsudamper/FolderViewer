@@ -38,6 +38,8 @@ object CoilImageLoaderFactory {
 
         tempImageLoader.shutdown()
     }
+
+    internal const val DEFAULT_THUMBNAIL_SIZE = 256
 }
 
 private class FileImageSourceKeyer : Keyer<FileImageSource> {
@@ -74,7 +76,14 @@ private class FileRepositoryImageFetcher(
             ?: throw IllegalStateException("Storage not found: $storageId")
 
         val inputStream = when (fileImageSource) {
-            is FileImageSource.Thumbnail -> fileRepository.getThumbnail(path)
+            is FileImageSource.Thumbnail -> {
+                val thumbnailSize = when (val width = options.size.width) {
+                    is Dimension.Pixels -> width.px
+                    else -> CoilImageLoaderFactory.DEFAULT_THUMBNAIL_SIZE
+                }
+                fileRepository.getThumbnail(path, thumbnailSize)
+            }
+
             is FileImageSource.Original -> fileRepository.getFileContent(path)
         }
 
