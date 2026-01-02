@@ -29,14 +29,13 @@ object CoilImageLoaderFactory {
             .build()
     }
 
-    public fun clearDiskCache(context: Context) {
+    fun clearDiskCache(context: Context) {
         val tempImageLoader = ImageLoader.Builder(context).build()
         val diskCache = tempImageLoader.diskCache
-        
-        if (diskCache != null) {
-            diskCache.clear()
-        }
-        
+
+        @Suppress("OPT_IN_USAGE")
+        diskCache?.clear()
+
         tempImageLoader.shutdown()
     }
 }
