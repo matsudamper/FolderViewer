@@ -10,17 +10,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import javax.inject.Inject
-import kotlinx.coroutines.launch
 import coil.ImageLoader
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 import net.matsudamper.folderviewer.navigation.FileBrowser
 import net.matsudamper.folderviewer.navigation.Home
 import net.matsudamper.folderviewer.navigation.ImageViewer
@@ -91,33 +88,10 @@ private fun AppContent(
         composable<Settings> {
             val viewModel: SettingsViewModel = hiltViewModel()
             val snackbarHostState = remember { SnackbarHostState() }
-            val coroutineScope = rememberCoroutineScope()
-            val context = LocalContext.current
-
-            LaunchedEffect(viewModel.event) {
-                viewModel.event.collect { event ->
-                    when (event) {
-                        is SettingsViewModel.Event.CacheClearSuccess -> {
-                            coroutineScope.launch {
-                                snackbarHostState.showSnackbar(
-                                    context.getString(net.matsudamper.folderviewer.ui.R.string.disk_cache_cleared),
-                                )
-                            }
-                        }
-
-                        is SettingsViewModel.Event.CacheClearError -> {
-                            coroutineScope.launch {
-                                snackbarHostState.showSnackbar(
-                                    "${context.getString(net.matsudamper.folderviewer.ui.R.string.disk_cache_clear_error)}: ${event.message}",
-                                )
-                            }
-                        }
-                    }
-                }
-            }
 
             SettingsScreen(
                 snackbarHostState = snackbarHostState,
+                uiEvent = viewModel.uiEvent,
                 onClearDiskCache = viewModel::clearDiskCache,
                 onBack = {
                     navController.popBackStack()
@@ -138,10 +112,10 @@ private fun AppContent(
             val viewModel: SmbAddViewModel = hiltViewModel()
             val uiState by viewModel.uiState.collectAsState()
 
-            LaunchedEffect(viewModel.event) {
-                viewModel.event.collect { event ->
+            LaunchedEffect(viewModel.viewModelEventFlow) {
+                viewModel.viewModelEventFlow.collect { event ->
                     when (event) {
-                        SmbAddViewModel.Event.SaveSuccess -> {
+                        SmbAddViewModel.ViewModelEvent.SaveSuccess -> {
                             navController.popBackStack(Home, inclusive = false)
                         }
                     }
@@ -160,14 +134,14 @@ private fun AppContent(
             val viewModel: FileBrowserViewModel = hiltViewModel()
             val uiState by viewModel.uiState.collectAsState()
 
-            LaunchedEffect(viewModel.event) {
-                viewModel.event.collect { event ->
+            LaunchedEffect(viewModel.viewModelEventFlow) {
+                viewModel.viewModelEventFlow.collect { event ->
                     when (event) {
-                        is FileBrowserViewModel.Event.PopBackStack -> {
+                        is FileBrowserViewModel.ViewModelEvent.PopBackStack -> {
                             navController.popBackStack()
                         }
 
-                        is FileBrowserViewModel.Event.NavigateToFileBrowser -> {
+                        is FileBrowserViewModel.ViewModelEvent.NavigateToFileBrowser -> {
                             navController.navigate(
                                 FileBrowser(
                                     storageId = event.storageId,
@@ -176,7 +150,7 @@ private fun AppContent(
                             )
                         }
 
-                        is FileBrowserViewModel.Event.NavigateToImageViewer -> {
+                        is FileBrowserViewModel.ViewModelEvent.NavigateToImageViewer -> {
                             navController.navigate(
                                 ImageViewer(
                                     id = event.storageId,
@@ -190,6 +164,7 @@ private fun AppContent(
 
             FileBrowserScreen(
                 uiState = uiState,
+                uiEvent = viewModel.uiEvent,
                 imageLoader = imageLoader,
             )
         }
@@ -197,10 +172,10 @@ private fun AppContent(
             val viewModel: ImageViewerViewModel = hiltViewModel()
             val uiState by viewModel.uiState.collectAsState()
 
-            LaunchedEffect(viewModel.event) {
-                viewModel.event.collect { event ->
+            LaunchedEffect(viewModel.viewModelEventFlow) {
+                viewModel.viewModelEventFlow.collect { event ->
                     when (event) {
-                        is ImageViewerViewModel.Event.PopBackStack -> {
+                        is ImageViewerViewModel.ViewModelEvent.PopBackStack -> {
                             navController.popBackStack()
                         }
                     }

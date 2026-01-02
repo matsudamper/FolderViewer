@@ -14,6 +14,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,16 +22,30 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import net.matsudamper.folderviewer.ui.R
 import net.matsudamper.folderviewer.ui.browser.FileBrowserTopBar
 
 @Composable
 fun SettingsScreen(
     snackbarHostState: SnackbarHostState,
+    uiEvent: Flow<SettingsUiEvent>,
     onClearDiskCache: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
+    LaunchedEffect(uiEvent) {
+        uiEvent.collect { event ->
+            when (event) {
+                is SettingsUiEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(event.message)
+                }
+            }
+        }
+    }
+
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -72,6 +87,7 @@ fun SettingsScreen(
 private fun SettingsScreenPreview() {
     SettingsScreen(
         snackbarHostState = remember { SnackbarHostState() },
+        uiEvent = flow {},
         onClearDiskCache = {},
         onBack = {},
     )

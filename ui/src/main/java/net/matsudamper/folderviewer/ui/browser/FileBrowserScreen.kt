@@ -7,10 +7,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import coil.ImageLoader
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 
 @Composable
 fun FileBrowserScreen(
     uiState: FileBrowserUiState,
+    uiEvent: Flow<FileBrowserUiEvent>,
     imageLoader: ImageLoader,
     modifier: Modifier = Modifier,
 ) {
@@ -22,11 +25,15 @@ fun FileBrowserScreen(
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
-    val errorMessage = uiState.error
-    LaunchedEffect(errorMessage) {
-        errorMessage ?: return@LaunchedEffect
-        snackbarHostState.showSnackbar(errorMessage)
-        callbacks.onErrorShown()
+
+    LaunchedEffect(uiEvent) {
+        uiEvent.collect { event ->
+            when (event) {
+                is FileBrowserUiEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(event.message)
+                }
+            }
+        }
     }
 
     FileBrowserScreenContent(

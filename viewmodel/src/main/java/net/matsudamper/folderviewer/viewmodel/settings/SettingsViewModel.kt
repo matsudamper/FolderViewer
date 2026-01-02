@@ -12,34 +12,35 @@ import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import net.matsudamper.folderviewer.coil.CoilImageLoaderFactory
+import net.matsudamper.folderviewer.ui.settings.SettingsUiEvent
+import net.matsudamper.folderviewer.ui.R
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
-    private val _event = MutableSharedFlow<Event>(
+    private val _uiEvent = MutableSharedFlow<SettingsUiEvent>(
         replay = 0,
         extraBufferCapacity = 1,
     )
-    val event: SharedFlow<Event> = _event.asSharedFlow()
+    val uiEvent: SharedFlow<SettingsUiEvent> = _uiEvent.asSharedFlow()
 
     fun clearDiskCache() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 CoilImageLoaderFactory.clearDiskCache(context)
-                _event.emit(Event.CacheClearSuccess)
+                _uiEvent.emit(
+                    SettingsUiEvent.ShowSnackbar(
+                        context.getString(R.string.disk_cache_cleared),
+                    ),
+                )
             } catch (e: Exception) {
-                _event.emit(
-                    Event.CacheClearError(
-                        e.message ?: context.getString(net.matsudamper.folderviewer.ui.R.string.unknown_error),
+                _uiEvent.emit(
+                    SettingsUiEvent.ShowSnackbar(
+                        "${context.getString(R.string.disk_cache_clear_error)}: ${e.message}",
                     ),
                 )
             }
         }
-    }
-
-    sealed interface Event {
-        data object CacheClearSuccess : Event
-        data class CacheClearError(val message: String) : Event
     }
 }

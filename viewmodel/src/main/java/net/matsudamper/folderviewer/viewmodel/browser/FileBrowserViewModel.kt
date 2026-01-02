@@ -7,8 +7,11 @@ import androidx.navigation.toRoute
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -20,6 +23,7 @@ import net.matsudamper.folderviewer.navigation.FileBrowser
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
+import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.FileSortConfig
 import net.matsudamper.folderviewer.ui.browser.FileSortKey
@@ -33,21 +37,27 @@ class FileBrowserViewModel @Inject constructor(
 ) : ViewModel() {
     private val arg: FileBrowser = savedStateHandle.toRoute<FileBrowser>()
 
-    private val _event = Channel<Event>(Channel.BUFFERED)
-    val event = _event.receiveAsFlow()
+    private val viewModelEventChannel = Channel<ViewModelEvent>(Channel.UNLIMITED)
+    val viewModelEventFlow = viewModelEventChannel.receiveAsFlow()
+
+    private val _uiEvent = MutableSharedFlow<FileBrowserUiEvent>(
+        replay = 0,
+        extraBufferCapacity = 1,
+    )
+    val uiEvent: SharedFlow<FileBrowserUiEvent> = _uiEvent.asSharedFlow()
 
     private val callbacks = object : FileBrowserUiState.Callbacks {
         override fun onBack() {
             viewModelScope.launch {
-                _event.send(Event.PopBackStack)
+                viewModelEventChannel.send(ViewModelEvent.PopBackStack)
             }
         }
 
         override fun onFileClick(file: UiFileItem) {
             if (file.isDirectory) {
                 viewModelScope.launch {
-                    _event.send(
-                        Event.NavigateToFileBrowser(
+                    viewModelEventChannel.send(
+                        ViewModelEvent.NavigateToFileBrowser(
                             path = file.path,
                             storageId = arg.storageId,
                         ),
@@ -58,8 +68,8 @@ class FileBrowserViewModel @Inject constructor(
 
                 if (isImage) {
                     viewModelScope.launch {
-                        _event.send(
-                            Event.NavigateToImageViewer(
+                        viewModelEventChannel.send(
+                            ViewModelEvent.NavigateToImageViewer(
                                 file.path,
                                 storageId = arg.storageId,
                             ),
@@ -71,7 +81,7 @@ class FileBrowserViewModel @Inject constructor(
 
         override fun onUpClick() {
             viewModelScope.launch {
-                _event.send(Event.PopBackStack)
+                viewModelEventChannel.send(ViewModelEvent.PopBackStack)
             }
         }
 
@@ -81,10 +91,6 @@ class FileBrowserViewModel @Inject constructor(
 
         override fun onSortConfigChanged(config: FileSortConfig) {
             viewModelStateFlow.update { it.copy(sortConfig = config) }
-        }
-
-        override fun onErrorShown() {
-            viewModelStateFlow.update { it.copy(error = null) }
         }
     }
 
@@ -99,7 +105,6 @@ class FileBrowserViewModel @Inject constructor(
                 currentPath = arg.path,
                 title = arg.path,
                 files = emptyList(),
-                error = null,
                 sortConfig = FileSortConfig(),
                 callbacks = callbacks,
             ),
@@ -133,7 +138,6 @@ class FileBrowserViewModel @Inject constructor(
                                         },
                                     )
                                 },
-                            error = viewModelState.error,
                             sortConfig = viewModelState.sortConfig,
                         )
                     }
@@ -181,7 +185,7 @@ class FileBrowserViewModel @Inject constructor(
 
     private fun loadFiles(path: String) {
         viewModelScope.launch {
-            viewModelStateFlow.update { it.copy(isLoading = true, error = null) }
+            viewModelStateFlow.update { it.copy(isLoading = true) }
             fetchFilesInternal(path)
         }
     }
@@ -189,7 +193,7 @@ class FileBrowserViewModel @Inject constructor(
     fun onRefresh() {
         val path = viewModelStateFlow.value.currentPath
         viewModelScope.launch {
-            viewModelStateFlow.update { it.copy(isRefreshing = true, error = null) }
+            viewModelStateFlow.update { it.copy(isRefreshing = true) }
             fetchFilesInternal(path)
         }
     }
@@ -214,22 +218,22 @@ class FileBrowserViewModel @Inject constructor(
                 it.copy(
                     isLoading = false,
                     isRefreshing = false,
-                    error = e.message ?: "Unknown error",
                 )
             }
+            _uiEvent.emit(FileBrowserUiEvent.ShowSnackbar(e.message ?: "Unknown error"))
         }
     }
 
-    sealed interface Event {
-        data object PopBackStack : Event
+    sealed interface ViewModelEvent {
+        data object PopBackStack : ViewModelEvent
         data class NavigateToFileBrowser(
             val path: String,
             val storageId: String,
-        ) : Event
+        ) : ViewModelEvent
         data class NavigateToImageViewer(
             val path: String,
             val storageId: String,
-        ) : Event
+        ) : ViewModelEvent
     }
 
     private data class ViewModelState(
@@ -239,6 +243,5 @@ class FileBrowserViewModel @Inject constructor(
         val storageName: String? = null,
         val rawFiles: List<FileItem> = emptyList(),
         val sortConfig: FileSortConfig = FileSortConfig(),
-        val error: String? = null,
     )
 }

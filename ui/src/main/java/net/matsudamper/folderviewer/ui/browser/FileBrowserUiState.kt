@@ -8,7 +8,6 @@ data class FileBrowserUiState(
     val currentPath: String,
     val title: String,
     val files: List<UiFileItem>,
-    val error: String?,
     val sortConfig: FileSortConfig,
     val callbacks: Callbacks,
 ) {
@@ -19,7 +18,6 @@ data class FileBrowserUiState(
         fun onUpClick()
         fun onRefresh()
         fun onSortConfigChanged(config: FileSortConfig)
-        fun onErrorShown()
     }
 }
 

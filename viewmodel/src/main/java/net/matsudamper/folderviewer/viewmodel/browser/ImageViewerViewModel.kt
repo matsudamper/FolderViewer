@@ -23,13 +23,13 @@ class ImageViewerViewModel @Inject constructor(
 ) : ViewModel() {
     private val args = savedStateHandle.toRoute<ImageViewer>()
 
-    private val _event = Channel<Event>(Channel.BUFFERED)
-    val event = _event.receiveAsFlow()
+    private val viewModelEventChannel = Channel<ViewModelEvent>(Channel.UNLIMITED)
+    val viewModelEventFlow = viewModelEventChannel.receiveAsFlow()
 
     private val callbacks = object : ImageViewerUiState.Callbacks {
         override fun onBack() {
             viewModelScope.launch {
-                _event.send(Event.PopBackStack)
+                viewModelEventChannel.send(ViewModelEvent.PopBackStack)
             }
         }
     }
@@ -69,7 +69,7 @@ class ImageViewerViewModel @Inject constructor(
         val imageSource: FileImageSource.Original,
     )
 
-    sealed interface Event {
-        data object PopBackStack : Event
+    sealed interface ViewModelEvent {
+        data object PopBackStack : ViewModelEvent
     }
 }

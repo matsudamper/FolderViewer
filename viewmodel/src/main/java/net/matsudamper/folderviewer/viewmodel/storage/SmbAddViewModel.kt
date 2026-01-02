@@ -25,8 +25,8 @@ class SmbAddViewModel @Inject constructor(
 ) : ViewModel() {
     private val storageId: String? = savedStateHandle["storageId"]
 
-    private val _event = Channel<Event>()
-    val event = _event.receiveAsFlow()
+    private val viewModelEventChannel = Channel<ViewModelEvent>(Channel.UNLIMITED)
+    val viewModelEventFlow = viewModelEventChannel.receiveAsFlow()
 
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> =
         MutableStateFlow(ViewModelState())
@@ -95,12 +95,12 @@ class SmbAddViewModel @Inject constructor(
             } else {
                 storageRepository.updateSmbStorage(storageId, repoInput)
             }
-            _event.send(Event.SaveSuccess)
+            viewModelEventChannel.send(ViewModelEvent.SaveSuccess)
         }
     }
 
-    sealed interface Event {
-        data object SaveSuccess : Event
+    sealed interface ViewModelEvent {
+        data object SaveSuccess : ViewModelEvent
     }
 
     private data class ViewModelState(
