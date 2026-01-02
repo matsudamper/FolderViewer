@@ -91,7 +91,7 @@ private fun AppContent(
 
             SettingsScreen(
                 snackbarHostState = snackbarHostState,
-                uiEvent = viewModel.uiEvent,
+                uiEvent = viewModel.uiEventFlow,
                 onClearDiskCache = viewModel::clearDiskCache,
                 onBack = {
                     navController.popBackStack()
