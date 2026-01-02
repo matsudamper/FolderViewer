@@ -29,6 +29,12 @@ style:
   ReturnCount:
     active: false
 
+exceptions:
+  TooGenericExceptionCaught:
+    active: false
+  PrintStackTrace:
+    active: false
+
 coroutines:
   InjectDispatcher:
     active: false
