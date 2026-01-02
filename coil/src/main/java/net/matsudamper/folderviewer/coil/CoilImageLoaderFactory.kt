@@ -29,21 +29,14 @@ public object CoilImageLoaderFactory {
             .build()
     }
 
-    /**
-     * ディスクキャッシュをクリアする
-     * Coilが実際に使用しているキャッシュディレクトリを取得して削除します
-     */
     public fun clearDiskCache(context: Context) {
-        // Coilのデフォルト設定でImageLoaderを作成し、実際のキャッシュディレクトリを取得
         val tempImageLoader = ImageLoader.Builder(context).build()
         val diskCache = tempImageLoader.diskCache
         
         if (diskCache != null) {
-            // ディスクキャッシュをクリア
             diskCache.clear()
         }
         
-        // ImageLoaderをシャットダウン
         tempImageLoader.shutdown()
     }
 }
