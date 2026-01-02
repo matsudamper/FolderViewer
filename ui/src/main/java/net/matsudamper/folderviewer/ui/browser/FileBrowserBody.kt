@@ -5,6 +5,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -18,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import coil.ImageLoader
 import net.matsudamper.folderviewer.ui.R
 
@@ -74,19 +78,56 @@ internal fun FileBrowserBody(
             }
 
             else -> {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = contentPadding,
-                ) {
-                    items(
-                        items = uiState.files,
-                        key = { it.path },
-                    ) { file ->
-                        FileListItem(
-                            file = file,
-                            imageLoader = imageLoader,
-                            onClick = { onFileClick(file) },
-                        )
+                when (uiState.displayMode) {
+                    DisplayMode.Grid -> {
+                        LazyVerticalGrid(
+                            columns = GridCells.Adaptive(minSize = 120.dp),
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = contentPadding,
+                        ) {
+                            items(
+                                items = uiState.files,
+                                key = { it.path },
+                            ) { file ->
+                                FileGridItem(
+                                    file = file,
+                                    imageLoader = imageLoader,
+                                    onClick = { onFileClick(file) },
+                                )
+                            }
+                        }
+                    }
+
+                    else -> {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = contentPadding,
+                        ) {
+                            items(
+                                items = uiState.files,
+                                key = { it.path },
+                            ) { file ->
+                                when (uiState.displayMode) {
+                                    DisplayMode.Small -> {
+                                        FileSmallListItem(
+                                            file = file,
+                                            imageLoader = imageLoader,
+                                            onClick = { onFileClick(file) },
+                                        )
+                                    }
+
+                                    DisplayMode.Medium -> {
+                                        FileListItem(
+                                            file = file,
+                                            imageLoader = imageLoader,
+                                            onClick = { onFileClick(file) },
+                                        )
+                                    }
+
+                                    DisplayMode.Grid -> Unit
+                                }
+                            }
+                        }
                     }
                 }
             }

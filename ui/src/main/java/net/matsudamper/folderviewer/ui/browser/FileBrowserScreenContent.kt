@@ -23,6 +23,8 @@ internal fun FileBrowserScreenContent(
                 onBack = callbacks::onBack,
                 sortConfig = uiState.sortConfig,
                 onSortConfigChange = callbacks::onSortConfigChanged,
+                displayMode = uiState.displayMode,
+                onDisplayModeChange = callbacks::onDisplayModeChanged,
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },

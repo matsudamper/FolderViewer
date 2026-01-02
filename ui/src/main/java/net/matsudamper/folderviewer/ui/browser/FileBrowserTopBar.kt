@@ -30,6 +30,8 @@ internal fun FileBrowserTopBar(
     modifier: Modifier = Modifier,
     sortConfig: FileSortConfig? = null,
     onSortConfigChange: ((FileSortConfig) -> Unit)? = null,
+    displayMode: DisplayMode = DisplayMode.Medium,
+    onDisplayModeChange: ((DisplayMode) -> Unit)? = null,
 ) {
     val scrollState = rememberScrollState()
     LaunchedEffect(title) {
@@ -58,6 +60,72 @@ internal fun FileBrowserTopBar(
             }
         },
         actions = {
+            if (onDisplayModeChange != null) {
+                var showDisplayMenu by remember { mutableStateOf(false) }
+                IconButton(onClick = { showDisplayMenu = true }) {
+                    Icon(
+                        painter = painterResource(
+                            id = if (displayMode == DisplayMode.Grid) {
+                                R.drawable.ic_grid_view
+                            } else {
+                                R.drawable.ic_view_list
+                            },
+                        ),
+                        contentDescription = stringResource(R.string.display_mode),
+                    )
+                }
+                DropdownMenu(
+                    expanded = showDisplayMenu,
+                    onDismissRequest = { showDisplayMenu = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.display_mode_small)) },
+                        onClick = {
+                            onDisplayModeChange(DisplayMode.Small)
+                            showDisplayMenu = false
+                        },
+                        leadingIcon = {
+                            if (displayMode == DisplayMode.Small) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_check),
+                                    contentDescription = null,
+                                )
+                            }
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.display_mode_medium)) },
+                        onClick = {
+                            onDisplayModeChange(DisplayMode.Medium)
+                            showDisplayMenu = false
+                        },
+                        leadingIcon = {
+                            if (displayMode == DisplayMode.Medium) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_check),
+                                    contentDescription = null,
+                                )
+                            }
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.display_mode_grid)) },
+                        onClick = {
+                            onDisplayModeChange(DisplayMode.Grid)
+                            showDisplayMenu = false
+                        },
+                        leadingIcon = {
+                            if (displayMode == DisplayMode.Grid) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_check),
+                                    contentDescription = null,
+                                )
+                            }
+                        },
+                    )
+                }
+            }
+
             if (sortConfig != null && onSortConfigChange != null) {
                 var showSortMenu by remember { mutableStateOf(false) }
                 IconButton(onClick = { showSortMenu = true }) {

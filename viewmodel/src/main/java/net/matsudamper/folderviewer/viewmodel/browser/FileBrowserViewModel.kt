@@ -21,6 +21,7 @@ import net.matsudamper.folderviewer.navigation.FileBrowser
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
+import net.matsudamper.folderviewer.ui.browser.DisplayMode
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.FileSortConfig
@@ -87,6 +88,10 @@ class FileBrowserViewModel @Inject constructor(
         override fun onSortConfigChanged(config: FileSortConfig) {
             viewModelStateFlow.update { it.copy(sortConfig = config) }
         }
+
+        override fun onDisplayModeChanged(mode: DisplayMode) {
+            viewModelStateFlow.update { it.copy(displayMode = mode) }
+        }
     }
 
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> =
@@ -104,6 +109,7 @@ class FileBrowserViewModel @Inject constructor(
                     key = FileSortKey.Name,
                     isAscending = true,
                 ),
+                displayMode = DisplayMode.Medium,
                 callbacks = callbacks,
             ),
         ).also { mutableUiState ->
@@ -137,6 +143,7 @@ class FileBrowserViewModel @Inject constructor(
                                     )
                                 },
                             sortConfig = viewModelState.sortConfig,
+                            displayMode = viewModelState.displayMode,
                         )
                     }
                 }
@@ -245,5 +252,6 @@ class FileBrowserViewModel @Inject constructor(
             key = FileSortKey.Name,
             isAscending = true,
         ),
+        val displayMode: DisplayMode = DisplayMode.Medium,
     )
 }
