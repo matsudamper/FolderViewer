@@ -17,7 +17,6 @@ import com.rapid7.client.dcerpc.transport.SMBTransportFactories
 
 class SmbFileRepository(
     private val config: StorageConfiguration.Smb,
-    private val password: String,
 ) : FileRepository {
     private val client = SMBClient()
 
@@ -26,7 +25,7 @@ class SmbFileRepository(
             val session = connection.authenticate(
                 AuthenticationContext(
                     config.username,
-                    password.toCharArray(),
+                    config.password.toCharArray(),
                     null,
                 ),
             )
@@ -36,6 +35,68 @@ class SmbFileRepository(
             }
 
             listShareItems(session, path)
+        }
+    }
+
+    override suspend fun getFileContent(path: String): InputStream = withContext(Dispatchers.IO) {
+        val connection = client.connect(config.ip)
+        try {
+            val session = connection.authenticate(
+                AuthenticationContext(
+                    config.username,
+                    config.password.toCharArray(),
+                    null,
+                ),
+            )
+
+            val parts = path.split("/", limit = PATH_SPLIT_LIMIT)
+            val shareName = parts[0]
+            val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+
+            val share = session.connectShare(shareName) as? DiskShare
+                ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+
+            val file = share.openFile(
+                subPath,
+                EnumSet.of(AccessMask.GENERIC_READ),
+                null,
+                SMB2ShareAccess.ALL,
+                SMB2CreateDisposition.FILE_OPEN,
+                null,
+            )
+
+            val smbStream = file.inputStream
+
+            // Return a wrapper stream that closes everything
+            object : InputStream() {
+                override fun read(): Int = smbStream.read()
+                override fun read(b: ByteArray): Int = smbStream.read(b)
+                override fun read(b: ByteArray, off: Int, len: Int): Int = smbStream.read(b, off, len)
+                override fun skip(n: Long): Long = smbStream.skip(n)
+                override fun available(): Int = smbStream.available()
+                override fun close() {
+                    try {
+                        smbStream.close()
+                    } finally {
+                        try {
+                            file.close()
+                        } finally {
+                            try {
+                                share.close()
+                            } finally {
+                                try {
+                                    session.close()
+                                } finally {
+                                    connection.close()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            connection.close() // Close if setup failed
+            throw e
         }
     }
 
@@ -90,68 +151,6 @@ class SmbFileRepository(
                     lastModified = info.changeTime.toEpochMillis(),
                 )
             }
-    }
-
-    override suspend fun getFileContent(path: String): InputStream = withContext(Dispatchers.IO) {
-        val connection = client.connect(config.ip)
-        try {
-            val session = connection.authenticate(
-                AuthenticationContext(
-                    config.username,
-                    password.toCharArray(),
-                    null,
-                ),
-            )
-
-            val parts = path.split("/", limit = PATH_SPLIT_LIMIT)
-            val shareName = parts[0]
-            val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
-
-            val share = session.connectShare(shareName) as? DiskShare
-                ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
-
-            val file = share.openFile(
-                subPath,
-                EnumSet.of(AccessMask.GENERIC_READ),
-                null,
-                SMB2ShareAccess.ALL,
-                SMB2CreateDisposition.FILE_OPEN,
-                null,
-            )
-
-            val smbStream = file.inputStream
-
-            // Return a wrapper stream that closes everything
-            object : InputStream() {
-                override fun read(): Int = smbStream.read()
-                override fun read(b: ByteArray): Int = smbStream.read(b)
-                override fun read(b: ByteArray, off: Int, len: Int): Int = smbStream.read(b, off, len)
-                override fun skip(n: Long): Long = smbStream.skip(n)
-                override fun available(): Int = smbStream.available()
-                override fun close() {
-                    try {
-                        smbStream.close()
-                    } finally {
-                        try {
-                            file.close()
-                        } finally {
-                            try {
-                                share.close()
-                            } finally {
-                                try {
-                                    session.close()
-                                } finally {
-                                    connection.close()
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            connection.close() // Close if setup failed
-            throw e
-        }
     }
 
     companion object {

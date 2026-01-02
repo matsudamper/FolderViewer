@@ -53,16 +53,7 @@ private class FileRepositoryImageFetcher(
             is FileImageSource.Original -> fileImageSource.path
         }
 
-        val inputStream = when (fileImageSource) {
-            is FileImageSource.Thumbnail -> {
-                fileRepository.getThumbnailContent(path)
-                    ?: fileRepository.getFileContent(path)
-            }
-
-            is FileImageSource.Original -> {
-                fileRepository.getFileContent(path)
-            }
-        }
+        val inputStream = fileRepository.getFileContent(path)
 
         val bufferedSource = inputStream.source().buffer()
 
@@ -88,11 +79,23 @@ private class MaxSizeInterceptor(private val maxSize: Int) : Interceptor {
             else -> false
         }
 
-        return if (isWidthTooLarge || isHeightTooLarge) {
-            val newSize = Size(maxSize, maxSize)
-            val newRequest = request.newBuilder()
-                .precision(Precision.INEXACT)
-                .build()
+        val key = when (val data = request.data) {
+            is FileImageSource.Thumbnail -> "thumbnail:${data.path}"
+            is FileImageSource.Original -> null
+            else -> null
+        }
+
+        return if (isWidthTooLarge || isHeightTooLarge || key != null) {
+            val newSize = if (isWidthTooLarge || isHeightTooLarge) Size(maxSize, maxSize) else size
+            val newRequest = request.newBuilder().apply {
+                if (isWidthTooLarge || isHeightTooLarge) {
+                    precision(Precision.INEXACT)
+                }
+                if (key != null) {
+                    diskCacheKey(key)
+                    memoryCacheKey(key)
+                }
+            }.build()
             chain.withSize(newSize).proceed(newRequest)
         } else {
             chain.proceed(request)

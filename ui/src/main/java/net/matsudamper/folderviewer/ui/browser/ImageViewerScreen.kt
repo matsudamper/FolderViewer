@@ -55,7 +55,7 @@ fun ImageViewerScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .zoomable(
-                    zoomState=zoomState,
+                    zoomState = zoomState,
                     onTap = {
                         showTopBar = !showTopBar
                     },
