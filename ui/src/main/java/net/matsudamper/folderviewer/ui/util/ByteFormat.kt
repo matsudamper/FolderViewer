@@ -12,10 +12,10 @@ import kotlin.math.pow
  */
 public fun formatBytes(bytes: Long): String {
     if (bytes == 0L) return "0 bytes"
-    
+
     val isNegative = bytes < 0
     val absoluteBytes = abs(bytes)
-    
+
     if (absoluteBytes < 1024) {
         return if (isNegative) "-$absoluteBytes bytes" else "$absoluteBytes bytes"
     }
