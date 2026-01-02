@@ -12,8 +12,8 @@ import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import net.matsudamper.folderviewer.coil.CoilImageLoaderFactory
-import net.matsudamper.folderviewer.ui.settings.SettingsUiEvent
 import net.matsudamper.folderviewer.ui.R
+import net.matsudamper.folderviewer.ui.settings.SettingsUiEvent
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(

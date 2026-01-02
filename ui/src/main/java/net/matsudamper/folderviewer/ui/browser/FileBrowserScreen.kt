@@ -6,9 +6,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import coil.ImageLoader
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import coil.ImageLoader
 
 @Composable
 fun FileBrowserScreen(
