@@ -14,7 +14,6 @@ import coil.request.Options
 import coil.size.Dimension
 import coil.size.Precision
 import coil.size.Size
-import net.matsudamper.folderviewer.repository.FileRepositoryResult
 import net.matsudamper.folderviewer.repository.StorageRepository
 import okio.buffer
 import okio.source
@@ -64,11 +63,7 @@ private class FileRepositoryImageFetcher(
         val fileRepository = storageRepository.getFileRepository(storageId)
             ?: throw IllegalStateException("Storage not found: $storageId")
 
-        val result = fileRepository.getFileContent(path)
-        val inputStream = when (result) {
-            is FileRepositoryResult.Success -> result.value
-            is FileRepositoryResult.Error -> throw result.throwable
-        }
+        val inputStream = fileRepository.getFileContent(path)
 
         val bufferedSource = inputStream.source().buffer()
 
