@@ -12,4 +12,5 @@
     <string name="sort_size">サイズ</string>
     <string name="sort_asc">昇順</string>
     <string name="sort_desc">降順</string>
+    <string name="disk_cache_cleared">ディスクキャッシュをクリアしました</string>
 </resources>

@@ -17,7 +17,10 @@ import net.matsudamper.folderviewer.coil.CoilImageLoaderFactory
 class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
-    private val _event = MutableSharedFlow<Event>()
+    private val _event = MutableSharedFlow<Event>(
+        replay = 0,
+        extraBufferCapacity = 1,
+    )
     val event: SharedFlow<Event> = _event.asSharedFlow()
 
     fun clearDiskCache() {

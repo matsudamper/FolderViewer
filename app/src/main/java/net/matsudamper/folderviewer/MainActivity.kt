@@ -91,13 +91,16 @@ private fun AppContent(
             val viewModel: SettingsViewModel = hiltViewModel()
             val snackbarHostState = remember { SnackbarHostState() }
             val coroutineScope = rememberCoroutineScope()
+            val context = LocalContext.current
 
             LaunchedEffect(viewModel.event) {
                 viewModel.event.collect { event ->
                     when (event) {
                         is SettingsViewModel.Event.CacheClearSuccess -> {
                             coroutineScope.launch {
-                                snackbarHostState.showSnackbar("ディスクキャッシュをクリアしました")
+                                snackbarHostState.showSnackbar(
+                                    context.getString(net.matsudamper.folderviewer.ui.R.string.disk_cache_cleared),
+                                )
                             }
                         }
                     }

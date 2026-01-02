@@ -29,6 +29,9 @@ public object CoilImageLoaderFactory {
     // ネットワークストレージからの読み込みを減らすために有効化
     // サムネイルのみキャッシュし、オリジナル画像はキャッシュしない
     private const val DISK_CACHE_SIZE_PERCENT = 0.02
+    
+    // ディスクキャッシュのディレクトリ名
+    private const val DISK_CACHE_DIRECTORY_NAME = "image_cache"
 
     public fun create(context: Context, fileRepository: FileRepository?): ImageLoader {
         return ImageLoader.Builder(context)
@@ -39,7 +42,7 @@ public object CoilImageLoaderFactory {
             }
             .diskCache {
                 DiskCache.Builder()
-                    .directory(context.cacheDir.resolve("image_cache"))
+                    .directory(context.cacheDir.resolve(DISK_CACHE_DIRECTORY_NAME))
                     .maxSizePercent(DISK_CACHE_SIZE_PERCENT)
                     .build()
             }
@@ -57,7 +60,7 @@ public object CoilImageLoaderFactory {
      * ディスクキャッシュをクリアする
      */
     public fun clearDiskCache(context: Context) {
-        val cacheDir = context.cacheDir.resolve("image_cache")
+        val cacheDir = context.cacheDir.resolve(DISK_CACHE_DIRECTORY_NAME)
         if (cacheDir.exists()) {
             cacheDir.deleteRecursively()
         }
