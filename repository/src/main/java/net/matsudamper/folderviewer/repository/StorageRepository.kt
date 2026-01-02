@@ -58,6 +58,7 @@ class StorageRepository @Inject constructor(
             name = config.name,
             ip = config.ip,
             username = config.username,
+            password = config.password,
         )
 
         // パスワードを安全に保存する
@@ -79,6 +80,7 @@ class StorageRepository @Inject constructor(
             name = config.name,
             ip = config.ip,
             username = config.username,
+            password = config.password,
         )
 
         sharedPreferences.edit {
@@ -97,16 +99,11 @@ class StorageRepository @Inject constructor(
         }
     }
 
-    fun getPassword(id: String): String? {
-        return sharedPreferences.getString(id, null)
-    }
-
     suspend fun getFileRepository(id: String): FileRepository? {
         val proto = context.dataStore.data.first()
         val configProto = proto.listList.find { it.id == id } ?: return null
         val config = configProto.toDomain() as? StorageConfiguration.Smb ?: return null
-        val password = getPassword(id) ?: return null
-        return SmbFileRepository(config, password)
+        return SmbFileRepository(config)
     }
 
     private fun StorageConfigurationProto.toDomain(): StorageConfiguration? {
@@ -117,6 +114,7 @@ class StorageRepository @Inject constructor(
                     name = name,
                     ip = smb.ip,
                     username = smb.username,
+                    password = sharedPreferences.getString(id, null).orEmpty(),
                 )
             }
 

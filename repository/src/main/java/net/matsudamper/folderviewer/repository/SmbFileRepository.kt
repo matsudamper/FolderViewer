@@ -17,7 +17,6 @@ import com.rapid7.client.dcerpc.transport.SMBTransportFactories
 
 class SmbFileRepository(
     private val config: StorageConfiguration.Smb,
-    private val password: String,
 ) : FileRepository {
     private val client = SMBClient()
 
@@ -26,7 +25,7 @@ class SmbFileRepository(
             val session = connection.authenticate(
                 AuthenticationContext(
                     config.username,
-                    password.toCharArray(),
+                    config.password.toCharArray(),
                     null,
                 ),
             )
@@ -45,7 +44,7 @@ class SmbFileRepository(
             val session = connection.authenticate(
                 AuthenticationContext(
                     config.username,
-                    password.toCharArray(),
+                    config.password.toCharArray(),
                     null,
                 ),
             )

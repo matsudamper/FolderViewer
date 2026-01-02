@@ -65,13 +65,12 @@ class SmbAddViewModel @Inject constructor(
                 val storage = storageRepository.storageList.first()
                     .find { it.id == storageId } as? StorageConfiguration.Smb
                 if (storage != null) {
-                    val password = storageRepository.getPassword(storage.id) ?: ""
                     viewModelStateFlow.update {
                         it.copy(
                             name = storage.name,
                             ip = storage.ip,
                             username = storage.username,
-                            password = password,
+                            password = storage.password,
                             isEditMode = true,
                             isLoading = false,
                         )
