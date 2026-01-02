@@ -7,11 +7,9 @@ import androidx.navigation.toRoute
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -40,11 +38,8 @@ class FileBrowserViewModel @Inject constructor(
     private val viewModelEventChannel = Channel<ViewModelEvent>(Channel.UNLIMITED)
     val viewModelEventFlow = viewModelEventChannel.receiveAsFlow()
 
-    private val _uiEvent = MutableSharedFlow<FileBrowserUiEvent>(
-        replay = 0,
-        extraBufferCapacity = 1,
-    )
-    val uiEvent: SharedFlow<FileBrowserUiEvent> = _uiEvent.asSharedFlow()
+    private val uiChannelEvent = Channel<FileBrowserUiEvent>()
+    val uiEvent: Flow<FileBrowserUiEvent> = uiChannelEvent.receiveAsFlow()
 
     private val callbacks = object : FileBrowserUiState.Callbacks {
         override fun onBack() {
@@ -223,7 +218,7 @@ class FileBrowserViewModel @Inject constructor(
                     isRefreshing = false,
                 )
             }
-            _uiEvent.emit(FileBrowserUiEvent.ShowSnackbar(e.message ?: "Unknown error"))
+            uiChannelEvent.emit(FileBrowserUiEvent.ShowSnackbar(e.message ?: "Unknown error"))
         }
     }
 
