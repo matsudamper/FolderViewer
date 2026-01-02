@@ -6,3 +6,5 @@ https://github.com/androidx/androidx/blob/androidx-main/compose/docs/compose-api
 private/internalをできる限り使用し、最小限のアクセスに絞ること。
 
 @Suppressの使用は禁止
+
+コードでやってることをそのまま説明するだけのコメントは禁止。複雑な関数のドキュメントコメントだけ許可する。
