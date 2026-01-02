@@ -87,13 +87,13 @@ private class MaxSizeInterceptor(private val maxSize: Int) : Interceptor {
 
         return if (isWidthTooLarge || isHeightTooLarge || key != null) {
             val newSize = if (isWidthTooLarge || isHeightTooLarge) Size(maxSize, maxSize) else size
-            val newRequest = request.newBuilder().apply {
+            val newRequest = request.newBuilder().also {
                 if (isWidthTooLarge || isHeightTooLarge) {
-                    precision(Precision.INEXACT)
+                    it.precision(Precision.INEXACT)
                 }
                 if (key != null) {
-                    diskCacheKey(key)
-                    memoryCacheKey(key)
+                    it.diskCacheKey(key)
+                    it.memoryCacheKey(key)
                 }
             }.build()
             chain.withSize(newSize).proceed(newRequest)
