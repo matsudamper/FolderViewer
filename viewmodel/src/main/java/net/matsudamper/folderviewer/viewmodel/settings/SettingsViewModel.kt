@@ -25,12 +25,17 @@ class SettingsViewModel @Inject constructor(
 
     fun clearDiskCache() {
         viewModelScope.launch(Dispatchers.IO) {
-            CoilImageLoaderFactory.clearDiskCache(context)
-            _event.emit(Event.CacheClearSuccess)
+            try {
+                CoilImageLoaderFactory.clearDiskCache(context)
+                _event.emit(Event.CacheClearSuccess)
+            } catch (e: Exception) {
+                _event.emit(Event.CacheClearError(e.message ?: "Unknown error"))
+            }
         }
     }
 
     sealed interface Event {
         data object CacheClearSuccess : Event
+        data class CacheClearError(val message: String) : Event
     }
 }

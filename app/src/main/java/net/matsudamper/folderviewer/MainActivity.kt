@@ -103,6 +103,13 @@ private fun AppContent(
                                 )
                             }
                         }
+                        is SettingsViewModel.Event.CacheClearError -> {
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar(
+                                    context.getString(net.matsudamper.folderviewer.ui.R.string.disk_cache_clear_error),
+                                )
+                            }
+                        }
                     }
                 }
             }
