@@ -54,7 +54,7 @@ jobs:
           fi
           
           if ! [[ "$CURRENT_VERSION" =~ ^[0-9]+$ ]]; then
-            echo "Error: VERSION must be a positive integer, got: $CURRENT_VERSION"
+            echo "Error: VERSION must be a non-negative integer, got: $CURRENT_VERSION"
             exit 1
           fi
           
@@ -64,4 +64,4 @@ jobs:
           echo "New version: $NEW_VERSION"
           
           # GitHub CLIを使用してEnvironment変数を更新
-          gh variable set VERSION --body "$NEW_VERSION" --env Release
+          gh variable set VERSION --value "$NEW_VERSION" --env Release
