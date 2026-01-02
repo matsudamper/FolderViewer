@@ -1,5 +1,10 @@
 package net.matsudamper.folderviewer.repository
 
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.os.Build
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.util.EnumSet
 import kotlinx.coroutines.Dispatchers
@@ -40,8 +45,76 @@ class SmbFileRepository(
 
     override suspend fun getFileContent(path: String): InputStream = getFileContentInternal(path)
 
-    override suspend fun getThumbnail(path: String): InputStream =
-        getFileContentInternal(path, maxReadSize = 1024 * 1024)
+    override suspend fun getThumbnail(path: String): InputStream = withContext(Dispatchers.IO) {
+        val connection = client.connect(config.ip)
+        try {
+            val session = connection.authenticate(
+                AuthenticationContext(
+                    config.username,
+                    config.password.toCharArray(),
+                    null,
+                ),
+            )
+
+            val parts = path.split("/", limit = PATH_SPLIT_LIMIT)
+            val shareName = parts[0]
+            val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+
+            val share = session.connectShare(shareName) as? DiskShare
+                ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+
+            share.openFile(
+                subPath,
+                EnumSet.of(AccessMask.GENERIC_READ),
+                null,
+                SMB2ShareAccess.ALL,
+                SMB2CreateDisposition.FILE_OPEN,
+                null,
+            ).use { file ->
+                val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                file.inputStream.use { inputStream ->
+                    BitmapFactory.decodeStream(inputStream, null, options)
+                }
+
+                val width = options.outWidth
+                val height = options.outHeight
+
+                if (width <= 0 || height <= 0) {
+                    return@withContext getFileContentInternal(path, maxReadSize = MAX_THUMBNAIL_READ_SIZE.toLong())
+                }
+
+                val decodeOptions = BitmapFactory.Options().apply {
+                    inSampleSize = calculateInSampleSize(minOf(width, height), THUMBNAIL_SIZE)
+                }
+
+                val bitmap = file.inputStream.use { inputStream ->
+                    BitmapFactory.decodeStream(inputStream, null, decodeOptions)
+                } ?: return@withContext getFileContentInternal(path, maxReadSize = MAX_THUMBNAIL_READ_SIZE.toLong())
+
+                val bos = ByteArrayOutputStream()
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 80, bos)
+                bitmap.recycle()
+
+                ByteArrayInputStream(bos.toByteArray())
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            getFileContentInternal(path, maxReadSize = MAX_THUMBNAIL_READ_SIZE.toLong())
+        } finally {
+            connection.close()
+        }
+    }
+
+    private fun calculateInSampleSize(size: Int, reqSize: Int): Int {
+        var inSampleSize = 1
+        if (size > reqSize) {
+            val halfSize = size / 2
+            while (halfSize / inSampleSize >= reqSize) {
+                inSampleSize *= 2
+            }
+        }
+        return inSampleSize
+    }
 
     private suspend fun getFileContentInternal(
         path: String,
@@ -193,5 +266,7 @@ class SmbFileRepository(
 
     companion object {
         private const val PATH_SPLIT_LIMIT = 2
+        private const val THUMBNAIL_SIZE = 256
+        private const val MAX_THUMBNAIL_READ_SIZE = 1024 * 1024 // 1MB
     }
 }

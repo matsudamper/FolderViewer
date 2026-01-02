@@ -1,6 +1,7 @@
 package net.matsudamper.folderviewer.ui.browser
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -31,7 +32,9 @@ internal fun FileListItem(
                     model = imageSource,
                     contentDescription = null,
                     imageLoader = imageLoader,
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier
+                        .size(24.dp)
+                        .aspectRatio(1f),
                     contentScale = ContentScale.Crop,
                     placeholder = painterResource(R.drawable.ic_file),
                     error = painterResource(R.drawable.ic_file),
