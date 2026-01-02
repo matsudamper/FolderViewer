@@ -15,24 +15,19 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
 import net.matsudamper.folderviewer.ui.browser.FileBrowserTopBar
 
 @Composable
 fun SettingsScreen(
+    snackbarHostState: SnackbarHostState,
     onClearDiskCache: () -> Unit,
-    onCacheClearSuccess: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val snackbarHostState = remember { SnackbarHostState() }
-    val coroutineScope = rememberCoroutineScope()
-
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -60,13 +55,7 @@ fun SettingsScreen(
                 Text(text = "キャッシュ")
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
-                    onClick = {
-                        onClearDiskCache()
-                        coroutineScope.launch {
-                            onCacheClearSuccess()
-                            snackbarHostState.showSnackbar("ディスクキャッシュをクリアしました")
-                        }
-                    },
+                    onClick = onClearDiskCache,
                 ) {
                     Text(text = "ディスクキャッシュをクリア")
                 }
@@ -79,8 +68,8 @@ fun SettingsScreen(
 @Composable
 private fun SettingsScreenPreview() {
     SettingsScreen(
+        snackbarHostState = remember { SnackbarHostState() },
         onClearDiskCache = {},
-        onCacheClearSuccess = {},
         onBack = {},
     )
 }

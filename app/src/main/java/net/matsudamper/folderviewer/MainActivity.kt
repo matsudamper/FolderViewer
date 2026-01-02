@@ -7,11 +7,13 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -20,6 +22,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import net.matsudamper.folderviewer.coil.CoilImageLoaderFactory
 import net.matsudamper.folderviewer.navigation.FileBrowser
 import net.matsudamper.folderviewer.navigation.Home
@@ -86,10 +89,24 @@ private fun AppContent(
         }
         composable<Settings> {
             val viewModel: SettingsViewModel = hiltViewModel()
+            val snackbarHostState = remember { SnackbarHostState() }
+            val coroutineScope = rememberCoroutineScope()
+
+            LaunchedEffect(viewModel.event) {
+                viewModel.event.collect { event ->
+                    when (event) {
+                        is SettingsViewModel.Event.CacheClearSuccess -> {
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar("ディスクキャッシュをクリアしました")
+                            }
+                        }
+                    }
+                }
+            }
 
             SettingsScreen(
+                snackbarHostState = snackbarHostState,
                 onClearDiskCache = viewModel::clearDiskCache,
-                onCacheClearSuccess = {},
                 onBack = {
                     navController.popBackStack()
                 },
