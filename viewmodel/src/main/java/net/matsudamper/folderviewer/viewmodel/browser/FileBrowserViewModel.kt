@@ -18,6 +18,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import net.matsudamper.folderviewer.navigation.FileBrowser
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
+import net.matsudamper.folderviewer.repository.FileRepositoryResult
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.FileSortConfig
@@ -185,14 +186,27 @@ class FileBrowserViewModel @Inject constructor(
     private suspend fun fetchFilesInternal(path: String) {
         try {
             val repository = getRepository()
-            val files = repository.getFiles(path)
-            viewModelStateFlow.update {
-                it.copy(
-                    isLoading = false,
-                    isRefreshing = false,
-                    currentPath = path,
-                    rawFiles = files,
-                )
+            when (val result = repository.getFiles(path)) {
+                is FileRepositoryResult.Success -> {
+                    viewModelStateFlow.update {
+                        it.copy(
+                            isLoading = false,
+                            isRefreshing = false,
+                            currentPath = path,
+                            rawFiles = result.value,
+                        )
+                    }
+                }
+
+                is FileRepositoryResult.Error -> {
+                    viewModelStateFlow.update {
+                        it.copy(
+                            isLoading = false,
+                            isRefreshing = false,
+                            error = result.throwable.message ?: "Unknown error",
+                        )
+                    }
+                }
             }
         } catch (e: CancellationException) {
             throw e

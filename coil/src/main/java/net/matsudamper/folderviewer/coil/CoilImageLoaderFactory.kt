@@ -14,6 +14,7 @@ import coil.size.Dimension
 import coil.size.Precision
 import coil.size.Size
 import net.matsudamper.folderviewer.repository.FileRepository
+import net.matsudamper.folderviewer.repository.FileRepositoryResult
 import okio.buffer
 import okio.source
 
@@ -53,7 +54,11 @@ private class FileRepositoryImageFetcher(
             is FileImageSource.Original -> fileImageSource.path
         }
 
-        val inputStream = fileRepository.getFileContent(path)
+        val result = fileRepository.getFileContent(path)
+        val inputStream = when (result) {
+            is FileRepositoryResult.Success -> result.value
+            is FileRepositoryResult.Error -> throw result.throwable
+        }
 
         val bufferedSource = inputStream.source().buffer()
 

@@ -18,85 +18,108 @@ import com.rapid7.client.dcerpc.transport.SMBTransportFactories
 class SmbFileRepository(
     private val config: StorageConfiguration.Smb,
 ) : FileRepository {
-    private val client = SMBClient()
+    private var client = SMBClient()
 
-    override suspend fun getFiles(path: String): List<FileItem> = withContext(Dispatchers.IO) {
-        client.connect(config.ip).use { connection ->
-            val session = connection.authenticate(
-                AuthenticationContext(
-                    config.username,
-                    config.password.toCharArray(),
-                    null,
-                ),
-            )
+    override suspend fun getFiles(path: String): FileRepositoryResult<List<FileItem>> = withContext(Dispatchers.IO) {
+        runWithRetry {
+            client.connect(config.ip).use { connection ->
+                val session = connection.authenticate(
+                    AuthenticationContext(
+                        config.username,
+                        config.password.toCharArray(),
+                        null,
+                    ),
+                )
 
-            if (path.isEmpty()) {
-                return@withContext enumerateShares(session)
+                if (path.isEmpty()) {
+                    return@runWithRetry enumerateShares(session)
+                }
+
+                listShareItems(session, path)
             }
-
-            listShareItems(session, path)
         }
     }
 
-    override suspend fun getFileContent(path: String): InputStream = withContext(Dispatchers.IO) {
-        val connection = client.connect(config.ip)
-        try {
-            val session = connection.authenticate(
-                AuthenticationContext(
-                    config.username,
-                    config.password.toCharArray(),
+    override suspend fun getFileContent(path: String): FileRepositoryResult<InputStream> = withContext(Dispatchers.IO) {
+        runWithRetry {
+            val connection = client.connect(config.ip)
+            try {
+                val session = connection.authenticate(
+                    AuthenticationContext(
+                        config.username,
+                        config.password.toCharArray(),
+                        null,
+                    ),
+                )
+
+                val parts = path.split("/", limit = PATH_SPLIT_LIMIT)
+                val shareName = parts[0]
+                val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+
+                val share = session.connectShare(shareName) as? DiskShare
+                    ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+
+                val file = share.openFile(
+                    subPath,
+                    EnumSet.of(AccessMask.GENERIC_READ),
                     null,
-                ),
-            )
+                    SMB2ShareAccess.ALL,
+                    SMB2CreateDisposition.FILE_OPEN,
+                    null,
+                )
 
-            val parts = path.split("/", limit = PATH_SPLIT_LIMIT)
-            val shareName = parts[0]
-            val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+                val smbStream = file.inputStream
 
-            val share = session.connectShare(shareName) as? DiskShare
-                ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
-
-            val file = share.openFile(
-                subPath,
-                EnumSet.of(AccessMask.GENERIC_READ),
-                null,
-                SMB2ShareAccess.ALL,
-                SMB2CreateDisposition.FILE_OPEN,
-                null,
-            )
-
-            val smbStream = file.inputStream
-
-            // Return a wrapper stream that closes everything
-            object : InputStream() {
-                override fun read(): Int = smbStream.read()
-                override fun read(b: ByteArray): Int = smbStream.read(b)
-                override fun read(b: ByteArray, off: Int, len: Int): Int = smbStream.read(b, off, len)
-                override fun skip(n: Long): Long = smbStream.skip(n)
-                override fun available(): Int = smbStream.available()
-                override fun close() {
-                    try {
-                        smbStream.close()
-                    } finally {
+                // Return a wrapper stream that closes everything
+                object : InputStream() {
+                    override fun read(): Int = smbStream.read()
+                    override fun read(b: ByteArray): Int = smbStream.read(b)
+                    override fun read(b: ByteArray, off: Int, len: Int): Int = smbStream.read(b, off, len)
+                    override fun skip(n: Long): Long = smbStream.skip(n)
+                    override fun available(): Int = smbStream.available()
+                    override fun close() {
                         try {
-                            file.close()
+                            smbStream.close()
                         } finally {
                             try {
-                                share.close()
+                                file.close()
                             } finally {
                                 try {
-                                    session.close()
+                                    share.close()
                                 } finally {
-                                    connection.close()
+                                    try {
+                                        session.close()
+                                    } finally {
+                                        connection.close()
+                                    }
                                 }
                             }
                         }
                     }
                 }
+            } catch (e: Exception) {
+                connection.close() // Close if setup failed
+                throw e
             }
+        }
+    }
+
+    private fun <T> runWithRetry(block: () -> T): FileRepositoryResult<T> {
+        return try {
+            FileRepositoryResult.Success(block())
         } catch (e: Exception) {
-            connection.close() // Close if setup failed
-            throw e
+            // If it fails once, try to recreate the client as it might be in a bad state
+            try {
+                client.close()
+            } catch (closeException: Exception) {
+                // Ignore close error
+            }
+            client = SMBClient()
+            try {
+                FileRepositoryResult.Success(block())
+            } catch (retryException: Exception) {
+                FileRepositoryResult.Error(retryException)
+            }
         }
     }
 
