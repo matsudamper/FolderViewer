@@ -31,6 +31,7 @@ dependencies {
     implementation(project(":repository"))
     implementation(project(":navigation"))
     implementation(project(":ui"))
+    implementation(project(":coil"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

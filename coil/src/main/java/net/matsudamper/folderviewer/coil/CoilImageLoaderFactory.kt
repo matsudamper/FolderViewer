@@ -52,6 +52,16 @@ public object CoilImageLoaderFactory {
             }
             .build()
     }
+
+    /**
+     * ディスクキャッシュをクリアする
+     */
+    public fun clearDiskCache(context: Context) {
+        val cacheDir = context.cacheDir.resolve("image_cache")
+        if (cacheDir.exists()) {
+            cacheDir.deleteRecursively()
+        }
+    }
 }
 
 private class ThumbnailOnlyCacheInterceptor : Interceptor {

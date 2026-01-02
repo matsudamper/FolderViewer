@@ -37,6 +37,7 @@ import net.matsudamper.folderviewer.ui.theme.FolderViewerTheme
 import net.matsudamper.folderviewer.viewmodel.browser.FileBrowserViewModel
 import net.matsudamper.folderviewer.viewmodel.browser.ImageViewerViewModel
 import net.matsudamper.folderviewer.viewmodel.home.HomeViewModel
+import net.matsudamper.folderviewer.viewmodel.settings.SettingsViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.SmbAddViewModel
 
 @AndroidEntryPoint
@@ -84,7 +85,11 @@ private fun AppContent(
             )
         }
         composable<Settings> {
+            val viewModel: SettingsViewModel = hiltViewModel()
+
             SettingsScreen(
+                onClearDiskCache = viewModel::clearDiskCache,
+                onCacheClearSuccess = {},
                 onBack = {
                     navController.popBackStack()
                 },
