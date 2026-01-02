@@ -34,11 +34,19 @@ public object CoilImageLoaderFactory {
 
     /**
      * ディスクキャッシュをクリアする
+     * Coilのデフォルトキャッシュディレクトリをクリアします
      */
     public fun clearDiskCache(context: Context) {
-        val cacheDir = context.cacheDir.resolve(DISK_CACHE_DIRECTORY_NAME)
-        if (cacheDir.exists()) {
-            cacheDir.deleteRecursively()
+        // Coilのデフォルトキャッシュディレクトリ
+        val defaultCoilCacheDir = context.cacheDir.resolve("image_cache")
+        if (defaultCoilCacheDir.exists()) {
+            defaultCoilCacheDir.deleteRecursively()
+        }
+        
+        // カスタムキャッシュディレクトリ（存在する場合）
+        val customCacheDir = context.cacheDir.resolve(DISK_CACHE_DIRECTORY_NAME)
+        if (customCacheDir.exists() && customCacheDir != defaultCoilCacheDir) {
+            customCacheDir.deleteRecursively()
         }
     }
 }
