@@ -1,5 +1,10 @@
 package net.matsudamper.folderviewer.ui.browser
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,20 +45,21 @@ fun ImageViewerScreen(
     }
 
     val zoomState = rememberZoomState()
+    var showTopBar by remember { mutableStateOf(false) }
 
     Scaffold(
-        topBar = {
-            FileBrowserTopBar(
-                title = fileName,
-                onBack = onBack,
-            )
-        },
+        modifier = Modifier.fillMaxSize(),
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .zoomable(zoomState),
+                .zoomable(
+                    zoomState=zoomState,
+                    onTap = {
+                        showTopBar = !showTopBar
+                    },
+                ),
             contentAlignment = Alignment.Center,
         ) {
             var imageState: AsyncImagePainter.State by remember { mutableStateOf(AsyncImagePainter.State.Empty) }
@@ -97,6 +103,17 @@ fun ImageViewerScreen(
 
                 else -> Unit
             }
+        }
+
+        AnimatedVisibility(
+            visible = showTopBar,
+            enter = fadeIn() + slideInVertically { height -> -height },
+            exit = fadeOut() + slideOutVertically { height -> -height },
+        ) {
+            FileBrowserTopBar(
+                title = fileName,
+                onBack = onBack,
+            )
         }
     }
 }
