@@ -105,7 +105,10 @@ class FileBrowserViewModel @Inject constructor(
                 currentPath = arg.path,
                 title = arg.path,
                 files = emptyList(),
-                sortConfig = FileSortConfig(),
+                sortConfig = FileSortConfig(
+                    key = FileSortKey.Name,
+                    isAscending = true,
+                ),
                 callbacks = callbacks,
             ),
         ).also { mutableUiState ->
@@ -230,6 +233,7 @@ class FileBrowserViewModel @Inject constructor(
             val path: String,
             val storageId: String,
         ) : ViewModelEvent
+
         data class NavigateToImageViewer(
             val path: String,
             val storageId: String,

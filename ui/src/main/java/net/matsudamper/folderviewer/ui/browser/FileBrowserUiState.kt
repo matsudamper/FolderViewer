@@ -22,8 +22,8 @@ data class FileBrowserUiState(
 }
 
 data class FileSortConfig(
-    val key: FileSortKey = FileSortKey.Name,
-    val isAscending: Boolean = true,
+    val key: FileSortKey,
+    val isAscending: Boolean,
 )
 
 enum class FileSortKey {
