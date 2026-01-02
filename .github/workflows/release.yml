@@ -48,7 +48,7 @@ jobs:
           echo "New version: $NEW_VERSION"
           
           # GitHub CLIを使用してEnvironment変数を更新
-          if ! gh variable set VERSION --value "$NEW_VERSION" --env Release; then
+          if ! gh variable set VERSION -b "$NEW_VERSION" --env Release; then
             echo "Error: Failed to update VERSION variable"
             exit 1
           fi
