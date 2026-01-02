@@ -28,6 +28,16 @@ object CoilImageLoaderFactory {
             }
             .build()
     }
+
+    fun clearDiskCache(context: Context) {
+        val tempImageLoader = ImageLoader.Builder(context).build()
+        val diskCache = tempImageLoader.diskCache
+
+        @Suppress("OPT_IN_USAGE")
+        diskCache?.clear()
+
+        tempImageLoader.shutdown()
+    }
 }
 
 private class FileImageSourceKeyer : Keyer<FileImageSource> {

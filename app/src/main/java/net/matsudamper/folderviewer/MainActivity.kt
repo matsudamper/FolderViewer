@@ -4,16 +4,21 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import javax.inject.Inject
+import kotlinx.coroutines.launch
 import coil.ImageLoader
 import dagger.hilt.android.AndroidEntryPoint
 import net.matsudamper.folderviewer.navigation.FileBrowser
@@ -32,6 +37,7 @@ import net.matsudamper.folderviewer.ui.theme.FolderViewerTheme
 import net.matsudamper.folderviewer.viewmodel.browser.FileBrowserViewModel
 import net.matsudamper.folderviewer.viewmodel.browser.ImageViewerViewModel
 import net.matsudamper.folderviewer.viewmodel.home.HomeViewModel
+import net.matsudamper.folderviewer.viewmodel.settings.SettingsViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.SmbAddViewModel
 
 @AndroidEntryPoint
@@ -83,7 +89,36 @@ private fun AppContent(
             )
         }
         composable<Settings> {
+            val viewModel: SettingsViewModel = hiltViewModel()
+            val snackbarHostState = remember { SnackbarHostState() }
+            val coroutineScope = rememberCoroutineScope()
+            val context = LocalContext.current
+
+            LaunchedEffect(viewModel.event) {
+                viewModel.event.collect { event ->
+                    when (event) {
+                        is SettingsViewModel.Event.CacheClearSuccess -> {
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar(
+                                    context.getString(net.matsudamper.folderviewer.ui.R.string.disk_cache_cleared),
+                                )
+                            }
+                        }
+
+                        is SettingsViewModel.Event.CacheClearError -> {
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar(
+                                    "${context.getString(net.matsudamper.folderviewer.ui.R.string.disk_cache_clear_error)}: ${event.message}",
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             SettingsScreen(
+                snackbarHostState = snackbarHostState,
+                onClearDiskCache = viewModel::clearDiskCache,
                 onBack = {
                     navController.popBackStack()
                 },
