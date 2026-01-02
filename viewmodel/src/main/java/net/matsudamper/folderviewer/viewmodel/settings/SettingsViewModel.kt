@@ -17,7 +17,7 @@ import net.matsudamper.folderviewer.ui.settings.SettingsUiEvent
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @param:ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val _uiEvent = MutableSharedFlow<SettingsUiEvent>(
         replay = 0,
