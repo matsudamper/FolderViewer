@@ -37,6 +37,7 @@ dependencies {
     implementation(libs.protobuf.kotlin.lite)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+    implementation(libs.jakarta.inject)
 }
 
 protobuf {

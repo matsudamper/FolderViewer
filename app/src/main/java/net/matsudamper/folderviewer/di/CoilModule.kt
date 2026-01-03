@@ -1,13 +1,13 @@
 package net.matsudamper.folderviewer.di
 
 import android.content.Context
-import javax.inject.Singleton
 import coil.ImageLoader
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import jakarta.inject.Singleton
 import net.matsudamper.folderviewer.coil.CoilImageLoaderFactory
 import net.matsudamper.folderviewer.repository.StorageRepository
 

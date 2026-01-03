@@ -1,7 +1,7 @@
 package net.matsudamper.folderviewer.coil
 
-import javax.inject.Inject
 import coil.ImageLoader
+import jakarta.inject.Inject
 
 class CoilManager @Inject constructor(
     private val imageLoader: ImageLoader,

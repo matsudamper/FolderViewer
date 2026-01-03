@@ -2,23 +2,19 @@ package net.matsudamper.folderviewer.viewmodel.browser
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
-import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
+import jakarta.inject.Inject
 import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.navigation.FileBrowser
 import net.matsudamper.folderviewer.repository.FileItem
@@ -72,7 +68,7 @@ class FileBrowserViewModel @Inject constructor(
         }
     }
 
-    val uiState: Flow<FileBrowserUiState> = flow<FileBrowserUiState> {
+    val uiState: Flow<FileBrowserUiState> = flow {
         viewModelScope.launch {
             viewModelStateFlow.collect { viewModelState ->
                 emit(
@@ -115,7 +111,7 @@ class FileBrowserViewModel @Inject constructor(
     private var fileRepository: FileRepository? = null
 
     init {
-        loadFiles(arg.path)
+        loadFiles(arg.path.orEmpty())
         loadStorageName()
     }
 

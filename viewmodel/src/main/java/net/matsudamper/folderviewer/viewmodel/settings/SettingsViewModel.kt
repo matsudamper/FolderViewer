@@ -3,7 +3,6 @@ package net.matsudamper.folderviewer.viewmodel.settings
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -11,6 +10,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import jakarta.inject.Inject
 import net.matsudamper.folderviewer.coil.CoilManager
 import net.matsudamper.folderviewer.ui.R
 import net.matsudamper.folderviewer.ui.settings.SettingsUiEvent

@@ -25,6 +25,7 @@ protobuf = "4.33.2"
 protobufPlugin = "0.9.6"
 coil = "2.7.0"
 zoomable = "2.9.0"
+jakartaInject = "2.0.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -60,6 +61,7 @@ protobuf-kotlin-lite = { group = "com.google.protobuf", name = "protobuf-kotlin-
 protobuf-protoc = { group = "com.google.protobuf", name = "protoc", version.ref = "protobuf" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 zoomable = { group = "net.engawapg.lib", name = "zoomable", version.ref = "zoomable" }
+jakarta-inject = { group = "jakarta.inject", name = "jakarta.inject-api", version.ref = "jakartaInject" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
