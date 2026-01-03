@@ -31,14 +31,9 @@ object CoilImageLoaderFactory {
             .build()
     }
 
-    fun clearDiskCache(context: Context) {
-        val tempImageLoader = ImageLoader.Builder(context).build()
-        val diskCache = tempImageLoader.diskCache
-
+    fun clearDiskCache(context: Context, imageLoader: ImageLoader) {
         @Suppress("OPT_IN_USAGE")
-        diskCache?.clear()
-
-        tempImageLoader.shutdown()
+        imageLoader.diskCache?.clear()
     }
 
     internal const val DEFAULT_THUMBNAIL_SIZE = 256
