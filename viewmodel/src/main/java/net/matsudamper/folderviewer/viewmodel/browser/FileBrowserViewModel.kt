@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -86,7 +85,7 @@ class FileBrowserViewModel @Inject constructor(
                                 isDirectory = fileItem.isDirectory,
                                 size = fileItem.size,
                                 lastModified = fileItem.lastModified,
-                                imageSource = if (isImage) {
+                                thumbnail = if (isImage) {
                                     FileImageSource.Thumbnail(
                                         storageId = arg.storageId,
                                         path = fileItem.path,

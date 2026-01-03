@@ -129,7 +129,7 @@ private fun FileIcon(
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier) {
-        val imageSource = file.imageSource
+        val imageSource = file.thumbnail
         if (imageSource != null) {
             AsyncImage(
                 model = imageSource,

@@ -20,7 +20,7 @@ data class FileBrowserUiState(
         val isDirectory: Boolean,
         val size: Long,
         val lastModified: Long,
-        val imageSource: FileImageSource.Thumbnail?,
+        val thumbnail: FileImageSource.Thumbnail?,
         val callbacks: Callbacks,
     ) {
         @Immutable
