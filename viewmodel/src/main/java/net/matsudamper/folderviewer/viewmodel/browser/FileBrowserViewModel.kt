@@ -78,7 +78,7 @@ class FileBrowserViewModel @Inject constructor(
                     },
                     files = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig))
                         .map { fileItem ->
-                            val isImage = FileUtil.isImage(fileItem.name.lowercase())
+                            val isImage = FileUtil.isImage(fileItem.name)
                             FileBrowserUiState.UiFileItem(
                                 name = fileItem.name,
                                 path = fileItem.path,
