@@ -2,6 +2,7 @@ package net.matsudamper.folderviewer.viewmodel.browser
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import javax.inject.Inject
@@ -12,7 +13,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -43,83 +46,71 @@ class FileBrowserViewModel @Inject constructor(
     val uiEvent: Flow<FileBrowserUiEvent> = uiChannelEvent.receiveAsFlow()
 
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> =
-        MutableStateFlow(ViewModelState(currentPath = arg.path))
+        MutableStateFlow(ViewModelState(currentPath = arg.path.orEmpty()))
 
-    val uiState: StateFlow<FileBrowserUiState> =
-        MutableStateFlow(
-            FileBrowserUiState(
-                isLoading = false,
-                isRefreshing = false,
-                currentPath = arg.path,
-                title = arg.path,
-                files = emptyList(),
-                sortConfig = FileSortConfig(
-                    key = FileSortKey.Name,
-                    isAscending = true,
-                ),
-                displayMode = DisplayMode.Medium,
-                callbacks = object : FileBrowserUiState.Callbacks {
-                    override fun onRefresh() {
-                        val path = viewModelStateFlow.value.currentPath
-                        viewModelScope.launch {
-                            viewModelStateFlow.update { it.copy(isRefreshing = true) }
-                            fetchFilesInternal(path)
-                        }
-                    }
-
-                    override fun onBack() {
-                        viewModelScope.launch {
-                            viewModelEventChannel.send(ViewModelEvent.PopBackStack)
-                        }
-                    }
-
-                    override fun onSortConfigChanged(config: FileSortConfig) {
-                        viewModelStateFlow.update { it.copy(sortConfig = config) }
-                    }
-
-                    override fun onDisplayModeChanged(mode: DisplayMode) {
-                        viewModelStateFlow.update { it.copy(displayMode = mode) }
-                    }
-                },
-            ),
-        ).also { mutableUiState ->
+    private val callbacks = object : FileBrowserUiState.Callbacks {
+        override fun onRefresh() {
+            val path = viewModelStateFlow.value.currentPath
             viewModelScope.launch {
-                viewModelStateFlow.collect { viewModelState ->
-                    mutableUiState.update {
-                        it.copy(
-                            isLoading = viewModelState.isLoading,
-                            isRefreshing = viewModelState.isRefreshing,
-                            currentPath = viewModelState.currentPath,
-                            title = viewModelState.currentPath.ifEmpty {
-                                viewModelState.storageName ?: viewModelState.currentPath
-                            },
-                            files = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig))
-                                .map { fileItem ->
-                                    val isImage = FileUtil.isImage(fileItem.name.lowercase())
-                                    UiFileItem(
-                                        name = fileItem.name,
-                                        path = fileItem.path,
-                                        isDirectory = fileItem.isDirectory,
-                                        size = fileItem.size,
-                                        lastModified = fileItem.lastModified,
-                                        imageSource = if (isImage) {
-                                            FileImageSource.Thumbnail(
-                                                storageId = arg.storageId,
-                                                path = fileItem.path,
-                                            )
-                                        } else {
-                                            null
-                                        },
-                                        callbacks = FileItemCallbacks(fileItem),
-                                    )
-                                },
-                            sortConfig = viewModelState.sortConfig,
-                            displayMode = viewModelState.displayMode,
-                        )
-                    }
-                }
+                viewModelStateFlow.update { it.copy(isRefreshing = true) }
+                fetchFilesInternal(path)
             }
-        }.asStateFlow()
+        }
+
+        override fun onBack() {
+            viewModelScope.launch {
+                viewModelEventChannel.send(ViewModelEvent.PopBackStack)
+            }
+        }
+
+        override fun onSortConfigChanged(config: FileSortConfig) {
+            viewModelStateFlow.update { it.copy(sortConfig = config) }
+        }
+
+        override fun onDisplayModeChanged(mode: DisplayMode) {
+            viewModelStateFlow.update { it.copy(displayMode = mode) }
+        }
+    }
+
+    val uiState: Flow<FileBrowserUiState> = flow<FileBrowserUiState> {
+        viewModelScope.launch {
+            viewModelStateFlow.collect { viewModelState ->
+                emit(
+                    FileBrowserUiState(
+                        callbacks = callbacks,
+                        isLoading = viewModelState.isLoading,
+                        isRefreshing = viewModelState.isRefreshing,
+                        currentPath = viewModelState.currentPath,
+                        title = viewModelState.currentPath.ifEmpty {
+                            viewModelState.storageName ?: viewModelState.currentPath
+                        },
+                        files = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig))
+                            .map { fileItem ->
+                                val isImage = FileUtil.isImage(fileItem.name.lowercase())
+                                UiFileItem(
+                                    name = fileItem.name,
+                                    path = fileItem.path,
+                                    isDirectory = fileItem.isDirectory,
+                                    size = fileItem.size,
+                                    lastModified = fileItem.lastModified,
+                                    imageSource = if (isImage) {
+                                        FileImageSource.Thumbnail(
+                                            storageId = arg.storageId,
+                                            path = fileItem.path,
+                                        )
+                                    } else {
+                                        null
+                                    },
+                                    callbacks = FileItemCallbacks(fileItem),
+                                )
+                            },
+                        sortConfig = viewModelState.sortConfig,
+                        displayMode = viewModelState.displayMode,
+                    ),
+                )
+            }
+        }
+    }
 
     private var fileRepository: FileRepository? = null
 

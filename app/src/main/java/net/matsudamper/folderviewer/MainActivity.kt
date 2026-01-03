@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -132,7 +133,8 @@ private fun AppContent(
         }
         composable<FileBrowser> {
             val viewModel: FileBrowserViewModel = hiltViewModel()
-            val uiState by viewModel.uiState.collectAsState()
+            val uiState = viewModel.uiState.collectAsStateWithLifecycle(initialValue = null)
+            val uiStateValue = uiState.value ?: return@composable
 
             LaunchedEffect(viewModel.viewModelEventFlow) {
                 viewModel.viewModelEventFlow.collect { event ->
@@ -163,7 +165,7 @@ private fun AppContent(
             }
 
             FileBrowserScreen(
-                uiState = uiState,
+                uiState = uiStateValue,
                 uiEvent = viewModel.uiEvent,
                 imageLoader = imageLoader,
             )
