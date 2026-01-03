@@ -21,6 +21,7 @@ import okio.source
 object CoilImageLoaderFactory {
     fun create(context: Context, storageRepository: StorageRepository): ImageLoader {
         return ImageLoader.Builder(context)
+            .logger(DebugLogger())
             .components {
                 add(FileImageSourceKeyer())
                 add(FileRepositoryImageFetcherFactory(storageRepository))
