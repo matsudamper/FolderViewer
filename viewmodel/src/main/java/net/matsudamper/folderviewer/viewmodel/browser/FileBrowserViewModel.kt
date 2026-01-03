@@ -8,6 +8,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -69,42 +70,40 @@ class FileBrowserViewModel @Inject constructor(
     }
 
     val uiState: Flow<FileBrowserUiState> = flow {
-        viewModelScope.launch {
-            viewModelStateFlow.collect { viewModelState ->
-                emit(
-                    FileBrowserUiState(
-                        callbacks = callbacks,
-                        isLoading = viewModelState.isLoading,
-                        isRefreshing = viewModelState.isRefreshing,
-                        currentPath = viewModelState.currentPath,
-                        title = viewModelState.currentPath.ifEmpty {
-                            viewModelState.storageName ?: viewModelState.currentPath
+        viewModelStateFlow.collectLatest { viewModelState ->
+            emit(
+                FileBrowserUiState(
+                    callbacks = callbacks,
+                    isLoading = viewModelState.isLoading,
+                    isRefreshing = viewModelState.isRefreshing,
+                    currentPath = viewModelState.currentPath,
+                    title = viewModelState.currentPath.ifEmpty {
+                        viewModelState.storageName ?: viewModelState.currentPath
+                    },
+                    files = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig))
+                        .map { fileItem ->
+                            val isImage = FileUtil.isImage(fileItem.name.lowercase())
+                            UiFileItem(
+                                name = fileItem.name,
+                                path = fileItem.path,
+                                isDirectory = fileItem.isDirectory,
+                                size = fileItem.size,
+                                lastModified = fileItem.lastModified,
+                                imageSource = if (isImage) {
+                                    FileImageSource.Thumbnail(
+                                        storageId = arg.storageId,
+                                        path = fileItem.path,
+                                    )
+                                } else {
+                                    null
+                                },
+                                callbacks = FileItemCallbacks(fileItem),
+                            )
                         },
-                        files = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig))
-                            .map { fileItem ->
-                                val isImage = FileUtil.isImage(fileItem.name.lowercase())
-                                UiFileItem(
-                                    name = fileItem.name,
-                                    path = fileItem.path,
-                                    isDirectory = fileItem.isDirectory,
-                                    size = fileItem.size,
-                                    lastModified = fileItem.lastModified,
-                                    imageSource = if (isImage) {
-                                        FileImageSource.Thumbnail(
-                                            storageId = arg.storageId,
-                                            path = fileItem.path,
-                                        )
-                                    } else {
-                                        null
-                                    },
-                                    callbacks = FileItemCallbacks(fileItem),
-                                )
-                            },
-                        sortConfig = viewModelState.sortConfig,
-                        displayMode = viewModelState.displayMode,
-                    ),
-                )
-            }
+                    sortConfig = viewModelState.sortConfig,
+                    displayMode = viewModelState.displayMode,
+                ),
+            )
         }
     }
 
