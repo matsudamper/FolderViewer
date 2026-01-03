@@ -21,12 +21,8 @@ import net.matsudamper.folderviewer.navigation.FileBrowser
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
-import net.matsudamper.folderviewer.ui.browser.DisplayMode
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
-import net.matsudamper.folderviewer.ui.browser.FileSortConfig
-import net.matsudamper.folderviewer.ui.browser.FileSortKey
-import net.matsudamper.folderviewer.ui.browser.UiFileItem
 import net.matsudamper.folderviewer.viewmodel.FileUtil
 
 @HiltViewModel
@@ -60,11 +56,11 @@ class FileBrowserViewModel @Inject constructor(
             }
         }
 
-        override fun onSortConfigChanged(config: FileSortConfig) {
+        override fun onSortConfigChanged(config: FileBrowserUiState.FileSortConfig) {
             viewModelStateFlow.update { it.copy(sortConfig = config) }
         }
 
-        override fun onDisplayModeChanged(mode: DisplayMode) {
+        override fun onDisplayModeChanged(mode: FileBrowserUiState.DisplayMode) {
             viewModelStateFlow.update { it.copy(displayMode = mode) }
         }
     }
@@ -83,7 +79,7 @@ class FileBrowserViewModel @Inject constructor(
                     files = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig))
                         .map { fileItem ->
                             val isImage = FileUtil.isImage(fileItem.name.lowercase())
-                            UiFileItem(
+                            FileBrowserUiState.UiFileItem(
                                 name = fileItem.name,
                                 path = fileItem.path,
                                 isDirectory = fileItem.isDirectory,
@@ -123,11 +119,11 @@ class FileBrowserViewModel @Inject constructor(
         }
     }
 
-    private fun createComparator(config: FileSortConfig): Comparator<FileItem> {
+    private fun createComparator(config: FileBrowserUiState.FileSortConfig): Comparator<FileItem> {
         val comparator: Comparator<FileItem> = when (config.key) {
-            FileSortKey.Name -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.name }
-            FileSortKey.Date -> compareBy { it.lastModified }
-            FileSortKey.Size -> compareBy { it.size }
+            FileBrowserUiState.FileSortKey.Name -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.name }
+            FileBrowserUiState.FileSortKey.Date -> compareBy { it.lastModified }
+            FileBrowserUiState.FileSortKey.Size -> compareBy { it.size }
         }
 
         val orderComparator = if (config.isAscending) comparator else comparator.reversed()
@@ -196,7 +192,7 @@ class FileBrowserViewModel @Inject constructor(
 
     private inner class FileItemCallbacks(
         private val fileItem: FileItem,
-    ) : UiFileItem.Callbacks {
+    ) : FileBrowserUiState.UiFileItem.Callbacks {
         override fun onClick() {
             if (fileItem.isDirectory) {
                 viewModelScope.launch {
@@ -230,10 +226,10 @@ class FileBrowserViewModel @Inject constructor(
         val currentPath: String = "",
         val storageName: String? = null,
         val rawFiles: List<FileItem> = emptyList(),
-        val sortConfig: FileSortConfig = FileSortConfig(
-            key = FileSortKey.Name,
+        val sortConfig: FileBrowserUiState.FileSortConfig = FileBrowserUiState.FileSortConfig(
+            key = FileBrowserUiState.FileSortKey.Name,
             isAscending = true,
         ),
-        val displayMode: DisplayMode = DisplayMode.Medium,
+        val displayMode: FileBrowserUiState.DisplayMode = FileBrowserUiState.DisplayMode.Medium,
     )
 }

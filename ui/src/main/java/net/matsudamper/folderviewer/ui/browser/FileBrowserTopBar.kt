@@ -28,10 +28,10 @@ internal fun FileBrowserTopBar(
     title: String,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
-    sortConfig: FileSortConfig? = null,
-    onSortConfigChange: ((FileSortConfig) -> Unit)? = null,
-    displayMode: DisplayMode = DisplayMode.Medium,
-    onDisplayModeChange: ((DisplayMode) -> Unit)? = null,
+    sortConfig: FileBrowserUiState.FileSortConfig? = null,
+    onSortConfigChange: ((FileBrowserUiState.FileSortConfig) -> Unit)? = null,
+    displayMode: FileBrowserUiState.DisplayMode = FileBrowserUiState.DisplayMode.Medium,
+    onDisplayModeChange: ((FileBrowserUiState.DisplayMode) -> Unit)? = null,
 ) {
     val scrollState = rememberScrollState()
     LaunchedEffect(title) {
@@ -65,7 +65,7 @@ internal fun FileBrowserTopBar(
                 IconButton(onClick = { showDisplayMenu = true }) {
                     Icon(
                         painter = painterResource(
-                            id = if (displayMode == DisplayMode.Grid) {
+                            id = if (displayMode == FileBrowserUiState.DisplayMode.Grid) {
                                 R.drawable.ic_grid_view
                             } else {
                                 R.drawable.ic_view_list
@@ -81,11 +81,11 @@ internal fun FileBrowserTopBar(
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.display_mode_small)) },
                         onClick = {
-                            onDisplayModeChange(DisplayMode.Small)
+                            onDisplayModeChange(FileBrowserUiState.DisplayMode.Small)
                             showDisplayMenu = false
                         },
                         leadingIcon = {
-                            if (displayMode == DisplayMode.Small) {
+                            if (displayMode == FileBrowserUiState.DisplayMode.Small) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_check),
                                     contentDescription = null,
@@ -96,11 +96,11 @@ internal fun FileBrowserTopBar(
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.display_mode_medium)) },
                         onClick = {
-                            onDisplayModeChange(DisplayMode.Medium)
+                            onDisplayModeChange(FileBrowserUiState.DisplayMode.Medium)
                             showDisplayMenu = false
                         },
                         leadingIcon = {
-                            if (displayMode == DisplayMode.Medium) {
+                            if (displayMode == FileBrowserUiState.DisplayMode.Medium) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_check),
                                     contentDescription = null,
@@ -111,11 +111,11 @@ internal fun FileBrowserTopBar(
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.display_mode_grid)) },
                         onClick = {
-                            onDisplayModeChange(DisplayMode.Grid)
+                            onDisplayModeChange(FileBrowserUiState.DisplayMode.Grid)
                             showDisplayMenu = false
                         },
                         leadingIcon = {
-                            if (displayMode == DisplayMode.Grid) {
+                            if (displayMode == FileBrowserUiState.DisplayMode.Grid) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_check),
                                     contentDescription = null,
@@ -141,11 +141,11 @@ internal fun FileBrowserTopBar(
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.sort_name)) },
                         onClick = {
-                            onSortConfigChange(sortConfig.copy(key = FileSortKey.Name))
+                            onSortConfigChange(sortConfig.copy(key = FileBrowserUiState.FileSortKey.Name))
                             showSortMenu = false
                         },
                         leadingIcon = {
-                            if (sortConfig.key == FileSortKey.Name) {
+                            if (sortConfig.key == FileBrowserUiState.FileSortKey.Name) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_check),
                                     contentDescription = null,
@@ -156,11 +156,11 @@ internal fun FileBrowserTopBar(
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.sort_date)) },
                         onClick = {
-                            onSortConfigChange(sortConfig.copy(key = FileSortKey.Date))
+                            onSortConfigChange(sortConfig.copy(key = FileBrowserUiState.FileSortKey.Date))
                             showSortMenu = false
                         },
                         leadingIcon = {
-                            if (sortConfig.key == FileSortKey.Date) {
+                            if (sortConfig.key == FileBrowserUiState.FileSortKey.Date) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_check),
                                     contentDescription = null,
@@ -171,11 +171,11 @@ internal fun FileBrowserTopBar(
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.sort_size)) },
                         onClick = {
-                            onSortConfigChange(sortConfig.copy(key = FileSortKey.Size))
+                            onSortConfigChange(sortConfig.copy(key = FileBrowserUiState.FileSortKey.Size))
                             showSortMenu = false
                         },
                         leadingIcon = {
-                            if (sortConfig.key == FileSortKey.Size) {
+                            if (sortConfig.key == FileBrowserUiState.FileSortKey.Size) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_check),
                                     contentDescription = null,

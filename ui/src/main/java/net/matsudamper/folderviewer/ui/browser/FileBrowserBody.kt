@@ -78,7 +78,7 @@ internal fun FileBrowserBody(
 
             else -> {
                 when (uiState.displayMode) {
-                    DisplayMode.Grid -> {
+                    FileBrowserUiState.DisplayMode.Grid -> {
                         LazyVerticalGrid(
                             columns = GridCells.Adaptive(minSize = 120.dp),
                             modifier = Modifier.fillMaxSize(),
@@ -106,21 +106,21 @@ internal fun FileBrowserBody(
                                 key = { it.path },
                             ) { file ->
                                 when (uiState.displayMode) {
-                                    DisplayMode.Small -> {
+                                    FileBrowserUiState.DisplayMode.Small -> {
                                         FileSmallListItem(
                                             file = file,
                                             imageLoader = imageLoader,
                                         )
                                     }
 
-                                    DisplayMode.Medium -> {
+                                    FileBrowserUiState.DisplayMode.Medium -> {
                                         FileListItem(
                                             file = file,
                                             imageLoader = imageLoader,
                                         )
                                     }
 
-                                    DisplayMode.Grid -> Unit
+                                    FileBrowserUiState.DisplayMode.Grid -> Unit
                                 }
                             }
                         }

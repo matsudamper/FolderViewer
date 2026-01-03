@@ -31,7 +31,7 @@ import net.matsudamper.folderviewer.ui.util.formatBytes
 
 @Composable
 internal fun FileListItem(
-    file: UiFileItem,
+    file: FileBrowserUiState.UiFileItem,
     imageLoader: ImageLoader,
     modifier: Modifier = Modifier,
 ) {
@@ -64,7 +64,7 @@ internal fun FileListItem(
 
 @Composable
 internal fun FileSmallListItem(
-    file: UiFileItem,
+    file: FileBrowserUiState.UiFileItem,
     imageLoader: ImageLoader,
     modifier: Modifier = Modifier,
 ) {
@@ -92,7 +92,7 @@ internal fun FileSmallListItem(
 
 @Composable
 internal fun FileGridItem(
-    file: UiFileItem,
+    file: FileBrowserUiState.UiFileItem,
     imageLoader: ImageLoader,
     modifier: Modifier = Modifier,
 ) {
@@ -124,7 +124,7 @@ internal fun FileGridItem(
 
 @Composable
 private fun FileIcon(
-    file: UiFileItem,
+    file: FileBrowserUiState.UiFileItem,
     imageLoader: ImageLoader,
     modifier: Modifier = Modifier,
 ) {
