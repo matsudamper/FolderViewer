@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import android.os.Build
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.IOException
 import java.io.InputStream
 import java.util.EnumSet
 import kotlinx.coroutines.Dispatchers
@@ -98,6 +99,9 @@ class SmbFileRepository(
                 ByteArrayInputStream(bos.toByteArray())
             }
         } catch (e: Exception) {
+            if (e is IOException) {
+                throw e
+            }
             e.printStackTrace()
             getFileContentInternal(path, maxReadSize = MAX_THUMBNAIL_READ_SIZE.toLong())
         } finally {
@@ -146,15 +150,20 @@ class SmbFileRepository(
                 null,
             )
 
+            val fileSize = file.fileInformation.standardInformation.endOfFile
             val smbStream = file.inputStream
 
             // Return a wrapper stream that closes everything
             object : InputStream() {
                 private var bytesRead: Long = 0
+                private val expectedSize = maxReadSize?.let { minOf(it, fileSize) } ?: fileSize
 
                 override fun read(): Int {
                     if (maxReadSize != null && bytesRead >= maxReadSize) return -1
                     val result = smbStream.read()
+                    if (result == -1 && bytesRead < expectedSize) {
+                        throw IOException("Premature EOF: read $bytesRead bytes, expected $expectedSize")
+                    }
                     if (result != -1) bytesRead++
                     return result
                 }
@@ -168,6 +177,11 @@ class SmbFileRepository(
                     val remaining = maxReadSize?.let { it - bytesRead } ?: Long.MAX_VALUE
                     val toRead = if (len > remaining) remaining.toInt() else len
                     val result = smbStream.read(b, off, toRead)
+
+                    if (result == -1 && bytesRead < expectedSize) {
+                        throw IOException("Premature EOF: read $bytesRead bytes, expected $expectedSize")
+                    }
+
                     if (result != -1) bytesRead += result
                     return result
                 }
