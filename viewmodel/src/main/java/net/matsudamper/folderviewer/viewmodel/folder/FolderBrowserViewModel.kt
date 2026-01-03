@@ -169,8 +169,6 @@ class FolderBrowserViewModel @Inject constructor(
             preferencesRepository.folderBrowserFolderSortConfig,
             preferencesRepository.folderBrowserFileSortConfig,
         ) { folderConfig, fileConfig ->
-            Pair(folderConfig, fileConfig)
-        }.collect { (folderConfig, fileConfig) ->
             viewModelStateFlow.update {
                 it.copy(
                     folderSortConfig = FolderBrowserUiState.FileSortConfig(
@@ -191,7 +189,7 @@ class FolderBrowserViewModel @Inject constructor(
                     ),
                 )
             }
-        }
+        }.collect()
     }
 
     private fun loadStorageName() {
