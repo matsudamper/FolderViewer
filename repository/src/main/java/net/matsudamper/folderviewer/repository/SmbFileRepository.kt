@@ -98,10 +98,9 @@ class SmbFileRepository(
 
                 ByteArrayInputStream(bos.toByteArray())
             }
+        } catch (e: IOException) {
+            throw e
         } catch (e: Exception) {
-            if (e is IOException) {
-                throw e
-            }
             e.printStackTrace()
             getFileContentInternal(path, maxReadSize = MAX_THUMBNAIL_READ_SIZE.toLong())
         } finally {
@@ -199,6 +198,7 @@ class SmbFileRepository(
                     val remaining = maxReadSize?.let { (it - bytesRead).toInt() } ?: Int.MAX_VALUE
                     return if (available > remaining) remaining else available
                 }
+
                 override fun close() {
                     try {
                         smbStream.close()
