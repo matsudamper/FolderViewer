@@ -20,6 +20,7 @@ import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.navigation.FileBrowser
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
+import net.matsudamper.folderviewer.repository.PreferencesRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
@@ -29,6 +30,7 @@ import net.matsudamper.folderviewer.viewmodel.FileUtil
 class FileBrowserViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val storageRepository: StorageRepository,
+    private val preferencesRepository: PreferencesRepository,
 ) : ViewModel() {
     private val arg: FileBrowser = savedStateHandle.toRoute<FileBrowser>()
 
@@ -58,6 +60,18 @@ class FileBrowserViewModel @Inject constructor(
 
         override fun onSortConfigChanged(config: FileBrowserUiState.FileSortConfig) {
             viewModelStateFlow.update { it.copy(sortConfig = config) }
+            viewModelScope.launch {
+                preferencesRepository.saveFileBrowserSortConfig(
+                    PreferencesRepository.FileSortConfig(
+                        key = when (config.key) {
+                            FileBrowserUiState.FileSortKey.Name -> PreferencesRepository.FileSortKey.Name
+                            FileBrowserUiState.FileSortKey.Date -> PreferencesRepository.FileSortKey.Date
+                            FileBrowserUiState.FileSortKey.Size -> PreferencesRepository.FileSortKey.Size
+                        },
+                        isAscending = config.isAscending,
+                    ),
+                )
+            }
         }
 
         override fun onDisplayModeChanged(config: FileBrowserUiState.DisplayConfig) {
@@ -120,6 +134,26 @@ class FileBrowserViewModel @Inject constructor(
     init {
         loadFiles(arg.path.orEmpty())
         loadStorageName()
+        loadSortConfig()
+    }
+
+    private fun loadSortConfig() {
+        viewModelScope.launch {
+            preferencesRepository.fileBrowserSortConfig.collect { config ->
+                viewModelStateFlow.update {
+                    it.copy(
+                        sortConfig = FileBrowserUiState.FileSortConfig(
+                            key = when (config.key) {
+                                PreferencesRepository.FileSortKey.Name -> FileBrowserUiState.FileSortKey.Name
+                                PreferencesRepository.FileSortKey.Date -> FileBrowserUiState.FileSortKey.Date
+                                PreferencesRepository.FileSortKey.Size -> FileBrowserUiState.FileSortKey.Size
+                            },
+                            isAscending = config.isAscending,
+                        ),
+                    )
+                }
+            }
+        }
     }
 
     private fun loadStorageName() {
