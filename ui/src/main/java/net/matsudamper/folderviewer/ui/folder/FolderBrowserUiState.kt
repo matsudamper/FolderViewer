@@ -13,15 +13,21 @@ data class FolderBrowserUiState(
     val displayConfig: DisplayConfig,
     val callbacks: Callbacks,
 ) {
-    data class UiFileItem(
-        val name: String,
-        val path: String,
-        val isDirectory: Boolean,
-        val size: Long,
-        val lastModified: Long,
-        val thumbnail: FileImageSource.Thumbnail?,
-        val callbacks: Callbacks,
-    ) {
+    sealed interface UiFileItem {
+        data class Header(
+            val path: String,
+        ) : UiFileItem
+
+        data class File(
+            val name: String,
+            val path: String,
+            val isDirectory: Boolean,
+            val size: Long,
+            val lastModified: Long,
+            val thumbnail: FileImageSource.Thumbnail?,
+            val callbacks: Callbacks,
+        ) : UiFileItem
+
         @Immutable
         fun interface Callbacks {
             fun onClick()
