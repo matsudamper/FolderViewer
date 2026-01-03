@@ -55,8 +55,12 @@ class FolderBrowserViewModel @Inject constructor(
             }
         }
 
-        override fun onSortConfigChanged(config: FolderBrowserUiState.FileSortConfig) {
-            viewModelStateFlow.update { it.copy(sortConfig = config) }
+        override fun onFolderSortConfigChanged(config: FolderBrowserUiState.FileSortConfig) {
+            viewModelStateFlow.update { it.copy(folderSortConfig = config) }
+        }
+
+        override fun onFileSortConfigChanged(config: FolderBrowserUiState.FileSortConfig) {
+            viewModelStateFlow.update { it.copy(fileSortConfig = config) }
         }
 
         override fun onDisplayModeChanged(config: FolderBrowserUiState.DisplayConfig) {
@@ -71,16 +75,39 @@ class FolderBrowserViewModel @Inject constructor(
     val uiState: StateFlow<FolderBrowserUiState> = combine(
         viewModelStateFlow,
     ) { (viewModelState) ->
-        val sortedFiles = viewModelState.rawFiles
+        val groups = viewModelState.rawFiles
             .groupBy { it.parentPath }
-            .flatMap { (parentPath, files) ->
+
+        // フォルダ（ヘッダー）のソート用情報を取得
+        val folderInfos = viewModelState.rawFiles
+            .filter { it.fileItem.isDirectory }
+            .associateBy { it.fileItem.path }
+
+        val sortedParentPaths = groups.keys.sortedWith { path1, path2 ->
+            val info1 = folderInfos[path1]
+            val info2 = folderInfos[path2]
+            
+            if (info1 != null && info2 != null) {
+                createFileItemComparator(viewModelState.folderSortConfig).compare(info1.fileItem, info2.fileItem)
+            } else {
+                path1.compareTo(path2, ignoreCase = true)
+            }
+        }
+
+        val sortedFiles = sortedParentPaths.flatMap { parentPath ->
+            val filesInFolder = groups[parentPath].orEmpty()
+            val filesOnly = filesInFolder.filter { !it.fileItem.isDirectory }
+            
+            if (filesOnly.isEmpty()) {
+                emptyList()
+            } else {
                 val header = FolderBrowserUiState.UiFileItem.Header(
                     path = parentPath,
                 )
-                val items = files
-                    .filter { !it.isDirectory } // フォルダを表示から除外
-                    .sortedWith(createComparator(viewModelState.sortConfig))
-                    .map { fileItem ->
+                val items = filesOnly
+                    .sortedWith(createInternalFileItemComparator(viewModelState.fileSortConfig))
+                    .map { internalItem ->
+                        val fileItem = internalItem.fileItem
                         val isImage = FileUtil.isImage(fileItem.name)
                         FolderBrowserUiState.UiFileItem.File(
                             name = fileItem.name,
@@ -96,15 +123,12 @@ class FolderBrowserViewModel @Inject constructor(
                             } else {
                                 null
                             },
-                            callbacks = FileItemCallbacks(fileItem),
+                            callbacks = FileItemCallbacks(internalItem),
                         )
                     }
-                if (items.isEmpty()) {
-                    emptyList()
-                } else {
-                    listOf(header) + items
-                }
+                listOf(header) + items
             }
+        }
 
         FolderBrowserUiState(
             callbacks = callbacks,
@@ -115,7 +139,8 @@ class FolderBrowserViewModel @Inject constructor(
                 viewModelState.storageName ?: viewModelState.currentPath
             },
             files = sortedFiles,
-            sortConfig = viewModelState.sortConfig,
+            folderSortConfig = viewModelState.folderSortConfig,
+            fileSortConfig = viewModelState.fileSortConfig,
             displayConfig = viewModelState.displayConfig,
         )
     }.stateIn(
@@ -128,7 +153,8 @@ class FolderBrowserViewModel @Inject constructor(
             currentPath = arg.path.orEmpty(),
             title = arg.path.orEmpty(),
             files = emptyList(),
-            sortConfig = viewModelStateFlow.value.sortConfig,
+            folderSortConfig = viewModelStateFlow.value.folderSortConfig,
+            fileSortConfig = viewModelStateFlow.value.fileSortConfig,
             displayConfig = viewModelStateFlow.value.displayConfig,
         ),
     )
@@ -150,11 +176,21 @@ class FolderBrowserViewModel @Inject constructor(
         }
     }
 
-    private fun createComparator(config: FolderBrowserUiState.FileSortConfig): Comparator<InternalFileItem> {
-        val comparator: Comparator<InternalFileItem> = when (config.key) {
+    private fun createFileItemComparator(config: FolderBrowserUiState.FileSortConfig): Comparator<FileItem> {
+        val comparator: Comparator<FileItem> = when (config.key) {
             FolderBrowserUiState.FileSortKey.Name -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.name }
             FolderBrowserUiState.FileSortKey.Date -> compareBy { it.lastModified }
             FolderBrowserUiState.FileSortKey.Size -> compareBy { it.size }
+        }
+
+        return if (config.isAscending) comparator else comparator.reversed()
+    }
+
+    private fun createInternalFileItemComparator(config: FolderBrowserUiState.FileSortConfig): Comparator<InternalFileItem> {
+        val comparator: Comparator<InternalFileItem> = when (config.key) {
+            FolderBrowserUiState.FileSortKey.Name -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.fileItem.name }
+            FolderBrowserUiState.FileSortKey.Date -> compareBy { it.fileItem.lastModified }
+            FolderBrowserUiState.FileSortKey.Size -> compareBy { it.fileItem.size }
         }
 
         return if (config.isAscending) comparator else comparator.reversed()
@@ -208,19 +244,15 @@ class FolderBrowserViewModel @Inject constructor(
 
         // 深さ優先で再帰的に取得
         for (file in itemsWithParent) {
-            if (file.isDirectory) {
-                fetchAllFilesRecursive(repository, file.path)
+            if (file.fileItem.isDirectory) {
+                fetchAllFilesRecursive(repository, file.fileItem.path)
             }
         }
     }
 
     private fun FileItem.toInternal(parentPath: String): InternalFileItem {
         return InternalFileItem(
-            name = name,
-            path = path,
-            isDirectory = isDirectory,
-            size = size,
-            lastModified = lastModified,
+            fileItem = this,
             parentPath = parentPath,
         )
     }
@@ -244,9 +276,10 @@ class FolderBrowserViewModel @Inject constructor(
     }
 
     private inner class FileItemCallbacks(
-        private val fileItem: InternalFileItem,
+        private val internalItem: InternalFileItem,
     ) : FolderBrowserUiState.UiFileItem.Callbacks {
         override fun onClick() {
+            val fileItem = internalItem.fileItem
             if (fileItem.isDirectory) {
                 // Folder browser recursive view
             } else {
@@ -267,11 +300,7 @@ class FolderBrowserViewModel @Inject constructor(
     }
 
     private data class InternalFileItem(
-        val name: String,
-        val path: String,
-        val isDirectory: Boolean,
-        val size: Long,
-        val lastModified: Long,
+        val fileItem: FileItem,
         val parentPath: String,
     )
 
@@ -281,7 +310,11 @@ class FolderBrowserViewModel @Inject constructor(
         val currentPath: String = "",
         val storageName: String? = null,
         val rawFiles: List<InternalFileItem> = emptyList(),
-        val sortConfig: FolderBrowserUiState.FileSortConfig = FolderBrowserUiState.FileSortConfig(
+        val folderSortConfig: FolderBrowserUiState.FileSortConfig = FolderBrowserUiState.FileSortConfig(
+            key = FolderBrowserUiState.FileSortKey.Name,
+            isAscending = true,
+        ),
+        val fileSortConfig: FolderBrowserUiState.FileSortConfig = FolderBrowserUiState.FileSortConfig(
             key = FolderBrowserUiState.FileSortKey.Name,
             isAscending = true,
         ),
