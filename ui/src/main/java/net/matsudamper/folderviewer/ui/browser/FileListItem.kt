@@ -13,18 +13,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
 import net.matsudamper.folderviewer.ui.R
 import net.matsudamper.folderviewer.ui.util.formatBytes
 
@@ -171,24 +175,37 @@ private fun FileIcon(
     Box(modifier = modifier) {
         val imageSource = file.thumbnail
         if (imageSource != null) {
-            AsyncImage(
+            SubcomposeAsyncImage(
                 model = imageSource,
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
-                placeholder = painterResource(R.drawable.ic_file),
-                error = painterResource(R.drawable.ic_file),
-            )
+            ) {
+                when (val state = painter.state) {
+                    is AsyncImagePainter.State.Loading,
+                    is AsyncImagePainter.State.Error -> {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_file),
+                            contentDescription = if (state is AsyncImagePainter.State.Loading) "loading" else "error",
+                            modifier = Modifier.fillMaxSize(),
+                            tint = LocalContentColor.current,
+                        )
+                    }
+
+                    else -> {
+                        SubcomposeAsyncImageContent()
+                    }
+                }
+            }
         } else {
             Icon(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(8.dp),
+                    .padding(2.dp),
                 painter = painterResource(
                     id = if (file.isDirectory) R.drawable.ic_folder else R.drawable.ic_file,
                 ),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                contentDescription = if (file.isDirectory) "folder" else "file",
             )
         }
     }
