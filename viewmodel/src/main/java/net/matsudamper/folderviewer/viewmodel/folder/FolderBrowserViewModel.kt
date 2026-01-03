@@ -94,6 +94,7 @@ class FolderBrowserViewModel @Inject constructor(
             }
         }
 
+        val rootPath = arg.path.orEmpty()
         val sortedFiles = sortedParentPaths.flatMap { parentPath ->
             val filesInFolder = groups[parentPath].orEmpty()
             val filesOnly = filesInFolder.filter { !it.fileItem.isDirectory }
@@ -101,8 +102,13 @@ class FolderBrowserViewModel @Inject constructor(
             if (filesOnly.isEmpty()) {
                 emptyList()
             } else {
+                val relativePath = if (parentPath == rootPath) {
+                    "."
+                } else {
+                    parentPath.removePrefix(rootPath).removePrefix("/")
+                }
                 val header = FolderBrowserUiState.UiFileItem.Header(
-                    path = parentPath,
+                    path = relativePath,
                 )
                 val items = filesOnly
                     .sortedWith(createInternalFileItemComparator(viewModelState.fileSortConfig))
