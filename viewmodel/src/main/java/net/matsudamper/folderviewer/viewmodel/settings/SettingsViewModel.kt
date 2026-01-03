@@ -27,9 +27,7 @@ class SettingsViewModel @Inject constructor(
     fun clearDiskCache() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                // インメモリキャッシュをクリア
                 imageLoader.memoryCache?.clear()
-                // ディスクキャッシュをクリア
                 CoilImageLoaderFactory.clearDiskCache(context, imageLoader)
                 uiEventChannel.trySend(
                     SettingsUiEvent.ShowSnackbar(
