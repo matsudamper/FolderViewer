@@ -134,24 +134,24 @@ class FileBrowserViewModel @Inject constructor(
     init {
         loadFiles(arg.path.orEmpty())
         loadStorageName()
-        loadSortConfig()
+        viewModelScope.launch {
+            loadSortConfig()
+        }
     }
 
-    private fun loadSortConfig() {
-        viewModelScope.launch {
-            preferencesRepository.fileBrowserSortConfig.collect { config ->
-                viewModelStateFlow.update {
-                    it.copy(
-                        sortConfig = FileBrowserUiState.FileSortConfig(
-                            key = when (config.key) {
-                                PreferencesRepository.FileSortKey.Name -> FileBrowserUiState.FileSortKey.Name
-                                PreferencesRepository.FileSortKey.Date -> FileBrowserUiState.FileSortKey.Date
-                                PreferencesRepository.FileSortKey.Size -> FileBrowserUiState.FileSortKey.Size
-                            },
-                            isAscending = config.isAscending,
-                        ),
-                    )
-                }
+    private suspend fun loadSortConfig() {
+        preferencesRepository.fileBrowserSortConfig.collect { config ->
+            viewModelStateFlow.update {
+                it.copy(
+                    sortConfig = FileBrowserUiState.FileSortConfig(
+                        key = when (config.key) {
+                            PreferencesRepository.FileSortKey.Name -> FileBrowserUiState.FileSortKey.Name
+                            PreferencesRepository.FileSortKey.Date -> FileBrowserUiState.FileSortKey.Date
+                            PreferencesRepository.FileSortKey.Size -> FileBrowserUiState.FileSortKey.Size
+                        },
+                        isAscending = config.isAscending,
+                    ),
+                )
             }
         }
     }

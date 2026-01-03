@@ -4,8 +4,13 @@ option java_package = "net.matsudamper.folderviewer.repository.proto";
 option java_multiple_files = true;
 
 message BrowserPreferencesProto {
-  SortConfigProto folder_browser_sort = 1;
+  FolderBrowserSortConfigProto folder_browser_sort = 1;
   SortConfigProto file_browser_sort = 2;
+}
+
+message FolderBrowserSortConfigProto {
+  SortConfigProto folder_sort = 1;
+  SortConfigProto file_sort = 2;
 }
 
 message SortConfigProto {

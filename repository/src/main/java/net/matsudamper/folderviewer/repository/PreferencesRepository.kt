@@ -27,9 +27,14 @@ private val Context.browserPreferencesDataStore: DataStore<BrowserPreferencesPro
 class PreferencesRepository @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) {
-    val folderBrowserSortConfig: Flow<FileSortConfig> = context.browserPreferencesDataStore.data
+    val folderBrowserFolderSortConfig: Flow<FileSortConfig> = context.browserPreferencesDataStore.data
         .map { proto ->
-            proto.folderBrowserSort.toDomain()
+            proto.folderBrowserSort.folderSort.toDomain()
+        }
+
+    val folderBrowserFileSortConfig: Flow<FileSortConfig> = context.browserPreferencesDataStore.data
+        .map { proto ->
+            proto.folderBrowserSort.fileSort.toDomain()
         }
 
     val fileBrowserSortConfig: Flow<FileSortConfig> = context.browserPreferencesDataStore.data
@@ -37,10 +42,26 @@ class PreferencesRepository @Inject constructor(
             proto.fileBrowserSort.toDomain()
         }
 
-    suspend fun saveFolderBrowserSortConfig(config: FileSortConfig) {
+    suspend fun saveFolderBrowserFolderSortConfig(config: FileSortConfig) {
         context.browserPreferencesDataStore.updateData { currentPrefs ->
             currentPrefs.toBuilder()
-                .setFolderBrowserSort(config.toProto())
+                .setFolderBrowserSort(
+                    currentPrefs.folderBrowserSort.toBuilder()
+                        .setFolderSort(config.toProto())
+                        .build(),
+                )
+                .build()
+        }
+    }
+
+    suspend fun saveFolderBrowserFileSortConfig(config: FileSortConfig) {
+        context.browserPreferencesDataStore.updateData { currentPrefs ->
+            currentPrefs.toBuilder()
+                .setFolderBrowserSort(
+                    currentPrefs.folderBrowserSort.toBuilder()
+                        .setFileSort(config.toProto())
+                        .build(),
+                )
                 .build()
         }
     }
@@ -93,9 +114,19 @@ class PreferencesRepository @Inject constructor(
 internal object BrowserPreferencesSerializer : Serializer<BrowserPreferencesProto> {
     override val defaultValue: BrowserPreferencesProto = BrowserPreferencesProto.newBuilder()
         .setFolderBrowserSort(
-            SortConfigProto.newBuilder()
-                .setKey(SortConfigProto.SortKey.NAME)
-                .setIsAscending(true)
+            net.matsudamper.folderviewer.repository.proto.FolderBrowserSortConfigProto.newBuilder()
+                .setFolderSort(
+                    SortConfigProto.newBuilder()
+                        .setKey(SortConfigProto.SortKey.NAME)
+                        .setIsAscending(true)
+                        .build(),
+                )
+                .setFileSort(
+                    SortConfigProto.newBuilder()
+                        .setKey(SortConfigProto.SortKey.NAME)
+                        .setIsAscending(true)
+                        .build(),
+                )
                 .build(),
         )
         .setFileBrowserSort(

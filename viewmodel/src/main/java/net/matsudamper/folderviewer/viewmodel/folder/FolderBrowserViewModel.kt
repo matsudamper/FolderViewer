@@ -58,9 +58,9 @@ class FolderBrowserViewModel @Inject constructor(
         }
 
         override fun onSortConfigChanged(config: FolderBrowserUiState.FileSortConfig) {
-            viewModelStateFlow.update { it.copy(sortConfig = config) }
+            viewModelStateFlow.update { it.copy(fileSortConfig = config) }
             viewModelScope.launch {
-                preferencesRepository.saveFolderBrowserSortConfig(
+                preferencesRepository.saveFolderBrowserFileSortConfig(
                     PreferencesRepository.FileSortConfig(
                         key = when (config.key) {
                             FolderBrowserUiState.FileSortKey.Name -> PreferencesRepository.FileSortKey.Name
@@ -85,40 +85,46 @@ class FolderBrowserViewModel @Inject constructor(
     val uiState: StateFlow<FolderBrowserUiState> = combine(
         viewModelStateFlow,
     ) { (viewModelState) ->
-        val sortedFiles = viewModelState.rawFiles
-            .groupBy { it.parentPath }
-            .flatMap { (parentPath, files) ->
-                val header = FolderBrowserUiState.UiFileItem.Header(
-                    path = parentPath,
-                )
-                val items = files
-                    .filter { !it.isDirectory } // フォルダを表示から除外
-                    .sortedWith(createComparator(viewModelState.sortConfig))
-                    .map { fileItem ->
-                        val isImage = FileUtil.isImage(fileItem.name)
-                        FolderBrowserUiState.UiFileItem.File(
-                            name = fileItem.name,
-                            path = fileItem.path,
-                            isDirectory = fileItem.isDirectory,
-                            size = fileItem.size,
-                            lastModified = fileItem.lastModified,
-                            thumbnail = if (isImage) {
-                                FileImageSource.Thumbnail(
-                                    storageId = arg.storageId,
-                                    path = fileItem.path,
-                                )
-                            } else {
-                                null
-                            },
-                            callbacks = FileItemCallbacks(fileItem),
-                        )
-                    }
-                if (items.isEmpty()) {
-                    emptyList()
-                } else {
-                    listOf(header) + items
+        val groupedFiles = viewModelState.rawFiles.groupBy { it.parentPath }
+        
+        // フォルダをソート
+        val sortedFolders = groupedFiles.keys.sortedWith(
+            createFolderComparator(viewModelState.folderSortConfig)
+        )
+        
+        val sortedFiles = sortedFolders.flatMap { parentPath ->
+            val files = groupedFiles[parentPath] ?: emptyList()
+            val header = FolderBrowserUiState.UiFileItem.Header(
+                path = parentPath,
+            )
+            val items = files
+                .filter { !it.isDirectory } // フォルダを表示から除外
+                .sortedWith(createFileComparator(viewModelState.fileSortConfig))
+                .map { fileItem ->
+                    val isImage = FileUtil.isImage(fileItem.name)
+                    FolderBrowserUiState.UiFileItem.File(
+                        name = fileItem.name,
+                        path = fileItem.path,
+                        isDirectory = fileItem.isDirectory,
+                        size = fileItem.size,
+                        lastModified = fileItem.lastModified,
+                        thumbnail = if (isImage) {
+                            FileImageSource.Thumbnail(
+                                storageId = arg.storageId,
+                                path = fileItem.path,
+                            )
+                        } else {
+                            null
+                        },
+                        callbacks = FileItemCallbacks(fileItem),
+                    )
                 }
+            if (items.isEmpty()) {
+                emptyList()
+            } else {
+                listOf(header) + items
             }
+        }
 
         FolderBrowserUiState(
             callbacks = callbacks,
@@ -129,7 +135,7 @@ class FolderBrowserViewModel @Inject constructor(
                 viewModelState.storageName ?: viewModelState.currentPath
             },
             files = sortedFiles,
-            sortConfig = viewModelState.sortConfig,
+            sortConfig = viewModelState.fileSortConfig,
             displayConfig = viewModelState.displayConfig,
         )
     }.stateIn(
@@ -142,7 +148,7 @@ class FolderBrowserViewModel @Inject constructor(
             currentPath = arg.path.orEmpty(),
             title = arg.path.orEmpty(),
             files = emptyList(),
-            sortConfig = viewModelStateFlow.value.sortConfig,
+            sortConfig = viewModelStateFlow.value.fileSortConfig,
             displayConfig = viewModelStateFlow.value.displayConfig,
         ),
     )
@@ -153,24 +159,37 @@ class FolderBrowserViewModel @Inject constructor(
     init {
         refresh()
         loadStorageName()
-        loadSortConfig()
+        viewModelScope.launch {
+            loadSortConfig()
+        }
     }
 
-    private fun loadSortConfig() {
-        viewModelScope.launch {
-            preferencesRepository.folderBrowserSortConfig.collect { config ->
-                viewModelStateFlow.update {
-                    it.copy(
-                        sortConfig = FolderBrowserUiState.FileSortConfig(
-                            key = when (config.key) {
-                                PreferencesRepository.FileSortKey.Name -> FolderBrowserUiState.FileSortKey.Name
-                                PreferencesRepository.FileSortKey.Date -> FolderBrowserUiState.FileSortKey.Date
-                                PreferencesRepository.FileSortKey.Size -> FolderBrowserUiState.FileSortKey.Size
-                            },
-                            isAscending = config.isAscending,
-                        ),
-                    )
-                }
+    private suspend fun loadSortConfig() {
+        combine(
+            preferencesRepository.folderBrowserFolderSortConfig,
+            preferencesRepository.folderBrowserFileSortConfig,
+        ) { folderConfig, fileConfig ->
+            Pair(folderConfig, fileConfig)
+        }.collect { (folderConfig, fileConfig) ->
+            viewModelStateFlow.update {
+                it.copy(
+                    folderSortConfig = FolderBrowserUiState.FileSortConfig(
+                        key = when (folderConfig.key) {
+                            PreferencesRepository.FileSortKey.Name -> FolderBrowserUiState.FileSortKey.Name
+                            PreferencesRepository.FileSortKey.Date -> FolderBrowserUiState.FileSortKey.Date
+                            PreferencesRepository.FileSortKey.Size -> FolderBrowserUiState.FileSortKey.Size
+                        },
+                        isAscending = folderConfig.isAscending,
+                    ),
+                    fileSortConfig = FolderBrowserUiState.FileSortConfig(
+                        key = when (fileConfig.key) {
+                            PreferencesRepository.FileSortKey.Name -> FolderBrowserUiState.FileSortKey.Name
+                            PreferencesRepository.FileSortKey.Date -> FolderBrowserUiState.FileSortKey.Date
+                            PreferencesRepository.FileSortKey.Size -> FolderBrowserUiState.FileSortKey.Size
+                        },
+                        isAscending = fileConfig.isAscending,
+                    ),
+                )
             }
         }
     }
@@ -184,7 +203,17 @@ class FolderBrowserViewModel @Inject constructor(
         }
     }
 
-    private fun createComparator(config: FolderBrowserUiState.FileSortConfig): Comparator<InternalFileItem> {
+    private fun createFolderComparator(config: FolderBrowserUiState.FileSortConfig): Comparator<String> {
+        val comparator: Comparator<String> = when (config.key) {
+            FolderBrowserUiState.FileSortKey.Name -> compareBy(String.CASE_INSENSITIVE_ORDER) { it }
+            // フォルダパスの場合、DateとSizeは名前でソートする
+            FolderBrowserUiState.FileSortKey.Date,
+            FolderBrowserUiState.FileSortKey.Size -> compareBy(String.CASE_INSENSITIVE_ORDER) { it }
+        }
+        return if (config.isAscending) comparator else comparator.reversed()
+    }
+
+    private fun createFileComparator(config: FolderBrowserUiState.FileSortConfig): Comparator<InternalFileItem> {
         val comparator: Comparator<InternalFileItem> = when (config.key) {
             FolderBrowserUiState.FileSortKey.Name -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.name }
             FolderBrowserUiState.FileSortKey.Date -> compareBy { it.lastModified }
@@ -315,7 +344,11 @@ class FolderBrowserViewModel @Inject constructor(
         val currentPath: String = "",
         val storageName: String? = null,
         val rawFiles: List<InternalFileItem> = emptyList(),
-        val sortConfig: FolderBrowserUiState.FileSortConfig = FolderBrowserUiState.FileSortConfig(
+        val folderSortConfig: FolderBrowserUiState.FileSortConfig = FolderBrowserUiState.FileSortConfig(
+            key = FolderBrowserUiState.FileSortKey.Name,
+            isAscending = true,
+        ),
+        val fileSortConfig: FolderBrowserUiState.FileSortConfig = FolderBrowserUiState.FileSortConfig(
             key = FolderBrowserUiState.FileSortKey.Name,
             isAscending = true,
         ),
