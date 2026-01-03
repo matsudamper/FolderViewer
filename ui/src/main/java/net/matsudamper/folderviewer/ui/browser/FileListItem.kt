@@ -24,15 +24,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.ImageLoader
 import coil.compose.AsyncImage
 import net.matsudamper.folderviewer.ui.R
 import net.matsudamper.folderviewer.ui.util.formatBytes
 
 @Composable
-internal fun FileListItem(
+internal fun FileSmallListItem(
     file: FileBrowserUiState.UiFileItem,
-    imageLoader: ImageLoader,
     modifier: Modifier = Modifier,
 ) {
     ListItem(
@@ -40,9 +38,34 @@ internal fun FileListItem(
         leadingContent = {
             FileIcon(
                 file = file,
-                imageLoader = imageLoader,
                 modifier = Modifier
-                    .size(56.dp)
+                    .size(24.dp)
+                    .aspectRatio(1f)
+                    .clip(MaterialTheme.shapes.extraSmall),
+            )
+        },
+        headlineContent = {
+            Text(
+                text = file.name,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+    )
+}
+
+@Composable
+internal fun FileMediumListItem(
+    file: FileBrowserUiState.UiFileItem,
+    modifier: Modifier = Modifier,
+) {
+    ListItem(
+        modifier = modifier.clickable(onClick = file.callbacks::onClick),
+        leadingContent = {
+            FileIcon(
+                file = file,
+                modifier = Modifier
+                    .size(40.dp)
                     .aspectRatio(1f)
                     .clip(MaterialTheme.shapes.small),
             )
@@ -63,9 +86,8 @@ internal fun FileListItem(
 }
 
 @Composable
-internal fun FileSmallListItem(
+internal fun FileLargeListItem(
     file: FileBrowserUiState.UiFileItem,
-    imageLoader: ImageLoader,
     modifier: Modifier = Modifier,
 ) {
     ListItem(
@@ -73,9 +95,8 @@ internal fun FileSmallListItem(
         leadingContent = {
             FileIcon(
                 file = file,
-                imageLoader = imageLoader,
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(56.dp)
                     .aspectRatio(1f)
                     .clip(MaterialTheme.shapes.extraSmall),
             )
@@ -91,9 +112,30 @@ internal fun FileSmallListItem(
 }
 
 @Composable
-internal fun FileGridItem(
+internal fun FileSmallGridItem(
     file: FileBrowserUiState.UiFileItem,
-    imageLoader: ImageLoader,
+    modifier: Modifier = Modifier,
+) {
+    FileGridItem(
+        file = file,
+        modifier = modifier,
+    )
+}
+
+@Composable
+internal fun FileLargeGridItem(
+    file: FileBrowserUiState.UiFileItem,
+    modifier: Modifier = Modifier,
+) {
+    FileGridItem(
+        file = file,
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun FileGridItem(
+    file: FileBrowserUiState.UiFileItem,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -104,7 +146,6 @@ internal fun FileGridItem(
     ) {
         FileIcon(
             file = file,
-            imageLoader = imageLoader,
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
@@ -125,7 +166,6 @@ internal fun FileGridItem(
 @Composable
 private fun FileIcon(
     file: FileBrowserUiState.UiFileItem,
-    imageLoader: ImageLoader,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier) {
@@ -134,7 +174,6 @@ private fun FileIcon(
             AsyncImage(
                 model = imageSource,
                 contentDescription = null,
-                imageLoader = imageLoader,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
                 placeholder = painterResource(R.drawable.ic_file),

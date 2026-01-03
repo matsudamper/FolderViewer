@@ -16,6 +16,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import coil.Coil
 import coil.ImageLoader
 import dagger.hilt.android.AndroidEntryPoint
 import jakarta.inject.Inject
@@ -46,10 +47,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        Coil.setImageLoader(imageLoader)
 
         setContent {
             FolderViewerTheme {
-                AppContent(imageLoader = imageLoader)
+                AppContent()
             }
         }
     }
@@ -57,7 +59,6 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun AppContent(
-    imageLoader: ImageLoader,
     modifier: Modifier = Modifier,
 ) {
     val navController = rememberNavController()
@@ -167,7 +168,6 @@ private fun AppContent(
             FileBrowserScreen(
                 uiState = uiStateValue,
                 uiEvent = viewModel.uiEvent,
-                imageLoader = imageLoader,
             )
         }
         composable<ImageViewer> {
@@ -186,7 +186,6 @@ private fun AppContent(
 
             ImageViewerScreen(
                 uiState = uiState,
-                imageLoader = imageLoader,
             )
         }
     }

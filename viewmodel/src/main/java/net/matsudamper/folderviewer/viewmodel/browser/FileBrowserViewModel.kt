@@ -60,8 +60,8 @@ class FileBrowserViewModel @Inject constructor(
             viewModelStateFlow.update { it.copy(sortConfig = config) }
         }
 
-        override fun onDisplayModeChanged(mode: FileBrowserUiState.DisplayMode) {
-            viewModelStateFlow.update { it.copy(displayMode = mode) }
+        override fun onDisplayModeChanged(config: FileBrowserUiState.DisplayConfig) {
+            viewModelStateFlow.update { it.copy(displayConfig = config) }
         }
     }
 
@@ -97,7 +97,7 @@ class FileBrowserViewModel @Inject constructor(
                             )
                         },
                     sortConfig = viewModelState.sortConfig,
-                    displayMode = viewModelState.displayMode,
+                    displayConfig = viewModelState.displayConfig,
                 ),
             )
         }
@@ -230,6 +230,9 @@ class FileBrowserViewModel @Inject constructor(
             key = FileBrowserUiState.FileSortKey.Name,
             isAscending = true,
         ),
-        val displayMode: FileBrowserUiState.DisplayMode = FileBrowserUiState.DisplayMode.Medium,
+        val displayConfig: FileBrowserUiState.DisplayConfig = FileBrowserUiState.DisplayConfig(
+            displayMode = FileBrowserUiState.DisplayMode.List,
+            displaySize = FileBrowserUiState.DisplaySize.Medium,
+        ),
     )
 }

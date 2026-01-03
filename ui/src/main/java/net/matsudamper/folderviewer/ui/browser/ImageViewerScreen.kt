@@ -42,7 +42,6 @@ import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
 @Composable
 fun ImageViewerScreen(
     uiState: ImageViewerUiState,
-    imageLoader: ImageLoader,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -77,7 +76,6 @@ fun ImageViewerScreen(
 
             val painter = rememberAsyncImagePainter(
                 model = imageRequest,
-                imageLoader = imageLoader,
                 onState = { state ->
                     imageState = state
                 },

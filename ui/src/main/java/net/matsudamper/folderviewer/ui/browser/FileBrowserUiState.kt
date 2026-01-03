@@ -10,10 +10,9 @@ data class FileBrowserUiState(
     val title: String,
     val files: List<UiFileItem>,
     val sortConfig: FileSortConfig,
-    val displayMode: DisplayMode,
+    val displayConfig: DisplayConfig,
     val callbacks: Callbacks,
 ) {
-    @Immutable
     data class UiFileItem(
         val name: String,
         val path: String,
@@ -29,24 +28,31 @@ data class FileBrowserUiState(
         }
     }
 
-    @Immutable
     data class FileSortConfig(
         val key: FileSortKey,
         val isAscending: Boolean,
     )
 
-    @Immutable
     enum class FileSortKey {
         Name,
         Date,
         Size,
     }
 
-    @Immutable
+    data class DisplayConfig(
+        val displayMode: DisplayMode,
+        val displaySize: DisplaySize,
+    )
+
     enum class DisplayMode {
+        List,
+        Grid,
+    }
+
+    enum class DisplaySize {
         Small,
         Medium,
-        Grid,
+        Large,
     }
 
     @Immutable
@@ -54,6 +60,6 @@ data class FileBrowserUiState(
         fun onRefresh()
         fun onBack()
         fun onSortConfigChanged(config: FileSortConfig)
-        fun onDisplayModeChanged(mode: DisplayMode)
+        fun onDisplayModeChanged(config: DisplayConfig)
     }
 }

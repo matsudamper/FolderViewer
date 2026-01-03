@@ -13,7 +13,6 @@ import coil.ImageLoader
 fun FileBrowserScreen(
     uiState: FileBrowserUiState,
     uiEvent: Flow<FileBrowserUiEvent>,
-    imageLoader: ImageLoader,
     modifier: Modifier = Modifier,
 ) {
     val currentPath = uiState.currentPath
@@ -37,7 +36,6 @@ fun FileBrowserScreen(
     FileBrowserScreenContent(
         modifier = modifier,
         uiState = uiState,
-        imageLoader = imageLoader,
         snackbarHostState = snackbarHostState,
     )
 }

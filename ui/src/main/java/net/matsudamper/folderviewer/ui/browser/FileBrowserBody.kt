@@ -22,14 +22,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import coil.ImageLoader
 import net.matsudamper.folderviewer.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun FileBrowserBody(
     uiState: FileBrowserUiState,
-    imageLoader: ImageLoader,
     contentPadding: PaddingValues,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
@@ -77,26 +75,48 @@ internal fun FileBrowserBody(
             }
 
             else -> {
-                when (uiState.displayMode) {
+                when (uiState.displayConfig.displayMode) {
                     FileBrowserUiState.DisplayMode.Grid -> {
                         LazyVerticalGrid(
-                            columns = GridCells.Adaptive(minSize = 120.dp),
+                            columns = GridCells.Adaptive(
+                                minSize = when (uiState.displayConfig.displaySize) {
+                                    FileBrowserUiState.DisplaySize.Small -> 60.dp
+                                    FileBrowserUiState.DisplaySize.Medium -> 120.dp
+                                    FileBrowserUiState.DisplaySize.Large -> 240.dp
+                                },
+                            ),
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = contentPadding,
                         ) {
                             items(
                                 items = uiState.files,
                                 key = { it.path },
+                                contentType = { uiState.displayConfig.displaySize },
                             ) { file ->
-                                FileGridItem(
-                                    file = file,
-                                    imageLoader = imageLoader,
-                                )
+                                when (uiState.displayConfig.displaySize) {
+                                    FileBrowserUiState.DisplaySize.Small -> {
+                                        FileSmallGridItem(
+                                            file = file,
+                                        )
+                                    }
+
+                                    FileBrowserUiState.DisplaySize.Medium -> {
+                                        FileLargeGridItem(
+                                            file = file,
+                                        )
+                                    }
+
+                                    FileBrowserUiState.DisplaySize.Large -> {
+                                        FileLargeGridItem(
+                                            file = file,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
 
-                    else -> {
+                    FileBrowserUiState.DisplayMode.List -> {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = contentPadding,
@@ -105,22 +125,24 @@ internal fun FileBrowserBody(
                                 items = uiState.files,
                                 key = { it.path },
                             ) { file ->
-                                when (uiState.displayMode) {
-                                    FileBrowserUiState.DisplayMode.Small -> {
+                                when (uiState.displayConfig.displaySize) {
+                                    FileBrowserUiState.DisplaySize.Small -> {
                                         FileSmallListItem(
                                             file = file,
-                                            imageLoader = imageLoader,
                                         )
                                     }
 
-                                    FileBrowserUiState.DisplayMode.Medium -> {
-                                        FileListItem(
+                                    FileBrowserUiState.DisplaySize.Medium -> {
+                                        FileMediumListItem(
                                             file = file,
-                                            imageLoader = imageLoader,
                                         )
                                     }
 
-                                    FileBrowserUiState.DisplayMode.Grid -> Unit
+                                    FileBrowserUiState.DisplaySize.Large -> {
+                                        FileLargeListItem(
+                                            file = file,
+                                        )
+                                    }
                                 }
                             }
                         }

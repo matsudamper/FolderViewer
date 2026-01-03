@@ -5,12 +5,10 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import coil.ImageLoader
 
 @Composable
 internal fun FileBrowserScreenContent(
     uiState: FileBrowserUiState,
-    imageLoader: ImageLoader,
     snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier,
 ) {
@@ -23,8 +21,8 @@ internal fun FileBrowserScreenContent(
                 onBack = callbacks::onBack,
                 sortConfig = uiState.sortConfig,
                 onSortConfigChange = callbacks::onSortConfigChanged,
-                displayMode = uiState.displayMode,
-                onDisplayModeChange = callbacks::onDisplayModeChanged,
+                displayConfig = uiState.displayConfig,
+                onDisplayConfigChange = callbacks::onDisplayModeChanged,
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -32,7 +30,6 @@ internal fun FileBrowserScreenContent(
         FileBrowserBody(
             modifier = Modifier,
             uiState = uiState,
-            imageLoader = imageLoader,
             onRefresh = callbacks::onRefresh,
             contentPadding = innerPadding,
         )
