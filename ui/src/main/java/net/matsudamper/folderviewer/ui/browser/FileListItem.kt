@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,11 +21,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImagePainter
@@ -203,7 +202,7 @@ private fun FileIcon(
                 when (val state = painter.state) {
                     is AsyncImagePainter.State.Loading,
                     is AsyncImagePainter.State.Error,
-                        -> {
+                    -> {
                         Icon(
                             painter = painterResource(R.drawable.ic_file),
                             contentDescription = if (state is AsyncImagePainter.State.Loading) "loading" else "error",
@@ -227,5 +226,65 @@ private fun FileIcon(
                 contentDescription = if (file.isDirectory) "folder" else "file",
             )
         }
+    }
+}
+
+private val previewUiFileItem = FileBrowserUiState.UiFileItem(
+    name = "FileName.txt",
+    path = "/path/to/FileName.txt",
+    isDirectory = false,
+    size = 1024L * 1024L,
+    lastModified = 0L,
+    thumbnail = null,
+    callbacks = { },
+)
+
+@Preview(showBackground = true)
+@Composable
+internal fun PreviewFileSmallListItem() {
+    MaterialTheme {
+        FileSmallListItem(
+            file = previewUiFileItem,
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun PreviewFileMediumListItem() {
+    MaterialTheme {
+        FileMediumListItem(
+            file = previewUiFileItem,
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun PreviewFileLargeListItem() {
+    MaterialTheme {
+        FileLargeListItem(
+            file = previewUiFileItem,
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun PreviewFileSmallGridItem() {
+    MaterialTheme {
+        FileSmallGridItem(
+            file = previewUiFileItem,
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+internal fun PreviewFileLargeGridItem() {
+    MaterialTheme {
+        FileLargeGridItem(
+            file = previewUiFileItem,
+        )
     }
 }
