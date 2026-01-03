@@ -75,80 +75,114 @@ internal fun FileBrowserBody(
             }
 
             else -> {
-                when (uiState.displayConfig.displayMode) {
-                    FileBrowserUiState.DisplayMode.Grid -> {
-                        LazyVerticalGrid(
-                            columns = GridCells.Adaptive(
-                                minSize = when (uiState.displayConfig.displaySize) {
-                                    FileBrowserUiState.DisplaySize.Small -> 60.dp
-                                    FileBrowserUiState.DisplaySize.Medium -> 120.dp
-                                    FileBrowserUiState.DisplaySize.Large -> 240.dp
-                                },
-                            ),
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = contentPadding,
-                        ) {
-                            items(
-                                items = uiState.files,
-                                key = { it.path },
-                                contentType = { uiState.displayConfig.displaySize },
-                            ) { file ->
-                                when (uiState.displayConfig.displaySize) {
-                                    FileBrowserUiState.DisplaySize.Small -> {
-                                        FileSmallGridItem(
-                                            file = file,
-                                        )
-                                    }
+                FileBrowserContent(
+                    uiState = uiState,
+                    contentPadding = contentPadding,
+                )
+            }
+        }
+    }
+}
 
-                                    FileBrowserUiState.DisplaySize.Medium -> {
-                                        FileLargeGridItem(
-                                            file = file,
-                                        )
-                                    }
-
-                                    FileBrowserUiState.DisplaySize.Large -> {
-                                        FileLargeGridItem(
-                                            file = file,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    FileBrowserUiState.DisplayMode.List -> {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = contentPadding,
-                        ) {
-                            items(
-                                items = uiState.files,
-                                key = { it.path },
-                            ) { file ->
-                                when (uiState.displayConfig.displaySize) {
-                                    FileBrowserUiState.DisplaySize.Small -> {
-                                        FileSmallListItem(
-                                            file = file,
-                                        )
-                                    }
-
-                                    FileBrowserUiState.DisplaySize.Medium -> {
-                                        FileMediumListItem(
-                                            file = file,
-                                        )
-                                    }
-
-                                    FileBrowserUiState.DisplaySize.Large -> {
-                                        FileLargeListItem(
-                                            file = file,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
+@Composable
+private fun FileBrowserContent(
+    uiState: FileBrowserUiState,
+    contentPadding: PaddingValues,
+    modifier: Modifier = Modifier,
+) {
+    when (uiState.displayConfig.displayMode) {
+        FileBrowserUiState.DisplayMode.Grid -> {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(
+                    minSize = when (uiState.displayConfig.displaySize) {
+                        FileBrowserUiState.DisplaySize.Small -> 60.dp
+                        FileBrowserUiState.DisplaySize.Medium -> 120.dp
+                        FileBrowserUiState.DisplaySize.Large -> 240.dp
+                    },
+                ),
+                modifier = modifier.fillMaxSize(),
+                contentPadding = contentPadding,
+            ) {
+                items(
+                    items = uiState.files,
+                    key = { it.path },
+                    contentType = { uiState.displayConfig.displaySize },
+                ) { file ->
+                    FileBrowserGridItem(
+                        file = file,
+                        displaySize = uiState.displayConfig.displaySize,
+                    )
                 }
             }
+        }
+
+        FileBrowserUiState.DisplayMode.List -> {
+            LazyColumn(
+                modifier = modifier.fillMaxSize(),
+                contentPadding = contentPadding,
+            ) {
+                items(
+                    items = uiState.files,
+                    key = { it.path },
+                ) { file ->
+                    FileBrowserListItem(
+                        file = file,
+                        displaySize = uiState.displayConfig.displaySize,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FileBrowserGridItem(
+    file: FileBrowserUiState.UiFileItem,
+    displaySize: FileBrowserUiState.DisplaySize,
+) {
+    when (displaySize) {
+        FileBrowserUiState.DisplaySize.Small -> {
+            FileSmallGridItem(
+                file = file,
+            )
+        }
+
+        FileBrowserUiState.DisplaySize.Medium -> {
+            FileLargeGridItem(
+                file = file,
+            )
+        }
+
+        FileBrowserUiState.DisplaySize.Large -> {
+            FileLargeGridItem(
+                file = file,
+            )
+        }
+    }
+}
+
+@Composable
+private fun FileBrowserListItem(
+    file: FileBrowserUiState.UiFileItem,
+    displaySize: FileBrowserUiState.DisplaySize,
+) {
+    when (displaySize) {
+        FileBrowserUiState.DisplaySize.Small -> {
+            FileSmallListItem(
+                file = file,
+            )
+        }
+
+        FileBrowserUiState.DisplaySize.Medium -> {
+            FileMediumListItem(
+                file = file,
+            )
+        }
+
+        FileBrowserUiState.DisplaySize.Large -> {
+            FileLargeListItem(
+                file = file,
+            )
         }
     }
 }

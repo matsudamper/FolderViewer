@@ -23,6 +23,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -65,8 +66,9 @@ internal fun DisplayConfigDropDownMenu(
                     }
                 }
             }
+            val currentOnDisplayConfigChange by rememberUpdatedState(onDisplayConfigChange)
             LaunchedEffect(sliderStateSize) {
-                onDisplayConfigChange(
+                currentOnDisplayConfigChange(
                     FileBrowserUiState.DisplayConfig(
                         displayMode = displayConfig.displayMode,
                         displaySize = sliderStateSize,

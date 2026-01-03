@@ -39,11 +39,11 @@ import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
 internal fun FileBrowserTopBar(
     title: String,
     onBack: () -> Unit,
-    modifier: Modifier = Modifier,
     sortConfig: FileBrowserUiState.FileSortConfig,
     onSortConfigChange: (FileBrowserUiState.FileSortConfig) -> Unit,
     displayConfig: FileBrowserUiState.DisplayConfig,
     onDisplayConfigChange: (FileBrowserUiState.DisplayConfig) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
     LaunchedEffect(title) {
