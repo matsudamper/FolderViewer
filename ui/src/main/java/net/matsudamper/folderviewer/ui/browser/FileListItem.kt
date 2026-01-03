@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.LocalContentColor
@@ -25,6 +27,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
@@ -37,25 +40,27 @@ internal fun FileSmallListItem(
     file: FileBrowserUiState.UiFileItem,
     modifier: Modifier = Modifier,
 ) {
-    ListItem(
-        modifier = modifier.clickable(onClick = file.callbacks::onClick),
-        leadingContent = {
-            FileIcon(
-                file = file,
-                modifier = Modifier
-                    .size(24.dp)
-                    .aspectRatio(1f)
-                    .clip(MaterialTheme.shapes.extraSmall),
-            )
-        },
-        headlineContent = {
-            Text(
-                text = file.name,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-    )
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = file.callbacks::onClick)
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        FileIcon(
+            file = file,
+            modifier = Modifier
+                .size(24.dp)
+                .aspectRatio(1f)
+                .clip(MaterialTheme.shapes.extraSmall),
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = file.name,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
 }
 
 @Composable
@@ -63,30 +68,33 @@ internal fun FileMediumListItem(
     file: FileBrowserUiState.UiFileItem,
     modifier: Modifier = Modifier,
 ) {
-    ListItem(
-        modifier = modifier.clickable(onClick = file.callbacks::onClick),
-        leadingContent = {
-            FileIcon(
-                file = file,
-                modifier = Modifier
-                    .size(40.dp)
-                    .aspectRatio(1f)
-                    .clip(MaterialTheme.shapes.small),
-            )
-        },
-        headlineContent = {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = file.callbacks::onClick)
+            .padding(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        FileIcon(
+            file = file,
+            modifier = Modifier
+                .size(50.dp)
+                .aspectRatio(1f)
+                .clip(MaterialTheme.shapes.extraSmall),
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Column {
             Text(
                 text = file.name,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-        },
-        supportingContent = {
+
             if (!file.isDirectory) {
                 Text(formatBytes(file.size))
             }
-        },
-    )
+        }
+    }
 }
 
 @Composable
@@ -94,25 +102,33 @@ internal fun FileLargeListItem(
     file: FileBrowserUiState.UiFileItem,
     modifier: Modifier = Modifier,
 ) {
-    ListItem(
-        modifier = modifier.clickable(onClick = file.callbacks::onClick),
-        leadingContent = {
-            FileIcon(
-                file = file,
-                modifier = Modifier
-                    .size(56.dp)
-                    .aspectRatio(1f)
-                    .clip(MaterialTheme.shapes.extraSmall),
-            )
-        },
-        headlineContent = {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = file.callbacks::onClick)
+            .padding(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        FileIcon(
+            file = file,
+            modifier = Modifier
+                .size(100.dp)
+                .aspectRatio(1f)
+                .clip(MaterialTheme.shapes.medium),
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Column {
             Text(
                 text = file.name,
-                maxLines = 1,
+                maxLines = 4,
                 overflow = TextOverflow.Ellipsis,
             )
-        },
-    )
+
+            if (!file.isDirectory) {
+                Text(formatBytes(file.size))
+            }
+        }
+    }
 }
 
 @Composable
@@ -123,6 +139,7 @@ internal fun FileSmallGridItem(
     FileGridItem(
         file = file,
         modifier = modifier,
+        padding = 4.dp,
     )
 }
 
@@ -134,18 +151,20 @@ internal fun FileLargeGridItem(
     FileGridItem(
         file = file,
         modifier = modifier,
+        padding = 8.dp,
     )
 }
 
 @Composable
 private fun FileGridItem(
     file: FileBrowserUiState.UiFileItem,
+    padding: Dp,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
             .clickable(onClick = file.callbacks::onClick)
-            .padding(8.dp),
+            .padding(padding),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         FileIcon(
@@ -183,7 +202,8 @@ private fun FileIcon(
             ) {
                 when (val state = painter.state) {
                     is AsyncImagePainter.State.Loading,
-                    is AsyncImagePainter.State.Error -> {
+                    is AsyncImagePainter.State.Error,
+                        -> {
                         Icon(
                             painter = painterResource(R.drawable.ic_file),
                             contentDescription = if (state is AsyncImagePainter.State.Loading) "loading" else "error",
@@ -200,8 +220,7 @@ private fun FileIcon(
         } else {
             Icon(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(2.dp),
+                    .fillMaxSize(),
                 painter = painterResource(
                     id = if (file.isDirectory) R.drawable.ic_folder else R.drawable.ic_file,
                 ),
