@@ -26,14 +26,6 @@ class ImageViewerViewModel @Inject constructor(
     private val viewModelEventChannel = Channel<ViewModelEvent>(Channel.UNLIMITED)
     val viewModelEventFlow = viewModelEventChannel.receiveAsFlow()
 
-    private val callbacks = object : ImageViewerUiState.Callbacks {
-        override fun onBack() {
-            viewModelScope.launch {
-                viewModelEventChannel.send(ViewModelEvent.PopBackStack)
-            }
-        }
-    }
-
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> =
         MutableStateFlow(
             ViewModelState(
@@ -47,11 +39,18 @@ class ImageViewerViewModel @Inject constructor(
     val uiState: StateFlow<ImageViewerUiState> =
         MutableStateFlow(
             ImageViewerUiState(
+                title = args.path.substringAfterLast('/').substringAfterLast('\\'),
                 imageSource = FileImageSource.Original(
                     storageId = args.id,
                     path = args.path,
                 ),
-                callbacks = callbacks,
+                callbacks = object : ImageViewerUiState.Callbacks {
+                    override fun onBack() {
+                        viewModelScope.launch {
+                            viewModelEventChannel.send(ViewModelEvent.PopBackStack)
+                        }
+                    }
+                },
             ),
         ).also { mutableUiState ->
             viewModelScope.launch {

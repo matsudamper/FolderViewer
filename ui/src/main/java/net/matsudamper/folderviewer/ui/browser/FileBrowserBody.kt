@@ -31,7 +31,6 @@ internal fun FileBrowserBody(
     uiState: FileBrowserUiState,
     imageLoader: ImageLoader,
     contentPadding: PaddingValues,
-    onFileClick: (UiFileItem) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -92,7 +91,6 @@ internal fun FileBrowserBody(
                                 FileGridItem(
                                     file = file,
                                     imageLoader = imageLoader,
-                                    onClick = { onFileClick(file) },
                                 )
                             }
                         }
@@ -112,7 +110,6 @@ internal fun FileBrowserBody(
                                         FileSmallListItem(
                                             file = file,
                                             imageLoader = imageLoader,
-                                            onClick = { onFileClick(file) },
                                         )
                                     }
 
@@ -120,7 +117,6 @@ internal fun FileBrowserBody(
                                         FileListItem(
                                             file = file,
                                             imageLoader = imageLoader,
-                                            onClick = { onFileClick(file) },
                                         )
                                     }
 

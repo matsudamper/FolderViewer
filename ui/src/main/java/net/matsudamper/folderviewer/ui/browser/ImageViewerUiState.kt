@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import net.matsudamper.folderviewer.coil.FileImageSource
 
 data class ImageViewerUiState(
+    val title: String,
     val imageSource: FileImageSource.Original,
     val callbacks: Callbacks,
 ) {

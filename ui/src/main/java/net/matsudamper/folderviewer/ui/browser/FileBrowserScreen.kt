@@ -7,7 +7,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import coil.ImageLoader
 
 @Composable
@@ -18,10 +17,9 @@ fun FileBrowserScreen(
     modifier: Modifier = Modifier,
 ) {
     val currentPath = uiState.currentPath
-    val callbacks = uiState.callbacks
 
     BackHandler(enabled = currentPath.isNotEmpty()) {
-        callbacks.onUpClick()
+        uiState.callbacks.onBack()
     }
 
     val snackbarHostState = remember { SnackbarHostState() }

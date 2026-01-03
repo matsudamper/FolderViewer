@@ -33,7 +33,6 @@ internal fun FileBrowserScreenContent(
             modifier = Modifier,
             uiState = uiState,
             imageLoader = imageLoader,
-            onFileClick = callbacks::onFileClick,
             onRefresh = callbacks::onRefresh,
             contentPadding = innerPadding,
         )

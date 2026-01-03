@@ -42,62 +42,6 @@ class FileBrowserViewModel @Inject constructor(
     private val uiChannelEvent = Channel<FileBrowserUiEvent>()
     val uiEvent: Flow<FileBrowserUiEvent> = uiChannelEvent.receiveAsFlow()
 
-    private val callbacks = object : FileBrowserUiState.Callbacks {
-        override fun onBack() {
-            viewModelScope.launch {
-                viewModelEventChannel.send(ViewModelEvent.PopBackStack)
-            }
-        }
-
-        override fun onFileClick(file: UiFileItem) {
-            if (file.isDirectory) {
-                viewModelScope.launch {
-                    viewModelEventChannel.send(
-                        ViewModelEvent.NavigateToFileBrowser(
-                            path = file.path,
-                            storageId = arg.storageId,
-                        ),
-                    )
-                }
-            } else {
-                val isImage = FileUtil.isImage(file.name.lowercase())
-
-                if (isImage) {
-                    viewModelScope.launch {
-                        viewModelEventChannel.send(
-                            ViewModelEvent.NavigateToImageViewer(
-                                file.path,
-                                storageId = arg.storageId,
-                            ),
-                        )
-                    }
-                }
-            }
-        }
-
-        override fun onUpClick() {
-            viewModelScope.launch {
-                viewModelEventChannel.send(ViewModelEvent.PopBackStack)
-            }
-        }
-
-        override fun onRefresh() {
-            val path = viewModelStateFlow.value.currentPath
-            viewModelScope.launch {
-                viewModelStateFlow.update { it.copy(isRefreshing = true) }
-                fetchFilesInternal(path)
-            }
-        }
-
-        override fun onSortConfigChanged(config: FileSortConfig) {
-            viewModelStateFlow.update { it.copy(sortConfig = config) }
-        }
-
-        override fun onDisplayModeChanged(mode: DisplayMode) {
-            viewModelStateFlow.update { it.copy(displayMode = mode) }
-        }
-    }
-
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> =
         MutableStateFlow(ViewModelState(currentPath = arg.path))
 
@@ -114,7 +58,29 @@ class FileBrowserViewModel @Inject constructor(
                     isAscending = true,
                 ),
                 displayMode = DisplayMode.Medium,
-                callbacks = callbacks,
+                callbacks = object : FileBrowserUiState.Callbacks {
+                    override fun onRefresh() {
+                        val path = viewModelStateFlow.value.currentPath
+                        viewModelScope.launch {
+                            viewModelStateFlow.update { it.copy(isRefreshing = true) }
+                            fetchFilesInternal(path)
+                        }
+                    }
+
+                    override fun onBack() {
+                        viewModelScope.launch {
+                            viewModelEventChannel.send(ViewModelEvent.PopBackStack)
+                        }
+                    }
+
+                    override fun onSortConfigChanged(config: FileSortConfig) {
+                        viewModelStateFlow.update { it.copy(sortConfig = config) }
+                    }
+
+                    override fun onDisplayModeChanged(mode: DisplayMode) {
+                        viewModelStateFlow.update { it.copy(displayMode = mode) }
+                    }
+                },
             ),
         ).also { mutableUiState ->
             viewModelScope.launch {
@@ -144,6 +110,7 @@ class FileBrowserViewModel @Inject constructor(
                                         } else {
                                             null
                                         },
+                                        callbacks = FileItemCallbacks(fileItem),
                                     )
                                 },
                             sortConfig = viewModelState.sortConfig,
@@ -212,8 +179,9 @@ class FileBrowserViewModel @Inject constructor(
                 )
             }
         }.onFailure { e ->
-            when(e) {
+            when (e) {
                 is CancellationException -> throw e
+
                 else -> {
                     viewModelStateFlow.update {
                         it.copy(
@@ -238,6 +206,36 @@ class FileBrowserViewModel @Inject constructor(
             val path: String,
             val storageId: String,
         ) : ViewModelEvent
+    }
+
+    private inner class FileItemCallbacks(
+        private val fileItem: FileItem,
+    ) : UiFileItem.Callbacks {
+        override fun onClick() {
+            if (fileItem.isDirectory) {
+                viewModelScope.launch {
+                    viewModelEventChannel.send(
+                        ViewModelEvent.NavigateToFileBrowser(
+                            path = fileItem.path,
+                            storageId = arg.storageId,
+                        ),
+                    )
+                }
+            } else {
+                val isImage = FileUtil.isImage(fileItem.name.lowercase())
+
+                if (isImage) {
+                    viewModelScope.launch {
+                        viewModelEventChannel.send(
+                            ViewModelEvent.NavigateToImageViewer(
+                                fileItem.path,
+                                storageId = arg.storageId,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
     }
 
     private data class ViewModelState(

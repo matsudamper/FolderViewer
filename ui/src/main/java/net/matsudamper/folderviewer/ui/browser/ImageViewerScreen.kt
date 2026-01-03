@@ -11,8 +11,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -23,6 +27,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import coil.ImageLoader
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
@@ -30,20 +36,17 @@ import coil.request.ImageRequest
 import coil.size.Size
 import net.engawapg.lib.zoomable.rememberZoomState
 import net.engawapg.lib.zoomable.zoomable
+import net.matsudamper.folderviewer.ui.R
+import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
 
 @Composable
 fun ImageViewerScreen(
     uiState: ImageViewerUiState,
     imageLoader: ImageLoader,
-    onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val imageSource = uiState.imageSource
-
-    val fileName = remember(imageSource.path) {
-        imageSource.path.substringAfterLast('/').substringAfterLast('\\')
-    }
 
     val zoomState = rememberZoomState()
     var showTopBar by remember { mutableStateOf(false) }
@@ -82,7 +85,7 @@ fun ImageViewerScreen(
 
             Image(
                 painter = painter,
-                contentDescription = fileName,
+                contentDescription = uiState.title,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize(),
             )
@@ -111,10 +114,39 @@ fun ImageViewerScreen(
             enter = fadeIn() + slideInVertically { height -> -height },
             exit = fadeOut() + slideOutVertically { height -> -height },
         ) {
-            FileBrowserTopBar(
-                title = fileName,
-                onBack = onBack,
+            ImageViewerTopBar(
+                title = uiState.title,
+                onBack = {
+                    uiState.callbacks.onBack()
+                },
             )
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ImageViewerTopBar(
+    title: String,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    TopAppBar(
+        modifier = modifier,
+        colors = MyTopAppBarDefaults.topAppBarColors(),
+        title = {
+            Text(
+                text = title,
+                maxLines = 1,
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_arrow_back),
+                    contentDescription = stringResource(R.string.back),
+                )
+            }
+        },
+    )
 }

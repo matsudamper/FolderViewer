@@ -185,9 +185,6 @@ private fun AppContent(
             ImageViewerScreen(
                 uiState = uiState,
                 imageLoader = imageLoader,
-                onBack = {
-                    uiState.callbacks.onBack()
-                },
             )
         }
     }

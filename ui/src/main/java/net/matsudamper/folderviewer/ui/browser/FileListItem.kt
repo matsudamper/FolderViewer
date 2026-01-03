@@ -33,11 +33,10 @@ import net.matsudamper.folderviewer.ui.util.formatBytes
 internal fun FileListItem(
     file: UiFileItem,
     imageLoader: ImageLoader,
-    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     ListItem(
-        modifier = modifier.clickable(onClick = onClick),
+        modifier = modifier.clickable(onClick = file.callbacks::onClick),
         leadingContent = {
             FileIcon(
                 file = file,
@@ -67,11 +66,10 @@ internal fun FileListItem(
 internal fun FileSmallListItem(
     file: UiFileItem,
     imageLoader: ImageLoader,
-    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     ListItem(
-        modifier = modifier.clickable(onClick = onClick),
+        modifier = modifier.clickable(onClick = file.callbacks::onClick),
         leadingContent = {
             FileIcon(
                 file = file,
@@ -96,12 +94,11 @@ internal fun FileSmallListItem(
 internal fun FileGridItem(
     file: UiFileItem,
     imageLoader: ImageLoader,
-    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
-            .clickable(onClick = onClick)
+            .clickable(onClick = file.callbacks::onClick)
             .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

@@ -14,10 +14,8 @@ data class FileBrowserUiState(
 ) {
     @Immutable
     interface Callbacks {
-        fun onBack()
-        fun onFileClick(file: UiFileItem)
-        fun onUpClick()
         fun onRefresh()
+        fun onBack()
         fun onSortConfigChanged(config: FileSortConfig)
         fun onDisplayModeChanged(mode: DisplayMode)
     }
