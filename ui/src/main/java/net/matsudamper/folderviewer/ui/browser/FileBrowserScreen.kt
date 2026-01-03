@@ -1,13 +1,20 @@
 package net.matsudamper.folderviewer.ui.browser
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.Flow
-import coil.ImageLoader
+import net.matsudamper.folderviewer.ui.R
 
 @Composable
 fun FileBrowserScreen(
@@ -33,9 +40,10 @@ fun FileBrowserScreen(
         }
     }
 
-    FileBrowserScreenContent(
-        modifier = modifier,
-        uiState = uiState,
-        snackbarHostState = snackbarHostState,
-    )
+    Box(modifier = modifier) {
+        FileBrowserScreenContent(
+            uiState = uiState,
+            snackbarHostState = snackbarHostState,
+        )
+    }
 }

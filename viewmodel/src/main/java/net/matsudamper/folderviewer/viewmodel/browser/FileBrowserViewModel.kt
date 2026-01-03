@@ -63,6 +63,17 @@ class FileBrowserViewModel @Inject constructor(
         override fun onDisplayModeChanged(config: FileBrowserUiState.DisplayConfig) {
             viewModelStateFlow.update { it.copy(displayConfig = config) }
         }
+
+        override fun onFolderBrowserClick() {
+            viewModelScope.launch {
+                viewModelEventChannel.send(
+                    ViewModelEvent.NavigateToFolderBrowser(
+                        path = viewModelStateFlow.value.currentPath,
+                        storageId = arg.storageId,
+                    ),
+                )
+            }
+        }
     }
 
     val uiState: Flow<FileBrowserUiState> = channelFlow {
@@ -98,6 +109,7 @@ class FileBrowserViewModel @Inject constructor(
                         },
                     sortConfig = viewModelState.sortConfig,
                     displayConfig = viewModelState.displayConfig,
+                    visibleFolderBrowserButton = arg.path != null
                 ),
             )
         }
@@ -185,6 +197,11 @@ class FileBrowserViewModel @Inject constructor(
         ) : ViewModelEvent
 
         data class NavigateToImageViewer(
+            val path: String,
+            val storageId: String,
+        ) : ViewModelEvent
+
+        data class NavigateToFolderBrowser(
             val path: String,
             val storageId: String,
         ) : ViewModelEvent

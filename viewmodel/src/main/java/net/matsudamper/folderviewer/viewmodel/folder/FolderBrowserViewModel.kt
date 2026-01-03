@@ -63,6 +63,17 @@ class FolderBrowserViewModel @Inject constructor(
         override fun onDisplayModeChanged(config: FolderBrowserUiState.DisplayConfig) {
             viewModelStateFlow.update { it.copy(displayConfig = config) }
         }
+
+        override fun onFolderBrowserClick() {
+            viewModelScope.launch {
+                viewModelEventChannel.send(
+                    ViewModelEvent.NavigateToFolderBrowser(
+                        path = viewModelStateFlow.value.currentPath,
+                        storageId = arg.storageId,
+                    ),
+                )
+            }
+        }
     }
 
     val uiState: Flow<FolderBrowserUiState> = channelFlow {
@@ -185,6 +196,11 @@ class FolderBrowserViewModel @Inject constructor(
         ) : ViewModelEvent
 
         data class NavigateToImageViewer(
+            val path: String,
+            val storageId: String,
+        ) : ViewModelEvent
+        
+        data class NavigateToFolderBrowser(
             val path: String,
             val storageId: String,
         ) : ViewModelEvent

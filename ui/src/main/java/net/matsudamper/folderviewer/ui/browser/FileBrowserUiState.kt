@@ -5,6 +5,7 @@ import net.matsudamper.folderviewer.coil.FileImageSource
 
 data class FileBrowserUiState(
     val isLoading: Boolean,
+    val visibleFolderBrowserButton: Boolean,
     val isRefreshing: Boolean,
     val currentPath: String,
     val title: String,
@@ -61,5 +62,6 @@ data class FileBrowserUiState(
         fun onBack()
         fun onSortConfigChanged(config: FileSortConfig)
         fun onDisplayModeChanged(config: DisplayConfig)
+        fun onFolderBrowserClick()
     }
 }

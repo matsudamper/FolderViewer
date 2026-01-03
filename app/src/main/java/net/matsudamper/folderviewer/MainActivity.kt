@@ -164,6 +164,15 @@ private fun AppContent(
                                 ),
                             )
                         }
+                        
+                        is FileBrowserViewModel.ViewModelEvent.NavigateToFolderBrowser -> {
+                            navController.navigate(
+                                FolderBrowser(
+                                    storageId = event.storageId,
+                                    path = event.path,
+                                ),
+                            )
+                        }
                     }
                 }
             }
@@ -175,7 +184,8 @@ private fun AppContent(
         }
         composable<FolderBrowser> {
             val viewModel: FolderBrowserViewModel = hiltViewModel()
-            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+            val uiState = viewModel.uiState.collectAsStateWithLifecycle(initialValue = null)
+            val uiStateValue = uiState.value ?: return@composable
 
             LaunchedEffect(viewModel.viewModelEventFlow) {
                 viewModel.viewModelEventFlow.collect { event ->
@@ -183,12 +193,39 @@ private fun AppContent(
                         is FolderBrowserViewModel.ViewModelEvent.PopBackStack -> {
                             navController.popBackStack()
                         }
+
+                        is FolderBrowserViewModel.ViewModelEvent.NavigateToFileBrowser -> {
+                            navController.navigate(
+                                FileBrowser(
+                                    storageId = event.storageId,
+                                    path = event.path,
+                                ),
+                            )
+                        }
+
+                        is FolderBrowserViewModel.ViewModelEvent.NavigateToImageViewer -> {
+                            navController.navigate(
+                                ImageViewer(
+                                    id = event.storageId,
+                                    path = event.path,
+                                ),
+                            )
+                        }
+
+                        is FolderBrowserViewModel.ViewModelEvent.NavigateToFolderBrowser -> {
+                            navController.navigate(
+                                FolderBrowser(
+                                    storageId = event.storageId,
+                                    path = event.path,
+                                ),
+                            )
+                        }
                     }
                 }
             }
 
             FolderBrowserScreen(
-                uiState = uiState,
+                uiState = uiStateValue,
                 uiEvent = viewModel.uiEvent,
             )
         }

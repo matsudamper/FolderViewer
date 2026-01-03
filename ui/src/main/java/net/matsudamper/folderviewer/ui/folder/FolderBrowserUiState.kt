@@ -61,5 +61,6 @@ data class FolderBrowserUiState(
         fun onBack()
         fun onSortConfigChanged(config: FileSortConfig)
         fun onDisplayModeChanged(config: DisplayConfig)
+        fun onFolderBrowserClick()
     }
 }
