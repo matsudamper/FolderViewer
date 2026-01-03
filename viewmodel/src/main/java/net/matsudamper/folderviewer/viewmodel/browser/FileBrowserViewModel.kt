@@ -199,9 +199,8 @@ class FileBrowserViewModel @Inject constructor(
         }
     }
 
-    @Suppress("TooGenericExceptionCaught")
     private suspend fun fetchFilesInternal(path: String) {
-        try {
+        runCatching {
             val repository = getRepository()
             val files = repository.getFiles(path)
             viewModelStateFlow.update {
@@ -212,16 +211,19 @@ class FileBrowserViewModel @Inject constructor(
                     rawFiles = files,
                 )
             }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            viewModelStateFlow.update {
-                it.copy(
-                    isLoading = false,
-                    isRefreshing = false,
-                )
+        }.onFailure { e ->
+            when(e) {
+                is CancellationException -> throw e
+                else -> {
+                    viewModelStateFlow.update {
+                        it.copy(
+                            isLoading = false,
+                            isRefreshing = false,
+                        )
+                    }
+                    uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar(e.message ?: "Unknown error"))
+                }
             }
-            uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar(e.message ?: "Unknown error"))
         }
     }
 
