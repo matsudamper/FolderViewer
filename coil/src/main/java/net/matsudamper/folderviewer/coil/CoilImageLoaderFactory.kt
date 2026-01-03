@@ -14,6 +14,7 @@ import coil.request.Options
 import coil.size.Dimension
 import coil.size.Precision
 import coil.size.Size
+import coil.util.DebugLogger
 import net.matsudamper.folderviewer.repository.StorageRepository
 import okio.buffer
 import okio.source
@@ -21,6 +22,7 @@ import okio.source
 object CoilImageLoaderFactory {
     fun create(context: Context, storageRepository: StorageRepository): ImageLoader {
         return ImageLoader.Builder(context)
+            .logger(DebugLogger())
             .components {
                 add(FileImageSourceKeyer())
                 add(FileRepositoryImageFetcherFactory(storageRepository))
