@@ -31,9 +31,6 @@ object CoilImageLoaderFactory {
     }
 
     fun clearDiskCache(context: Context, imageLoader: ImageLoader) {
-        // インメモリキャッシュをクリア
-        imageLoader.memoryCache?.clear()
-
         // ディスクキャッシュをクリア
         @Suppress("OPT_IN_USAGE")
         imageLoader.diskCache?.clear()
