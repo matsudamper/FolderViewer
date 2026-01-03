@@ -8,6 +8,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
@@ -65,9 +66,9 @@ class FileBrowserViewModel @Inject constructor(
         }
     }
 
-    val uiState: Flow<FileBrowserUiState> = flow {
+    val uiState: Flow<FileBrowserUiState> = channelFlow {
         viewModelStateFlow.collectLatest { viewModelState ->
-            emit(
+            trySend(
                 FileBrowserUiState(
                     callbacks = callbacks,
                     isLoading = viewModelState.isLoading,
