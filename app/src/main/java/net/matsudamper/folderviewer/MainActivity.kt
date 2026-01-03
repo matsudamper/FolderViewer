@@ -78,7 +78,7 @@ private fun AppContent(
                     navController.navigate(StorageTypeSelection)
                 },
                 onStorageClick = { storage ->
-                    navController.navigate(FileBrowser(storageId = storage.id))
+                    navController.navigate(FileBrowser(storageId = storage.id, path = null))
                 },
                 onEditStorageClick = { storage ->
                     navController.navigate(SmbAdd(storageId = storage.id))
