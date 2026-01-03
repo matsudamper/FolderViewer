@@ -82,7 +82,11 @@ class FileBrowserViewModel @Inject constructor(
         }
 
         override fun onRefresh() {
-            this@FileBrowserViewModel.onRefresh()
+            val path = viewModelStateFlow.value.currentPath
+            viewModelScope.launch {
+                viewModelStateFlow.update { it.copy(isRefreshing = true) }
+                fetchFilesInternal(path)
+            }
         }
 
         override fun onSortConfigChanged(config: FileSortConfig) {
@@ -191,14 +195,6 @@ class FileBrowserViewModel @Inject constructor(
     private fun loadFiles(path: String) {
         viewModelScope.launch {
             viewModelStateFlow.update { it.copy(isLoading = true) }
-            fetchFilesInternal(path)
-        }
-    }
-
-    fun onRefresh() {
-        val path = viewModelStateFlow.value.currentPath
-        viewModelScope.launch {
-            viewModelStateFlow.update { it.copy(isRefreshing = true) }
             fetchFilesInternal(path)
         }
     }
