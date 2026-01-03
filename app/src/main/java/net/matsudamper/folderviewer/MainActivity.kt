@@ -164,7 +164,7 @@ private fun AppContent(
                                 ),
                             )
                         }
-                        
+
                         is FileBrowserViewModel.ViewModelEvent.NavigateToFolderBrowser -> {
                             navController.navigate(
                                 FolderBrowser(

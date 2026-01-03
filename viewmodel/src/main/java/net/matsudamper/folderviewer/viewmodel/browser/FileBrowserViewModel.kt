@@ -109,7 +109,7 @@ class FileBrowserViewModel @Inject constructor(
                         },
                     sortConfig = viewModelState.sortConfig,
                     displayConfig = viewModelState.displayConfig,
-                    visibleFolderBrowserButton = arg.path != null
+                    visibleFolderBrowserButton = arg.path != null,
                 ),
             )
         }
