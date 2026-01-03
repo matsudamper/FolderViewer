@@ -30,7 +30,11 @@ object CoilImageLoaderFactory {
             .build()
     }
 
-    fun clearDiskCache(context: Context) {
+    fun clearDiskCache(context: Context, imageLoader: ImageLoader) {
+        // インメモリキャッシュをクリア
+        imageLoader.memoryCache?.clear()
+
+        // ディスクキャッシュをクリア
         val tempImageLoader = ImageLoader.Builder(context).build()
         val diskCache = tempImageLoader.diskCache
 
