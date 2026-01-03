@@ -21,6 +21,7 @@ import coil.ImageLoader
 import dagger.hilt.android.AndroidEntryPoint
 import jakarta.inject.Inject
 import net.matsudamper.folderviewer.navigation.FileBrowser
+import net.matsudamper.folderviewer.navigation.FolderBrowser
 import net.matsudamper.folderviewer.navigation.Home
 import net.matsudamper.folderviewer.navigation.ImageViewer
 import net.matsudamper.folderviewer.navigation.Settings
@@ -28,6 +29,7 @@ import net.matsudamper.folderviewer.navigation.SmbAdd
 import net.matsudamper.folderviewer.navigation.StorageTypeSelection
 import net.matsudamper.folderviewer.ui.browser.FileBrowserScreen
 import net.matsudamper.folderviewer.ui.browser.ImageViewerScreen
+import net.matsudamper.folderviewer.ui.folder.FolderBrowserScreen
 import net.matsudamper.folderviewer.ui.home.HomeScreen
 import net.matsudamper.folderviewer.ui.settings.SettingsScreen
 import net.matsudamper.folderviewer.ui.storage.SmbAddScreen
@@ -35,6 +37,7 @@ import net.matsudamper.folderviewer.ui.storage.StorageTypeSelectionScreen
 import net.matsudamper.folderviewer.ui.theme.FolderViewerTheme
 import net.matsudamper.folderviewer.viewmodel.browser.FileBrowserViewModel
 import net.matsudamper.folderviewer.viewmodel.browser.ImageViewerViewModel
+import net.matsudamper.folderviewer.viewmodel.folder.FolderBrowserViewModel
 import net.matsudamper.folderviewer.viewmodel.home.HomeViewModel
 import net.matsudamper.folderviewer.viewmodel.settings.SettingsViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.SmbAddViewModel
@@ -167,6 +170,25 @@ private fun AppContent(
 
             FileBrowserScreen(
                 uiState = uiStateValue,
+                uiEvent = viewModel.uiEvent,
+            )
+        }
+        composable<FolderBrowser> {
+            val viewModel: FolderBrowserViewModel = hiltViewModel()
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+            LaunchedEffect(viewModel.viewModelEventFlow) {
+                viewModel.viewModelEventFlow.collect { event ->
+                    when (event) {
+                        is FolderBrowserViewModel.ViewModelEvent.PopBackStack -> {
+                            navController.popBackStack()
+                        }
+                    }
+                }
+            }
+
+            FolderBrowserScreen(
+                uiState = uiState,
                 uiEvent = viewModel.uiEvent,
             )
         }
