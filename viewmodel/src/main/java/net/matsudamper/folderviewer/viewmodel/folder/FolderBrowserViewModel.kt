@@ -239,7 +239,9 @@ class FolderBrowserViewModel @Inject constructor(
         return if (config.isAscending) comparator else comparator.reversed()
     }
 
-    private fun createInternalFileItemComparator(config: FolderBrowserUiState.FileSortConfig): Comparator<InternalFileItem> {
+    private fun createInternalFileItemComparator(
+        config: FolderBrowserUiState.FileSortConfig,
+    ): Comparator<InternalFileItem> {
         val comparator: Comparator<InternalFileItem> = when (config.key) {
             FolderBrowserUiState.FileSortKey.Name -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.fileItem.name }
             FolderBrowserUiState.FileSortKey.Date -> compareBy { it.fileItem.lastModified }
