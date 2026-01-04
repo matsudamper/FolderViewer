@@ -541,7 +541,7 @@ private fun FileIcon(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
             ) {
-                when (val state = painter.state) {
+                when (painter.state) {
                     is AsyncImagePainter.State.Loading,
                     is AsyncImagePainter.State.Error,
                     -> {
