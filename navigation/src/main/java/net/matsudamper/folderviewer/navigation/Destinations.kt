@@ -21,4 +21,4 @@ data class FileBrowser(val storageId: String, val path: String?)
 data class FolderBrowser(val storageId: String, val path: String)
 
 @Serializable
-data class ImageViewer(val id: String, val path: String)
+data class ImageViewer(val id: String, val path: String, val allPaths: List<String>)

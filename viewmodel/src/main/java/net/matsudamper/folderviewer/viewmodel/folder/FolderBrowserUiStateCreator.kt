@@ -21,6 +21,27 @@ class FolderBrowserUiStateCreator(
     fun create(
         viewModelState: FolderBrowserViewModel.ViewModelState,
     ): FolderBrowserUiState {
+        val allFiles = buildList {
+            addFoldersRecursive(
+                folder = viewModelState.folder,
+                folderSortConfig = viewModelState.folderSortConfig,
+                fileSortConfig = viewModelState.fileSortConfig,
+            )
+        }
+
+        val allImagePaths = allFiles.filter { !it.isDirectory && FileUtil.isImage(it.name) }
+            .map { it.path }
+
+        val uiItems = buildList {
+            addUiItemsRecursive(
+                folder = viewModelState.folder,
+                isRoot = true,
+                folderSortConfig = viewModelState.folderSortConfig,
+                fileSortConfig = viewModelState.fileSortConfig,
+                allImagePaths = allImagePaths,
+            )
+        }
+
         return FolderBrowserUiState(
             callbacks = callbacks,
             isLoading = viewModelState.isLoading,
@@ -29,25 +50,50 @@ class FolderBrowserUiStateCreator(
             title = viewModelState.currentPath.ifEmpty {
                 viewModelState.storageName ?: viewModelState.currentPath
             },
-            files = buildList {
-                addItemsRecursive(
-                    folder = viewModelState.folder,
-                    isRoot = true,
-                    folderSortConfig = viewModelState.folderSortConfig,
-                    fileSortConfig = viewModelState.fileSortConfig,
-                )
-            },
+            files = uiItems,
             folderSortConfig = viewModelState.folderSortConfig,
             fileSortConfig = viewModelState.fileSortConfig,
             displayConfig = viewModelState.displayConfig,
         )
     }
 
-    private fun MutableList<FolderBrowserUiState.UiFileItem>.addItemsRecursive(
+    private fun MutableList<FileItem>.addFoldersRecursive(
+        folder: FolderBrowserViewModel.ViewModelState.Folder,
+        folderSortConfig: FolderBrowserUiState.FileSortConfig,
+        fileSortConfig: FolderBrowserUiState.FileSortConfig,
+    ) {
+        addAll(
+            folder.files.sortedWith(
+                FileSortComparator(
+                    config = fileSortConfig,
+                    sizeProvider = { it.size },
+                    lastModifiedProvider = { it.lastModified },
+                    nameProvider = { it.name },
+                ),
+            )
+        )
+        folder.folders.sortedWith(
+            FileSortComparator(
+                config = folderSortConfig,
+                sizeProvider = { 0L },
+                lastModifiedProvider = { 0L },
+                nameProvider = { File(it.path).name },
+            ),
+        ).forEach { childFolder ->
+            addFoldersRecursive(
+                folder = childFolder,
+                folderSortConfig = folderSortConfig,
+                fileSortConfig = fileSortConfig,
+            )
+        }
+    }
+
+    private fun MutableList<FolderBrowserUiState.UiFileItem>.addUiItemsRecursive(
         folder: FolderBrowserViewModel.ViewModelState.Folder,
         isRoot: Boolean,
         folderSortConfig: FolderBrowserUiState.FileSortConfig,
         fileSortConfig: FolderBrowserUiState.FileSortConfig,
+        allImagePaths: List<String>,
     ) {
         if (!isRoot) {
             val titleText = if (path.isNullOrEmpty()) {
@@ -79,7 +125,10 @@ class FolderBrowserUiStateCreator(
                     } else {
                         null
                     },
-                    callbacks = FileItemCallbacks(file = file),
+                    callbacks = FileItemCallbacks(
+                        file = file,
+                        allImagePaths = allImagePaths,
+                    ),
                 ),
             )
         }
@@ -91,17 +140,19 @@ class FolderBrowserUiStateCreator(
                 nameProvider = { File(it.path).name },
             ),
         ).forEach { childFolder ->
-            addItemsRecursive(
+            addUiItemsRecursive(
                 folder = childFolder,
                 isRoot = false,
                 folderSortConfig = folderSortConfig,
                 fileSortConfig = fileSortConfig,
+                allImagePaths = allImagePaths,
             )
         }
     }
 
     private inner class FileItemCallbacks(
         private val file: FileItem,
+        private val allImagePaths: List<String>,
     ) : FolderBrowserUiState.UiFileItem.Callbacks {
         override fun onClick() {
             viewModelScope.launch {
@@ -112,7 +163,11 @@ class FolderBrowserUiStateCreator(
                     )
                 } else if (isImage) {
                     viewModelEventChannel.send(
-                        ViewModelEvent.NavigateToImageViewer(path = file.path, storageId = storageId),
+                        ViewModelEvent.NavigateToImageViewer(
+                            path = file.path,
+                            storageId = storageId,
+                            allPaths = allImagePaths,
+                        ),
                     )
                 }
             }

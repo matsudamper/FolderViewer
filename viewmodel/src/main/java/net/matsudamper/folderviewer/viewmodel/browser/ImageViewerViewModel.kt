@@ -29,26 +29,32 @@ class ImageViewerViewModel @Inject constructor(
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> =
         MutableStateFlow(
             ViewModelState(
-                imageSource = FileImageSource.Original(
-                    storageId = args.id,
-                    path = args.path,
-                ),
+                currentIndex = args.allPaths.indexOf(args.path).coerceAtLeast(0),
             ),
         )
 
     val uiState: StateFlow<ImageViewerUiState> =
         MutableStateFlow(
             ImageViewerUiState(
-                title = args.path.substringAfterLast('/').substringAfterLast('\\'),
-                imageSource = FileImageSource.Original(
-                    storageId = args.id,
-                    path = args.path,
-                ),
+                images = args.allPaths.map { path ->
+                    ImageViewerUiState.ImageItem(
+                        title = path.substringAfterLast('/').substringAfterLast('\\'),
+                        imageSource = FileImageSource.Original(
+                            storageId = args.id,
+                            path = path,
+                        ),
+                    )
+                },
+                currentIndex = viewModelStateFlow.value.currentIndex,
                 callbacks = object : ImageViewerUiState.Callbacks {
                     override fun onBack() {
                         viewModelScope.launch {
                             viewModelEventChannel.send(ViewModelEvent.PopBackStack)
                         }
+                    }
+
+                    override fun onImageChanged(index: Int) {
+                        viewModelStateFlow.update { it.copy(currentIndex = index) }
                     }
                 },
             ),
@@ -57,7 +63,7 @@ class ImageViewerViewModel @Inject constructor(
                 viewModelStateFlow.collect { viewModelState ->
                     mutableUiState.update {
                         it.copy(
-                            imageSource = viewModelState.imageSource,
+                            currentIndex = viewModelState.currentIndex,
                         )
                     }
                 }
@@ -65,7 +71,7 @@ class ImageViewerViewModel @Inject constructor(
         }.asStateFlow()
 
     private data class ViewModelState(
-        val imageSource: FileImageSource.Original,
+        val currentIndex: Int,
     )
 
     sealed interface ViewModelEvent {

@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -23,13 +25,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import coil.ImageLoader
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
@@ -44,67 +46,34 @@ fun ImageViewerScreen(
     uiState: ImageViewerUiState,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
-    val imageSource = uiState.imageSource
+    val pagerState = rememberPagerState(
+        initialPage = uiState.currentIndex,
+        pageCount = { uiState.images.size },
+    )
 
-    val zoomState = rememberZoomState()
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.currentPage }.collect { page ->
+            uiState.callbacks.onImageChanged(page)
+        }
+    }
+
     var showTopBar by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
     ) { innerPadding ->
-        Box(
+        HorizontalPager(
+            state = pagerState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .zoomable(
-                    zoomState = zoomState,
-                    onTap = {
-                        showTopBar = !showTopBar
-                    },
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            var imageState: AsyncImagePainter.State by remember { mutableStateOf(AsyncImagePainter.State.Empty) }
-
-            val imageRequest = remember(imageSource, context) {
-                ImageRequest.Builder(context)
-                    .data(imageSource)
-                    .size(Size.ORIGINAL)
-                    .build()
-            }
-
-            val painter = rememberAsyncImagePainter(
-                model = imageRequest,
-                onState = { state ->
-                    imageState = state
-                },
+                .padding(innerPadding),
+            beyondViewportPageCount = 1,
+        ) { page ->
+            val imageItem = uiState.images[page]
+            ImageContent(
+                imageItem = imageItem,
+                onTap = { showTopBar = !showTopBar },
             )
-
-            Image(
-                painter = painter,
-                contentDescription = uiState.title,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize(),
-            )
-
-            when (val state = imageState) {
-                is AsyncImagePainter.State.Loading -> {
-                    CircularProgressIndicator()
-                }
-
-                is AsyncImagePainter.State.Error -> {
-                    LaunchedEffect(state) {
-                        state.result.throwable.printStackTrace()
-                    }
-                    Column {
-                        Text("Failed to load image")
-                        Text(state.result.throwable.message ?: "No Error Message")
-                    }
-                }
-
-                else -> Unit
-            }
         }
 
         AnimatedVisibility(
@@ -112,12 +81,72 @@ fun ImageViewerScreen(
             enter = fadeIn() + slideInVertically { height -> -height },
             exit = fadeOut() + slideOutVertically { height -> -height },
         ) {
+            val title = uiState.images.getOrNull(pagerState.currentPage)?.title ?: ""
             ImageViewerTopBar(
-                title = uiState.title,
+                title = title,
                 onBack = {
                     uiState.callbacks.onBack()
                 },
             )
+        }
+    }
+}
+
+@Composable
+private fun ImageContent(
+    imageItem: ImageViewerUiState.ImageItem,
+    onTap: () -> Unit,
+) {
+    val context = LocalContext.current
+    val zoomState = rememberZoomState()
+    var imageState: AsyncImagePainter.State by remember { mutableStateOf(AsyncImagePainter.State.Empty) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .zoomable(
+                zoomState = zoomState,
+                onTap = { onTap() },
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        val imageRequest = remember(imageItem.imageSource, context) {
+            ImageRequest.Builder(context)
+                .data(imageItem.imageSource)
+                .size(Size.ORIGINAL)
+                .build()
+        }
+
+        val painter = rememberAsyncImagePainter(
+            model = imageRequest,
+            onState = { state ->
+                imageState = state
+            },
+        )
+
+        Image(
+            painter = painter,
+            contentDescription = imageItem.title,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.fillMaxSize(),
+        )
+
+        when (val state = imageState) {
+            is AsyncImagePainter.State.Loading -> {
+                CircularProgressIndicator()
+            }
+
+            is AsyncImagePainter.State.Error -> {
+                LaunchedEffect(state) {
+                    state.result.throwable.printStackTrace()
+                }
+                Column {
+                    Text("Failed to load image")
+                    Text(state.result.throwable.message ?: "No Error Message")
+                }
+            }
+
+            else -> Unit
         }
     }
 }

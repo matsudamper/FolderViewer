@@ -283,6 +283,7 @@ class FolderBrowserViewModel @Inject constructor(
         data class NavigateToImageViewer(
             val path: String,
             val storageId: String,
+            val allPaths: List<String>,
         ) : ViewModelEvent
 
         data class NavigateToFolderBrowser(

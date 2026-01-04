@@ -101,6 +101,7 @@ class FileBrowserViewModel @Inject constructor(
 
     val uiState: Flow<FileBrowserUiState> = channelFlow {
         viewModelStateFlow.collectLatest { viewModelState ->
+            val sortedFiles = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig))
             trySend(
                 FileBrowserUiState(
                     callbacks = callbacks,
@@ -110,26 +111,25 @@ class FileBrowserViewModel @Inject constructor(
                     title = viewModelState.currentPath.ifEmpty {
                         viewModelState.storageName ?: viewModelState.currentPath
                     },
-                    files = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig))
-                        .map { fileItem ->
-                            val isImage = FileUtil.isImage(fileItem.name)
-                            FileBrowserUiState.UiFileItem(
-                                name = fileItem.name,
-                                path = fileItem.path,
-                                isDirectory = fileItem.isDirectory,
-                                size = fileItem.size,
-                                lastModified = fileItem.lastModified,
-                                thumbnail = if (isImage) {
-                                    FileImageSource.Thumbnail(
-                                        storageId = arg.storageId,
-                                        path = fileItem.path,
-                                    )
-                                } else {
-                                    null
-                                },
-                                callbacks = FileItemCallbacks(fileItem),
-                            )
-                        },
+                    files = sortedFiles.map { fileItem ->
+                        val isImage = FileUtil.isImage(fileItem.name)
+                        FileBrowserUiState.UiFileItem(
+                            name = fileItem.name,
+                            path = fileItem.path,
+                            isDirectory = fileItem.isDirectory,
+                            size = fileItem.size,
+                            lastModified = fileItem.lastModified,
+                            thumbnail = if (isImage) {
+                                FileImageSource.Thumbnail(
+                                    storageId = arg.storageId,
+                                    path = fileItem.path,
+                                )
+                            } else {
+                                null
+                            },
+                            callbacks = FileItemCallbacks(fileItem, sortedFiles),
+                        )
+                    },
                     sortConfig = viewModelState.sortConfig,
                     displayConfig = viewModelState.displayConfig,
                     visibleFolderBrowserButton = arg.path != null,
@@ -261,6 +261,7 @@ class FileBrowserViewModel @Inject constructor(
         data class NavigateToImageViewer(
             val path: String,
             val storageId: String,
+            val allPaths: List<String>,
         ) : ViewModelEvent
 
         data class NavigateToFolderBrowser(
@@ -271,6 +272,7 @@ class FileBrowserViewModel @Inject constructor(
 
     private inner class FileItemCallbacks(
         private val fileItem: FileItem,
+        private val sortedFiles: List<FileItem>,
     ) : FileBrowserUiState.UiFileItem.Callbacks {
         override fun onClick() {
             if (fileItem.isDirectory) {
@@ -289,8 +291,9 @@ class FileBrowserViewModel @Inject constructor(
                     viewModelScope.launch {
                         viewModelEventChannel.send(
                             ViewModelEvent.NavigateToImageViewer(
-                                fileItem.path,
+                                path = fileItem.path,
                                 storageId = arg.storageId,
+                                allPaths = sortedFiles.filter { FileUtil.isImage(it.name) }.map { it.path },
                             ),
                         )
                     }

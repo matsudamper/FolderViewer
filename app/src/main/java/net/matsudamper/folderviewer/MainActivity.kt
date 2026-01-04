@@ -161,6 +161,7 @@ private fun AppContent(
                                 ImageViewer(
                                     id = event.storageId,
                                     path = event.path,
+                                    allPaths = event.allPaths,
                                 ),
                             )
                         }
@@ -208,6 +209,7 @@ private fun AppContent(
                                 ImageViewer(
                                     id = event.storageId,
                                     path = event.path,
+                                    allPaths = event.allPaths,
                                 ),
                             )
                         }
