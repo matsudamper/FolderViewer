@@ -1,7 +1,6 @@
 package net.matsudamper.folderviewer.viewmodel.browser
 
 import android.app.Application
-import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
@@ -39,8 +38,6 @@ class FileBrowserViewModel @Inject constructor(
     private val preferencesRepository: PreferencesRepository,
     application: Application,
 ) : AndroidViewModel(application) {
-    private val resources get() = getApplication<Application>().resources
-
     private val arg: FileBrowser = savedStateHandle.toRoute<FileBrowser>()
 
     private val viewModelEventChannel = Channel<ViewModelEvent>(Channel.UNLIMITED)
