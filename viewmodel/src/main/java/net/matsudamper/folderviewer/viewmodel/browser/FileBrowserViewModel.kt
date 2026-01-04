@@ -30,7 +30,6 @@ import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 import net.matsudamper.folderviewer.viewmodel.FileUtil
 
-@Suppress("TooManyFunctions", "LongMethod", "ComplexMethod")
 @HiltViewModel
 class FileBrowserViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
