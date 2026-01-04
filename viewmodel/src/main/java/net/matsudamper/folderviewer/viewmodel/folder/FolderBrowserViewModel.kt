@@ -206,7 +206,7 @@ class FolderBrowserViewModel @Inject constructor(
             viewModelStateFlow.update {
                 it.copy(
                     folder = ViewModelState.Folder(
-                        path = arg.path.orEmpty(),
+                        path = arg.path,
                         files = listOf(),
                         folders = listOf(),
                     ),
@@ -216,7 +216,7 @@ class FolderBrowserViewModel @Inject constructor(
             }
             try {
                 val repository = getRepository()
-                fetchAllFilesRecursive(repository, arg.path.orEmpty())
+                fetchAllFilesRecursive(repository, arg.path)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
