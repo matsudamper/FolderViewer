@@ -2,9 +2,7 @@ package net.matsudamper.folderviewer.viewmodel.browser
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import androidx.navigation.toRoute
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -16,8 +14,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import jakarta.inject.Inject
 import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.navigation.FileBrowser
 import net.matsudamper.folderviewer.repository.FavoriteConfiguration
@@ -30,14 +30,13 @@ import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 import net.matsudamper.folderviewer.viewmodel.FileUtil
 
-@HiltViewModel
-class FileBrowserViewModel @Inject constructor(
-    savedStateHandle: SavedStateHandle,
+@HiltViewModel(assistedFactory = FileBrowserViewModel.Companion.Factory::class)
+class FileBrowserViewModel @AssistedInject constructor(
     private val storageRepository: StorageRepository,
     private val preferencesRepository: PreferencesRepository,
     application: Application,
+    @Assisted private val arg: FileBrowser,
 ) : AndroidViewModel(application) {
-    private val arg: FileBrowser = savedStateHandle.toRoute<FileBrowser>()
 
     private val viewModelEventChannel = Channel<ViewModelEvent>(Channel.UNLIMITED)
     val viewModelEventFlow = viewModelEventChannel.receiveAsFlow()
@@ -48,7 +47,7 @@ class FileBrowserViewModel @Inject constructor(
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> =
         MutableStateFlow(ViewModelState(currentPath = arg.path.orEmpty()))
 
-    private val callbacks = object : FileBrowserUiState.Callbacks {
+    private val callbacks: FileBrowserUiState.Callbacks = object : FileBrowserUiState.Callbacks {
         override fun onRefresh() {
             val path = viewModelStateFlow.value.currentPath
             viewModelScope.launch {
@@ -399,4 +398,11 @@ class FileBrowserViewModel @Inject constructor(
         val favoriteId: String? = null,
         val favorites: List<FavoriteConfiguration> = emptyList(),
     )
+
+    companion object {
+        @AssistedFactory
+        interface Factory {
+            fun create(arguments: FileBrowser): FileBrowserViewModel
+        }
+    }
 }

@@ -2,11 +2,8 @@ package net.matsudamper.folderviewer.viewmodel.folder
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
-import androidx.navigation.toRoute
 import java.nio.file.Paths
-import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -21,6 +18,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import net.matsudamper.folderviewer.navigation.FolderBrowser
 import net.matsudamper.folderviewer.repository.FavoriteConfiguration
@@ -33,16 +33,14 @@ import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiEvent
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiState
 import net.matsudamper.folderviewer.viewmodel.FileSortComparator
 
-@HiltViewModel
-class FolderBrowserViewModel @Inject constructor(
-    savedStateHandle: SavedStateHandle,
+@HiltViewModel(assistedFactory = FolderBrowserViewModel.Companion.Factory::class)
+class FolderBrowserViewModel @AssistedInject constructor(
     private val storageRepository: StorageRepository,
     private val preferencesRepository: PreferencesRepository,
     application: Application,
+    @Assisted private val arg: FolderBrowser,
 ) : AndroidViewModel(application) {
     private val resources get() = getApplication<Application>().resources
-
-    private val arg: FolderBrowser = savedStateHandle.toRoute<FolderBrowser>()
 
     private val viewModelEventChannel = Channel<ViewModelEvent>(Channel.UNLIMITED)
     val viewModelEventFlow = viewModelEventChannel.receiveAsFlow()
@@ -62,7 +60,7 @@ class FolderBrowserViewModel @Inject constructor(
             ),
         )
 
-    private val callbacks = object : FolderBrowserUiState.Callbacks {
+    private val callbacks: FolderBrowserUiState.Callbacks = object : FolderBrowserUiState.Callbacks {
         override fun onRefresh() {
             refresh()
         }
@@ -390,5 +388,12 @@ class FolderBrowserViewModel @Inject constructor(
             val files: List<FileItem>,
             val folders: List<Folder>,
         )
+    }
+
+    companion object {
+        @AssistedFactory
+        interface Factory {
+            fun create(arguments: FolderBrowser): FolderBrowserViewModel
+        }
     }
 }

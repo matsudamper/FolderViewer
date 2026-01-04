@@ -1,9 +1,7 @@
 package net.matsudamper.folderviewer.viewmodel.browser
 
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.navigation.toRoute
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,17 +9,18 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import jakarta.inject.Inject
 import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.navigation.ImageViewer
 import net.matsudamper.folderviewer.ui.browser.ImageViewerUiState
 
-@HiltViewModel
-class ImageViewerViewModel @Inject constructor(
-    savedStateHandle: SavedStateHandle,
+@HiltViewModel(assistedFactory = ImageViewerViewModel.Companion.Factory::class)
+class ImageViewerViewModel @AssistedInject constructor(
+    @Assisted private val args: ImageViewer,
 ) : ViewModel() {
-    private val args = savedStateHandle.toRoute<ImageViewer>()
 
     private val viewModelEventChannel = Channel<ViewModelEvent>(Channel.UNLIMITED)
     val viewModelEventFlow = viewModelEventChannel.receiveAsFlow()
@@ -76,5 +75,12 @@ class ImageViewerViewModel @Inject constructor(
 
     sealed interface ViewModelEvent {
         data object PopBackStack : ViewModelEvent
+    }
+
+    companion object {
+        @AssistedFactory
+        interface Factory {
+            fun create(arguments: ImageViewer): ImageViewerViewModel
+        }
     }
 }

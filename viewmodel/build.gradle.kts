@@ -38,6 +38,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
-    implementation(libs.androidx.navigation.compose)
+
+    implementation(libs.androidx.navigation3.runtime)
+
     implementation(libs.jakarta.inject)
 }

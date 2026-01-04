@@ -1,6 +1,5 @@
 package net.matsudamper.folderviewer.viewmodel.storage
 
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.channels.Channel
@@ -11,19 +10,22 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import jakarta.inject.Inject
+import net.matsudamper.folderviewer.navigation.SmbAdd
 import net.matsudamper.folderviewer.repository.StorageConfiguration
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.ui.storage.SmbAddUiState
 import net.matsudamper.folderviewer.ui.storage.SmbInput
 
-@HiltViewModel
-class SmbAddViewModel @Inject constructor(
+@HiltViewModel(assistedFactory = SmbAddViewModel.Companion.Factory::class)
+class SmbAddViewModel @AssistedInject constructor(
     private val storageRepository: StorageRepository,
-    savedStateHandle: SavedStateHandle,
+    @Assisted private val arg: SmbAdd,
 ) : ViewModel() {
-    private val storageId: String? = savedStateHandle["storageId"]
+    private val storageId: String? = arg.storageId
 
     private val viewModelEventChannel = Channel<ViewModelEvent>(Channel.UNLIMITED)
     val viewModelEventFlow = viewModelEventChannel.receiveAsFlow()
@@ -111,4 +113,11 @@ class SmbAddViewModel @Inject constructor(
         val isEditMode: Boolean = false,
         val isLoading: Boolean = false,
     )
+
+    companion object {
+        @AssistedFactory
+        interface Factory {
+            fun create(arguments: SmbAdd): SmbAddViewModel
+        }
+    }
 }

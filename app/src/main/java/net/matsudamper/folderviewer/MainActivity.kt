@@ -13,9 +13,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
+import androidx.navigation3.runtime.EntryProviderScope
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.ui.NavDisplay
 import coil.Coil
 import coil.ImageLoader
 import dagger.hilt.android.AndroidEntryPoint
@@ -24,9 +25,12 @@ import net.matsudamper.folderviewer.navigation.FileBrowser
 import net.matsudamper.folderviewer.navigation.FolderBrowser
 import net.matsudamper.folderviewer.navigation.Home
 import net.matsudamper.folderviewer.navigation.ImageViewer
+import net.matsudamper.folderviewer.navigation.Navigator
 import net.matsudamper.folderviewer.navigation.Settings
 import net.matsudamper.folderviewer.navigation.SmbAdd
 import net.matsudamper.folderviewer.navigation.StorageTypeSelection
+import net.matsudamper.folderviewer.navigation.rememberNavigationState
+import net.matsudamper.folderviewer.navigation.toEntries
 import net.matsudamper.folderviewer.ui.browser.FileBrowserScreen
 import net.matsudamper.folderviewer.ui.browser.ImageViewerScreen
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserScreen
@@ -64,190 +68,250 @@ class MainActivity : ComponentActivity() {
 private fun AppContent(
     modifier: Modifier = Modifier,
 ) {
-    val navController = rememberNavController()
-    NavHost(
-        navController = navController,
-        startDestination = Home,
+    val navigationState = rememberNavigationState(
+        startRoute = Home,
+        topLevelRoutes = setOf(Home),
+    )
+    val navigator = remember { Navigator(navigationState) }
+
+    val entryProvider = entryProvider {
+        homeEntry(navigator)
+        settingsEntry(navigator)
+        storageTypeSelectionEntry(navigator)
+        smbAddEntry(navigator)
+        fileBrowserEntry(navigator)
+        folderBrowserEntry(navigator)
+        imageViewerEntry(navigator)
+    }
+
+    NavDisplay(
         modifier = modifier,
-    ) {
-        composable<Home> {
-            val viewModel: HomeViewModel = hiltViewModel()
-            val uiState by viewModel.uiState.collectAsState()
+        entries = navigationState.toEntries(entryProvider),
+        onBack = { navigator.goBack() },
+    )
+}
 
-            HomeScreen(
-                uiState = uiState,
-                onNavigateToSettings = {
-                    navController.navigate(Settings)
-                },
-                onAddStorageClick = {
-                    navController.navigate(StorageTypeSelection)
-                },
-                onStorageClick = { storage ->
-                    navController.navigate(FileBrowser(storageId = storage.id, path = null))
-                },
-                onEditStorageClick = { storage ->
-                    navController.navigate(SmbAdd(storageId = storage.id))
-                },
-            )
-        }
-        composable<Settings> {
-            val viewModel: SettingsViewModel = hiltViewModel()
-            val snackbarHostState = remember { SnackbarHostState() }
+private fun EntryProviderScope<NavKey>.homeEntry(navigator: Navigator) {
+    entry<Home> {
+        val viewModel: HomeViewModel = hiltViewModel()
+        val uiState by viewModel.uiState.collectAsState()
 
-            SettingsScreen(
-                snackbarHostState = snackbarHostState,
-                uiEvent = viewModel.uiEventFlow,
-                onClearDiskCache = viewModel::clearDiskCache,
-                onBack = {
-                    navController.popBackStack()
-                },
-            )
-        }
-        composable<StorageTypeSelection> {
-            StorageTypeSelectionScreen(
-                onSmbClick = {
-                    navController.navigate(SmbAdd())
-                },
-                onBack = {
-                    navController.popBackStack()
-                },
-            )
-        }
-        composable<SmbAdd> {
-            val viewModel: SmbAddViewModel = hiltViewModel()
-            val uiState by viewModel.uiState.collectAsState()
+        HomeScreen(
+            uiState = uiState,
+            onNavigateToSettings = {
+                navigator.navigate(Settings)
+            },
+            onAddStorageClick = {
+                navigator.navigate(StorageTypeSelection)
+            },
+            onStorageClick = { storage ->
+                navigator.navigate(FileBrowser(storageId = storage.id, path = null))
+            },
+            onEditStorageClick = { storage ->
+                navigator.navigate(SmbAdd(storageId = storage.id))
+            },
+        )
+    }
+}
 
-            LaunchedEffect(viewModel.viewModelEventFlow) {
-                viewModel.viewModelEventFlow.collect { event ->
-                    when (event) {
-                        SmbAddViewModel.ViewModelEvent.SaveSuccess -> {
-                            navController.popBackStack(Home, inclusive = false)
-                        }
+private fun EntryProviderScope<NavKey>.settingsEntry(navigator: Navigator) {
+    entry<Settings> {
+        val viewModel: SettingsViewModel = hiltViewModel()
+        val snackbarHostState = remember { SnackbarHostState() }
+
+        SettingsScreen(
+            snackbarHostState = snackbarHostState,
+            uiEvent = viewModel.uiEventFlow,
+            onClearDiskCache = viewModel::clearDiskCache,
+            onBack = {
+                navigator.goBack()
+            },
+        )
+    }
+}
+
+private fun EntryProviderScope<NavKey>.storageTypeSelectionEntry(navigator: Navigator) {
+    entry<StorageTypeSelection> {
+        StorageTypeSelectionScreen(
+            onSmbClick = {
+                navigator.navigate(SmbAdd())
+            },
+            onBack = {
+                navigator.goBack()
+            },
+        )
+    }
+}
+
+private fun EntryProviderScope<NavKey>.smbAddEntry(navigator: Navigator) {
+    entry<SmbAdd> { key ->
+        val viewModel: SmbAddViewModel = hiltViewModel<SmbAddViewModel, SmbAddViewModel.Companion.Factory>(
+            creationCallback = { factory: SmbAddViewModel.Companion.Factory ->
+                factory.create(arguments = key)
+            },
+        )
+        val uiState by viewModel.uiState.collectAsState()
+
+        LaunchedEffect(viewModel.viewModelEventFlow) {
+            viewModel.viewModelEventFlow.collect { event ->
+                when (event) {
+                    SmbAddViewModel.ViewModelEvent.SaveSuccess -> {
+                        navigator.popBackStack(Home, inclusive = false)
                     }
                 }
             }
-
-            SmbAddScreen(
-                uiState = uiState,
-                onSave = viewModel::onSave,
-                onBack = {
-                    navController.popBackStack()
-                },
-            )
         }
-        composable<FileBrowser> {
-            val viewModel: FileBrowserViewModel = hiltViewModel()
-            val uiState = viewModel.uiState.collectAsStateWithLifecycle(initialValue = null)
-            val uiStateValue = uiState.value ?: return@composable
 
-            LaunchedEffect(viewModel.viewModelEventFlow) {
-                viewModel.viewModelEventFlow.collect { event ->
-                    when (event) {
-                        is FileBrowserViewModel.ViewModelEvent.PopBackStack -> {
-                            navController.popBackStack()
-                        }
+        SmbAddScreen(
+            uiState = uiState,
+            onSave = viewModel::onSave,
+            onBack = {
+                navigator.goBack()
+            },
+        )
+    }
+}
 
-                        is FileBrowserViewModel.ViewModelEvent.NavigateToFileBrowser -> {
-                            navController.navigate(
-                                FileBrowser(
-                                    storageId = event.storageId,
-                                    path = event.path,
-                                ),
-                            )
-                        }
+private fun EntryProviderScope<NavKey>.fileBrowserEntry(navigator: Navigator) {
+    entry<FileBrowser> { key ->
+        val viewModel: FileBrowserViewModel = hiltViewModel<
+            FileBrowserViewModel,
+            FileBrowserViewModel.Companion.Factory,
+            >(
+            creationCallback = { factory: FileBrowserViewModel.Companion.Factory ->
+                factory.create(arguments = key)
+            },
+        )
+        val uiState = viewModel.uiState.collectAsStateWithLifecycle(initialValue = null)
+        val uiStateValue = uiState.value ?: return@entry
 
-                        is FileBrowserViewModel.ViewModelEvent.NavigateToImageViewer -> {
-                            navController.navigate(
-                                ImageViewer(
-                                    id = event.storageId,
-                                    path = event.path,
-                                    allPaths = event.allPaths,
-                                ),
-                            )
-                        }
+        LaunchedEffect(viewModel.viewModelEventFlow) {
+            viewModel.viewModelEventFlow.collect { event ->
+                when (event) {
+                    is FileBrowserViewModel.ViewModelEvent.PopBackStack -> {
+                        navigator.goBack()
+                    }
 
-                        is FileBrowserViewModel.ViewModelEvent.NavigateToFolderBrowser -> {
-                            navController.navigate(
-                                FolderBrowser(
-                                    storageId = event.storageId,
-                                    path = event.path,
-                                ),
-                            )
-                        }
+                    is FileBrowserViewModel.ViewModelEvent.NavigateToFileBrowser -> {
+                        navigator.navigate(
+                            FileBrowser(
+                                storageId = event.storageId,
+                                path = event.path,
+                            ),
+                        )
+                    }
+
+                    is FileBrowserViewModel.ViewModelEvent.NavigateToImageViewer -> {
+                        navigator.navigate(
+                            ImageViewer(
+                                id = event.storageId,
+                                path = event.path,
+                                allPaths = event.allPaths,
+                            ),
+                        )
+                    }
+
+                    is FileBrowserViewModel.ViewModelEvent.NavigateToFolderBrowser -> {
+                        navigator.navigate(
+                            FolderBrowser(
+                                storageId = event.storageId,
+                                path = event.path,
+                            ),
+                        )
                     }
                 }
             }
-
-            FileBrowserScreen(
-                uiState = uiStateValue,
-                uiEvent = viewModel.uiEvent,
-            )
         }
-        composable<FolderBrowser> {
-            val viewModel: FolderBrowserViewModel = hiltViewModel()
-            val uiState = viewModel.uiState.collectAsStateWithLifecycle(initialValue = null)
-            val uiStateValue = uiState.value ?: return@composable
 
-            LaunchedEffect(viewModel.viewModelEventFlow) {
-                viewModel.viewModelEventFlow.collect { event ->
-                    when (event) {
-                        is FolderBrowserViewModel.ViewModelEvent.PopBackStack -> {
-                            navController.popBackStack()
-                        }
+        FileBrowserScreen(
+            uiState = uiStateValue,
+            uiEvent = viewModel.uiEvent,
+        )
+    }
+}
 
-                        is FolderBrowserViewModel.ViewModelEvent.NavigateToFileBrowser -> {
-                            navController.navigate(
-                                FileBrowser(
-                                    storageId = event.storageId,
-                                    path = event.path,
-                                ),
-                            )
-                        }
+private fun EntryProviderScope<NavKey>.folderBrowserEntry(navigator: Navigator) {
+    entry<FolderBrowser> { key ->
+        val viewModel: FolderBrowserViewModel = hiltViewModel<
+            FolderBrowserViewModel,
+            FolderBrowserViewModel.Companion.Factory,
+            >(
+            creationCallback = { factory: FolderBrowserViewModel.Companion.Factory ->
+                factory.create(arguments = key)
+            },
+        )
+        val uiState = viewModel.uiState.collectAsStateWithLifecycle(initialValue = null)
+        val uiStateValue = uiState.value ?: return@entry
 
-                        is FolderBrowserViewModel.ViewModelEvent.NavigateToImageViewer -> {
-                            navController.navigate(
-                                ImageViewer(
-                                    id = event.storageId,
-                                    path = event.path,
-                                    allPaths = event.allPaths,
-                                ),
-                            )
-                        }
+        LaunchedEffect(viewModel.viewModelEventFlow) {
+            viewModel.viewModelEventFlow.collect { event ->
+                when (event) {
+                    is FolderBrowserViewModel.ViewModelEvent.PopBackStack -> {
+                        navigator.goBack()
+                    }
 
-                        is FolderBrowserViewModel.ViewModelEvent.NavigateToFolderBrowser -> {
-                            navController.navigate(
-                                FolderBrowser(
-                                    storageId = event.storageId,
-                                    path = event.path,
-                                ),
-                            )
-                        }
+                    is FolderBrowserViewModel.ViewModelEvent.NavigateToFileBrowser -> {
+                        navigator.navigate(
+                            FileBrowser(
+                                storageId = event.storageId,
+                                path = event.path,
+                            ),
+                        )
+                    }
+
+                    is FolderBrowserViewModel.ViewModelEvent.NavigateToImageViewer -> {
+                        navigator.navigate(
+                            ImageViewer(
+                                id = event.storageId,
+                                path = event.path,
+                                allPaths = event.allPaths,
+                            ),
+                        )
+                    }
+
+                    is FolderBrowserViewModel.ViewModelEvent.NavigateToFolderBrowser -> {
+                        navigator.navigate(
+                            FolderBrowser(
+                                storageId = event.storageId,
+                                path = event.path,
+                            ),
+                        )
                     }
                 }
             }
-
-            FolderBrowserScreen(
-                uiState = uiStateValue,
-                uiEvent = viewModel.uiEvent,
-            )
         }
-        composable<ImageViewer> {
-            val viewModel: ImageViewerViewModel = hiltViewModel()
-            val uiState by viewModel.uiState.collectAsState()
 
-            LaunchedEffect(viewModel.viewModelEventFlow) {
-                viewModel.viewModelEventFlow.collect { event ->
-                    when (event) {
-                        is ImageViewerViewModel.ViewModelEvent.PopBackStack -> {
-                            navController.popBackStack()
-                        }
+        FolderBrowserScreen(
+            uiState = uiStateValue,
+            uiEvent = viewModel.uiEvent,
+        )
+    }
+}
+
+private fun EntryProviderScope<NavKey>.imageViewerEntry(navigator: Navigator) {
+    entry<ImageViewer> { key ->
+        val viewModel: ImageViewerViewModel = hiltViewModel<
+            ImageViewerViewModel,
+            ImageViewerViewModel.Companion.Factory,
+            >(
+            creationCallback = { factory: ImageViewerViewModel.Companion.Factory ->
+                factory.create(arguments = key)
+            },
+        )
+        val uiState by viewModel.uiState.collectAsState()
+
+        LaunchedEffect(viewModel.viewModelEventFlow) {
+            viewModel.viewModelEventFlow.collect { event ->
+                when (event) {
+                    is ImageViewerViewModel.ViewModelEvent.PopBackStack -> {
+                        navigator.goBack()
                     }
                 }
             }
-
-            ImageViewerScreen(
-                uiState = uiState,
-            )
         }
+
+        ImageViewerScreen(
+            uiState = uiState,
+        )
     }
 }
