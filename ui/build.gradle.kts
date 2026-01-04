@@ -1,9 +1,9 @@
 plugins {
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.kotlinAndroid)
+    alias(libs.plugins.kotlinCompose)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.dagger.hilt)
+    alias(libs.plugins.daggerHilt)
 }
 
 android {
@@ -32,23 +32,23 @@ kotlin {
 dependencies {
     implementation(project(":navigation"))
     implementation(project(":coil"))
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.androidx.activity.compose)
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.ui.tooling.preview)
-    implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidxCoreKtx)
+    implementation(libs.androidxLifecycleRuntimeKtx)
+    implementation(libs.androidxLifecycleViewmodelCompose)
+    implementation(libs.androidxActivityCompose)
+    implementation(platform(libs.androidxComposeBom))
+    implementation(libs.androidxComposeUi)
+    implementation(libs.androidxComposeUiGraphics)
+    implementation(libs.androidxComposeUiToolingPreview)
+    implementation(libs.androidxComposeMaterial3)
+    implementation(libs.androidxComposeFoundation)
 
-    implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.androidxNavigation3Runtime)
 
-    implementation(libs.hilt.android)
-    ksp(libs.hilt.compiler)
-    implementation(libs.coil.compose)
+    implementation(libs.hiltAndroid)
+    ksp(libs.hiltCompiler)
+    implementation(libs.coilCompose)
     implementation(libs.zoomable)
-    debugImplementation(libs.androidx.compose.ui.tooling)
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
+    debugImplementation(libs.androidxComposeUiTooling)
+    debugImplementation(libs.androidxComposeUiTestManifest)
 }

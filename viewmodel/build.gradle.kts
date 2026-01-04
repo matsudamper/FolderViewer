@@ -1,8 +1,8 @@
 plugins {
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.dagger.hilt)
+    alias(libs.plugins.daggerHilt)
     alias(libs.plugins.detekt)
     alias(libs.plugins.ktlint)
 }
@@ -33,13 +33,13 @@ dependencies {
     implementation(project(":ui"))
     implementation(project(":coil"))
 
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.lifecycle.viewmodel.ktx)
-    implementation(libs.hilt.android)
-    ksp(libs.hilt.compiler)
+    implementation(libs.androidxCoreKtx)
+    implementation(libs.androidxLifecycleRuntimeKtx)
+    implementation(libs.androidxLifecycleViewmodelKtx)
+    implementation(libs.hiltAndroid)
+    ksp(libs.hiltCompiler)
 
-    implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.androidxNavigation3Runtime)
 
-    implementation(libs.jakarta.inject)
+    implementation(libs.jakartaInject)
 }

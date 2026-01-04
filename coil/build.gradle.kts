@@ -1,8 +1,8 @@
 plugins {
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.dagger.hilt)
+    alias(libs.plugins.daggerHilt)
 }
 
 android {
@@ -27,9 +27,9 @@ kotlin {
 
 dependencies {
     implementation(project(":repository"))
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.coil.compose)
-    implementation(libs.hilt.android)
-    ksp(libs.hilt.compiler)
-    implementation(libs.jakarta.inject)
+    implementation(libs.androidxCoreKtx)
+    implementation(libs.coilCompose)
+    implementation(libs.hiltAndroid)
+    ksp(libs.hiltCompiler)
+    implementation(libs.jakartaInject)
 }
