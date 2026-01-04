@@ -42,6 +42,16 @@ class PreferencesRepository @Inject constructor(
             proto.fileBrowserSort.toDomain()
         }
 
+    val folderBrowserDisplayMode: Flow<DisplayMode> = context.browserPreferencesDataStore.data
+        .map { proto ->
+            proto.folderBrowserDisplay.toDisplayMode()
+        }
+
+    val fileBrowserDisplayMode: Flow<DisplayMode> = context.browserPreferencesDataStore.data
+        .map { proto ->
+            proto.fileBrowserDisplay.toDisplayMode()
+        }
+
     suspend fun saveFolderBrowserFolderSortConfig(config: FileSortConfig) {
         context.browserPreferencesDataStore.updateData { currentPrefs ->
             currentPrefs.toBuilder()
@@ -74,6 +84,22 @@ class PreferencesRepository @Inject constructor(
         }
     }
 
+    suspend fun saveFolderBrowserDisplayMode(mode: DisplayMode) {
+        context.browserPreferencesDataStore.updateData { currentPrefs ->
+            currentPrefs.toBuilder()
+                .setFolderBrowserDisplay(mode.toProto())
+                .build()
+        }
+    }
+
+    suspend fun saveFileBrowserDisplayMode(mode: DisplayMode) {
+        context.browserPreferencesDataStore.updateData { currentPrefs ->
+            currentPrefs.toBuilder()
+                .setFileBrowserDisplay(mode.toProto())
+                .build()
+        }
+    }
+
     private fun SortConfigProto.toDomain(): FileSortConfig {
         return FileSortConfig(
             key = when (key) {
@@ -99,6 +125,25 @@ class PreferencesRepository @Inject constructor(
             .build()
     }
 
+    private fun net.matsudamper.folderviewer.repository.proto.DisplayConfigProto.toDisplayMode(): DisplayMode {
+        return when (mode) {
+            net.matsudamper.folderviewer.repository.proto.DisplayConfigProto.DisplayMode.LIST -> DisplayMode.List
+            net.matsudamper.folderviewer.repository.proto.DisplayConfigProto.DisplayMode.GRID -> DisplayMode.Grid
+            net.matsudamper.folderviewer.repository.proto.DisplayConfigProto.DisplayMode.UNRECOGNIZED, null -> DisplayMode.List
+        }
+    }
+
+    private fun DisplayMode.toProto(): net.matsudamper.folderviewer.repository.proto.DisplayConfigProto {
+        return net.matsudamper.folderviewer.repository.proto.DisplayConfigProto.newBuilder()
+            .setMode(
+                when (this) {
+                    DisplayMode.List -> net.matsudamper.folderviewer.repository.proto.DisplayConfigProto.DisplayMode.LIST
+                    DisplayMode.Grid -> net.matsudamper.folderviewer.repository.proto.DisplayConfigProto.DisplayMode.GRID
+                },
+            )
+            .build()
+    }
+
     data class FileSortConfig(
         val key: FileSortKey,
         val isAscending: Boolean,
@@ -108,6 +153,11 @@ class PreferencesRepository @Inject constructor(
         Name,
         Date,
         Size,
+    }
+
+    enum class DisplayMode {
+        List,
+        Grid,
     }
 }
 
@@ -133,6 +183,16 @@ internal object BrowserPreferencesSerializer : Serializer<BrowserPreferencesProt
             SortConfigProto.newBuilder()
                 .setKey(SortConfigProto.SortKey.NAME)
                 .setIsAscending(true)
+                .build(),
+        )
+        .setFolderBrowserDisplay(
+            net.matsudamper.folderviewer.repository.proto.DisplayConfigProto.newBuilder()
+                .setMode(net.matsudamper.folderviewer.repository.proto.DisplayConfigProto.DisplayMode.LIST)
+                .build(),
+        )
+        .setFileBrowserDisplay(
+            net.matsudamper.folderviewer.repository.proto.DisplayConfigProto.newBuilder()
+                .setMode(net.matsudamper.folderviewer.repository.proto.DisplayConfigProto.DisplayMode.LIST)
                 .build(),
         )
         .build()

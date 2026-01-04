@@ -6,6 +6,8 @@ option java_multiple_files = true;
 message BrowserPreferencesProto {
   FolderBrowserSortConfigProto folder_browser_sort = 1;
   SortConfigProto file_browser_sort = 2;
+  DisplayConfigProto folder_browser_display = 3;
+  DisplayConfigProto file_browser_display = 4;
 }
 
 message FolderBrowserSortConfigProto {
@@ -21,5 +23,14 @@ message SortConfigProto {
     NAME = 0;
     DATE = 1;
     SIZE = 2;
+  }
+}
+
+message DisplayConfigProto {
+  DisplayMode mode = 1;
+
+  enum DisplayMode {
+    LIST = 0;
+    GRID = 1;
   }
 }

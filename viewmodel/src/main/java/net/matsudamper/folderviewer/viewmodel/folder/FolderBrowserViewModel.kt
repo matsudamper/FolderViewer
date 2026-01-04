@@ -59,14 +59,46 @@ class FolderBrowserViewModel @Inject constructor(
 
         override fun onFolderSortConfigChanged(config: FolderBrowserUiState.FileSortConfig) {
             viewModelStateFlow.update { it.copy(folderSortConfig = config) }
+            viewModelScope.launch {
+                preferencesRepository.saveFolderBrowserFolderSortConfig(
+                    PreferencesRepository.FileSortConfig(
+                        key = when (config.key) {
+                            FolderBrowserUiState.FileSortKey.Name -> PreferencesRepository.FileSortKey.Name
+                            FolderBrowserUiState.FileSortKey.Date -> PreferencesRepository.FileSortKey.Date
+                            FolderBrowserUiState.FileSortKey.Size -> PreferencesRepository.FileSortKey.Size
+                        },
+                        isAscending = config.isAscending,
+                    ),
+                )
+            }
         }
 
         override fun onFileSortConfigChanged(config: FolderBrowserUiState.FileSortConfig) {
             viewModelStateFlow.update { it.copy(fileSortConfig = config) }
+            viewModelScope.launch {
+                preferencesRepository.saveFolderBrowserFileSortConfig(
+                    PreferencesRepository.FileSortConfig(
+                        key = when (config.key) {
+                            FolderBrowserUiState.FileSortKey.Name -> PreferencesRepository.FileSortKey.Name
+                            FolderBrowserUiState.FileSortKey.Date -> PreferencesRepository.FileSortKey.Date
+                            FolderBrowserUiState.FileSortKey.Size -> PreferencesRepository.FileSortKey.Size
+                        },
+                        isAscending = config.isAscending,
+                    ),
+                )
+            }
         }
 
         override fun onDisplayModeChanged(config: FolderBrowserUiState.DisplayConfig) {
             viewModelStateFlow.update { it.copy(displayConfig = config) }
+            viewModelScope.launch {
+                preferencesRepository.saveFolderBrowserDisplayMode(
+                    when (config.displayMode) {
+                        FolderBrowserUiState.DisplayMode.List -> PreferencesRepository.DisplayMode.List
+                        FolderBrowserUiState.DisplayMode.Grid -> PreferencesRepository.DisplayMode.Grid
+                    },
+                )
+            }
         }
     }
 
@@ -172,6 +204,9 @@ class FolderBrowserViewModel @Inject constructor(
         viewModelScope.launch {
             loadSortConfig()
         }
+        viewModelScope.launch {
+            loadDisplayMode()
+        }
     }
 
     private suspend fun loadSortConfig() {
@@ -200,6 +235,21 @@ class FolderBrowserViewModel @Inject constructor(
                 )
             }
         }.collect {}
+    }
+
+    private suspend fun loadDisplayMode() {
+        preferencesRepository.folderBrowserDisplayMode.collect { displayMode ->
+            viewModelStateFlow.update {
+                it.copy(
+                    displayConfig = it.displayConfig.copy(
+                        displayMode = when (displayMode) {
+                            PreferencesRepository.DisplayMode.List -> FolderBrowserUiState.DisplayMode.List
+                            PreferencesRepository.DisplayMode.Grid -> FolderBrowserUiState.DisplayMode.Grid
+                        },
+                    ),
+                )
+            }
+        }
     }
 
     private fun loadStorageName() {
