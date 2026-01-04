@@ -18,6 +18,7 @@ import com.google.protobuf.InvalidProtocolBufferException
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
+import net.matsudamper.folderviewer.repository.proto.FavoriteConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.SmbConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.StorageConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.StorageListProto
@@ -49,6 +50,11 @@ class StorageRepository @Inject constructor(
     val storageList: Flow<List<StorageConfiguration>> = context.dataStore.data
         .map { proto ->
             proto.listList.mapNotNull { it.toDomain() }
+        }
+
+    val favorites: Flow<List<FavoriteConfiguration>> = context.dataStore.data
+        .map { proto ->
+            proto.favoritesList.map { it.toDomain() }
         }
 
     suspend fun addSmbStorage(config: SmbStorageInput) {
@@ -99,6 +105,35 @@ class StorageRepository @Inject constructor(
         }
     }
 
+    suspend fun addFavorite(storageId: String, path: String, name: String) {
+        val id = UUID.randomUUID().toString()
+        val config = FavoriteConfiguration(
+            id = id,
+            name = name,
+            storageId = storageId,
+            path = path,
+        )
+
+        context.dataStore.updateData { currentList ->
+            currentList.toBuilder()
+                .addFavorites(config.toProto())
+                .build()
+        }
+    }
+
+    suspend fun removeFavorite(id: String) {
+        context.dataStore.updateData { currentList ->
+            val index = currentList.favoritesList.indexOfFirst { it.id == id }
+            if (index >= 0) {
+                currentList.toBuilder()
+                    .removeFavorites(index)
+                    .build()
+            } else {
+                currentList
+            }
+        }
+    }
+
     suspend fun getFileRepository(id: String): FileRepository? {
         val proto = context.dataStore.data.first()
         val configProto = proto.listList.find { it.id == id } ?: return null
@@ -132,6 +167,24 @@ class StorageRepository @Inject constructor(
                     .setUsername(username)
                     .build(),
             )
+            .build()
+    }
+
+    private fun FavoriteConfigurationProto.toDomain(): FavoriteConfiguration {
+        return FavoriteConfiguration(
+            id = id,
+            name = name,
+            storageId = storageId,
+            path = path,
+        )
+    }
+
+    private fun FavoriteConfiguration.toProto(): FavoriteConfigurationProto {
+        return FavoriteConfigurationProto.newBuilder()
+            .setId(id)
+            .setName(name)
+            .setStorageId(storageId)
+            .setPath(path)
             .build()
     }
 

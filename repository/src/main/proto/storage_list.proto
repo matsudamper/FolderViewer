@@ -5,6 +5,7 @@ option java_multiple_files = true;
 
 message StorageListProto {
   repeated StorageConfigurationProto list = 1;
+  repeated FavoriteConfigurationProto favorites = 2;
 }
 
 message StorageConfigurationProto {
@@ -18,4 +19,11 @@ message StorageConfigurationProto {
 message SmbConfigurationProto {
   string ip = 1;
   string username = 2;
+}
+
+message FavoriteConfigurationProto {
+  string id = 1;
+  string name = 2;
+  string storage_id = 3;
+  string path = 4;
 }

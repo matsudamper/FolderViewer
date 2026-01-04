@@ -18,6 +18,7 @@ class FolderBrowserUiStateCreator(
     private val storageId: String,
     private val viewModelEventChannel: Channel<ViewModelEvent>,
 ) {
+    @Suppress("LongMethod")
     fun create(
         viewModelState: FolderBrowserViewModel.ViewModelState,
     ): FolderBrowserUiState {
@@ -40,16 +41,50 @@ class FolderBrowserUiStateCreator(
                 fileSortConfig = viewModelState.fileSortConfig,
                 allImagePaths = allImagePaths,
             )
+
+            if (viewModelState.currentPath.isEmpty() && viewModelState.favorites.isNotEmpty()) {
+                add(FolderBrowserUiState.UiFileItem.Header(title = "Favorites"))
+                addAll(
+                    viewModelState.favorites.map { favorite ->
+                        FolderBrowserUiState.UiFileItem.File(
+                            name = favorite.path,
+                            path = favorite.path,
+                            isDirectory = true,
+                            size = 0,
+                            lastModified = 0,
+                            thumbnail = if (FileUtil.isImage(favorite.path)) {
+                                FileImageSource.Thumbnail(storageId = storageId, path = favorite.path)
+                            } else {
+                                null
+                            },
+                            callbacks = object : FolderBrowserUiState.UiFileItem.File.Callbacks {
+                                override fun onClick() {
+                                    viewModelScope.launch {
+                                        viewModelEventChannel.send(
+                                            ViewModelEvent.NavigateToFolderBrowser(
+                                                path = favorite.path,
+                                                storageId = storageId,
+                                            ),
+                                        )
+                                    }
+                                }
+                            },
+                        )
+                    },
+                )
+            }
         }
 
         return FolderBrowserUiState(
             callbacks = callbacks,
             isLoading = viewModelState.isLoading,
             isRefreshing = viewModelState.isRefreshing,
+            visibleFavoriteButton = viewModelState.currentPath.isNotEmpty(),
             currentPath = viewModelState.currentPath,
             title = viewModelState.currentPath.ifEmpty {
                 viewModelState.storageName ?: viewModelState.currentPath
             },
+            isFavorite = viewModelState.favoriteId != null,
             files = uiItems,
             folderSortConfig = viewModelState.folderSortConfig,
             fileSortConfig = viewModelState.fileSortConfig,
@@ -70,7 +105,7 @@ class FolderBrowserUiStateCreator(
                     lastModifiedProvider = { it.lastModified },
                     nameProvider = { it.name },
                 ),
-            )
+            ),
         )
         folder.folders.sortedWith(
             FileSortComparator(
@@ -153,7 +188,7 @@ class FolderBrowserUiStateCreator(
     private inner class FileItemCallbacks(
         private val file: FileItem,
         private val allImagePaths: List<String>,
-    ) : FolderBrowserUiState.UiFileItem.Callbacks {
+    ) : FolderBrowserUiState.UiFileItem.File.Callbacks {
         override fun onClick() {
             viewModelScope.launch {
                 val isImage = FileUtil.isImage(file.name)

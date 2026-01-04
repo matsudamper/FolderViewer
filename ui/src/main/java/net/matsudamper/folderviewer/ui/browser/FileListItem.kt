@@ -23,7 +23,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -35,8 +34,27 @@ import net.matsudamper.folderviewer.ui.R
 import net.matsudamper.folderviewer.ui.util.formatBytes
 
 @Composable
+internal fun FileHeaderItem(
+    title: String,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
 internal fun FileSmallListItem(
-    file: FileBrowserUiState.UiFileItem,
+    file: FileBrowserUiState.UiFileItem.File,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -54,17 +72,15 @@ internal fun FileSmallListItem(
                 .clip(MaterialTheme.shapes.extraSmall),
         )
         Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = file.name,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+        FileNameText(
+            name = file.name,
         )
     }
 }
 
 @Composable
 internal fun FileMediumListItem(
-    file: FileBrowserUiState.UiFileItem,
+    file: FileBrowserUiState.UiFileItem.File,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -83,14 +99,17 @@ internal fun FileMediumListItem(
         )
         Spacer(modifier = Modifier.width(8.dp))
         Column {
-            Text(
-                text = file.name,
+            FileNameText(
+                name = file.name,
                 maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
             )
 
             if (!file.isDirectory) {
-                Text(formatBytes(file.size))
+                Text(
+                    text = formatBytes(file.size),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
@@ -98,7 +117,7 @@ internal fun FileMediumListItem(
 
 @Composable
 internal fun FileLargeListItem(
-    file: FileBrowserUiState.UiFileItem,
+    file: FileBrowserUiState.UiFileItem.File,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -117,22 +136,40 @@ internal fun FileLargeListItem(
         )
         Spacer(modifier = Modifier.width(8.dp))
         Column {
-            Text(
-                text = file.name,
+            FileNameText(
+                name = file.name,
                 maxLines = 4,
-                overflow = TextOverflow.Ellipsis,
             )
 
             if (!file.isDirectory) {
-                Text(formatBytes(file.size))
+                Text(
+                    text = formatBytes(file.size),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
 }
 
 @Composable
+private fun FileNameText(
+    name: String,
+    modifier: Modifier = Modifier,
+    maxLines: Int = 1,
+) {
+    Text(
+        text = name,
+        modifier = modifier,
+        maxLines = maxLines,
+        overflow = TextOverflow.StartEllipsis,
+        style = MaterialTheme.typography.bodyLarge,
+    )
+}
+
+@Composable
 internal fun FileSmallGridItem(
-    file: FileBrowserUiState.UiFileItem,
+    file: FileBrowserUiState.UiFileItem.File,
     modifier: Modifier = Modifier,
 ) {
     FileGridItem(
@@ -144,7 +181,7 @@ internal fun FileSmallGridItem(
 
 @Composable
 internal fun FileLargeGridItem(
-    file: FileBrowserUiState.UiFileItem,
+    file: FileBrowserUiState.UiFileItem.File,
     modifier: Modifier = Modifier,
 ) {
     FileGridItem(
@@ -156,7 +193,7 @@ internal fun FileLargeGridItem(
 
 @Composable
 private fun FileGridItem(
-    file: FileBrowserUiState.UiFileItem,
+    file: FileBrowserUiState.UiFileItem.File,
     padding: Dp,
     modifier: Modifier = Modifier,
 ) {
@@ -180,14 +217,14 @@ private fun FileGridItem(
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
     }
 }
 
 @Composable
 private fun FileIcon(
-    file: FileBrowserUiState.UiFileItem,
+    file: FileBrowserUiState.UiFileItem.File,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier) {
@@ -229,7 +266,58 @@ private fun FileIcon(
     }
 }
 
-private val previewUiFileItem = FileBrowserUiState.UiFileItem(
+@Preview(showBackground = true)
+@Composable
+private fun PreviewFileSmallListItem() {
+    MaterialTheme {
+        FileSmallListItem(
+            file = previewUiFileItem(),
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun PreviewFileMediumListItem() {
+    MaterialTheme {
+        FileMediumListItem(
+            file = previewUiFileItem(),
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun PreviewFileLargeListItem() {
+    MaterialTheme {
+        FileLargeListItem(
+            file = previewUiFileItem(),
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun PreviewFileSmallGridItem() {
+    MaterialTheme {
+        FileSmallGridItem(
+            file = previewUiFileItem(),
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun PreviewFileLargeGridItem() {
+    MaterialTheme {
+        FileLargeGridItem(
+            file = previewUiFileItem(),
+        )
+    }
+}
+
+@Composable
+private fun previewUiFileItem() = FileBrowserUiState.UiFileItem.File(
     name = "FileName.txt",
     path = "/path/to/FileName.txt",
     isDirectory = false,
@@ -238,53 +326,3 @@ private val previewUiFileItem = FileBrowserUiState.UiFileItem(
     thumbnail = null,
     callbacks = { },
 )
-
-@Preview(showBackground = true)
-@Composable
-internal fun PreviewFileSmallListItem() {
-    MaterialTheme {
-        FileSmallListItem(
-            file = previewUiFileItem,
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-internal fun PreviewFileMediumListItem() {
-    MaterialTheme {
-        FileMediumListItem(
-            file = previewUiFileItem,
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-internal fun PreviewFileLargeListItem() {
-    MaterialTheme {
-        FileLargeListItem(
-            file = previewUiFileItem,
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-internal fun PreviewFileSmallGridItem() {
-    MaterialTheme {
-        FileSmallGridItem(
-            file = previewUiFileItem,
-        )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-internal fun PreviewFileLargeGridItem() {
-    MaterialTheme {
-        FileLargeGridItem(
-            file = previewUiFileItem,
-        )
-    }
-}

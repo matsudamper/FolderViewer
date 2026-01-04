@@ -26,4 +26,7 @@
     <string name="clear_disk_cache">ディスクキャッシュをクリア</string>
     <string name="folder">フォルダ</string>
     <string name="file">ファイル</string>
+    <string name="add_to_favorites">お気に入りに追加</string>
+    <string name="storages">ストレージ</string>
+    <string name="favorites">お気に入り</string>
 </resources>

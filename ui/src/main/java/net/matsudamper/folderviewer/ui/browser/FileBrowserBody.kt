@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
@@ -49,7 +50,7 @@ internal fun FileBrowserBody(
         },
     ) {
         when {
-            uiState.isLoading -> {
+            uiState.isLoading && uiState.files.isEmpty() -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -105,13 +106,38 @@ private fun FileBrowserContent(
             ) {
                 items(
                     items = uiState.files,
-                    key = { it.path },
-                    contentType = { uiState.displayConfig.displaySize },
-                ) { file ->
-                    FileBrowserGridItem(
-                        file = file,
-                        displaySize = uiState.displayConfig.displaySize,
-                    )
+                    key = { item ->
+                        when (item) {
+                            is FileBrowserUiState.UiFileItem.Header -> "header_${item.title}"
+                            is FileBrowserUiState.UiFileItem.File -> item.path
+                        }
+                    },
+                    contentType = {
+                        when (it) {
+                            is FileBrowserUiState.UiFileItem.Header -> "Header"
+                            is FileBrowserUiState.UiFileItem.File -> uiState.displayConfig.displaySize
+                        }
+                    },
+                    span = { item ->
+                        if (item is FileBrowserUiState.UiFileItem.Header) {
+                            GridItemSpan(maxLineSpan)
+                        } else {
+                            GridItemSpan(1)
+                        }
+                    },
+                ) { item ->
+                    when (item) {
+                        is FileBrowserUiState.UiFileItem.Header -> {
+                            FileHeaderItem(title = item.title)
+                        }
+
+                        is FileBrowserUiState.UiFileItem.File -> {
+                            FileBrowserGridItem(
+                                file = item,
+                                displaySize = uiState.displayConfig.displaySize,
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -123,12 +149,25 @@ private fun FileBrowserContent(
             ) {
                 items(
                     items = uiState.files,
-                    key = { it.path },
-                ) { file ->
-                    FileBrowserListItem(
-                        file = file,
-                        displaySize = uiState.displayConfig.displaySize,
-                    )
+                    key = { item ->
+                        when (item) {
+                            is FileBrowserUiState.UiFileItem.Header -> "header_${item.title}"
+                            is FileBrowserUiState.UiFileItem.File -> item.path
+                        }
+                    },
+                ) { item ->
+                    when (item) {
+                        is FileBrowserUiState.UiFileItem.Header -> {
+                            FileHeaderItem(title = item.title)
+                        }
+
+                        is FileBrowserUiState.UiFileItem.File -> {
+                            FileBrowserListItem(
+                                file = item,
+                                displaySize = uiState.displayConfig.displaySize,
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -137,7 +176,7 @@ private fun FileBrowserContent(
 
 @Composable
 private fun FileBrowserGridItem(
-    file: FileBrowserUiState.UiFileItem,
+    file: FileBrowserUiState.UiFileItem.File,
     displaySize: UiDisplayConfig.DisplaySize,
 ) {
     when (displaySize) {
@@ -163,7 +202,7 @@ private fun FileBrowserGridItem(
 
 @Composable
 private fun FileBrowserListItem(
-    file: FileBrowserUiState.UiFileItem,
+    file: FileBrowserUiState.UiFileItem.File,
     displaySize: UiDisplayConfig.DisplaySize,
 ) {
     when (displaySize) {

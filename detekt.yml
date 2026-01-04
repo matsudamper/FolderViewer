@@ -2,11 +2,15 @@ build:
   maxIssues: 0
 
 complexity:
+  CyclomaticComplexMethod:
+    ignoreAnnotated:
+      - 'androidx.compose.runtime.Composable'
   LongMethod:
     ignoreAnnotated:
       - 'androidx.compose.runtime.Composable'
   LongParameterList:
-    active: false
+    ignoreAnnotated:
+      - 'androidx.compose.runtime.Composable'
   TooManyFunctions:
     active: false
 

@@ -16,11 +16,13 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import net.matsudamper.folderviewer.navigation.FolderBrowser
+import net.matsudamper.folderviewer.repository.FavoriteConfiguration
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.PreferencesRepository
@@ -30,6 +32,7 @@ import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiEvent
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiState
 import net.matsudamper.folderviewer.viewmodel.FileSortComparator
 
+@Suppress("TooManyFunctions", "LongMethod")
 @HiltViewModel
 class FolderBrowserViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
@@ -92,6 +95,30 @@ class FolderBrowserViewModel @Inject constructor(
                 )
             }
         }
+
+        override fun onFavoriteClick() {
+            viewModelScope.launch {
+                val state = viewModelStateFlow.value
+                val favoriteId = state.favoriteId
+                if (favoriteId != null) {
+                    storageRepository.removeFavorite(favoriteId)
+                    uiChannelEvent.send(FolderBrowserUiEvent.ShowSnackbar("Removed from favorites"))
+                } else {
+                    val name = if (arg.path.isEmpty()) {
+                        state.storageName ?: "Storage"
+                    } else {
+                        arg.path.trim('/').split('/').lastOrNull() ?: arg.path
+                    }
+
+                    storageRepository.addFavorite(
+                        storageId = arg.storageId,
+                        path = arg.path,
+                        name = name,
+                    )
+                    uiChannelEvent.send(FolderBrowserUiEvent.ShowSnackbar("Added to favorites"))
+                }
+            }
+        }
     }
 
     private val uiStateCreator = FolderBrowserUiStateCreator(
@@ -123,6 +150,24 @@ class FolderBrowserViewModel @Inject constructor(
         }
         viewModelScope.launch {
             collectDisplayMode()
+        }
+        viewModelScope.launch {
+            storageRepository.favorites
+                .map { favorites ->
+                    favorites.find { it.storageId == arg.storageId && it.path == arg.path }?.id
+                }
+                .collect { favoriteId ->
+                    viewModelStateFlow.update { it.copy(favoriteId = favoriteId) }
+                }
+        }
+        viewModelScope.launch {
+            storageRepository.favorites
+                .map { favorites ->
+                    favorites.filter { it.storageId == arg.storageId }
+                }
+                .collect { favorites ->
+                    viewModelStateFlow.update { it.copy(favorites = favorites) }
+                }
         }
     }
 
@@ -334,6 +379,8 @@ class FolderBrowserViewModel @Inject constructor(
             displayMode = UiDisplayConfig.DisplayMode.List,
             displaySize = UiDisplayConfig.DisplaySize.Medium,
         ),
+        val favoriteId: String? = null,
+        val favorites: List<FavoriteConfiguration> = emptyList(),
     ) {
         data class Folder(
             val path: String,

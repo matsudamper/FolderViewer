@@ -1,27 +1,18 @@
 package net.matsudamper.folderviewer.ui.browser
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberSliderState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,7 +21,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import net.matsudamper.folderviewer.ui.R
 import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
 
@@ -38,11 +28,14 @@ import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
 @Composable
 internal fun FileBrowserTopBar(
     title: String,
+    isFavorite: Boolean,
+    visibleFavoriteButton: Boolean,
     onBack: () -> Unit,
     sortConfig: FileBrowserUiState.FileSortConfig,
     onSortConfigChange: (FileBrowserUiState.FileSortConfig) -> Unit,
     displayConfig: UiDisplayConfig,
     onDisplayConfigChange: (UiDisplayConfig) -> Unit,
+    onFavoriteClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
@@ -72,6 +65,22 @@ internal fun FileBrowserTopBar(
             }
         },
         actions = {
+            if (visibleFavoriteButton) {
+                IconButton(onClick = onFavoriteClick) {
+                    Icon(
+                        painter = painterResource(
+                            id = if (isFavorite) R.drawable.ic_star else R.drawable.ic_star_border,
+                        ),
+                        contentDescription = stringResource(R.string.add_to_favorites),
+                        tint = if (isFavorite) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            LocalContentColor.current
+                        },
+                    )
+                }
+            }
+
             var showDisplayMenu by remember { mutableStateOf(false) }
             IconButton(onClick = { showDisplayMenu = true }) {
                 Icon(
@@ -100,86 +109,97 @@ internal fun FileBrowserTopBar(
                     contentDescription = stringResource(R.string.sort_by),
                 )
             }
-            DropdownMenu(
-                expanded = showSortMenu,
+
+            DropDownMenu(
+                showSortMenu = showSortMenu,
                 onDismissRequest = { showSortMenu = false },
-            ) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.sort_name)) },
-                    onClick = {
-                        onSortConfigChange(sortConfig.copy(key = FileBrowserUiState.FileSortKey.Name))
-                        showSortMenu = false
-                    },
-                    leadingIcon = {
-                        if (sortConfig.key == FileBrowserUiState.FileSortKey.Name) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_check),
-                                contentDescription = null,
-                            )
-                        }
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.sort_date)) },
-                    onClick = {
-                        onSortConfigChange(sortConfig.copy(key = FileBrowserUiState.FileSortKey.Date))
-                        showSortMenu = false
-                    },
-                    leadingIcon = {
-                        if (sortConfig.key == FileBrowserUiState.FileSortKey.Date) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_check),
-                                contentDescription = null,
-                            )
-                        }
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.sort_size)) },
-                    onClick = {
-                        onSortConfigChange(sortConfig.copy(key = FileBrowserUiState.FileSortKey.Size))
-                        showSortMenu = false
-                    },
-                    leadingIcon = {
-                        if (sortConfig.key == FileBrowserUiState.FileSortKey.Size) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_check),
-                                contentDescription = null,
-                            )
-                        }
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.sort_asc)) },
-                    onClick = {
-                        onSortConfigChange(sortConfig.copy(isAscending = true))
-                        showSortMenu = false
-                    },
-                    leadingIcon = {
-                        if (sortConfig.isAscending) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_check),
-                                contentDescription = null,
-                            )
-                        }
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.sort_desc)) },
-                    onClick = {
-                        onSortConfigChange(sortConfig.copy(isAscending = false))
-                        showSortMenu = false
-                    },
-                    leadingIcon = {
-                        if (!sortConfig.isAscending) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_check),
-                                contentDescription = null,
-                            )
-                        }
-                    },
-                )
-            }
+                sortConfig = sortConfig,
+                onSortConfigChange = onSortConfigChange,
+            )
         },
     )
+}
+
+@Composable
+private fun DropDownMenu(
+    showSortMenu: Boolean,
+    onDismissRequest: () -> Unit,
+    sortConfig: FileBrowserUiState.FileSortConfig,
+    onSortConfigChange: (FileBrowserUiState.FileSortConfig) -> Unit,
+) {
+    DropdownMenu(
+        expanded = showSortMenu,
+        onDismissRequest = onDismissRequest,
+    ) {
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.sort_name)) },
+            onClick = {
+                onSortConfigChange(sortConfig.copy(key = FileBrowserUiState.FileSortKey.Name))
+            },
+            leadingIcon = {
+                if (sortConfig.key == FileBrowserUiState.FileSortKey.Name) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_check),
+                        contentDescription = null,
+                    )
+                }
+            },
+        )
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.sort_date)) },
+            onClick = {
+                onSortConfigChange(sortConfig.copy(key = FileBrowserUiState.FileSortKey.Date))
+            },
+            leadingIcon = {
+                if (sortConfig.key == FileBrowserUiState.FileSortKey.Date) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_check),
+                        contentDescription = null,
+                    )
+                }
+            },
+        )
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.sort_size)) },
+            onClick = {
+                onSortConfigChange(sortConfig.copy(key = FileBrowserUiState.FileSortKey.Size))
+            },
+            leadingIcon = {
+                if (sortConfig.key == FileBrowserUiState.FileSortKey.Size) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_check),
+                        contentDescription = null,
+                    )
+                }
+            },
+        )
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.sort_asc)) },
+            onClick = {
+                onSortConfigChange(sortConfig.copy(isAscending = true))
+            },
+            leadingIcon = {
+                if (sortConfig.isAscending) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_check),
+                        contentDescription = null,
+                    )
+                }
+            },
+        )
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.sort_desc)) },
+            onClick = {
+                onSortConfigChange(sortConfig.copy(isAscending = false))
+            },
+            leadingIcon = {
+                if (!sortConfig.isAscending) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_check),
+                        contentDescription = null,
+                    )
+                }
+            },
+        )
+    }
 }

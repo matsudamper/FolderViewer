@@ -81,7 +81,7 @@ fun ImageViewerScreen(
             enter = fadeIn() + slideInVertically { height -> -height },
             exit = fadeOut() + slideOutVertically { height -> -height },
         ) {
-            val title = uiState.images.getOrNull(pagerState.currentPage)?.title ?: ""
+            val title = uiState.images.getOrNull(pagerState.currentPage)?.title.orEmpty()
             ImageViewerTopBar(
                 title = title,
                 onBack = {

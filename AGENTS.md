@@ -6,6 +6,18 @@
 
 アイコンが必要な場合は https://fonts.google.com/icons からダウンロードする。アイコンライブラリの使用は禁止。
 
+# コーディングルール
+コメントやコミットメッセージはすべて日本語で記述する。
+
+Composeの記述は以下のルールに従う。
+https://github.com/androidx/androidx/blob/androidx-main/compose/docs/compose-api-guidelines.md
+
+private/internalをできる限り使用し、最小限のアクセスに絞ること。
+
+@Suppressの使用は禁止
+
+コードのコメントは禁止。複雑な関数のドキュメントコメントだけ許可する。
+
 # Agent固有のルール
 以下のエラーが最初に発生するので、回避して。
 ```

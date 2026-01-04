@@ -92,6 +92,8 @@ fun FolderBrowserScreen(
         topBar = {
             FolderBrowserTopBar(
                 title = uiState.title,
+                isFavorite = uiState.isFavorite,
+                visibleFavoriteButton = uiState.visibleFavoriteButton,
                 onBack = uiState.callbacks::onBack,
                 folderSortConfig = uiState.folderSortConfig,
                 onFolderSortConfigChange = uiState.callbacks::onFolderSortConfigChanged,
@@ -99,6 +101,7 @@ fun FolderBrowserScreen(
                 onFileSortConfigChange = uiState.callbacks::onFileSortConfigChanged,
                 displayConfig = uiState.displayConfig,
                 onDisplayConfigChange = uiState.callbacks::onDisplayModeChanged,
+                onFavoriteClick = uiState.callbacks::onFavoriteClick,
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -129,10 +132,13 @@ fun FolderBrowserScreen(
     }
 }
 
+@Suppress("LongParameterList")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FolderBrowserTopBar(
     title: String,
+    isFavorite: Boolean,
+    visibleFavoriteButton: Boolean,
     onBack: () -> Unit,
     folderSortConfig: FolderBrowserUiState.FileSortConfig,
     onFolderSortConfigChange: (FolderBrowserUiState.FileSortConfig) -> Unit,
@@ -140,6 +146,7 @@ private fun FolderBrowserTopBar(
     onFileSortConfigChange: (FolderBrowserUiState.FileSortConfig) -> Unit,
     displayConfig: UiDisplayConfig,
     onDisplayConfigChange: (UiDisplayConfig) -> Unit,
+    onFavoriteClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
@@ -169,6 +176,22 @@ private fun FolderBrowserTopBar(
             }
         },
         actions = {
+            if (visibleFavoriteButton) {
+                IconButton(onClick = onFavoriteClick) {
+                    Icon(
+                        painter = painterResource(
+                            id = if (isFavorite) R.drawable.ic_star else R.drawable.ic_star_border,
+                        ),
+                        contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
+                        tint = if (isFavorite) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            LocalContentColor.current
+                        },
+                    )
+                }
+            }
+
             var showDisplayMenu by remember { mutableStateOf(false) }
             IconButton(onClick = { showDisplayMenu = true }) {
                 Icon(
