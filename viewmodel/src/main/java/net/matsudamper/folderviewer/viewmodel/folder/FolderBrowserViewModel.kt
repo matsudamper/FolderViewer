@@ -130,7 +130,6 @@ class FolderBrowserViewModel @Inject constructor(
         path = arg.path,
         storageId = arg.storageId,
         viewModelEventChannel = viewModelEventChannel,
-        resources = resources,
     )
 
     val uiState: Flow<FolderBrowserUiState> = channelFlow {
