@@ -12,6 +12,7 @@ data class FileBrowserUiState(
     val title: String,
     val isFavorite: Boolean,
     val files: List<UiFileItem>,
+    val favorites: List<UiFileItem.File>,
     val sortConfig: FileSortConfig,
     val displayConfig: UiDisplayConfig,
     val callbacks: Callbacks,

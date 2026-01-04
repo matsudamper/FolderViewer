@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import net.matsudamper.folderviewer.ui.R
 
@@ -135,8 +136,21 @@ private fun FileBrowserContent(
                             FileBrowserGridItem(
                                 file = item,
                                 displaySize = uiState.displayConfig.displaySize,
+                                textOverflow = TextOverflow.Ellipsis,
                             )
                         }
+                    }
+                }
+                if (uiState.favorites.isNotEmpty()) {
+                    stickyHeader { FileHeaderItem(title = stringResource(R.string.favorites)) }
+                    items(
+                        items = uiState.favorites,
+                    ) { item ->
+                        FileBrowserGridItem(
+                            file = item,
+                            displaySize = uiState.displayConfig.displaySize,
+                            textOverflow = TextOverflow.StartEllipsis,
+                        )
                     }
                 }
             }
@@ -165,8 +179,21 @@ private fun FileBrowserContent(
                             FileBrowserListItem(
                                 file = item,
                                 displaySize = uiState.displayConfig.displaySize,
+                                textOverflow = TextOverflow.Ellipsis,
                             )
                         }
+                    }
+                }
+                if (uiState.favorites.isNotEmpty()) {
+                    stickyHeader { FileHeaderItem(title = stringResource(R.string.favorites)) }
+                    items(
+                        items = uiState.favorites,
+                    ) { item ->
+                        FileBrowserListItem(
+                            file = item,
+                            displaySize = uiState.displayConfig.displaySize,
+                            textOverflow = TextOverflow.StartEllipsis,
+                        )
                     }
                 }
             }
@@ -178,23 +205,27 @@ private fun FileBrowserContent(
 private fun FileBrowserGridItem(
     file: FileBrowserUiState.UiFileItem.File,
     displaySize: UiDisplayConfig.DisplaySize,
+    textOverflow: TextOverflow,
 ) {
     when (displaySize) {
         UiDisplayConfig.DisplaySize.Small -> {
             FileSmallGridItem(
                 file = file,
+                textOverflow = textOverflow,
             )
         }
 
         UiDisplayConfig.DisplaySize.Medium -> {
             FileLargeGridItem(
                 file = file,
+                textOverflow = textOverflow,
             )
         }
 
         UiDisplayConfig.DisplaySize.Large -> {
             FileLargeGridItem(
                 file = file,
+                textOverflow = textOverflow,
             )
         }
     }
@@ -204,23 +235,27 @@ private fun FileBrowserGridItem(
 private fun FileBrowserListItem(
     file: FileBrowserUiState.UiFileItem.File,
     displaySize: UiDisplayConfig.DisplaySize,
+    textOverflow: TextOverflow,
 ) {
     when (displaySize) {
         UiDisplayConfig.DisplaySize.Small -> {
             FileSmallListItem(
                 file = file,
+                textOverflow = textOverflow,
             )
         }
 
         UiDisplayConfig.DisplaySize.Medium -> {
             FileMediumListItem(
                 file = file,
+                textOverflow = textOverflow,
             )
         }
 
         UiDisplayConfig.DisplaySize.Large -> {
             FileLargeListItem(
                 file = file,
+                textOverflow = textOverflow,
             )
         }
     }

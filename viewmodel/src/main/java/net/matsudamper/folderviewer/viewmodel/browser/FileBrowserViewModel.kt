@@ -135,61 +135,24 @@ class FileBrowserViewModel @Inject constructor(
     val uiState: Flow<FileBrowserUiState> = channelFlow {
         viewModelStateFlow.collectLatest { viewModelState ->
             val sortedFiles = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig))
-            val uiItems = buildList {
-                addAll(
-                    sortedFiles.map { fileItem ->
-                        val isImage = FileUtil.isImage(fileItem.name)
-                        FileBrowserUiState.UiFileItem.File(
-                            name = fileItem.name,
+            val uiItems = sortedFiles.map { fileItem ->
+                val isImage = FileUtil.isImage(fileItem.name)
+                FileBrowserUiState.UiFileItem.File(
+                    name = fileItem.name,
+                    path = fileItem.path,
+                    isDirectory = fileItem.isDirectory,
+                    size = fileItem.size,
+                    lastModified = fileItem.lastModified,
+                    thumbnail = if (isImage) {
+                        FileImageSource.Thumbnail(
+                            storageId = arg.storageId,
                             path = fileItem.path,
-                            isDirectory = fileItem.isDirectory,
-                            size = fileItem.size,
-                            lastModified = fileItem.lastModified,
-                            thumbnail = if (isImage) {
-                                FileImageSource.Thumbnail(
-                                    storageId = arg.storageId,
-                                    path = fileItem.path,
-                                )
-                            } else {
-                                null
-                            },
-                            callbacks = FileItemCallbacks(fileItem, sortedFiles),
                         )
+                    } else {
+                        null
                     },
+                    callbacks = FileItemCallbacks(fileItem, sortedFiles),
                 )
-
-                if (viewModelState.currentPath.isEmpty() && viewModelState.favorites.isNotEmpty()) {
-                    add(FileBrowserUiState.UiFileItem.Header(title = resources.getString(net.matsudamper.folderviewer.ui.R.string.favorites)))
-                    addAll(
-                        viewModelState.favorites.map { favorite ->
-                            FileBrowserUiState.UiFileItem.File(
-                                name = favorite.path,
-                                path = favorite.path,
-                                isDirectory = true,
-                                size = 0,
-                                lastModified = 0,
-                                thumbnail = if (FileUtil.isImage(favorite.path)) {
-                                    FileImageSource.Thumbnail(
-                                        storageId = arg.storageId,
-                                        path = favorite.path,
-                                    )
-                                } else {
-                                    null
-                                },
-                                callbacks = {
-                                    viewModelScope.launch {
-                                        viewModelEventChannel.send(
-                                            ViewModelEvent.NavigateToFileBrowser(
-                                                path = favorite.path,
-                                                storageId = arg.storageId,
-                                            ),
-                                        )
-                                    }
-                                },
-                            )
-                        },
-                    )
-                }
             }
             trySend(
                 FileBrowserUiState(
@@ -206,6 +169,33 @@ class FileBrowserViewModel @Inject constructor(
                     sortConfig = viewModelState.sortConfig,
                     displayConfig = viewModelState.displayConfig,
                     visibleFolderBrowserButton = arg.path != null,
+                    favorites = viewModelState.favorites.map { favorite ->
+                        FileBrowserUiState.UiFileItem.File(
+                            name = favorite.path,
+                            path = favorite.path,
+                            isDirectory = true,
+                            size = 0,
+                            lastModified = 0,
+                            thumbnail = if (FileUtil.isImage(favorite.path)) {
+                                FileImageSource.Thumbnail(
+                                    storageId = arg.storageId,
+                                    path = favorite.path,
+                                )
+                            } else {
+                                null
+                            },
+                            callbacks = {
+                                viewModelScope.launch {
+                                    viewModelEventChannel.send(
+                                        ViewModelEvent.NavigateToFileBrowser(
+                                            path = favorite.path,
+                                            storageId = arg.storageId,
+                                        ),
+                                    )
+                                }
+                            },
+                        )
+                    },
                 ),
             )
         }
@@ -227,18 +217,21 @@ class FileBrowserViewModel @Inject constructor(
                 .map { favorites ->
                     favorites.find { it.storageId == arg.storageId && it.path == (arg.path.orEmpty()) }?.id
                 }
-                .collect { favoriteId ->
+                .collectLatest { favoriteId ->
                     viewModelStateFlow.update { it.copy(favoriteId = favoriteId) }
                 }
         }
-        viewModelScope.launch {
-            storageRepository.favorites
-                .map { favorites ->
-                    favorites.filter { it.storageId == arg.storageId }
-                }
-                .collect { favorites ->
-                    viewModelStateFlow.update { it.copy(favorites = favorites) }
-                }
+        // Rootの時だけお気に入りを表示する
+        if (arg.path == null) {
+            viewModelScope.launch {
+                storageRepository.favorites
+                    .map { favorites ->
+                        favorites.filter { it.storageId == arg.storageId }
+                    }
+                    .collectLatest { favorites ->
+                        viewModelStateFlow.update { it.copy(favorites = favorites) }
+                    }
+            }
         }
     }
 

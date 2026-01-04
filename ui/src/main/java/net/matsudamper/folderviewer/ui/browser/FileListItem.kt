@@ -55,6 +55,7 @@ internal fun FileHeaderItem(
 @Composable
 internal fun FileSmallListItem(
     file: FileBrowserUiState.UiFileItem.File,
+    textOverflow: TextOverflow,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -74,6 +75,8 @@ internal fun FileSmallListItem(
         Spacer(modifier = Modifier.width(8.dp))
         FileNameText(
             name = file.name,
+            textOverflow = textOverflow,
+            maxLines = 1,
         )
     }
 }
@@ -81,6 +84,7 @@ internal fun FileSmallListItem(
 @Composable
 internal fun FileMediumListItem(
     file: FileBrowserUiState.UiFileItem.File,
+    textOverflow: TextOverflow,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -102,6 +106,7 @@ internal fun FileMediumListItem(
             FileNameText(
                 name = file.name,
                 maxLines = 2,
+                textOverflow = textOverflow,
             )
 
             if (!file.isDirectory) {
@@ -118,6 +123,7 @@ internal fun FileMediumListItem(
 @Composable
 internal fun FileLargeListItem(
     file: FileBrowserUiState.UiFileItem.File,
+    textOverflow: TextOverflow,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -139,6 +145,7 @@ internal fun FileLargeListItem(
             FileNameText(
                 name = file.name,
                 maxLines = 4,
+                textOverflow = textOverflow,
             )
 
             if (!file.isDirectory) {
@@ -155,14 +162,15 @@ internal fun FileLargeListItem(
 @Composable
 private fun FileNameText(
     name: String,
+    textOverflow: TextOverflow,
+    maxLines: Int,
     modifier: Modifier = Modifier,
-    maxLines: Int = 1,
 ) {
     Text(
         text = name,
         modifier = modifier,
         maxLines = maxLines,
-        overflow = TextOverflow.StartEllipsis,
+        overflow = textOverflow,
         style = MaterialTheme.typography.bodyLarge,
     )
 }
@@ -170,11 +178,13 @@ private fun FileNameText(
 @Composable
 internal fun FileSmallGridItem(
     file: FileBrowserUiState.UiFileItem.File,
+    textOverflow: TextOverflow,
     modifier: Modifier = Modifier,
 ) {
     FileGridItem(
         file = file,
         modifier = modifier,
+        textOverflow = textOverflow,
         padding = 4.dp,
     )
 }
@@ -182,11 +192,13 @@ internal fun FileSmallGridItem(
 @Composable
 internal fun FileLargeGridItem(
     file: FileBrowserUiState.UiFileItem.File,
+    textOverflow: TextOverflow,
     modifier: Modifier = Modifier,
 ) {
     FileGridItem(
         file = file,
         modifier = modifier,
+        textOverflow = textOverflow,
         padding = 8.dp,
     )
 }
@@ -195,6 +207,7 @@ internal fun FileLargeGridItem(
 private fun FileGridItem(
     file: FileBrowserUiState.UiFileItem.File,
     padding: Dp,
+    textOverflow: TextOverflow,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -216,7 +229,7 @@ private fun FileGridItem(
             text = file.name,
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
+            overflow = textOverflow,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
     }
@@ -272,6 +285,7 @@ private fun PreviewFileSmallListItem() {
     MaterialTheme {
         FileSmallListItem(
             file = previewUiFileItem(),
+            textOverflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -282,6 +296,7 @@ private fun PreviewFileMediumListItem() {
     MaterialTheme {
         FileMediumListItem(
             file = previewUiFileItem(),
+            textOverflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -292,6 +307,7 @@ private fun PreviewFileLargeListItem() {
     MaterialTheme {
         FileLargeListItem(
             file = previewUiFileItem(),
+            textOverflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -302,6 +318,7 @@ private fun PreviewFileSmallGridItem() {
     MaterialTheme {
         FileSmallGridItem(
             file = previewUiFileItem(),
+            textOverflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -312,6 +329,7 @@ private fun PreviewFileLargeGridItem() {
     MaterialTheme {
         FileLargeGridItem(
             file = previewUiFileItem(),
+            textOverflow = TextOverflow.Ellipsis,
         )
     }
 }
