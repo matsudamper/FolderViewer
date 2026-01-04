@@ -59,10 +59,16 @@ class FolderBrowserViewModel @Inject constructor(
 
         override fun onFolderSortConfigChanged(config: FolderBrowserUiState.FileSortConfig) {
             viewModelStateFlow.update { it.copy(folderSortConfig = config) }
+            viewModelScope.launch {
+                preferencesRepository.saveFolderBrowserFolderSortConfig(config.toRepository())
+            }
         }
 
         override fun onFileSortConfigChanged(config: FolderBrowserUiState.FileSortConfig) {
             viewModelStateFlow.update { it.copy(fileSortConfig = config) }
+            viewModelScope.launch {
+                preferencesRepository.saveFolderBrowserFileSortConfig(config.toRepository())
+            }
         }
 
         override fun onDisplayModeChanged(config: FolderBrowserUiState.DisplayConfig) {
@@ -229,6 +235,17 @@ class FolderBrowserViewModel @Inject constructor(
         }
 
         return if (config.isAscending) comparator else comparator.reversed()
+    }
+
+    private fun FolderBrowserUiState.FileSortConfig.toRepository(): PreferencesRepository.FileSortConfig {
+        return PreferencesRepository.FileSortConfig(
+            key = when (this.key) {
+                FolderBrowserUiState.FileSortKey.Name -> PreferencesRepository.FileSortKey.Name
+                FolderBrowserUiState.FileSortKey.Date -> PreferencesRepository.FileSortKey.Date
+                FolderBrowserUiState.FileSortKey.Size -> PreferencesRepository.FileSortKey.Size
+            },
+            isAscending = this.isAscending,
+        )
     }
 
     private suspend fun getRepository(): FileRepository {
