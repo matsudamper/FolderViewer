@@ -34,9 +34,9 @@ import net.matsudamper.folderviewer.ui.R
 @Composable
 internal fun DisplayConfigDropDownMenu(
     expanded: Boolean,
-    displayConfig: FileBrowserUiState.DisplayConfig,
+    displayConfig: UiDisplayConfig,
     onDismissRequest: () -> Unit,
-    onDisplayConfigChange: (FileBrowserUiState.DisplayConfig) -> Unit,
+    onDisplayConfigChange: (UiDisplayConfig) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     DropdownMenu(
@@ -49,9 +49,9 @@ internal fun DisplayConfigDropDownMenu(
         ) {
             val sliderState = rememberSliderState(
                 value = when (displayConfig.displaySize) {
-                    FileBrowserUiState.DisplaySize.Small -> 0f
-                    FileBrowserUiState.DisplaySize.Medium -> 1f
-                    FileBrowserUiState.DisplaySize.Large -> 2f
+                    UiDisplayConfig.DisplaySize.Small -> 0f
+                    UiDisplayConfig.DisplaySize.Medium -> 1f
+                    UiDisplayConfig.DisplaySize.Large -> 2f
                 },
                 steps = 1,
                 valueRange = 0f..2f,
@@ -59,9 +59,9 @@ internal fun DisplayConfigDropDownMenu(
             val sliderStateSize by remember {
                 derivedStateOf {
                     when (sliderState.value) {
-                        0f -> FileBrowserUiState.DisplaySize.Small
-                        1f -> FileBrowserUiState.DisplaySize.Medium
-                        2f -> FileBrowserUiState.DisplaySize.Large
+                        0f -> UiDisplayConfig.DisplaySize.Small
+                        1f -> UiDisplayConfig.DisplaySize.Medium
+                        2f -> UiDisplayConfig.DisplaySize.Large
                         else -> error("invalid value ${sliderState.value}")
                     }
                 }
@@ -69,7 +69,7 @@ internal fun DisplayConfigDropDownMenu(
             val currentOnDisplayConfigChange by rememberUpdatedState(onDisplayConfigChange)
             LaunchedEffect(sliderStateSize) {
                 currentOnDisplayConfigChange(
-                    FileBrowserUiState.DisplayConfig(
+                    UiDisplayConfig(
                         displayMode = displayConfig.displayMode,
                         displaySize = sliderStateSize,
                     ),
@@ -94,13 +94,13 @@ internal fun DisplayConfigDropDownMenu(
                         },
                         onClick = {
                             onDisplayConfigChange(
-                                FileBrowserUiState.DisplayConfig(
-                                    displayMode = FileBrowserUiState.DisplayMode.List,
+                                UiDisplayConfig(
+                                    displayMode = UiDisplayConfig.DisplayMode.List,
                                     displaySize = sliderStateSize,
                                 ),
                             )
                         },
-                        selected = displayConfig.displayMode == FileBrowserUiState.DisplayMode.List,
+                        selected = displayConfig.displayMode == UiDisplayConfig.DisplayMode.List,
                     )
                     VerticalDivider()
                     DisplayModeItem(
@@ -117,13 +117,13 @@ internal fun DisplayConfigDropDownMenu(
                         },
                         onClick = {
                             onDisplayConfigChange(
-                                FileBrowserUiState.DisplayConfig(
-                                    displayMode = FileBrowserUiState.DisplayMode.Grid,
+                                UiDisplayConfig(
+                                    displayMode = UiDisplayConfig.DisplayMode.Grid,
                                     displaySize = sliderStateSize,
                                 ),
                             )
                         },
-                        selected = displayConfig.displayMode == FileBrowserUiState.DisplayMode.Grid,
+                        selected = displayConfig.displayMode == UiDisplayConfig.DisplayMode.Grid,
                     )
                 }
             }

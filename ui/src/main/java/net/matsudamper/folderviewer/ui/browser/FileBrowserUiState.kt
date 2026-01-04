@@ -11,7 +11,7 @@ data class FileBrowserUiState(
     val title: String,
     val files: List<UiFileItem>,
     val sortConfig: FileSortConfig,
-    val displayConfig: DisplayConfig,
+    val displayConfig: UiDisplayConfig,
     val callbacks: Callbacks,
 ) {
     data class UiFileItem(
@@ -40,28 +40,12 @@ data class FileBrowserUiState(
         Size,
     }
 
-    data class DisplayConfig(
-        val displayMode: DisplayMode,
-        val displaySize: DisplaySize,
-    )
-
-    enum class DisplayMode {
-        List,
-        Grid,
-    }
-
-    enum class DisplaySize {
-        Small,
-        Medium,
-        Large,
-    }
-
     @Immutable
     interface Callbacks {
         fun onRefresh()
         fun onBack()
         fun onSortConfigChanged(config: FileSortConfig)
-        fun onDisplayModeChanged(config: DisplayConfig)
+        fun onDisplayModeChanged(config: UiDisplayConfig)
         fun onFolderBrowserClick()
     }
 }

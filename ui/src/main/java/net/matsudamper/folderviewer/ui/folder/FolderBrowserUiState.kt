@@ -2,6 +2,7 @@ package net.matsudamper.folderviewer.ui.folder
 
 import androidx.compose.runtime.Immutable
 import net.matsudamper.folderviewer.coil.FileImageSource
+import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 
 data class FolderBrowserUiState(
     val isLoading: Boolean,
@@ -11,7 +12,7 @@ data class FolderBrowserUiState(
     val files: List<UiFileItem>,
     val folderSortConfig: FileSortConfig,
     val fileSortConfig: FileSortConfig,
-    val displayConfig: DisplayConfig,
+    val displayConfig: UiDisplayConfig,
     val callbacks: Callbacks,
 ) {
     sealed interface UiFileItem {
@@ -46,28 +47,12 @@ data class FolderBrowserUiState(
         Size,
     }
 
-    data class DisplayConfig(
-        val displayMode: DisplayMode,
-        val displaySize: DisplaySize,
-    )
-
-    enum class DisplayMode {
-        List,
-        Grid,
-    }
-
-    enum class DisplaySize {
-        Small,
-        Medium,
-        Large,
-    }
-
     @Immutable
     interface Callbacks {
         fun onRefresh()
         fun onBack()
         fun onFolderSortConfigChanged(config: FileSortConfig)
         fun onFileSortConfigChanged(config: FileSortConfig)
-        fun onDisplayModeChanged(config: DisplayConfig)
+        fun onDisplayModeChanged(config: UiDisplayConfig)
     }
 }

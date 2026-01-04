@@ -62,6 +62,7 @@ import coil.compose.SubcomposeAsyncImageContent
 import net.matsudamper.folderviewer.ui.R
 import net.matsudamper.folderviewer.ui.browser.DisplayConfigDropDownMenu
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState as CommonFileBrowserUiState
+import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
 import net.matsudamper.folderviewer.ui.util.formatBytes
 
@@ -138,8 +139,8 @@ private fun FolderBrowserTopBar(
     onFolderSortConfigChange: (FolderBrowserUiState.FileSortConfig) -> Unit,
     fileSortConfig: FolderBrowserUiState.FileSortConfig,
     onFileSortConfigChange: (FolderBrowserUiState.FileSortConfig) -> Unit,
-    displayConfig: FolderBrowserUiState.DisplayConfig,
-    onDisplayConfigChange: (FolderBrowserUiState.DisplayConfig) -> Unit,
+    displayConfig: UiDisplayConfig,
+    onDisplayConfigChange: (UiDisplayConfig) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
@@ -173,7 +174,7 @@ private fun FolderBrowserTopBar(
             IconButton(onClick = { showDisplayMenu = true }) {
                 Icon(
                     painter = painterResource(
-                        id = if (displayConfig.displayMode == FolderBrowserUiState.DisplayMode.Grid) {
+                        id = if (displayConfig.displayMode == UiDisplayConfig.DisplayMode.Grid) {
                             R.drawable.ic_grid_view
                         } else {
                             R.drawable.ic_view_list
@@ -186,32 +187,8 @@ private fun FolderBrowserTopBar(
             DisplayConfigDropDownMenu(
                 expanded = showDisplayMenu,
                 onDismissRequest = { showDisplayMenu = false },
-                displayConfig = CommonFileBrowserUiState.DisplayConfig(
-                    displayMode = when (displayConfig.displayMode) {
-                        FolderBrowserUiState.DisplayMode.List -> CommonFileBrowserUiState.DisplayMode.List
-                        FolderBrowserUiState.DisplayMode.Grid -> CommonFileBrowserUiState.DisplayMode.Grid
-                    },
-                    displaySize = when (displayConfig.displaySize) {
-                        FolderBrowserUiState.DisplaySize.Small -> CommonFileBrowserUiState.DisplaySize.Small
-                        FolderBrowserUiState.DisplaySize.Medium -> CommonFileBrowserUiState.DisplaySize.Medium
-                        FolderBrowserUiState.DisplaySize.Large -> CommonFileBrowserUiState.DisplaySize.Large
-                    },
-                ),
-                onDisplayConfigChange = { config ->
-                    onDisplayConfigChange(
-                        FolderBrowserUiState.DisplayConfig(
-                            displayMode = when (config.displayMode) {
-                                CommonFileBrowserUiState.DisplayMode.List -> FolderBrowserUiState.DisplayMode.List
-                                CommonFileBrowserUiState.DisplayMode.Grid -> FolderBrowserUiState.DisplayMode.Grid
-                            },
-                            displaySize = when (config.displaySize) {
-                                CommonFileBrowserUiState.DisplaySize.Small -> FolderBrowserUiState.DisplaySize.Small
-                                CommonFileBrowserUiState.DisplaySize.Medium -> FolderBrowserUiState.DisplaySize.Medium
-                                CommonFileBrowserUiState.DisplaySize.Large -> FolderBrowserUiState.DisplaySize.Large
-                            },
-                        ),
-                    )
-                },
+                displayConfig = displayConfig,
+                onDisplayConfigChange = onDisplayConfigChange,
             )
 
             var showSortMenu by remember { mutableStateOf(false) }
@@ -303,51 +280,53 @@ private fun SortMenuItems(
     config: FolderBrowserUiState.FileSortConfig,
     onConfigChange: (FolderBrowserUiState.FileSortConfig) -> Unit,
 ) {
-    DropdownMenuItem(
-        text = { Text(stringResource(R.string.sort_name)) },
-        onClick = { onConfigChange(config.copy(key = FolderBrowserUiState.FileSortKey.Name)) },
-        leadingIcon = {
-            if (config.key == FolderBrowserUiState.FileSortKey.Name) {
-                Icon(painter = painterResource(id = R.drawable.ic_check), contentDescription = null)
-            }
-        },
-    )
-    DropdownMenuItem(
-        text = { Text(stringResource(R.string.sort_date)) },
-        onClick = { onConfigChange(config.copy(key = FolderBrowserUiState.FileSortKey.Date)) },
-        leadingIcon = {
-            if (config.key == FolderBrowserUiState.FileSortKey.Date) {
-                Icon(painter = painterResource(id = R.drawable.ic_check), contentDescription = null)
-            }
-        },
-    )
-    DropdownMenuItem(
-        text = { Text(stringResource(R.string.sort_size)) },
-        onClick = { onConfigChange(config.copy(key = FolderBrowserUiState.FileSortKey.Size)) },
-        leadingIcon = {
-            if (config.key == FolderBrowserUiState.FileSortKey.Size) {
-                Icon(painter = painterResource(id = R.drawable.ic_check), contentDescription = null)
-            }
-        },
-    )
-    DropdownMenuItem(
-        text = { Text(stringResource(R.string.sort_asc)) },
-        onClick = { onConfigChange(config.copy(isAscending = true)) },
-        leadingIcon = {
-            if (config.isAscending) {
-                Icon(painter = painterResource(id = R.drawable.ic_check), contentDescription = null)
-            }
-        },
-    )
-    DropdownMenuItem(
-        text = { Text(stringResource(R.string.sort_desc)) },
-        onClick = { onConfigChange(config.copy(isAscending = false)) },
-        leadingIcon = {
-            if (!config.isAscending) {
-                Icon(painter = painterResource(id = R.drawable.ic_check), contentDescription = null)
-            }
-        },
-    )
+    Column {
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.sort_name)) },
+            onClick = { onConfigChange(config.copy(key = FolderBrowserUiState.FileSortKey.Name)) },
+            leadingIcon = {
+                if (config.key == FolderBrowserUiState.FileSortKey.Name) {
+                    Icon(painter = painterResource(id = R.drawable.ic_check), contentDescription = null)
+                }
+            },
+        )
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.sort_date)) },
+            onClick = { onConfigChange(config.copy(key = FolderBrowserUiState.FileSortKey.Date)) },
+            leadingIcon = {
+                if (config.key == FolderBrowserUiState.FileSortKey.Date) {
+                    Icon(painter = painterResource(id = R.drawable.ic_check), contentDescription = null)
+                }
+            },
+        )
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.sort_size)) },
+            onClick = { onConfigChange(config.copy(key = FolderBrowserUiState.FileSortKey.Size)) },
+            leadingIcon = {
+                if (config.key == FolderBrowserUiState.FileSortKey.Size) {
+                    Icon(painter = painterResource(id = R.drawable.ic_check), contentDescription = null)
+                }
+            },
+        )
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.sort_asc)) },
+            onClick = { onConfigChange(config.copy(isAscending = true)) },
+            leadingIcon = {
+                if (config.isAscending) {
+                    Icon(painter = painterResource(id = R.drawable.ic_check), contentDescription = null)
+                }
+            },
+        )
+        DropdownMenuItem(
+            text = { Text(stringResource(R.string.sort_desc)) },
+            onClick = { onConfigChange(config.copy(isAscending = false)) },
+            leadingIcon = {
+                if (!config.isAscending) {
+                    Icon(painter = painterResource(id = R.drawable.ic_check), contentDescription = null)
+                }
+            },
+        )
+    }
 }
 
 @Composable
@@ -357,7 +336,7 @@ private fun FolderBrowserContent(
     modifier: Modifier = Modifier,
 ) {
     when (uiState.displayConfig.displayMode) {
-        FolderBrowserUiState.DisplayMode.List -> {
+        UiDisplayConfig.DisplayMode.List -> {
             FolderBrowserList(
                 uiState = uiState,
                 contentPadding = contentPadding,
@@ -365,7 +344,7 @@ private fun FolderBrowserContent(
             )
         }
 
-        FolderBrowserUiState.DisplayMode.Grid -> {
+        UiDisplayConfig.DisplayMode.Grid -> {
             FolderBrowserGrid(
                 uiState = uiState,
                 contentPadding = contentPadding,
@@ -414,9 +393,9 @@ private fun FolderBrowserGrid(
     modifier: Modifier = Modifier,
 ) {
     val minSize = when (uiState.displayConfig.displaySize) {
-        FolderBrowserUiState.DisplaySize.Small -> 60.dp
-        FolderBrowserUiState.DisplaySize.Medium -> 120.dp
-        FolderBrowserUiState.DisplaySize.Large -> 240.dp
+        UiDisplayConfig.DisplaySize.Small -> 60.dp
+        UiDisplayConfig.DisplaySize.Medium -> 120.dp
+        UiDisplayConfig.DisplaySize.Large -> 240.dp
     }
 
     LazyVerticalGrid(
@@ -470,13 +449,13 @@ private fun HeaderItem(
 @Composable
 private fun FileListItem(
     file: FolderBrowserUiState.UiFileItem.File,
-    displaySize: FolderBrowserUiState.DisplaySize,
+    displaySize: UiDisplayConfig.DisplaySize,
     modifier: Modifier = Modifier,
 ) {
     val size = when (displaySize) {
-        FolderBrowserUiState.DisplaySize.Small -> 40.dp
-        FolderBrowserUiState.DisplaySize.Medium -> 64.dp
-        FolderBrowserUiState.DisplaySize.Large -> 100.dp
+        UiDisplayConfig.DisplaySize.Small -> 40.dp
+        UiDisplayConfig.DisplaySize.Medium -> 64.dp
+        UiDisplayConfig.DisplaySize.Large -> 100.dp
     }
 
     Row(
@@ -515,11 +494,11 @@ private fun FileListItem(
 @Composable
 private fun FileGridItem(
     file: FolderBrowserUiState.UiFileItem.File,
-    displaySize: FolderBrowserUiState.DisplaySize,
+    displaySize: UiDisplayConfig.DisplaySize,
     modifier: Modifier = Modifier,
 ) {
     val padding = when (displaySize) {
-        FolderBrowserUiState.DisplaySize.Small -> 4.dp
+        UiDisplayConfig.DisplaySize.Small -> 4.dp
         else -> 8.dp
     }
 

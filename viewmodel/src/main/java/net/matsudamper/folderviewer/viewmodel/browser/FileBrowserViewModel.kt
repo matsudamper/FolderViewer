@@ -24,6 +24,7 @@ import net.matsudamper.folderviewer.repository.PreferencesRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
+import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 import net.matsudamper.folderviewer.viewmodel.FileUtil
 
 @HiltViewModel
@@ -74,13 +75,13 @@ class FileBrowserViewModel @Inject constructor(
             }
         }
 
-        override fun onDisplayModeChanged(config: FileBrowserUiState.DisplayConfig) {
+        override fun onDisplayModeChanged(config: UiDisplayConfig) {
             viewModelStateFlow.update { it.copy(displayConfig = config) }
             viewModelScope.launch {
                 preferencesRepository.saveFileBrowserDisplayMode(
                     when (config.displayMode) {
-                        FileBrowserUiState.DisplayMode.List -> PreferencesRepository.DisplayMode.List
-                        FileBrowserUiState.DisplayMode.Grid -> PreferencesRepository.DisplayMode.Grid
+                        UiDisplayConfig.DisplayMode.List -> PreferencesRepository.DisplayMode.List
+                        UiDisplayConfig.DisplayMode.Grid -> PreferencesRepository.DisplayMode.Grid
                     },
                 )
             }
@@ -171,11 +172,12 @@ class FileBrowserViewModel @Inject constructor(
         preferencesRepository.fileBrowserDisplayMode.collect { displayMode ->
             viewModelStateFlow.update {
                 it.copy(
-                    displayConfig = it.displayConfig.copy(
+                    displayConfig = UiDisplayConfig(
                         displayMode = when (displayMode) {
-                            PreferencesRepository.DisplayMode.List -> FileBrowserUiState.DisplayMode.List
-                            PreferencesRepository.DisplayMode.Grid -> FileBrowserUiState.DisplayMode.Grid
+                            PreferencesRepository.DisplayMode.List -> UiDisplayConfig.DisplayMode.List
+                            PreferencesRepository.DisplayMode.Grid -> UiDisplayConfig.DisplayMode.Grid
                         },
+                        displaySize = it.displayConfig.displaySize,
                     ),
                 )
             }
@@ -307,9 +309,9 @@ class FileBrowserViewModel @Inject constructor(
             key = FileBrowserUiState.FileSortKey.Name,
             isAscending = true,
         ),
-        val displayConfig: FileBrowserUiState.DisplayConfig = FileBrowserUiState.DisplayConfig(
-            displayMode = FileBrowserUiState.DisplayMode.List,
-            displaySize = FileBrowserUiState.DisplaySize.Medium,
+        val displayConfig: UiDisplayConfig = UiDisplayConfig(
+            displayMode = UiDisplayConfig.DisplayMode.List,
+            displaySize = UiDisplayConfig.DisplaySize.Medium,
         ),
     )
 }

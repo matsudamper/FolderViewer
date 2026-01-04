@@ -41,8 +41,8 @@ internal fun FileBrowserTopBar(
     onBack: () -> Unit,
     sortConfig: FileBrowserUiState.FileSortConfig,
     onSortConfigChange: (FileBrowserUiState.FileSortConfig) -> Unit,
-    displayConfig: FileBrowserUiState.DisplayConfig,
-    onDisplayConfigChange: (FileBrowserUiState.DisplayConfig) -> Unit,
+    displayConfig: UiDisplayConfig,
+    onDisplayConfigChange: (UiDisplayConfig) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
@@ -76,7 +76,7 @@ internal fun FileBrowserTopBar(
             IconButton(onClick = { showDisplayMenu = true }) {
                 Icon(
                     painter = painterResource(
-                        id = if (displayConfig.displayMode == FileBrowserUiState.DisplayMode.Grid) {
+                        id = if (displayConfig.displayMode == UiDisplayConfig.DisplayMode.Grid) {
                             R.drawable.ic_grid_view
                         } else {
                             R.drawable.ic_view_list
