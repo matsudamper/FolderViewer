@@ -55,15 +55,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.Flow
 import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
-import kotlinx.coroutines.flow.Flow
 import net.matsudamper.folderviewer.ui.R
 import net.matsudamper.folderviewer.ui.browser.DisplayConfigDropDownMenu
+import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState as CommonFileBrowserUiState
 import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
 import net.matsudamper.folderviewer.ui.util.formatBytes
-import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState as CommonFileBrowserUiState
 
 @Composable
 fun FolderBrowserScreen(

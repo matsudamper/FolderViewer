@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+option java_package = "net.matsudamper.folderviewer.repository.proto";
+option java_multiple_files = true;
+
+message BrowserPreferencesProto {
+  FolderBrowserDisplayConfig folder_browser_display_config = 1;
+  FileBrowserDisplayConfig file_browser_display_config = 2;
+}
+
+message FolderBrowserDisplayConfig {
+  SortConfigProto folder_sort = 1;
+  SortConfigProto file_sort = 2;
+  BrowserDisplayMode display_mode = 3;
+}
+
+message FileBrowserDisplayConfig {
+  SortConfigProto sort_config = 1;
+  BrowserDisplayMode display_mode = 2;
+}
+
+message SortConfigProto {
+  SortKey key = 1;
+  bool is_ascending = 2;
+
+  enum SortKey {
+    NAME = 0;
+    DATE = 1;
+    SIZE = 2;
+  }
+}
+
+enum BrowserDisplayMode {
+  LIST = 0;
+  GRID = 1;
+}
