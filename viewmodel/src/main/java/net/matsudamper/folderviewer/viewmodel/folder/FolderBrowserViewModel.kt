@@ -10,12 +10,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -84,98 +83,84 @@ class FolderBrowserViewModel @Inject constructor(
         }
     }
 
-    val uiState: StateFlow<FolderBrowserUiState> = combine(
-        viewModelStateFlow,
-    ) { (viewModelState) ->
-        val groups = viewModelState.rawFiles
-            .groupBy { it.parentPath }
+    val uiState: Flow<FolderBrowserUiState> = channelFlow {
+        viewModelStateFlow.collectLatest { viewModelState ->
+            val groups = viewModelState.rawFiles
+                .groupBy { it.parentPath }
 
-        // フォルダ（ヘッダー）のソート用情報を取得
-        val folderInfos = viewModelState.rawFiles
-            .filter { it.fileItem.isDirectory }
-            .associateBy { it.fileItem.path }
+            // フォルダ（ヘッダー）のソート用情報を取得
+            val folderInfos = viewModelState.rawFiles
+                .filter { it.fileItem.isDirectory }
+                .associateBy { it.fileItem.path }
 
-        val sortedParentPaths = groups.keys.sortedWith { path1, path2 ->
-            val info1 = folderInfos[path1]
-            val info2 = folderInfos[path2]
+            val sortedParentPaths = groups.keys.sortedWith { path1, path2 ->
+                val info1 = folderInfos[path1]
+                val info2 = folderInfos[path2]
 
-            if (info1 != null && info2 != null) {
-                createFileItemComparator(viewModelState.folderSortConfig).compare(info1.fileItem, info2.fileItem)
-            } else {
-                path1.compareTo(path2, ignoreCase = true)
-            }
-        }
-
-        val rootPath = arg.path.orEmpty()
-        val sortedFiles = sortedParentPaths.flatMap { parentPath ->
-            val filesInFolder = groups[parentPath].orEmpty()
-            val filesOnly = filesInFolder.filter { !it.fileItem.isDirectory }
-
-            if (filesOnly.isEmpty()) {
-                emptyList()
-            } else {
-                val relativePath = if (parentPath == rootPath) {
-                    "."
+                if (info1 != null && info2 != null) {
+                    createFileItemComparator(viewModelState.folderSortConfig).compare(info1.fileItem, info2.fileItem)
                 } else {
-                    parentPath.removePrefix(rootPath).removePrefix("/")
+                    path1.compareTo(path2, ignoreCase = true)
                 }
-                val header = FolderBrowserUiState.UiFileItem.Header(
-                    path = relativePath,
-                )
-                val items = filesOnly
-                    .sortedWith(createInternalFileItemComparator(viewModelState.fileSortConfig))
-                    .map { internalItem ->
-                        val fileItem = internalItem.fileItem
-                        val isImage = FileUtil.isImage(fileItem.name)
-                        FolderBrowserUiState.UiFileItem.File(
-                            name = fileItem.name,
-                            path = fileItem.path,
-                            isDirectory = fileItem.isDirectory,
-                            size = fileItem.size,
-                            lastModified = fileItem.lastModified,
-                            thumbnail = if (isImage) {
-                                FileImageSource.Thumbnail(
-                                    storageId = arg.storageId,
-                                    path = fileItem.path,
-                                )
-                            } else {
-                                null
-                            },
-                            callbacks = FileItemCallbacks(internalItem),
-                        )
-                    }
-                listOf(header) + items
             }
-        }
 
-        FolderBrowserUiState(
-            callbacks = callbacks,
-            isLoading = viewModelState.isLoading,
-            isRefreshing = viewModelState.isRefreshing,
-            currentPath = viewModelState.currentPath,
-            title = viewModelState.currentPath.ifEmpty {
-                viewModelState.storageName ?: viewModelState.currentPath
-            },
-            files = sortedFiles,
-            folderSortConfig = viewModelState.folderSortConfig,
-            fileSortConfig = viewModelState.fileSortConfig,
-            displayConfig = viewModelState.displayConfig,
-        )
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = FolderBrowserUiState(
-            callbacks = callbacks,
-            isLoading = true,
-            isRefreshing = false,
-            currentPath = arg.path.orEmpty(),
-            title = arg.path.orEmpty(),
-            files = emptyList(),
-            folderSortConfig = viewModelStateFlow.value.folderSortConfig,
-            fileSortConfig = viewModelStateFlow.value.fileSortConfig,
-            displayConfig = viewModelStateFlow.value.displayConfig,
-        ),
-    )
+            val rootPath = arg.path.orEmpty()
+            val sortedFiles = sortedParentPaths.flatMap { parentPath ->
+                val filesInFolder = groups[parentPath].orEmpty()
+                val filesOnly = filesInFolder.filter { !it.fileItem.isDirectory }
+
+                if (filesOnly.isEmpty()) {
+                    emptyList()
+                } else {
+                    val relativePath = if (parentPath == rootPath) {
+                        "."
+                    } else {
+                        parentPath.removePrefix(rootPath).removePrefix("/")
+                    }
+                    val header = FolderBrowserUiState.UiFileItem.Header(
+                        path = relativePath,
+                    )
+                    val items = filesOnly
+                        .sortedWith(createInternalFileItemComparator(viewModelState.fileSortConfig))
+                        .map { internalItem ->
+                            val fileItem = internalItem.fileItem
+                            val isImage = FileUtil.isImage(fileItem.name)
+                            FolderBrowserUiState.UiFileItem.File(
+                                name = fileItem.name,
+                                path = fileItem.path,
+                                isDirectory = fileItem.isDirectory,
+                                size = fileItem.size,
+                                lastModified = fileItem.lastModified,
+                                thumbnail = if (isImage) {
+                                    FileImageSource.Thumbnail(
+                                        storageId = arg.storageId,
+                                        path = fileItem.path,
+                                    )
+                                } else {
+                                    null
+                                },
+                                callbacks = FileItemCallbacks(internalItem),
+                            )
+                        }
+                    listOf(header) + items
+                }
+            }
+
+            FolderBrowserUiState(
+                callbacks = callbacks,
+                isLoading = viewModelState.isLoading,
+                isRefreshing = viewModelState.isRefreshing,
+                currentPath = viewModelState.currentPath,
+                title = viewModelState.currentPath.ifEmpty {
+                    viewModelState.storageName ?: viewModelState.currentPath
+                },
+                files = sortedFiles,
+                folderSortConfig = viewModelState.folderSortConfig,
+                fileSortConfig = viewModelState.fileSortConfig,
+                displayConfig = viewModelState.displayConfig,
+            )
+        }
+    }
 
     private var fileRepository: FileRepository? = null
     private var fetchJob: Job? = null
