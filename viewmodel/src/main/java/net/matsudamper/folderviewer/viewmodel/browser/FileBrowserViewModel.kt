@@ -1,7 +1,9 @@
 package net.matsudamper.folderviewer.viewmodel.browser
 
+import android.app.Application
+import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import kotlinx.coroutines.CancellationException
@@ -35,7 +37,10 @@ class FileBrowserViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val storageRepository: StorageRepository,
     private val preferencesRepository: PreferencesRepository,
-) : ViewModel() {
+    application: Application,
+) : AndroidViewModel(application) {
+    private val resources get() = getApplication<Application>().resources
+
     private val arg: FileBrowser = savedStateHandle.toRoute<FileBrowser>()
 
     private val viewModelEventChannel = Channel<ViewModelEvent>(Channel.UNLIMITED)
@@ -154,7 +159,7 @@ class FileBrowserViewModel @Inject constructor(
                 )
 
                 if (viewModelState.currentPath.isEmpty() && viewModelState.favorites.isNotEmpty()) {
-                    add(FileBrowserUiState.UiFileItem.Header(title = "Favorites"))
+                    add(FileBrowserUiState.UiFileItem.Header(title = resources.getString(net.matsudamper.folderviewer.ui.R.string.favorites)))
                     addAll(
                         viewModelState.favorites.map { favorite ->
                             FileBrowserUiState.UiFileItem.File(

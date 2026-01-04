@@ -1,5 +1,6 @@
 package net.matsudamper.folderviewer.viewmodel.folder
 
+import android.content.res.Resources
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -17,6 +18,7 @@ class FolderBrowserUiStateCreator(
     private val path: String?,
     private val storageId: String,
     private val viewModelEventChannel: Channel<ViewModelEvent>,
+    private val resources: Resources,
 ) {
     @Suppress("LongMethod")
     fun create(
@@ -43,7 +45,7 @@ class FolderBrowserUiStateCreator(
             )
 
             if (viewModelState.currentPath.isEmpty() && viewModelState.favorites.isNotEmpty()) {
-                add(FolderBrowserUiState.UiFileItem.Header(title = "Favorites"))
+                add(FolderBrowserUiState.UiFileItem.Header(title = resources.getString(net.matsudamper.folderviewer.ui.R.string.favorites)))
                 addAll(
                     viewModelState.favorites.map { favorite ->
                         FolderBrowserUiState.UiFileItem.File(

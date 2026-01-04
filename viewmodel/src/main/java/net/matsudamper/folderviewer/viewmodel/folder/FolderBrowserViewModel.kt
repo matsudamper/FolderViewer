@@ -1,7 +1,8 @@
 package net.matsudamper.folderviewer.viewmodel.folder
 
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import java.nio.file.Paths
@@ -32,13 +33,15 @@ import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiEvent
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiState
 import net.matsudamper.folderviewer.viewmodel.FileSortComparator
 
-@Suppress("TooManyFunctions", "LongMethod")
 @HiltViewModel
 class FolderBrowserViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val storageRepository: StorageRepository,
     private val preferencesRepository: PreferencesRepository,
-) : ViewModel() {
+    application: Application,
+) : AndroidViewModel(application) {
+    private val resources get() = getApplication<Application>().resources
+
     private val arg: FolderBrowser = savedStateHandle.toRoute<FolderBrowser>()
 
     private val viewModelEventChannel = Channel<ViewModelEvent>(Channel.UNLIMITED)
@@ -127,6 +130,7 @@ class FolderBrowserViewModel @Inject constructor(
         path = arg.path,
         storageId = arg.storageId,
         viewModelEventChannel = viewModelEventChannel,
+        resources = resources,
     )
 
     val uiState: Flow<FolderBrowserUiState> = channelFlow {
