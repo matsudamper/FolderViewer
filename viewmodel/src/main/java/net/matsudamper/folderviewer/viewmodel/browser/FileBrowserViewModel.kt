@@ -76,6 +76,14 @@ class FileBrowserViewModel @Inject constructor(
 
         override fun onDisplayModeChanged(config: FileBrowserUiState.DisplayConfig) {
             viewModelStateFlow.update { it.copy(displayConfig = config) }
+            viewModelScope.launch {
+                preferencesRepository.saveFileBrowserDisplayMode(
+                    when (config.displayMode) {
+                        FileBrowserUiState.DisplayMode.List -> PreferencesRepository.DisplayMode.List
+                        FileBrowserUiState.DisplayMode.Grid -> PreferencesRepository.DisplayMode.Grid
+                    },
+                )
+            }
         }
 
         override fun onFolderBrowserClick() {
@@ -137,6 +145,9 @@ class FileBrowserViewModel @Inject constructor(
         viewModelScope.launch {
             loadSortConfig()
         }
+        viewModelScope.launch {
+            loadDisplayMode()
+        }
     }
 
     private suspend fun loadSortConfig() {
@@ -150,6 +161,21 @@ class FileBrowserViewModel @Inject constructor(
                             PreferencesRepository.FileSortKey.Size -> FileBrowserUiState.FileSortKey.Size
                         },
                         isAscending = config.isAscending,
+                    ),
+                )
+            }
+        }
+    }
+
+    private suspend fun loadDisplayMode() {
+        preferencesRepository.fileBrowserDisplayMode.collect { displayMode ->
+            viewModelStateFlow.update {
+                it.copy(
+                    displayConfig = it.displayConfig.copy(
+                        displayMode = when (displayMode) {
+                            PreferencesRepository.DisplayMode.List -> FileBrowserUiState.DisplayMode.List
+                            PreferencesRepository.DisplayMode.Grid -> FileBrowserUiState.DisplayMode.Grid
+                        },
                     ),
                 )
             }

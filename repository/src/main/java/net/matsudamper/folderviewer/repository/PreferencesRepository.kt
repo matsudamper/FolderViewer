@@ -14,6 +14,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
 import net.matsudamper.folderviewer.repository.proto.BrowserPreferencesProto
+import net.matsudamper.folderviewer.repository.proto.DisplayConfigProto
+import net.matsudamper.folderviewer.repository.proto.FolderBrowserSortConfigProto
 import net.matsudamper.folderviewer.repository.proto.SortConfigProto
 
 private const val DataStorageFileName = "browser_preferences.pb"
@@ -40,6 +42,16 @@ class PreferencesRepository @Inject constructor(
     val fileBrowserSortConfig: Flow<FileSortConfig> = context.browserPreferencesDataStore.data
         .map { proto ->
             proto.fileBrowserSort.toDomain()
+        }
+
+    val folderBrowserDisplayMode: Flow<DisplayMode> = context.browserPreferencesDataStore.data
+        .map { proto ->
+            proto.folderBrowserDisplay.toDisplayMode()
+        }
+
+    val fileBrowserDisplayMode: Flow<DisplayMode> = context.browserPreferencesDataStore.data
+        .map { proto ->
+            proto.fileBrowserDisplay.toDisplayMode()
         }
 
     suspend fun saveFolderBrowserFolderSortConfig(config: FileSortConfig) {
@@ -74,6 +86,22 @@ class PreferencesRepository @Inject constructor(
         }
     }
 
+    suspend fun saveFolderBrowserDisplayMode(mode: DisplayMode) {
+        context.browserPreferencesDataStore.updateData { currentPrefs ->
+            currentPrefs.toBuilder()
+                .setFolderBrowserDisplay(mode.toProto())
+                .build()
+        }
+    }
+
+    suspend fun saveFileBrowserDisplayMode(mode: DisplayMode) {
+        context.browserPreferencesDataStore.updateData { currentPrefs ->
+            currentPrefs.toBuilder()
+                .setFileBrowserDisplay(mode.toProto())
+                .build()
+        }
+    }
+
     private fun SortConfigProto.toDomain(): FileSortConfig {
         return FileSortConfig(
             key = when (key) {
@@ -99,6 +127,25 @@ class PreferencesRepository @Inject constructor(
             .build()
     }
 
+    private fun DisplayConfigProto.toDisplayMode(): DisplayMode {
+        return when (mode) {
+            DisplayConfigProto.DisplayMode.LIST -> DisplayMode.List
+            DisplayConfigProto.DisplayMode.GRID -> DisplayMode.Grid
+            DisplayConfigProto.DisplayMode.UNRECOGNIZED, null -> DisplayMode.List
+        }
+    }
+
+    private fun DisplayMode.toProto(): DisplayConfigProto {
+        return DisplayConfigProto.newBuilder()
+            .setMode(
+                when (this) {
+                    DisplayMode.List -> DisplayConfigProto.DisplayMode.LIST
+                    DisplayMode.Grid -> DisplayConfigProto.DisplayMode.GRID
+                },
+            )
+            .build()
+    }
+
     data class FileSortConfig(
         val key: FileSortKey,
         val isAscending: Boolean,
@@ -109,12 +156,17 @@ class PreferencesRepository @Inject constructor(
         Date,
         Size,
     }
+
+    enum class DisplayMode {
+        List,
+        Grid,
+    }
 }
 
 internal object BrowserPreferencesSerializer : Serializer<BrowserPreferencesProto> {
     override val defaultValue: BrowserPreferencesProto = BrowserPreferencesProto.newBuilder()
         .setFolderBrowserSort(
-            net.matsudamper.folderviewer.repository.proto.FolderBrowserSortConfigProto.newBuilder()
+            FolderBrowserSortConfigProto.newBuilder()
                 .setFolderSort(
                     SortConfigProto.newBuilder()
                         .setKey(SortConfigProto.SortKey.NAME)
@@ -133,6 +185,16 @@ internal object BrowserPreferencesSerializer : Serializer<BrowserPreferencesProt
             SortConfigProto.newBuilder()
                 .setKey(SortConfigProto.SortKey.NAME)
                 .setIsAscending(true)
+                .build(),
+        )
+        .setFolderBrowserDisplay(
+            DisplayConfigProto.newBuilder()
+                .setMode(DisplayConfigProto.DisplayMode.LIST)
+                .build(),
+        )
+        .setFileBrowserDisplay(
+            DisplayConfigProto.newBuilder()
+                .setMode(DisplayConfigProto.DisplayMode.LIST)
                 .build(),
         )
         .build()
