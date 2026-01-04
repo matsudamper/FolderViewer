@@ -66,10 +66,6 @@ class FolderBrowserViewModel @Inject constructor(
         override fun onDisplayModeChanged(config: FolderBrowserUiState.DisplayConfig) {
             viewModelStateFlow.update { it.copy(displayConfig = config) }
         }
-
-        override fun onFolderBrowserClick() {
-            // Already in FolderBrowser
-        }
     }
 
     val uiState: StateFlow<FolderBrowserUiState> = combine(
