@@ -11,6 +11,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -169,14 +170,14 @@ class FolderBrowserViewModel @Inject constructor(
         refresh()
         loadStorageName()
         viewModelScope.launch {
-            loadSortConfig()
+            collectSortConfig()
         }
         viewModelScope.launch {
-            loadDisplayMode()
+            collectDisplayMode()
         }
     }
 
-    private suspend fun loadSortConfig() {
+    private suspend fun collectSortConfig() {
         combine(
             preferencesRepository.folderBrowserFolderSortConfig,
             preferencesRepository.folderBrowserFileSortConfig,
@@ -201,10 +202,10 @@ class FolderBrowserViewModel @Inject constructor(
                     ),
                 )
             }
-        }.collect {}
+        }.collect()
     }
 
-    private suspend fun loadDisplayMode() {
+    private suspend fun collectDisplayMode() {
         preferencesRepository.folderBrowserDisplayMode.collect { displayMode ->
             viewModelStateFlow.update {
                 it.copy(
