@@ -1,19 +1,14 @@
 package net.matsudamper.folderviewer.viewmodel.folder
 
-import kotlin.collections.orEmpty
-import kotlin.text.CASE_INSENSITIVE_ORDER
-import kotlin.text.compareTo
-import kotlin.text.ifEmpty
-import kotlin.text.lowercase
-import kotlin.text.removePrefix
+import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiState
+import net.matsudamper.folderviewer.viewmodel.FileSortComparator
 import net.matsudamper.folderviewer.viewmodel.FileUtil
-import net.matsudamper.folderviewer.viewmodel.folder.FolderBrowserViewModel.InternalFileItem
 import net.matsudamper.folderviewer.viewmodel.folder.FolderBrowserViewModel.ViewModelEvent
 
 class FolderBrowserUiStateCreator(
@@ -26,67 +21,6 @@ class FolderBrowserUiStateCreator(
     fun create(
         viewModelState: FolderBrowserViewModel.ViewModelState,
     ): FolderBrowserUiState {
-        val groups = viewModelState.rawFiles
-            .groupBy { it.parentPath }
-
-        // フォルダ（ヘッダー）のソート用情報を取得
-        val folderInfos = viewModelState.rawFiles
-            .filter { it.fileItem.isDirectory }
-            .associateBy { it.fileItem.path }
-
-        val sortedParentPaths = groups.keys.sortedWith { path1, path2 ->
-            val info1 = folderInfos[path1]
-            val info2 = folderInfos[path2]
-
-            if (info1 != null && info2 != null) {
-                createFileItemComparator(viewModelState.folderSortConfig).compare(info1.fileItem, info2.fileItem)
-            } else {
-                path1.compareTo(path2, ignoreCase = true)
-            }
-        }
-
-        val rootPath = path.orEmpty()
-        val sortedFiles = sortedParentPaths.flatMap { parentPath ->
-            val filesInFolder = groups[parentPath].orEmpty()
-            val filesOnly = filesInFolder.filter { !it.fileItem.isDirectory }
-
-            if (filesOnly.isEmpty()) {
-                emptyList()
-            } else {
-                val relativePath = if (parentPath == rootPath) {
-                    "."
-                } else {
-                    parentPath.removePrefix(rootPath).removePrefix("/")
-                }
-                val header = FolderBrowserUiState.UiFileItem.Header(
-                    path = relativePath,
-                )
-                val items = filesOnly
-                    .sortedWith(createInternalFileItemComparator(viewModelState.fileSortConfig))
-                    .map { internalItem ->
-                        val fileItem = internalItem.fileItem
-                        val isImage = FileUtil.isImage(fileItem.name)
-                        FolderBrowserUiState.UiFileItem.File(
-                            name = fileItem.name,
-                            path = fileItem.path,
-                            isDirectory = fileItem.isDirectory,
-                            size = fileItem.size,
-                            lastModified = fileItem.lastModified,
-                            thumbnail = if (isImage) {
-                                FileImageSource.Thumbnail(
-                                    storageId = storageId,
-                                    path = fileItem.path,
-                                )
-                            } else {
-                                null
-                            },
-                            callbacks = FileItemCallbacks(internalItem),
-                        )
-                    }
-                listOf(header) + items
-            }
-        }
-
         return FolderBrowserUiState(
             callbacks = callbacks,
             isLoading = viewModelState.isLoading,
@@ -95,54 +29,91 @@ class FolderBrowserUiStateCreator(
             title = viewModelState.currentPath.ifEmpty {
                 viewModelState.storageName ?: viewModelState.currentPath
             },
-            files = sortedFiles,
+            files = buildList {
+                addItemsRecursive(
+                    folder = viewModelState.folder,
+                    isRoot = true,
+                    folderSortConfig = viewModelState.folderSortConfig,
+                    fileSortConfig = viewModelState.fileSortConfig,
+                )
+            },
             folderSortConfig = viewModelState.folderSortConfig,
             fileSortConfig = viewModelState.fileSortConfig,
             displayConfig = viewModelState.displayConfig,
         )
     }
 
-    private fun createFileItemComparator(config: FolderBrowserUiState.FileSortConfig): Comparator<FileItem> {
-        val comparator: Comparator<FileItem> = when (config.key) {
-            FolderBrowserUiState.FileSortKey.Name -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.name }
-            FolderBrowserUiState.FileSortKey.Date -> compareBy { it.lastModified }
-            FolderBrowserUiState.FileSortKey.Size -> compareBy { it.size }
+    private fun MutableList<FolderBrowserUiState.UiFileItem>.addItemsRecursive(
+        folder: FolderBrowserViewModel.ViewModelState.Folder,
+        isRoot: Boolean,
+        folderSortConfig: FolderBrowserUiState.FileSortConfig,
+        fileSortConfig: FolderBrowserUiState.FileSortConfig,
+    ) {
+        if (!isRoot) {
+            val titleText = if (path.isNullOrEmpty()) {
+                folder.path
+            } else {
+                folder.path.removePrefix(path).removePrefix(File.separator)
+            }
+            add(FolderBrowserUiState.UiFileItem.Header(title = titleText))
         }
 
-        return if (config.isAscending) comparator else comparator.reversed()
-    }
-
-    private fun createInternalFileItemComparator(
-        config: FolderBrowserUiState.FileSortConfig,
-    ): Comparator<InternalFileItem> {
-        val comparator: Comparator<InternalFileItem> = when (config.key) {
-            FolderBrowserUiState.FileSortKey.Name -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.fileItem.name }
-            FolderBrowserUiState.FileSortKey.Date -> compareBy { it.fileItem.lastModified }
-            FolderBrowserUiState.FileSortKey.Size -> compareBy { it.fileItem.size }
+        folder.files.sortedWith(
+            FileSortComparator(
+                config = fileSortConfig,
+                sizeProvider = { it.size },
+                lastModifiedProvider = { it.lastModified },
+                nameProvider = { it.name },
+            ),
+        ).forEach { file ->
+            val isImage = FileUtil.isImage(file.name)
+            add(
+                FolderBrowserUiState.UiFileItem.File(
+                    name = file.name,
+                    path = file.path,
+                    isDirectory = file.isDirectory,
+                    size = file.size,
+                    lastModified = file.lastModified,
+                    thumbnail = if (isImage) {
+                        FileImageSource.Thumbnail(storageId = storageId, path = file.path)
+                    } else {
+                        null
+                    },
+                    callbacks = FileItemCallbacks(file = file),
+                ),
+            )
         }
-
-        return if (config.isAscending) comparator else comparator.reversed()
+        folder.folders.sortedWith(
+            FileSortComparator(
+                config = folderSortConfig,
+                sizeProvider = { 0L },
+                lastModifiedProvider = { 0L },
+                nameProvider = { File(it.path).name },
+            ),
+        ).forEach { childFolder ->
+            addItemsRecursive(
+                folder = childFolder,
+                isRoot = false,
+                folderSortConfig = folderSortConfig,
+                fileSortConfig = fileSortConfig,
+            )
+        }
     }
 
     private inner class FileItemCallbacks(
-        private val internalItem: InternalFileItem,
+        private val file: FileItem,
     ) : FolderBrowserUiState.UiFileItem.Callbacks {
         override fun onClick() {
-            val fileItem = internalItem.fileItem
-            if (fileItem.isDirectory) {
-                // Folder browser recursive view
-            } else {
-                val isImage = FileUtil.isImage(fileItem.name.lowercase())
-
-                if (isImage) {
-                    viewModelScope.launch {
-                        viewModelEventChannel.send(
-                            ViewModelEvent.NavigateToImageViewer(
-                                path = fileItem.path,
-                                storageId = storageId,
-                            ),
-                        )
-                    }
+            viewModelScope.launch {
+                val isImage = FileUtil.isImage(file.name)
+                if (file.isDirectory) {
+                    viewModelEventChannel.send(
+                        ViewModelEvent.NavigateToFolderBrowser(path = file.path, storageId = storageId),
+                    )
+                } else if (isImage) {
+                    viewModelEventChannel.send(
+                        ViewModelEvent.NavigateToImageViewer(path = file.path, storageId = storageId),
+                    )
                 }
             }
         }

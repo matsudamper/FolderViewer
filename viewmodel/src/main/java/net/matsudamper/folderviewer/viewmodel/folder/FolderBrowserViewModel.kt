@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
+import java.nio.file.Paths
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -27,6 +28,7 @@ import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiEvent
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiState
+import net.matsudamper.folderviewer.viewmodel.FileSortComparator
 
 @HiltViewModel
 class FolderBrowserViewModel @Inject constructor(
@@ -43,7 +45,16 @@ class FolderBrowserViewModel @Inject constructor(
     val uiEvent: Flow<FolderBrowserUiEvent> = uiChannelEvent.receiveAsFlow()
 
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> =
-        MutableStateFlow(ViewModelState(currentPath = arg.path.orEmpty()))
+        MutableStateFlow(
+            ViewModelState(
+                currentPath = arg.path,
+                folder = ViewModelState.Folder(
+                    path = arg.path,
+                    files = listOf(),
+                    folders = listOf(),
+                ),
+            ),
+        )
 
     private val callbacks = object : FolderBrowserUiState.Callbacks {
         override fun onRefresh() {
@@ -194,9 +205,13 @@ class FolderBrowserViewModel @Inject constructor(
         fetchJob = viewModelScope.launch {
             viewModelStateFlow.update {
                 it.copy(
-                    isLoading = it.rawFiles.isEmpty(),
-                    isRefreshing = it.rawFiles.isNotEmpty(),
-                    rawFiles = emptyList(),
+                    folder = ViewModelState.Folder(
+                        path = arg.path.orEmpty(),
+                        files = listOf(),
+                        folders = listOf(),
+                    ),
+                    isLoading = true,
+                    isRefreshing = false,
                 )
             }
             try {
@@ -217,27 +232,45 @@ class FolderBrowserViewModel @Inject constructor(
         }
     }
 
-    private suspend fun fetchAllFilesRecursive(repository: FileRepository, path: String) {
-        val files = repository.getFiles(path)
-        val itemsWithParent = files.map { it.toInternal(path) }
-
-        viewModelStateFlow.update { state ->
-            state.copy(rawFiles = state.rawFiles + itemsWithParent)
+    private suspend fun fetchAllFilesRecursive(
+        repository: FileRepository,
+        path: String,
+    ) {
+        val items = repository.getFiles(path)
+        val files = items.filter { !it.isDirectory }
+        // フォルダは読み込み順番に影響するのでフォルダのみソートする。表示はUIState側でソートする
+        val folders = items.filter { it.isDirectory }
+            .sortedWith(
+                FileSortComparator(
+                    config = viewModelStateFlow.value.folderSortConfig,
+                    sizeProvider = { it.size },
+                    lastModifiedProvider = { it.lastModified },
+                    nameProvider = { it.name },
+                ),
+            )
+        viewModelStateFlow.update { viewModelState ->
+            viewModelState.copy(
+                folder = mergeFolder(
+                    original = viewModelState.folder,
+                    addFolder = ViewModelState.Folder(
+                        path = path,
+                        files = files,
+                        folders = folders.map {
+                            ViewModelState.Folder(
+                                path = it.path,
+                                files = listOf(),
+                                folders = listOf(),
+                            )
+                        },
+                    ),
+                    addPath = path,
+                ),
+            )
         }
 
-        // 深さ優先で再帰的に取得
-        for (file in itemsWithParent) {
-            if (file.fileItem.isDirectory) {
-                fetchAllFilesRecursive(repository, file.fileItem.path)
-            }
+        for (folder in folders) {
+            fetchAllFilesRecursive(repository, folder.path)
         }
-    }
-
-    private fun FileItem.toInternal(parentPath: String): InternalFileItem {
-        return InternalFileItem(
-            fileItem = this,
-            parentPath = parentPath,
-        )
     }
 
     sealed interface ViewModelEvent {
@@ -258,18 +291,36 @@ class FolderBrowserViewModel @Inject constructor(
         ) : ViewModelEvent
     }
 
-
-    data class InternalFileItem(
-        val fileItem: FileItem,
-        val parentPath: String,
-    )
+    private fun mergeFolder(
+        original: ViewModelState.Folder,
+        addFolder: ViewModelState.Folder,
+        addPath: String,
+    ): ViewModelState.Folder {
+        if (original.path == addPath) {
+            return addFolder
+        }
+        val targetPath = Paths.get(addPath)
+        return original.copy(
+            folders = original.folders.map { folder ->
+                if (targetPath.startsWith(Paths.get(folder.path))) {
+                    mergeFolder(
+                        original = folder,
+                        addFolder = addFolder,
+                        addPath = addPath,
+                    )
+                } else {
+                    folder
+                }
+            },
+        )
+    }
 
     data class ViewModelState(
         val isLoading: Boolean = false,
         val isRefreshing: Boolean = false,
         val currentPath: String = "",
         val storageName: String? = null,
-        val rawFiles: List<InternalFileItem> = emptyList(),
+        val folder: Folder,
         val folderSortConfig: FolderBrowserUiState.FileSortConfig = FolderBrowserUiState.FileSortConfig(
             key = FolderBrowserUiState.FileSortKey.Name,
             isAscending = true,
@@ -282,5 +333,11 @@ class FolderBrowserViewModel @Inject constructor(
             displayMode = UiDisplayConfig.DisplayMode.List,
             displaySize = UiDisplayConfig.DisplaySize.Medium,
         ),
-    )
+    ) {
+        data class Folder(
+            val path: String,
+            val files: List<FileItem>,
+            val folders: List<Folder>,
+        )
+    }
 }

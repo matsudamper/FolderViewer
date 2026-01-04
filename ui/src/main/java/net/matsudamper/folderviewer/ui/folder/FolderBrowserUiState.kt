@@ -17,7 +17,7 @@ data class FolderBrowserUiState(
 ) {
     sealed interface UiFileItem {
         data class Header(
-            val path: String,
+            val title: String,
         ) : UiFileItem
 
         data class File(
@@ -31,7 +31,7 @@ data class FolderBrowserUiState(
         ) : UiFileItem
 
         @Immutable
-        fun interface Callbacks {
+        interface Callbacks {
             fun onClick()
         }
     }

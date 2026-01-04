@@ -61,7 +61,6 @@ import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import net.matsudamper.folderviewer.ui.R
 import net.matsudamper.folderviewer.ui.browser.DisplayConfigDropDownMenu
-import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState as CommonFileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
 import net.matsudamper.folderviewer.ui.util.formatBytes
@@ -368,8 +367,8 @@ private fun FolderBrowserList(
         uiState.files.forEach { item ->
             when (item) {
                 is FolderBrowserUiState.UiFileItem.Header -> {
-                    stickyHeader(key = "header_${item.path}") {
-                        HeaderItem(path = item.path)
+                    stickyHeader(key = "header_${item.title}") {
+                        HeaderItem(path = item.title)
                     }
                 }
 
@@ -407,10 +406,10 @@ private fun FolderBrowserGrid(
             when (item) {
                 is FolderBrowserUiState.UiFileItem.Header -> {
                     item(
-                        key = "header_${item.path}",
+                        key = "header_${item.title}",
                         span = { GridItemSpan(maxLineSpan) },
                     ) {
-                        HeaderItem(path = item.path)
+                        HeaderItem(path = item.title)
                     }
                 }
 
