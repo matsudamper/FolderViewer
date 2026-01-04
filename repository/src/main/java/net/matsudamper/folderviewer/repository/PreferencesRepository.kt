@@ -13,9 +13,10 @@ import com.google.protobuf.InvalidProtocolBufferException
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
+import net.matsudamper.folderviewer.repository.proto.BrowserDisplayMode
 import net.matsudamper.folderviewer.repository.proto.BrowserPreferencesProto
-import net.matsudamper.folderviewer.repository.proto.DisplayConfigProto
-import net.matsudamper.folderviewer.repository.proto.FolderBrowserSortConfigProto
+import net.matsudamper.folderviewer.repository.proto.FileBrowserDisplayConfig
+import net.matsudamper.folderviewer.repository.proto.FolderBrowserDisplayConfig
 import net.matsudamper.folderviewer.repository.proto.SortConfigProto
 
 private const val DataStorageFileName = "browser_preferences.pb"
@@ -31,34 +32,34 @@ class PreferencesRepository @Inject constructor(
 ) {
     val folderBrowserFolderSortConfig: Flow<FileSortConfig> = context.browserPreferencesDataStore.data
         .map { proto ->
-            proto.folderBrowserSort.folderSort.toDomain()
+            proto.folderBrowserDisplayConfig.folderSort.toDomain()
         }
 
     val folderBrowserFileSortConfig: Flow<FileSortConfig> = context.browserPreferencesDataStore.data
         .map { proto ->
-            proto.folderBrowserSort.fileSort.toDomain()
+            proto.folderBrowserDisplayConfig.fileSort.toDomain()
         }
 
     val fileBrowserSortConfig: Flow<FileSortConfig> = context.browserPreferencesDataStore.data
         .map { proto ->
-            proto.fileBrowserSort.toDomain()
+            proto.fileBrowserDisplayConfig.sortConfig.toDomain()
         }
 
     val folderBrowserDisplayMode: Flow<DisplayMode> = context.browserPreferencesDataStore.data
         .map { proto ->
-            proto.folderBrowserDisplay.toDisplayMode()
+            proto.folderBrowserDisplayConfig.displayMode.toDisplayMode()
         }
 
     val fileBrowserDisplayMode: Flow<DisplayMode> = context.browserPreferencesDataStore.data
         .map { proto ->
-            proto.fileBrowserDisplay.toDisplayMode()
+            proto.fileBrowserDisplayConfig.displayMode.toDisplayMode()
         }
 
     suspend fun saveFolderBrowserFolderSortConfig(config: FileSortConfig) {
         context.browserPreferencesDataStore.updateData { currentPrefs ->
             currentPrefs.toBuilder()
-                .setFolderBrowserSort(
-                    currentPrefs.folderBrowserSort.toBuilder()
+                .setFolderBrowserDisplayConfig(
+                    currentPrefs.folderBrowserDisplayConfig.toBuilder()
                         .setFolderSort(config.toProto())
                         .build(),
                 )
@@ -69,8 +70,8 @@ class PreferencesRepository @Inject constructor(
     suspend fun saveFolderBrowserFileSortConfig(config: FileSortConfig) {
         context.browserPreferencesDataStore.updateData { currentPrefs ->
             currentPrefs.toBuilder()
-                .setFolderBrowserSort(
-                    currentPrefs.folderBrowserSort.toBuilder()
+                .setFolderBrowserDisplayConfig(
+                    currentPrefs.folderBrowserDisplayConfig.toBuilder()
                         .setFileSort(config.toProto())
                         .build(),
                 )
@@ -81,7 +82,11 @@ class PreferencesRepository @Inject constructor(
     suspend fun saveFileBrowserSortConfig(config: FileSortConfig) {
         context.browserPreferencesDataStore.updateData { currentPrefs ->
             currentPrefs.toBuilder()
-                .setFileBrowserSort(config.toProto())
+                .setFileBrowserDisplayConfig(
+                    currentPrefs.fileBrowserDisplayConfig.toBuilder()
+                        .setSortConfig(config.toProto())
+                        .build(),
+                )
                 .build()
         }
     }
@@ -89,7 +94,11 @@ class PreferencesRepository @Inject constructor(
     suspend fun saveFolderBrowserDisplayMode(mode: DisplayMode) {
         context.browserPreferencesDataStore.updateData { currentPrefs ->
             currentPrefs.toBuilder()
-                .setFolderBrowserDisplay(mode.toProto())
+                .setFolderBrowserDisplayConfig(
+                    currentPrefs.folderBrowserDisplayConfig.toBuilder()
+                        .setDisplayMode(mode.toProto())
+                        .build(),
+                )
                 .build()
         }
     }
@@ -97,7 +106,11 @@ class PreferencesRepository @Inject constructor(
     suspend fun saveFileBrowserDisplayMode(mode: DisplayMode) {
         context.browserPreferencesDataStore.updateData { currentPrefs ->
             currentPrefs.toBuilder()
-                .setFileBrowserDisplay(mode.toProto())
+                .setFileBrowserDisplayConfig(
+                    currentPrefs.fileBrowserDisplayConfig.toBuilder()
+                        .setDisplayMode(mode.toProto())
+                        .build(),
+                )
                 .build()
         }
     }
@@ -127,23 +140,19 @@ class PreferencesRepository @Inject constructor(
             .build()
     }
 
-    private fun DisplayConfigProto.toDisplayMode(): DisplayMode {
-        return when (mode) {
-            DisplayConfigProto.DisplayMode.LIST -> DisplayMode.List
-            DisplayConfigProto.DisplayMode.GRID -> DisplayMode.Grid
-            DisplayConfigProto.DisplayMode.UNRECOGNIZED, null -> DisplayMode.List
+    private fun BrowserDisplayMode.toDisplayMode(): DisplayMode {
+        return when (this) {
+            BrowserDisplayMode.LIST -> DisplayMode.List
+            BrowserDisplayMode.GRID -> DisplayMode.Grid
+            BrowserDisplayMode.UNRECOGNIZED -> DisplayMode.List
         }
     }
 
-    private fun DisplayMode.toProto(): DisplayConfigProto {
-        return DisplayConfigProto.newBuilder()
-            .setMode(
-                when (this) {
-                    DisplayMode.List -> DisplayConfigProto.DisplayMode.LIST
-                    DisplayMode.Grid -> DisplayConfigProto.DisplayMode.GRID
-                },
-            )
-            .build()
+    private fun DisplayMode.toProto(): BrowserDisplayMode {
+        return when (this) {
+            DisplayMode.List -> BrowserDisplayMode.LIST
+            DisplayMode.Grid -> BrowserDisplayMode.GRID
+        }
     }
 
     data class FileSortConfig(
@@ -165,8 +174,8 @@ class PreferencesRepository @Inject constructor(
 
 internal object BrowserPreferencesSerializer : Serializer<BrowserPreferencesProto> {
     override val defaultValue: BrowserPreferencesProto = BrowserPreferencesProto.newBuilder()
-        .setFolderBrowserSort(
-            FolderBrowserSortConfigProto.newBuilder()
+        .setFolderBrowserDisplayConfig(
+            FolderBrowserDisplayConfig.newBuilder()
                 .setFolderSort(
                     SortConfigProto.newBuilder()
                         .setKey(SortConfigProto.SortKey.NAME)
@@ -179,22 +188,18 @@ internal object BrowserPreferencesSerializer : Serializer<BrowserPreferencesProt
                         .setIsAscending(true)
                         .build(),
                 )
+                .setDisplayMode(BrowserDisplayMode.LIST)
                 .build(),
         )
-        .setFileBrowserSort(
-            SortConfigProto.newBuilder()
-                .setKey(SortConfigProto.SortKey.NAME)
-                .setIsAscending(true)
-                .build(),
-        )
-        .setFolderBrowserDisplay(
-            DisplayConfigProto.newBuilder()
-                .setMode(DisplayConfigProto.DisplayMode.LIST)
-                .build(),
-        )
-        .setFileBrowserDisplay(
-            DisplayConfigProto.newBuilder()
-                .setMode(DisplayConfigProto.DisplayMode.LIST)
+        .setFileBrowserDisplayConfig(
+            FileBrowserDisplayConfig.newBuilder()
+                .setSortConfig(
+                    SortConfigProto.newBuilder()
+                        .setKey(SortConfigProto.SortKey.NAME)
+                        .setIsAscending(true)
+                        .build(),
+                )
+                .setDisplayMode(BrowserDisplayMode.LIST)
                 .build(),
         )
         .build()

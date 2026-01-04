@@ -4,15 +4,19 @@ option java_package = "net.matsudamper.folderviewer.repository.proto";
 option java_multiple_files = true;
 
 message BrowserPreferencesProto {
-  FolderBrowserSortConfigProto folder_browser_sort = 1;
-  SortConfigProto file_browser_sort = 2;
-  DisplayConfigProto folder_browser_display = 3;
-  DisplayConfigProto file_browser_display = 4;
+  FolderBrowserDisplayConfig folder_browser_display_config = 1;
+  FileBrowserDisplayConfig file_browser_display_config = 2;
 }
 
-message FolderBrowserSortConfigProto {
+message FolderBrowserDisplayConfig {
   SortConfigProto folder_sort = 1;
   SortConfigProto file_sort = 2;
+  BrowserDisplayMode display_mode = 3;
+}
+
+message FileBrowserDisplayConfig {
+  SortConfigProto sort_config = 1;
+  BrowserDisplayMode display_mode = 2;
 }
 
 message SortConfigProto {
@@ -26,11 +30,7 @@ message SortConfigProto {
   }
 }
 
-message DisplayConfigProto {
-  DisplayMode mode = 1;
-
-  enum DisplayMode {
-    LIST = 0;
-    GRID = 1;
-  }
+enum BrowserDisplayMode {
+  LIST = 0;
+  GRID = 1;
 }
