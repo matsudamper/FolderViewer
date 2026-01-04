@@ -49,3 +49,6 @@ coroutines:
 # Documentation: https://mrmans0n.github.io/compose-rules/detekt/
 Compose:
   active: true
+
+Formatting:
+  active: false
