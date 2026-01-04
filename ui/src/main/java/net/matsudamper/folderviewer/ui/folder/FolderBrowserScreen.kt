@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -20,38 +21,50 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.flow.Flow
 import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
-import kotlinx.coroutines.flow.Flow
 import net.matsudamper.folderviewer.ui.R
-import net.matsudamper.folderviewer.ui.browser.FileBrowserTopBar
-import net.matsudamper.folderviewer.ui.util.formatBytes
+import net.matsudamper.folderviewer.ui.browser.DisplayConfigDropDownMenu
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState as CommonFileBrowserUiState
+import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
+import net.matsudamper.folderviewer.ui.util.formatBytes
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FolderBrowserScreen(
     uiState: FolderBrowserUiState,
@@ -77,55 +90,15 @@ fun FolderBrowserScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            FileBrowserTopBar(
+            FolderBrowserTopBar(
                 title = uiState.title,
                 onBack = uiState.callbacks::onBack,
-                sortConfig = CommonFileBrowserUiState.FileSortConfig(
-                    key = when (uiState.sortConfig.key) {
-                        FolderBrowserUiState.FileSortKey.Name -> CommonFileBrowserUiState.FileSortKey.Name
-                        FolderBrowserUiState.FileSortKey.Date -> CommonFileBrowserUiState.FileSortKey.Date
-                        FolderBrowserUiState.FileSortKey.Size -> CommonFileBrowserUiState.FileSortKey.Size
-                    },
-                    isAscending = uiState.sortConfig.isAscending,
-                ),
-                onSortConfigChange = { config ->
-                    uiState.callbacks.onSortConfigChanged(
-                        FolderBrowserUiState.FileSortConfig(
-                            key = when (config.key) {
-                                CommonFileBrowserUiState.FileSortKey.Name -> FolderBrowserUiState.FileSortKey.Name
-                                CommonFileBrowserUiState.FileSortKey.Date -> FolderBrowserUiState.FileSortKey.Date
-                                CommonFileBrowserUiState.FileSortKey.Size -> FolderBrowserUiState.FileSortKey.Size
-                            },
-                            isAscending = config.isAscending,
-                        ),
-                    )
-                },
-                displayConfig = CommonFileBrowserUiState.DisplayConfig(
-                    displayMode = when (uiState.displayConfig.displayMode) {
-                        FolderBrowserUiState.DisplayMode.List -> CommonFileBrowserUiState.DisplayMode.List
-                        FolderBrowserUiState.DisplayMode.Grid -> CommonFileBrowserUiState.DisplayMode.Grid
-                    },
-                    displaySize = when (uiState.displayConfig.displaySize) {
-                        FolderBrowserUiState.DisplaySize.Small -> CommonFileBrowserUiState.DisplaySize.Small
-                        FolderBrowserUiState.DisplaySize.Medium -> CommonFileBrowserUiState.DisplaySize.Medium
-                        FolderBrowserUiState.DisplaySize.Large -> CommonFileBrowserUiState.DisplaySize.Large
-                    },
-                ),
-                onDisplayConfigChange = { config ->
-                    uiState.callbacks.onDisplayModeChanged(
-                        FolderBrowserUiState.DisplayConfig(
-                            displayMode = when (config.displayMode) {
-                                CommonFileBrowserUiState.DisplayMode.List -> FolderBrowserUiState.DisplayMode.List
-                                CommonFileBrowserUiState.DisplayMode.Grid -> FolderBrowserUiState.DisplayMode.Grid
-                            },
-                            displaySize = when (config.displaySize) {
-                                CommonFileBrowserUiState.DisplaySize.Small -> FolderBrowserUiState.DisplaySize.Small
-                                CommonFileBrowserUiState.DisplaySize.Medium -> FolderBrowserUiState.DisplaySize.Medium
-                                CommonFileBrowserUiState.DisplaySize.Large -> FolderBrowserUiState.DisplaySize.Large
-                            },
-                        ),
-                    )
-                },
+                folderSortConfig = uiState.folderSortConfig,
+                onFolderSortConfigChange = uiState.callbacks::onFolderSortConfigChanged,
+                fileSortConfig = uiState.fileSortConfig,
+                onFileSortConfigChange = uiState.callbacks::onFileSortConfigChanged,
+                displayConfig = uiState.displayConfig,
+                onDisplayConfigChange = uiState.callbacks::onDisplayModeChanged,
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -154,6 +127,227 @@ fun FolderBrowserScreen(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FolderBrowserTopBar(
+    title: String,
+    onBack: () -> Unit,
+    folderSortConfig: FolderBrowserUiState.FileSortConfig,
+    onFolderSortConfigChange: (FolderBrowserUiState.FileSortConfig) -> Unit,
+    fileSortConfig: FolderBrowserUiState.FileSortConfig,
+    onFileSortConfigChange: (FolderBrowserUiState.FileSortConfig) -> Unit,
+    displayConfig: FolderBrowserUiState.DisplayConfig,
+    onDisplayConfigChange: (FolderBrowserUiState.DisplayConfig) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scrollState = rememberScrollState()
+    LaunchedEffect(title) {
+        snapshotFlow { scrollState.maxValue }
+            .collect { maxValue ->
+                scrollState.scrollTo(maxValue)
+            }
+    }
+
+    TopAppBar(
+        modifier = modifier,
+        colors = MyTopAppBarDefaults.topAppBarColors(),
+        title = {
+            Text(
+                modifier = Modifier.horizontalScroll(scrollState),
+                text = title,
+                maxLines = 1,
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_arrow_back),
+                    contentDescription = stringResource(R.string.back),
+                )
+            }
+        },
+        actions = {
+            var showDisplayMenu by remember { mutableStateOf(false) }
+            IconButton(onClick = { showDisplayMenu = true }) {
+                Icon(
+                    painter = painterResource(
+                        id = if (displayConfig.displayMode == FolderBrowserUiState.DisplayMode.Grid) {
+                            R.drawable.ic_grid_view
+                        } else {
+                            R.drawable.ic_view_list
+                        },
+                    ),
+                    contentDescription = stringResource(R.string.display_mode),
+                )
+            }
+
+            DisplayConfigDropDownMenu(
+                expanded = showDisplayMenu,
+                onDismissRequest = { showDisplayMenu = false },
+                displayConfig = CommonFileBrowserUiState.DisplayConfig(
+                    displayMode = when (displayConfig.displayMode) {
+                        FolderBrowserUiState.DisplayMode.List -> CommonFileBrowserUiState.DisplayMode.List
+                        FolderBrowserUiState.DisplayMode.Grid -> CommonFileBrowserUiState.DisplayMode.Grid
+                    },
+                    displaySize = when (displayConfig.displaySize) {
+                        FolderBrowserUiState.DisplaySize.Small -> CommonFileBrowserUiState.DisplaySize.Small
+                        FolderBrowserUiState.DisplaySize.Medium -> CommonFileBrowserUiState.DisplaySize.Medium
+                        FolderBrowserUiState.DisplaySize.Large -> CommonFileBrowserUiState.DisplaySize.Large
+                    },
+                ),
+                onDisplayConfigChange = { config ->
+                    onDisplayConfigChange(
+                        FolderBrowserUiState.DisplayConfig(
+                            displayMode = when (config.displayMode) {
+                                CommonFileBrowserUiState.DisplayMode.List -> FolderBrowserUiState.DisplayMode.List
+                                CommonFileBrowserUiState.DisplayMode.Grid -> FolderBrowserUiState.DisplayMode.Grid
+                            },
+                            displaySize = when (config.displaySize) {
+                                CommonFileBrowserUiState.DisplaySize.Small -> FolderBrowserUiState.DisplaySize.Small
+                                CommonFileBrowserUiState.DisplaySize.Medium -> FolderBrowserUiState.DisplaySize.Medium
+                                CommonFileBrowserUiState.DisplaySize.Large -> FolderBrowserUiState.DisplaySize.Large
+                            },
+                        ),
+                    )
+                },
+            )
+
+            var showSortMenu by remember { mutableStateOf(false) }
+            IconButton(onClick = { showSortMenu = true }) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_sort),
+                    contentDescription = stringResource(R.string.sort_by),
+                )
+            }
+            if (showSortMenu) {
+                DropdownMenu(
+                    expanded = showSortMenu,
+                    onDismissRequest = { showSortMenu = false },
+                ) {
+                    var selectedTab by remember { mutableIntStateOf(0) }
+                    Column(modifier = Modifier.width(200.dp)) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            SortTabItem(
+                                modifier = Modifier.weight(1f),
+                                text = stringResource(R.string.folder),
+                                selected = selectedTab == 0,
+                                onClick = { selectedTab = 0 },
+                            )
+                            SortTabItem(
+                                modifier = Modifier.weight(1f),
+                                text = stringResource(R.string.file),
+                                selected = selectedTab == 1,
+                                onClick = { selectedTab = 1 },
+                            )
+                        }
+                        HorizontalDivider()
+
+                        val currentConfig = if (selectedTab == 0) folderSortConfig else fileSortConfig
+                        val onConfigChange = if (selectedTab == 0) onFolderSortConfigChange else onFileSortConfigChange
+
+                        SortMenuItems(
+                            config = currentConfig,
+                            onConfigChange = {
+                                onConfigChange(it)
+                                showSortMenu = false
+                            },
+                        )
+                    }
+                }
+            }
+        },
+    )
+}
+
+@Composable
+private fun SortTabItem(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelLarge,
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            )
+            if (selected) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(2.dp)
+                        .background(MaterialTheme.colorScheme.primary)
+                        .align(Alignment.CenterHorizontally),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SortMenuItems(
+    config: FolderBrowserUiState.FileSortConfig,
+    onConfigChange: (FolderBrowserUiState.FileSortConfig) -> Unit,
+) {
+    DropdownMenuItem(
+        text = { Text(stringResource(R.string.sort_name)) },
+        onClick = { onConfigChange(config.copy(key = FolderBrowserUiState.FileSortKey.Name)) },
+        leadingIcon = {
+            if (config.key == FolderBrowserUiState.FileSortKey.Name) {
+                Icon(painter = painterResource(id = R.drawable.ic_check), contentDescription = null)
+            }
+        },
+    )
+    DropdownMenuItem(
+        text = { Text(stringResource(R.string.sort_date)) },
+        onClick = { onConfigChange(config.copy(key = FolderBrowserUiState.FileSortKey.Date)) },
+        leadingIcon = {
+            if (config.key == FolderBrowserUiState.FileSortKey.Date) {
+                Icon(painter = painterResource(id = R.drawable.ic_check), contentDescription = null)
+            }
+        },
+    )
+    DropdownMenuItem(
+        text = { Text(stringResource(R.string.sort_size)) },
+        onClick = { onConfigChange(config.copy(key = FolderBrowserUiState.FileSortKey.Size)) },
+        leadingIcon = {
+            if (config.key == FolderBrowserUiState.FileSortKey.Size) {
+                Icon(painter = painterResource(id = R.drawable.ic_check), contentDescription = null)
+            }
+        },
+    )
+    DropdownMenuItem(
+        text = { Text(stringResource(R.string.sort_asc)) },
+        onClick = { onConfigChange(config.copy(isAscending = true)) },
+        leadingIcon = {
+            if (config.isAscending) {
+                Icon(painter = painterResource(id = R.drawable.ic_check), contentDescription = null)
+            }
+        },
+    )
+    DropdownMenuItem(
+        text = { Text(stringResource(R.string.sort_desc)) },
+        onClick = { onConfigChange(config.copy(isAscending = false)) },
+        leadingIcon = {
+            if (!config.isAscending) {
+                Icon(painter = painterResource(id = R.drawable.ic_check), contentDescription = null)
+            }
+        },
+    )
 }
 
 @Composable

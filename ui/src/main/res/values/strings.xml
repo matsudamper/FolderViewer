@@ -16,6 +16,7 @@
     <string name="display_size">表示サイズ</string>
     <string name="display_size_small">小</string>
     <string name="display_size_medium">中</string>
+    <string name="display_size_large">大</string>
     <string name="display_mode_grid">グリッド</string>
     <string name="display_mode_list">リスト</string>
     <string name="disk_cache_cleared">ディスクキャッシュをクリアしました</string>
@@ -23,4 +24,6 @@
     <string name="unknown_error">不明なエラー</string>
     <string name="cache">キャッシュ</string>
     <string name="clear_disk_cache">ディスクキャッシュをクリア</string>
+    <string name="folder">フォルダ</string>
+    <string name="file">ファイル</string>
 </resources>

@@ -9,7 +9,8 @@ data class FolderBrowserUiState(
     val currentPath: String,
     val title: String,
     val files: List<UiFileItem>,
-    val sortConfig: FileSortConfig,
+    val folderSortConfig: FileSortConfig,
+    val fileSortConfig: FileSortConfig,
     val displayConfig: DisplayConfig,
     val callbacks: Callbacks,
 ) {
@@ -65,8 +66,8 @@ data class FolderBrowserUiState(
     interface Callbacks {
         fun onRefresh()
         fun onBack()
-        fun onSortConfigChanged(config: FileSortConfig)
+        fun onFolderSortConfigChanged(config: FileSortConfig)
+        fun onFileSortConfigChanged(config: FileSortConfig)
         fun onDisplayModeChanged(config: DisplayConfig)
-        fun onFolderBrowserClick()
     }
 }

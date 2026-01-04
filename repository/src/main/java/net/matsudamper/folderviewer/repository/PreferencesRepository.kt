@@ -5,16 +5,16 @@ import androidx.datastore.core.CorruptionException
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.Serializer
 import androidx.datastore.dataStore
+import java.io.InputStream
+import java.io.OutputStream
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import com.google.protobuf.InvalidProtocolBufferException
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import net.matsudamper.folderviewer.repository.proto.BrowserPreferencesProto
 import net.matsudamper.folderviewer.repository.proto.SortConfigProto
-import java.io.InputStream
-import java.io.OutputStream
 
 private const val DataStorageFileName = "browser_preferences.pb"
 
