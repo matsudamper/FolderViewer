@@ -1,10 +1,10 @@
 plugins {
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.androidLibrary)
+    alias(libs.plugins.kotlinAndroid)
+    alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.protobuf)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.dagger.hilt)
+    alias(libs.plugins.daggerHilt)
 }
 
 android {
@@ -28,21 +28,21 @@ kotlin {
 }
 
 dependencies {
-    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidxCoreKtx)
     implementation(libs.smbj)
-    implementation(libs.smbj.rpc)
-    implementation(libs.androidx.datastore)
-    implementation(libs.androidx.security.crypto)
-    implementation(libs.kotlinx.serialization.json)
-    implementation(libs.protobuf.kotlin.lite)
-    implementation(libs.hilt.android)
-    ksp(libs.hilt.compiler)
-    implementation(libs.jakarta.inject)
+    implementation(libs.smbjRpc)
+    implementation(libs.androidxDatastore)
+    implementation(libs.androidxSecurityCrypto)
+    implementation(libs.kotlinxSerializationJson)
+    implementation(libs.protobufKotlinLite)
+    implementation(libs.hiltAndroid)
+    ksp(libs.hiltCompiler)
+    implementation(libs.jakartaInject)
 }
 
 protobuf {
     protoc {
-        val protoc = libs.protobuf.protoc.get()
+        val protoc = libs.protobufProtoc.get()
         artifact = "${protoc.group}:${protoc.name}:${protoc.version}"
     }
     generateProtoTasks {
