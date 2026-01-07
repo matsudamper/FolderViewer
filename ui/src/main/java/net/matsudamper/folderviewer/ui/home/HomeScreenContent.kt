@@ -23,11 +23,11 @@ fun HomeScreenContent(
         },
     ) { innerPadding ->
         StorageList(
-            modifier = Modifier,
             storages = storages,
             onStorageClick = onStorageClick,
             onEditStorageClick = onEditStorageClick,
             contentPadding = innerPadding,
+            modifier = Modifier,
         )
     }
 }

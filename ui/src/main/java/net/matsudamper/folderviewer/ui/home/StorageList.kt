@@ -14,8 +14,8 @@ internal fun StorageList(
     storages: List<UiStorageConfiguration>,
     onStorageClick: (UiStorageConfiguration) -> Unit,
     onEditStorageClick: (UiStorageConfiguration) -> Unit,
+    contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(),
 ) {
     Box(
         modifier = modifier.fillMaxSize(),
