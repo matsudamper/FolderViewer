@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
 
 @Composable
 internal fun StorageList(
@@ -17,14 +18,15 @@ internal fun StorageList(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues,
 ) {
+    val layoutDirection = LocalLayoutDirection.current
     Box(
         modifier = modifier.fillMaxSize(),
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
-                start = PaddingNormal,
-                end = PaddingNormal,
+                start = PaddingNormal + contentPadding.calculateStartPadding(layoutDirection),
+                end = PaddingNormal + contentPadding.calculateEndPadding(layoutDirection),
                 top = PaddingNormal + contentPadding.calculateTopPadding(),
                 bottom = PaddingNormal + contentPadding.calculateBottomPadding(),
             ),
