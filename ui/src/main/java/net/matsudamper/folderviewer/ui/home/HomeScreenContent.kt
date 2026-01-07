@@ -1,6 +1,5 @@
 package net.matsudamper.folderviewer.ui.home
 
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -24,10 +23,11 @@ fun HomeScreenContent(
         },
     ) { innerPadding ->
         StorageList(
-            modifier = Modifier.padding(innerPadding),
+            modifier = Modifier,
             storages = storages,
             onStorageClick = onStorageClick,
             onEditStorageClick = onEditStorageClick,
+            contentPadding = innerPadding,
         )
     }
 }

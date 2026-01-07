@@ -15,13 +15,19 @@ internal fun StorageList(
     onStorageClick: (UiStorageConfiguration) -> Unit,
     onEditStorageClick: (UiStorageConfiguration) -> Unit,
     modifier: Modifier = Modifier,
+    contentPadding: PaddingValues = PaddingValues(),
 ) {
     Box(
         modifier = modifier.fillMaxSize(),
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(PaddingNormal),
+            contentPadding = PaddingValues(
+                start = PaddingNormal,
+                end = PaddingNormal,
+                top = PaddingNormal + contentPadding.calculateTopPadding(),
+                bottom = PaddingNormal + contentPadding.calculateBottomPadding(),
+            ),
             verticalArrangement = Arrangement.spacedBy(PaddingSmall),
         ) {
             items(storages) { storage ->
