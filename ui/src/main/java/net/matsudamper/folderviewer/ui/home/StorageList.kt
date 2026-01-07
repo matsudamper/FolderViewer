@@ -24,7 +24,7 @@ internal fun StorageList(
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(all = PaddingNormal).plus(contentPadding),
+            contentPadding = PaddingValues(PaddingNormal).plus(contentPadding),
             verticalArrangement = Arrangement.spacedBy(PaddingSmall),
         ) {
             items(storages) { storage ->
