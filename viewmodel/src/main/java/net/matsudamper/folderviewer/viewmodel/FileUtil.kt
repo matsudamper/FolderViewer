@@ -1,11 +1,13 @@
 package net.matsudamper.folderviewer.viewmodel
 
+import android.webkit.MimeTypeMap
+
 object FileUtil {
     fun isImage(name: String): Boolean {
-        val lowerName = name.lowercase()
-        return lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg") ||
-            lowerName.endsWith(".png") || lowerName.endsWith(".bmp") ||
-            lowerName.endsWith(".gif") || lowerName.endsWith(".webp") ||
-            lowerName.endsWith(".heic") || lowerName.endsWith(".heif")
+        val extension = name.substringAfterLast('.', "")
+        if (extension.isEmpty()) return false
+
+        val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension.lowercase())
+        return mimeType?.startsWith("image/") == true
     }
 }
