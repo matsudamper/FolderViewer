@@ -19,12 +19,16 @@ private/internalをできる限り使用し、最小限のアクセスに絞る�
 コードのコメントは禁止。複雑な関数のドキュメントコメントだけ許可する。
 
 # Agent固有のルール
+## Gemini
 以下のエラーが最初に発生するので、回避して。
 ```
 Please try again later.
 Error: Status INVALID_ARGUMENT
 Function call is missing a thought_signature in functionCall parts. This is required for tools to work correctly, and missing thought_signature may lead to degraded model performance. Additional data, function call default_api:list_files , position 5. Please refer to https://ai.google.dev/gemini-api/docs/thought-signatures for more details.
 ```
+
+# 設計
+UI操作をViewModelで受けるときはUiState内のCallbacksを経由して行う。ViewModelにpublicな関数を追加しない。  
 
 # ビルドコマンド
 編集後のチェックコマンド
