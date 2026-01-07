@@ -28,6 +28,7 @@ fun HomeScreenContent(
             storages = storages,
             onStorageClick = onStorageClick,
             onEditStorageClick = onEditStorageClick,
+            contentPadding = innerPadding,
         )
     }
 }
