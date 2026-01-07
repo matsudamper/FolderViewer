@@ -5,6 +5,7 @@ object FileUtil {
         val lowerName = name.lowercase()
         return lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg") ||
             lowerName.endsWith(".png") || lowerName.endsWith(".bmp") ||
-            lowerName.endsWith(".gif") || lowerName.endsWith(".webp")
+            lowerName.endsWith(".gif") || lowerName.endsWith(".webp") ||
+            lowerName.endsWith(".heic") || lowerName.endsWith(".heif")
     }
 }
