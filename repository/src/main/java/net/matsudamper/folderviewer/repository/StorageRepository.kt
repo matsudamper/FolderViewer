@@ -1,6 +1,7 @@
 package net.matsudamper.folderviewer.repository
 
 import android.content.Context
+import android.os.Environment
 import androidx.core.content.edit
 import androidx.datastore.core.CorruptionException
 import androidx.datastore.core.DataStore
@@ -19,6 +20,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
 import net.matsudamper.folderviewer.repository.proto.FavoriteConfigurationProto
+import net.matsudamper.folderviewer.repository.proto.LocalConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.SmbConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.StorageConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.StorageListProto
@@ -105,6 +107,62 @@ class StorageRepository @Inject constructor(
         }
     }
 
+    suspend fun detectLocalStorages() {
+        val existingStorages = context.dataStore.data.first().listList
+            .mapNotNull { it.toDomain() as? StorageConfiguration.Local }
+            .map { it.rootPath }
+            .toSet()
+
+        val primaryStorage = Environment.getExternalStorageDirectory()
+        if (primaryStorage.exists() && primaryStorage.canRead()) {
+            val primaryPath = primaryStorage.absolutePath
+            if (primaryPath !in existingStorages) {
+                val localConfig = StorageConfiguration.Local(
+                    id = UUID.randomUUID().toString(),
+                    name = "ローカルストレージ",
+                    rootPath = primaryPath,
+                )
+
+                context.dataStore.updateData { currentList ->
+                    currentList.toBuilder()
+                        .addList(localConfig.toProto())
+                        .build()
+                }
+            }
+        }
+    }
+
+    suspend fun addLocalStorage(name: String, rootPath: String) {
+        val id = UUID.randomUUID().toString()
+        val localConfig = StorageConfiguration.Local(
+            id = id,
+            name = name,
+            rootPath = rootPath,
+        )
+
+        context.dataStore.updateData { currentList ->
+            currentList.toBuilder()
+                .addList(localConfig.toProto())
+                .build()
+        }
+    }
+
+    suspend fun deleteStorage(id: String) {
+        context.dataStore.updateData { currentList ->
+            val index = currentList.listList.indexOfFirst { it.id == id }
+            if (index >= 0) {
+                sharedPreferences.edit {
+                    remove(id)
+                }
+                currentList.toBuilder()
+                    .removeList(index)
+                    .build()
+            } else {
+                currentList
+            }
+        }
+    }
+
     suspend fun addFavorite(storageId: String, path: String, name: String) {
         val id = UUID.randomUUID().toString()
         val config = FavoriteConfiguration(
@@ -137,8 +195,12 @@ class StorageRepository @Inject constructor(
     suspend fun getFileRepository(id: String): FileRepository? {
         val proto = context.dataStore.data.first()
         val configProto = proto.listList.find { it.id == id } ?: return null
-        val config = configProto.toDomain() as? StorageConfiguration.Smb ?: return null
-        return SmbFileRepository(config)
+
+        return when (val config = configProto.toDomain()) {
+            is StorageConfiguration.Smb -> SmbFileRepository(config)
+            is StorageConfiguration.Local -> LocalFileRepository(config)
+            null -> null
+        }
     }
 
     private fun StorageConfigurationProto.toDomain(): StorageConfiguration? {
@@ -150,6 +212,14 @@ class StorageRepository @Inject constructor(
                     ip = smb.ip,
                     username = smb.username,
                     password = sharedPreferences.getString(id, null).orEmpty(),
+                )
+            }
+
+            StorageConfigurationProto.ConfigCase.LOCAL -> {
+                StorageConfiguration.Local(
+                    id = id,
+                    name = name,
+                    rootPath = local.rootPath,
                 )
             }
 
@@ -165,6 +235,18 @@ class StorageRepository @Inject constructor(
                 SmbConfigurationProto.newBuilder()
                     .setIp(ip)
                     .setUsername(username)
+                    .build(),
+            )
+            .build()
+    }
+
+    private fun StorageConfiguration.Local.toProto(): StorageConfigurationProto {
+        return StorageConfigurationProto.newBuilder()
+            .setId(id)
+            .setName(name)
+            .setLocal(
+                LocalConfigurationProto.newBuilder()
+                    .setRootPath(rootPath)
                     .build(),
             )
             .build()

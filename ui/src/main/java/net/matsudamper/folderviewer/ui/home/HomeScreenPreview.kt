@@ -6,18 +6,21 @@ import androidx.compose.ui.tooling.preview.Preview
 @Preview(showBackground = true)
 @Composable
 private fun HomeScreenPreview() {
-    HomeScreenContent(
-        storages = listOf(
-            UiStorageConfiguration.Smb(
-                id = "1",
-                name = "My NAS",
-                ip = "192.168.1.10",
-                username = "user",
+    HomeScreen(
+        uiState = HomeUiState(
+            storages = listOf(
+                UiStorageConfiguration.Smb(
+                    id = "1",
+                    name = "My NAS",
+                    ip = "192.168.1.10",
+                    username = "user",
+                ),
             ),
         ),
         onNavigateToSettings = {},
         onAddStorageClick = {},
         onStorageClick = {},
         onEditStorageClick = {},
+        onDeleteStorageClick = {},
     )
 }

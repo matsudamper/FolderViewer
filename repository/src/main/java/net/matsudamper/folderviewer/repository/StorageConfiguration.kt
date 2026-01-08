@@ -15,4 +15,11 @@ sealed interface StorageConfiguration {
         val username: String,
         val password: String,
     ) : StorageConfiguration
+
+    @Serializable
+    data class Local(
+        override val id: String,
+        override val name: String,
+        val rootPath: String,
+    ) : StorageConfiguration
 }

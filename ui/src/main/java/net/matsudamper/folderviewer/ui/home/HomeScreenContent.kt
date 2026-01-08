@@ -13,6 +13,7 @@ fun HomeScreenContent(
     onAddStorageClick: () -> Unit,
     onStorageClick: (UiStorageConfiguration) -> Unit,
     onEditStorageClick: (UiStorageConfiguration) -> Unit,
+    onDeleteStorageClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -25,11 +26,12 @@ fun HomeScreenContent(
         },
     ) { innerPadding ->
         StorageList(
-            modifier = Modifier.fillMaxSize(),
             storages = storages,
             onStorageClick = onStorageClick,
             onEditStorageClick = onEditStorageClick,
+            onDeleteStorageClick = onDeleteStorageClick,
             contentPadding = innerPadding,
+            modifier = Modifier.fillMaxSize(),
         )
     }
 }

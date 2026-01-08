@@ -24,9 +24,11 @@ internal fun StorageItem(
     storage: UiStorageConfiguration,
     onClick: () -> Unit,
     onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
     Card(
         modifier = modifier
@@ -39,11 +41,32 @@ internal fun StorageItem(
         Box {
             StorageItemContent(storage = storage)
             StorageItemMenu(
+                storage = storage,
                 showMenu = showMenu,
                 onDismiss = { showMenu = false },
-                onEditClick = onEditClick,
+                onEditClick = {
+                    showMenu = false
+                    onEditClick()
+                },
+                onDeleteClick = {
+                    showMenu = false
+                    showDeleteDialog = true
+                },
             )
         }
+    }
+
+    if (showDeleteDialog) {
+        DeleteConfirmDialog(
+            storageName = storage.name,
+            onConfirm = {
+                showDeleteDialog = false
+                onDeleteClick()
+            },
+            onDismiss = {
+                showDeleteDialog = false
+            },
+        )
     }
 }
 
@@ -55,6 +78,7 @@ private fun StorageItemContent(
         Text(text = storage.name, style = MaterialTheme.typography.titleMedium)
         val type = when (storage) {
             is UiStorageConfiguration.Smb -> "SMB: ${storage.ip}"
+            is UiStorageConfiguration.Local -> "ローカル: ${storage.rootPath}"
         }
         Text(text = type, style = MaterialTheme.typography.bodyMedium)
     }
@@ -62,20 +86,57 @@ private fun StorageItemContent(
 
 @Composable
 private fun StorageItemMenu(
+    storage: UiStorageConfiguration,
     showMenu: Boolean,
     onDismiss: () -> Unit,
     onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit,
 ) {
     DropdownMenu(
         expanded = showMenu,
         onDismissRequest = onDismiss,
     ) {
-        DropdownMenuItem(
-            text = { Text("Edit") },
-            onClick = {
-                onDismiss()
-                onEditClick()
-            },
-        )
+        when (storage) {
+            is UiStorageConfiguration.Smb -> {
+                DropdownMenuItem(
+                    text = { Text("編集") },
+                    onClick = onEditClick,
+                )
+                DropdownMenuItem(
+                    text = { Text("削除") },
+                    onClick = onDeleteClick,
+                )
+            }
+
+            is UiStorageConfiguration.Local -> {
+                DropdownMenuItem(
+                    text = { Text("削除") },
+                    onClick = onDeleteClick,
+                )
+            }
+        }
     }
+}
+
+@Composable
+private fun DeleteConfirmDialog(
+    storageName: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("ストレージを削除") },
+        text = { Text("「$storageName」を削除しますか？") },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = onConfirm) {
+                Text("削除")
+            }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) {
+                Text("キャンセル")
+            }
+        },
+    )
 }

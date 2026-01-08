@@ -10,4 +10,10 @@ public sealed interface UiStorageConfiguration {
         val ip: String,
         val username: String,
     ) : UiStorageConfiguration
+
+    public data class Local(
+        override val id: String,
+        override val name: String,
+        val rootPath: String,
+    ) : UiStorageConfiguration
 }

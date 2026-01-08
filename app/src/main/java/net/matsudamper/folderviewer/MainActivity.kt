@@ -10,13 +10,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
+import kotlinx.coroutines.launch
 import coil.Coil
 import coil.ImageLoader
 import dagger.hilt.android.AndroidEntryPoint
@@ -26,15 +29,19 @@ import net.matsudamper.folderviewer.navigation.FolderBrowser
 import net.matsudamper.folderviewer.navigation.Home
 import net.matsudamper.folderviewer.navigation.ImageViewer
 import net.matsudamper.folderviewer.navigation.Navigator
+import net.matsudamper.folderviewer.navigation.PermissionRequest
 import net.matsudamper.folderviewer.navigation.Settings
 import net.matsudamper.folderviewer.navigation.SmbAdd
 import net.matsudamper.folderviewer.navigation.StorageTypeSelection
 import net.matsudamper.folderviewer.navigation.rememberNavigationState
 import net.matsudamper.folderviewer.navigation.toEntries
+import net.matsudamper.folderviewer.repository.PermissionUtil
 import net.matsudamper.folderviewer.ui.browser.FileBrowserScreen
 import net.matsudamper.folderviewer.ui.browser.ImageViewerScreen
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserScreen
 import net.matsudamper.folderviewer.ui.home.HomeScreen
+import net.matsudamper.folderviewer.ui.home.UiStorageConfiguration
+import net.matsudamper.folderviewer.ui.permission.PermissionRequestScreen
 import net.matsudamper.folderviewer.ui.settings.SettingsScreen
 import net.matsudamper.folderviewer.ui.storage.SmbAddScreen
 import net.matsudamper.folderviewer.ui.storage.StorageTypeSelectionScreen
@@ -43,8 +50,10 @@ import net.matsudamper.folderviewer.viewmodel.browser.FileBrowserViewModel
 import net.matsudamper.folderviewer.viewmodel.browser.ImageViewerViewModel
 import net.matsudamper.folderviewer.viewmodel.folder.FolderBrowserViewModel
 import net.matsudamper.folderviewer.viewmodel.home.HomeViewModel
+import net.matsudamper.folderviewer.viewmodel.permission.PermissionRequestViewModel
 import net.matsudamper.folderviewer.viewmodel.settings.SettingsViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.SmbAddViewModel
+import net.matsudamper.folderviewer.viewmodel.storage.StorageTypeSelectionViewModel
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -78,6 +87,7 @@ private fun AppContent(
         homeEntry(navigator)
         settingsEntry(navigator)
         storageTypeSelectionEntry(navigator)
+        permissionRequestEntry(navigator)
         smbAddEntry(navigator)
         fileBrowserEntry(navigator)
         folderBrowserEntry(navigator)
@@ -108,8 +118,16 @@ private fun EntryProviderScope<NavKey>.homeEntry(navigator: Navigator) {
                 navigator.navigate(FileBrowser(storageId = storage.id, path = null))
             },
             onEditStorageClick = { storage ->
-                navigator.navigate(SmbAdd(storageId = storage.id))
+                when (storage) {
+                    is UiStorageConfiguration.Smb -> {
+                        navigator.navigate(SmbAdd(storageId = storage.id))
+                    }
+
+                    is UiStorageConfiguration.Local -> {
+                    }
+                }
             },
+            onDeleteStorageClick = viewModel::onDeleteStorage,
         )
     }
 }
@@ -130,15 +148,77 @@ private fun EntryProviderScope<NavKey>.settingsEntry(navigator: Navigator) {
     }
 }
 
-private fun EntryProviderScope<NavKey>.storageTypeSelectionEntry(navigator: Navigator) {
+private fun EntryProviderScope<NavKey>.storageTypeSelectionEntry(
+    navigator: Navigator,
+) {
     entry<StorageTypeSelection> {
+        val viewModel: StorageTypeSelectionViewModel = hiltViewModel()
+        val snackbarHostState = remember { SnackbarHostState() }
+        val scope = rememberCoroutineScope()
+
+        LaunchedEffect(viewModel.viewModelEventFlow) {
+            viewModel.viewModelEventFlow.collect { event ->
+                when (event) {
+                    StorageTypeSelectionViewModel.ViewModelEvent.NavigateToHome -> {
+                        navigator.popBackStack(Home, inclusive = false)
+                    }
+
+                    StorageTypeSelectionViewModel.ViewModelEvent.NavigateToPermissionRequest -> {
+                        navigator.navigate(PermissionRequest)
+                    }
+
+                    StorageTypeSelectionViewModel.ViewModelEvent.ShowAlreadyAddedMessage -> {
+                        scope.launch {
+                            snackbarHostState.showSnackbar("追加済です")
+                        }
+                    }
+                }
+            }
+        }
+
         StorageTypeSelectionScreen(
+            snackbarHostState = snackbarHostState,
             onSmbClick = {
                 navigator.navigate(SmbAdd())
             },
+            onLocalClick = viewModel::onLocalClick,
             onBack = {
                 navigator.goBack()
             },
+        )
+    }
+}
+
+private fun EntryProviderScope<NavKey>.permissionRequestEntry(
+    navigator: Navigator,
+) {
+    entry<PermissionRequest> {
+        val viewModel: PermissionRequestViewModel = hiltViewModel()
+        val uiState by viewModel.uiState.collectAsState()
+        val context = LocalContext.current
+
+        LaunchedEffect(viewModel.viewModelEventFlow) {
+            viewModel.viewModelEventFlow.collect { event ->
+                when (event) {
+                    PermissionRequestViewModel.ViewModelEvent.OpenSettings -> {
+                        val intent = PermissionUtil.createManageStorageIntent(context)
+                        context.startActivity(intent)
+                    }
+
+                    PermissionRequestViewModel.ViewModelEvent.PermissionGranted -> {
+                        navigator.popBackStack(Home, inclusive = false)
+                    }
+                }
+            }
+        }
+
+        LaunchedEffect(Unit) {
+            viewModel.checkPermission()
+        }
+
+        PermissionRequestScreen(
+            uiState = uiState,
+            onGrantPermission = viewModel::onGrantPermission,
         )
     }
 }

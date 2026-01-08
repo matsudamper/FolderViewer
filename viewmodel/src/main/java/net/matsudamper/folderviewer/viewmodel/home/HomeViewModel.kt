@@ -16,7 +16,7 @@ import net.matsudamper.folderviewer.ui.home.UiStorageConfiguration
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    storageRepository: StorageRepository,
+    private val storageRepository: StorageRepository,
 ) : ViewModel() {
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> =
         MutableStateFlow(ViewModelState())
@@ -40,6 +40,14 @@ class HomeViewModel @Inject constructor(
                                         username = storage.username,
                                     )
                                 }
+
+                                is StorageConfiguration.Local -> {
+                                    UiStorageConfiguration.Local(
+                                        id = storage.id,
+                                        name = storage.name,
+                                        rootPath = storage.rootPath,
+                                    )
+                                }
                             }
                         },
                     )
@@ -55,6 +63,12 @@ class HomeViewModel @Inject constructor(
                     it.copy(storages = storages)
                 }
             }
+        }
+    }
+
+    fun onDeleteStorage(id: String) {
+        viewModelScope.launch {
+            storageRepository.deleteStorage(id)
         }
     }
 

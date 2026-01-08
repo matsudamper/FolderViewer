@@ -1,10 +1,11 @@
 {
   "permissions": {
-    "defaultMode": "acceptEdits",
     "allow": [
       "Bash(./gradlew *)",
       "Bash(./gradlew:*)",
-      "Bash(git pull:*)"
-    ]
+      "Bash(git pull:*)",
+      "Bash(ls:*)"
+    ],
+    "defaultMode": "acceptEdits"
   }
 }

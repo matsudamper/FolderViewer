@@ -16,8 +16,9 @@ internal fun StorageList(
     storages: List<UiStorageConfiguration>,
     onStorageClick: (UiStorageConfiguration) -> Unit,
     onEditStorageClick: (UiStorageConfiguration) -> Unit,
-    modifier: Modifier = Modifier,
+    onDeleteStorageClick: (String) -> Unit,
     contentPadding: PaddingValues,
+    modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier.fillMaxSize(),
@@ -32,6 +33,7 @@ internal fun StorageList(
                     storage = storage,
                     onClick = { onStorageClick(storage) },
                     onEditClick = { onEditStorageClick(storage) },
+                    onDeleteClick = { onDeleteStorageClick(storage.id) },
                 )
             }
         }

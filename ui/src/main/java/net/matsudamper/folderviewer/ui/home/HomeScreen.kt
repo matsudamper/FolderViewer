@@ -19,6 +19,7 @@ public fun HomeScreen(
     onAddStorageClick: () -> Unit,
     onStorageClick: (UiStorageConfiguration) -> Unit,
     onEditStorageClick: (UiStorageConfiguration) -> Unit,
+    onDeleteStorageClick: (String) -> Unit,
 ) {
     HomeScreenContent(
         storages = uiState.storages,
@@ -26,6 +27,7 @@ public fun HomeScreen(
         onAddStorageClick = onAddStorageClick,
         onStorageClick = onStorageClick,
         onEditStorageClick = onEditStorageClick,
+        onDeleteStorageClick = onDeleteStorageClick,
     )
 }
 

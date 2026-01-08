@@ -13,6 +13,9 @@ object Settings : NavKey
 object StorageTypeSelection : NavKey
 
 @Serializable
+object PermissionRequest : NavKey
+
+@Serializable
 data class SmbAdd(val storageId: String? = null) : NavKey
 
 @Serializable

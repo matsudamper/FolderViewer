@@ -13,12 +13,17 @@ message StorageConfigurationProto {
   string name = 2;
   oneof config {
     SmbConfigurationProto smb = 3;
+    LocalConfigurationProto local = 4;
   }
 }
 
 message SmbConfigurationProto {
   string ip = 1;
   string username = 2;
+}
+
+message LocalConfigurationProto {
+  string root_path = 1;
 }
 
 message FavoriteConfigurationProto {
