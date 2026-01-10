@@ -11,8 +11,7 @@ import androidx.compose.ui.Modifier
 
 @Composable
 internal fun StorageTypeSelectionBody(
-    onSmbClick: () -> Unit,
-    onLocalClick: () -> Unit,
+    uiState: StorageTypeSelectionUiState,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -20,14 +19,14 @@ internal fun StorageTypeSelectionBody(
     ) {
         ListItem(
             headlineContent = { Text("SMB (Windows Share / NAS)") },
-            modifier = Modifier.clickable(onClick = onSmbClick),
+            modifier = Modifier.clickable(onClick = { uiState.callbacks.onSmbClick() }),
         )
         HorizontalDivider()
 
         ListItem(
             headlineContent = { Text("ローカルストレージ") },
             supportingContent = { Text("デバイス内のフォルダを参照") },
-            modifier = Modifier.clickable(onClick = onLocalClick),
+            modifier = Modifier.clickable(onClick = { uiState.callbacks.onLocalClick() }),
         )
         HorizontalDivider()
     }

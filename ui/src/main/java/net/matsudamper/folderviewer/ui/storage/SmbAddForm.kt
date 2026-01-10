@@ -22,7 +22,6 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun SmbAddForm(
     uiState: SmbAddUiState,
-    onSave: (SmbInput) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var name by remember(uiState.name) { mutableStateOf(uiState.name) }
@@ -66,7 +65,7 @@ internal fun SmbAddForm(
         Spacer(modifier = Modifier.height(SpacerLarge))
         Button(
             onClick = {
-                onSave(
+                uiState.callbacks.onSave(
                     SmbInput(
                         name = name,
                         ip = ip,

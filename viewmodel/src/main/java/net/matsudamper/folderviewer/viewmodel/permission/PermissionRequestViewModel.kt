@@ -27,22 +27,30 @@ class PermissionRequestViewModel @Inject constructor(
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> =
         MutableStateFlow(ViewModelState())
 
+    private val callbacks: PermissionRequestUiState.Callbacks = object : PermissionRequestUiState.Callbacks {
+        override fun onGrantPermission() {
+            onGrantPermissionInternal()
+        }
+    }
+
     val uiState: StateFlow<PermissionRequestUiState> =
         MutableStateFlow(
             PermissionRequestUiState(
                 hasPermission = PermissionUtil.hasManageExternalStoragePermission(context),
+                callbacks = callbacks,
             ),
         ).also { mutableUiState ->
             viewModelScope.launch {
                 viewModelStateFlow.collect { viewModelState ->
                     mutableUiState.value = PermissionRequestUiState(
                         hasPermission = viewModelState.hasPermission,
+                        callbacks = callbacks,
                     )
                 }
             }
         }.asStateFlow()
 
-    fun onGrantPermission() {
+    private fun onGrantPermissionInternal() {
         viewModelScope.launch {
             viewModelEventChannel.send(ViewModelEvent.OpenSettings)
         }

@@ -16,11 +16,13 @@ private fun HomeScreenPreview() {
                     username = "user",
                 ),
             ),
+            callbacks = object : HomeUiState.Callbacks {
+                override fun onNavigateToSettings() = Unit
+                override fun onAddStorageClick() = Unit
+                override fun onStorageClick(storage: UiStorageConfiguration) = Unit
+                override fun onEditStorageClick(storage: UiStorageConfiguration) = Unit
+                override fun onDeleteStorageClick(id: String) = Unit
+            },
         ),
-        onNavigateToSettings = {},
-        onAddStorageClick = {},
-        onStorageClick = {},
-        onEditStorageClick = {},
-        onDeleteStorageClick = {},
     )
 }

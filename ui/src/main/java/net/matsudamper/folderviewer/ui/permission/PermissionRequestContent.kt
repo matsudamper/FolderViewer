@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun PermissionRequestContent(
     uiState: PermissionRequestUiState,
-    onGrantPermission: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -46,7 +45,7 @@ internal fun PermissionRequestContent(
         Spacer(modifier = Modifier.height(32.dp))
 
         Button(
-            onClick = onGrantPermission,
+            onClick = { uiState.callbacks.onGrantPermission() },
             modifier = Modifier.fillMaxWidth(0.7f),
         ) {
             Text("設定を開く")

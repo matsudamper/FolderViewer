@@ -25,8 +25,6 @@ import net.matsudamper.folderviewer.ui.R
 @Composable
 public fun SmbAddScreen(
     uiState: SmbAddUiState,
-    onSave: (SmbInput) -> Unit,
-    onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -34,7 +32,7 @@ public fun SmbAddScreen(
         topBar = {
             SmbAddTopBar(
                 isEditMode = uiState.isEditMode,
-                onBack = onBack,
+                onBack = { uiState.callbacks.onBack() },
             )
         },
     ) { innerPadding ->
@@ -46,7 +44,6 @@ public fun SmbAddScreen(
             SmbAddForm(
                 modifier = Modifier.padding(innerPadding),
                 uiState = uiState,
-                onSave = onSave,
             )
         }
     }

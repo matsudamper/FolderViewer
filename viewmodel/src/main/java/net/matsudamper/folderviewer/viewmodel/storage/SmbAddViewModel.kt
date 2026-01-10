@@ -33,6 +33,18 @@ class SmbAddViewModel @AssistedInject constructor(
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> =
         MutableStateFlow(ViewModelState())
 
+    private val callbacks: SmbAddUiState.Callbacks = object : SmbAddUiState.Callbacks {
+        override fun onSave(input: SmbInput) {
+            onSaveInternal(input)
+        }
+
+        override fun onBack() {
+            viewModelScope.launch {
+                viewModelEventChannel.send(ViewModelEvent.NavigateBack)
+            }
+        }
+    }
+
     val uiState: StateFlow<SmbAddUiState> =
         MutableStateFlow(
             SmbAddUiState(
@@ -42,6 +54,7 @@ class SmbAddViewModel @AssistedInject constructor(
                 password = "",
                 isEditMode = false,
                 isLoading = false,
+                callbacks = callbacks,
             ),
         ).also { mutableUiState ->
             viewModelScope.launch {
@@ -54,6 +67,7 @@ class SmbAddViewModel @AssistedInject constructor(
                             password = viewModelState.password,
                             isEditMode = viewModelState.isEditMode,
                             isLoading = viewModelState.isLoading,
+                            callbacks = callbacks,
                         )
                     }
                 }
@@ -84,7 +98,7 @@ class SmbAddViewModel @AssistedInject constructor(
         }
     }
 
-    fun onSave(input: SmbInput) {
+    private fun onSaveInternal(input: SmbInput) {
         val repoInput = StorageRepository.SmbStorageInput(
             name = input.name,
             ip = input.ip,
@@ -103,6 +117,7 @@ class SmbAddViewModel @AssistedInject constructor(
 
     sealed interface ViewModelEvent {
         data object SaveSuccess : ViewModelEvent
+        data object NavigateBack : ViewModelEvent
     }
 
     private data class ViewModelState(

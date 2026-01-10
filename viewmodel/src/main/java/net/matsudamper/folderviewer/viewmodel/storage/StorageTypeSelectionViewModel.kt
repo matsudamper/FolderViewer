@@ -4,6 +4,9 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
@@ -13,6 +16,7 @@ import jakarta.inject.Inject
 import net.matsudamper.folderviewer.repository.PermissionUtil
 import net.matsudamper.folderviewer.repository.StorageConfiguration
 import net.matsudamper.folderviewer.repository.StorageRepository
+import net.matsudamper.folderviewer.ui.storage.StorageTypeSelectionUiState
 
 @HiltViewModel
 class StorageTypeSelectionViewModel @Inject constructor(
@@ -22,7 +26,29 @@ class StorageTypeSelectionViewModel @Inject constructor(
     private val viewModelEventChannel = Channel<ViewModelEvent>(Channel.UNLIMITED)
     val viewModelEventFlow = viewModelEventChannel.receiveAsFlow()
 
-    fun onLocalClick() {
+    private val callbacks: StorageTypeSelectionUiState.Callbacks = object : StorageTypeSelectionUiState.Callbacks {
+        override fun onSmbClick() {
+            viewModelScope.launch {
+                viewModelEventChannel.send(ViewModelEvent.NavigateToSmbAdd)
+            }
+        }
+
+        override fun onLocalClick() {
+            onLocalClickInternal()
+        }
+
+        override fun onBack() {
+            viewModelScope.launch {
+                viewModelEventChannel.send(ViewModelEvent.NavigateBack)
+            }
+        }
+    }
+
+    val uiState: StateFlow<StorageTypeSelectionUiState> = MutableStateFlow(
+        StorageTypeSelectionUiState(callbacks = callbacks),
+    ).asStateFlow()
+
+    private fun onLocalClickInternal() {
         viewModelScope.launch {
             if (PermissionUtil.hasManageExternalStoragePermission(context)) {
                 val existingStorages = storageRepository.storageList.first()
@@ -43,6 +69,8 @@ class StorageTypeSelectionViewModel @Inject constructor(
     sealed interface ViewModelEvent {
         data object NavigateToHome : ViewModelEvent
         data object NavigateToPermissionRequest : ViewModelEvent
+        data object NavigateToSmbAdd : ViewModelEvent
+        data object NavigateBack : ViewModelEvent
         data object ShowAlreadyAddedMessage : ViewModelEvent
     }
 }

@@ -106,28 +106,30 @@ private fun EntryProviderScope<NavKey>.homeEntry(navigator: Navigator) {
         val viewModel: HomeViewModel = hiltViewModel()
         val uiState by viewModel.uiState.collectAsState()
 
-        HomeScreen(
-            uiState = uiState,
-            onNavigateToSettings = {
-                navigator.navigate(Settings)
-            },
-            onAddStorageClick = {
-                navigator.navigate(StorageTypeSelection)
-            },
-            onStorageClick = { storage ->
-                navigator.navigate(FileBrowser(storageId = storage.id, path = null))
-            },
-            onEditStorageClick = { storage ->
-                when (storage) {
-                    is UiStorageConfiguration.Smb -> {
-                        navigator.navigate(SmbAdd(storageId = storage.id))
+        LaunchedEffect(viewModel.viewModelEventFlow) {
+            viewModel.viewModelEventFlow.collect { event ->
+                when (event) {
+                    HomeViewModel.ViewModelEvent.NavigateToSettings -> {
+                        navigator.navigate(Settings)
                     }
 
-                    is UiStorageConfiguration.Local -> {
+                    HomeViewModel.ViewModelEvent.NavigateToStorageTypeSelection -> {
+                        navigator.navigate(StorageTypeSelection)
+                    }
+
+                    is HomeViewModel.ViewModelEvent.NavigateToFileBrowser -> {
+                        navigator.navigate(FileBrowser(storageId = event.storageId, path = null))
+                    }
+
+                    is HomeViewModel.ViewModelEvent.NavigateToSmbAdd -> {
+                        navigator.navigate(SmbAdd(storageId = event.storageId))
                     }
                 }
-            },
-            onDeleteStorageClick = viewModel::onDeleteStorage,
+            }
+        }
+
+        HomeScreen(
+            uiState = uiState,
         )
     }
 }
@@ -135,15 +137,23 @@ private fun EntryProviderScope<NavKey>.homeEntry(navigator: Navigator) {
 private fun EntryProviderScope<NavKey>.settingsEntry(navigator: Navigator) {
     entry<Settings> {
         val viewModel: SettingsViewModel = hiltViewModel()
+        val uiState by viewModel.uiState.collectAsState()
         val snackbarHostState = remember { SnackbarHostState() }
 
+        LaunchedEffect(viewModel.viewModelEventFlow) {
+            viewModel.viewModelEventFlow.collect { event ->
+                when (event) {
+                    SettingsViewModel.ViewModelEvent.NavigateBack -> {
+                        navigator.goBack()
+                    }
+                }
+            }
+        }
+
         SettingsScreen(
+            uiState = uiState,
             snackbarHostState = snackbarHostState,
             uiEvent = viewModel.uiEventFlow,
-            onClearDiskCache = viewModel::clearDiskCache,
-            onBack = {
-                navigator.goBack()
-            },
         )
     }
 }
@@ -153,6 +163,7 @@ private fun EntryProviderScope<NavKey>.storageTypeSelectionEntry(
 ) {
     entry<StorageTypeSelection> {
         val viewModel: StorageTypeSelectionViewModel = hiltViewModel()
+        val uiState by viewModel.uiState.collectAsState()
         val snackbarHostState = remember { SnackbarHostState() }
         val scope = rememberCoroutineScope()
 
@@ -167,6 +178,14 @@ private fun EntryProviderScope<NavKey>.storageTypeSelectionEntry(
                         navigator.navigate(PermissionRequest)
                     }
 
+                    StorageTypeSelectionViewModel.ViewModelEvent.NavigateToSmbAdd -> {
+                        navigator.navigate(SmbAdd())
+                    }
+
+                    StorageTypeSelectionViewModel.ViewModelEvent.NavigateBack -> {
+                        navigator.goBack()
+                    }
+
                     StorageTypeSelectionViewModel.ViewModelEvent.ShowAlreadyAddedMessage -> {
                         scope.launch {
                             snackbarHostState.showSnackbar("追加済です")
@@ -177,14 +196,8 @@ private fun EntryProviderScope<NavKey>.storageTypeSelectionEntry(
         }
 
         StorageTypeSelectionScreen(
+            uiState = uiState,
             snackbarHostState = snackbarHostState,
-            onSmbClick = {
-                navigator.navigate(SmbAdd())
-            },
-            onLocalClick = viewModel::onLocalClick,
-            onBack = {
-                navigator.goBack()
-            },
         )
     }
 }
@@ -218,7 +231,6 @@ private fun EntryProviderScope<NavKey>.permissionRequestEntry(
 
         PermissionRequestScreen(
             uiState = uiState,
-            onGrantPermission = viewModel::onGrantPermission,
         )
     }
 }
@@ -238,16 +250,16 @@ private fun EntryProviderScope<NavKey>.smbAddEntry(navigator: Navigator) {
                     SmbAddViewModel.ViewModelEvent.SaveSuccess -> {
                         navigator.popBackStack(Home, inclusive = false)
                     }
+
+                    SmbAddViewModel.ViewModelEvent.NavigateBack -> {
+                        navigator.goBack()
+                    }
                 }
             }
         }
 
         SmbAddScreen(
             uiState = uiState,
-            onSave = viewModel::onSave,
-            onBack = {
-                navigator.goBack()
-            },
         )
     }
 }

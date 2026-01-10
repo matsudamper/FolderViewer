@@ -8,7 +8,6 @@ import androidx.compose.ui.Modifier
 @Composable
 fun PermissionRequestScreen(
     uiState: PermissionRequestUiState,
-    onGrantPermission: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -17,7 +16,6 @@ fun PermissionRequestScreen(
         PermissionRequestContent(
             modifier = Modifier.padding(innerPadding),
             uiState = uiState,
-            onGrantPermission = onGrantPermission,
         )
     }
 }

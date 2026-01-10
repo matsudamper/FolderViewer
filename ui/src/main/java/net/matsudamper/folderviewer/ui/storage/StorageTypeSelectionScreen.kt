@@ -9,16 +9,14 @@ import androidx.compose.ui.Modifier
 
 @Composable
 fun StorageTypeSelectionScreen(
+    uiState: StorageTypeSelectionUiState,
     snackbarHostState: SnackbarHostState,
-    onSmbClick: () -> Unit,
-    onLocalClick: () -> Unit,
-    onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
         modifier = modifier,
         topBar = {
-            StorageTypeSelectionTopBar(onBack = onBack)
+            StorageTypeSelectionTopBar(onBack = { uiState.callbacks.onBack() })
         },
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState)
@@ -26,8 +24,7 @@ fun StorageTypeSelectionScreen(
     ) { innerPadding ->
         StorageTypeSelectionBody(
             modifier = Modifier.padding(innerPadding),
-            onSmbClick = onSmbClick,
-            onLocalClick = onLocalClick,
+            uiState = uiState,
         )
     }
 }

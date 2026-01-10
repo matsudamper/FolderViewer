@@ -2,9 +2,11 @@ package net.matsudamper.folderviewer.viewmodel.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -18,12 +20,54 @@ import net.matsudamper.folderviewer.ui.home.UiStorageConfiguration
 class HomeViewModel @Inject constructor(
     private val storageRepository: StorageRepository,
 ) : ViewModel() {
+    private val viewModelEventChannel = Channel<ViewModelEvent>(Channel.UNLIMITED)
+    val viewModelEventFlow = viewModelEventChannel.receiveAsFlow()
+
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> =
         MutableStateFlow(ViewModelState())
+
+    private val callbacks: HomeUiState.Callbacks = object : HomeUiState.Callbacks {
+        override fun onNavigateToSettings() {
+            viewModelScope.launch {
+                viewModelEventChannel.send(ViewModelEvent.NavigateToSettings)
+            }
+        }
+
+        override fun onAddStorageClick() {
+            viewModelScope.launch {
+                viewModelEventChannel.send(ViewModelEvent.NavigateToStorageTypeSelection)
+            }
+        }
+
+        override fun onStorageClick(storage: UiStorageConfiguration) {
+            viewModelScope.launch {
+                viewModelEventChannel.send(ViewModelEvent.NavigateToFileBrowser(storage.id))
+            }
+        }
+
+        override fun onEditStorageClick(storage: UiStorageConfiguration) {
+            when (storage) {
+                is UiStorageConfiguration.Smb -> {
+                    viewModelScope.launch {
+                        viewModelEventChannel.send(ViewModelEvent.NavigateToSmbAdd(storage.id))
+                    }
+                }
+
+                is UiStorageConfiguration.Local -> {
+                    // 何もしない
+                }
+            }
+        }
+
+        override fun onDeleteStorageClick(id: String) {
+            onDeleteStorage(id)
+        }
+    }
 
     val uiState: StateFlow<HomeUiState> = MutableStateFlow(
         HomeUiState(
             storages = emptyList(),
+            callbacks = callbacks,
         ),
     ).also { mutableUiState ->
         viewModelScope.launch {
@@ -50,6 +94,7 @@ class HomeViewModel @Inject constructor(
                                 }
                             }
                         },
+                        callbacks = callbacks,
                     )
                 }
             }
@@ -66,10 +111,17 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun onDeleteStorage(id: String) {
+    private fun onDeleteStorage(id: String) {
         viewModelScope.launch {
             storageRepository.deleteStorage(id)
         }
+    }
+
+    sealed interface ViewModelEvent {
+        data object NavigateToSettings : ViewModelEvent
+        data object NavigateToStorageTypeSelection : ViewModelEvent
+        data class NavigateToFileBrowser(val storageId: String) : ViewModelEvent
+        data class NavigateToSmbAdd(val storageId: String) : ViewModelEvent
     }
 
     private data class ViewModelState(

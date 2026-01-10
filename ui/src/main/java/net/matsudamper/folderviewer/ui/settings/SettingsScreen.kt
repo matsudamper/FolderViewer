@@ -33,10 +33,9 @@ import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
 
 @Composable
 fun SettingsScreen(
+    uiState: SettingsUiState,
     snackbarHostState: SnackbarHostState,
     uiEvent: Flow<SettingsUiEvent>,
-    onClearDiskCache: () -> Unit,
-    onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LaunchedEffect(uiEvent) {
@@ -53,7 +52,7 @@ fun SettingsScreen(
         modifier = modifier,
         topBar = {
             SettingsTopBar(
-                onBack = onBack,
+                onBack = { uiState.callbacks.onBack() },
             )
         },
         snackbarHost = {
@@ -75,7 +74,7 @@ fun SettingsScreen(
                 Text(text = stringResource(R.string.cache))
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
-                    onClick = onClearDiskCache,
+                    onClick = { uiState.callbacks.onClearDiskCache() },
                 ) {
                     Text(text = stringResource(R.string.clear_disk_cache))
                 }
@@ -114,9 +113,13 @@ private fun SettingsTopBar(
 @Composable
 private fun SettingsScreenPreview() {
     SettingsScreen(
+        uiState = SettingsUiState(
+            callbacks = object : SettingsUiState.Callbacks {
+                override fun onClearDiskCache() = Unit
+                override fun onBack() = Unit
+            },
+        ),
         snackbarHostState = remember { SnackbarHostState() },
         uiEvent = flow {},
-        onClearDiskCache = {},
-        onBack = {},
     )
 }

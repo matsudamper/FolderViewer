@@ -15,19 +15,14 @@ import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
 @Composable
 public fun HomeScreen(
     uiState: HomeUiState,
-    onNavigateToSettings: () -> Unit,
-    onAddStorageClick: () -> Unit,
-    onStorageClick: (UiStorageConfiguration) -> Unit,
-    onEditStorageClick: (UiStorageConfiguration) -> Unit,
-    onDeleteStorageClick: (String) -> Unit,
 ) {
     HomeScreenContent(
         storages = uiState.storages,
-        onNavigateToSettings = onNavigateToSettings,
-        onAddStorageClick = onAddStorageClick,
-        onStorageClick = onStorageClick,
-        onEditStorageClick = onEditStorageClick,
-        onDeleteStorageClick = onDeleteStorageClick,
+        onNavigateToSettings = { uiState.callbacks.onNavigateToSettings() },
+        onAddStorageClick = { uiState.callbacks.onAddStorageClick() },
+        onStorageClick = { uiState.callbacks.onStorageClick(it) },
+        onEditStorageClick = { uiState.callbacks.onEditStorageClick(it) },
+        onDeleteStorageClick = { uiState.callbacks.onDeleteStorageClick(it) },
     )
 }
 
