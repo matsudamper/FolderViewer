@@ -427,9 +427,8 @@ private fun FolderBrowserGrid(
         uiState.files.forEach { item ->
             when (item) {
                 is FolderBrowserUiState.UiFileItem.Header -> {
-                    item(
+                    stickyHeader(
                         key = "header_${item.title}",
-                        span = { GridItemSpan(maxLineSpan) },
                     ) {
                         HeaderItem(path = item.title)
                     }
