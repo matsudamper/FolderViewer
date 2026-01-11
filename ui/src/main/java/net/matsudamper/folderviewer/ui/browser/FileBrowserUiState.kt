@@ -10,8 +10,6 @@ data class FileBrowserUiState(
     val currentPath: String,
     val title: String,
     val isFavorite: Boolean,
-    val files: List<UiFileItem>,
-    val favorites: List<UiFileItem.File>,
     val sortConfig: FileSortConfig,
     val displayConfig: UiDisplayConfig,
     val callbacks: Callbacks,
@@ -21,7 +19,10 @@ data class FileBrowserUiState(
         data object Loading : ContentState
         data object Error : ContentState
         data object Empty : ContentState
-        data object Content : ContentState
+        data class Content(
+            val files: List<UiFileItem>,
+            val favorites: List<UiFileItem.File>,
+        ) : ContentState
     }
     sealed interface UiFileItem {
         data class Header(

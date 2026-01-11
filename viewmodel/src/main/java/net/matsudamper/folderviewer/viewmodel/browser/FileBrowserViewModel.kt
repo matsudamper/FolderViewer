@@ -150,11 +150,42 @@ class FileBrowserViewModel @AssistedInject constructor(
                 )
             }
             
+            val favoriteItems = viewModelState.favorites.map { favorite ->
+                FileBrowserUiState.UiFileItem.File(
+                    name = favorite.path,
+                    path = favorite.path,
+                    isDirectory = true,
+                    size = 0,
+                    lastModified = 0,
+                    thumbnail = if (FileUtil.isImage(favorite.path)) {
+                        FileImageSource.Thumbnail(
+                            storageId = arg.storageId,
+                            path = favorite.path,
+                        )
+                    } else {
+                        null
+                    },
+                    callbacks = {
+                        viewModelScope.launch {
+                            viewModelEventChannel.send(
+                                ViewModelEvent.NavigateToFileBrowser(
+                                    path = favorite.path,
+                                    storageId = arg.storageId,
+                                ),
+                            )
+                        }
+                    },
+                )
+            }
+            
             val contentState = when {
                 viewModelState.isLoading && uiItems.isEmpty() -> FileBrowserUiState.ContentState.Loading
                 viewModelState.hasError && uiItems.isEmpty() -> FileBrowserUiState.ContentState.Error
                 uiItems.isEmpty() -> FileBrowserUiState.ContentState.Empty
-                else -> FileBrowserUiState.ContentState.Content
+                else -> FileBrowserUiState.ContentState.Content(
+                    files = uiItems,
+                    favorites = favoriteItems,
+                )
             }
             
             trySend(
@@ -167,38 +198,10 @@ class FileBrowserViewModel @AssistedInject constructor(
                     },
                     isFavorite = viewModelState.favoriteId != null,
                     visibleFavoriteButton = viewModelState.currentPath.isNotEmpty(),
-                    files = uiItems,
                     sortConfig = viewModelState.sortConfig,
                     displayConfig = viewModelState.displayConfig,
                     visibleFolderBrowserButton = arg.path != null,
                     contentState = contentState,
-                    favorites = viewModelState.favorites.map { favorite ->
-                        FileBrowserUiState.UiFileItem.File(
-                            name = favorite.path,
-                            path = favorite.path,
-                            isDirectory = true,
-                            size = 0,
-                            lastModified = 0,
-                            thumbnail = if (FileUtil.isImage(favorite.path)) {
-                                FileImageSource.Thumbnail(
-                                    storageId = arg.storageId,
-                                    path = favorite.path,
-                                )
-                            } else {
-                                null
-                            },
-                            callbacks = {
-                                viewModelScope.launch {
-                                    viewModelEventChannel.send(
-                                        ViewModelEvent.NavigateToFileBrowser(
-                                            path = favorite.path,
-                                            storageId = arg.storageId,
-                                        ),
-                                    )
-                                }
-                            },
-                        )
-                    },
                 ),
             )
         }
