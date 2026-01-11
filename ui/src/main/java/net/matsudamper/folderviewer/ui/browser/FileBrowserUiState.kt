@@ -65,5 +65,7 @@ data class FileBrowserUiState(
         fun onDisplayModeChanged(config: UiDisplayConfig)
         fun onFolderBrowserClick()
         fun onFavoriteClick()
+        fun onUploadFileClick()
+        fun onUploadFolderClick()
     }
 }

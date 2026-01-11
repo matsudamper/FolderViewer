@@ -2,8 +2,10 @@ package net.matsudamper.folderviewer
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -13,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.documentfile.provider.DocumentFile
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.EntryProviderScope
@@ -54,6 +57,24 @@ import net.matsudamper.folderviewer.viewmodel.permission.PermissionRequestViewMo
 import net.matsudamper.folderviewer.viewmodel.settings.SettingsViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.SmbAddViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.StorageTypeSelectionViewModel
+
+private fun collectFiles(
+    folder: DocumentFile,
+    relativePath: String,
+    files: MutableList<Pair<android.net.Uri, String>>,
+) {
+    folder.listFiles().forEach { file ->
+        if (file.isDirectory) {
+            val newRelativePath = if (relativePath.isEmpty()) file.name.orEmpty() else "$relativePath/${file.name}"
+            collectFiles(file, newRelativePath, files)
+        } else {
+            val filePath = if (relativePath.isEmpty()) file.name.orEmpty() else "$relativePath/${file.name}"
+            file.uri?.let { uri ->
+                files.add(uri to filePath)
+            }
+        }
+    }
+}
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -264,6 +285,38 @@ private fun EntryProviderScope<NavKey>.smbAddEntry(navigator: Navigator) {
     }
 }
 
+@Composable
+private fun FileBrowserEventHandler(
+    viewModel: FileBrowserViewModel,
+    navigator: Navigator,
+    filePickerLauncher: androidx.activity.compose.ManagedActivityResultLauncher<String, android.net.Uri?>,
+    folderPickerLauncher: androidx.activity.compose.ManagedActivityResultLauncher<android.net.Uri?, android.net.Uri?>,
+) {
+    LaunchedEffect(viewModel.viewModelEventFlow) {
+        viewModel.viewModelEventFlow.collect { event ->
+            when (event) {
+                is FileBrowserViewModel.ViewModelEvent.PopBackStack -> navigator.goBack()
+
+                is FileBrowserViewModel.ViewModelEvent.NavigateToFileBrowser -> {
+                    navigator.navigate(FileBrowser(storageId = event.storageId, path = event.path))
+                }
+
+                is FileBrowserViewModel.ViewModelEvent.NavigateToImageViewer -> {
+                    navigator.navigate(ImageViewer(id = event.storageId, path = event.path, allPaths = event.allPaths))
+                }
+
+                is FileBrowserViewModel.ViewModelEvent.NavigateToFolderBrowser -> {
+                    navigator.navigate(FolderBrowser(storageId = event.storageId, path = event.path))
+                }
+
+                is FileBrowserViewModel.ViewModelEvent.LaunchFilePicker -> filePickerLauncher.launch("*/*")
+
+                is FileBrowserViewModel.ViewModelEvent.LaunchFolderPicker -> folderPickerLauncher.launch(null)
+            }
+        }
+    }
+}
+
 private fun EntryProviderScope<NavKey>.fileBrowserEntry(navigator: Navigator) {
     entry<FileBrowser> { key ->
         val viewModel: FileBrowserViewModel = hiltViewModel<
@@ -276,44 +329,36 @@ private fun EntryProviderScope<NavKey>.fileBrowserEntry(navigator: Navigator) {
         )
         val uiState = viewModel.uiState.collectAsStateWithLifecycle(initialValue = null)
         val uiStateValue = uiState.value ?: return@entry
+        val scope = rememberCoroutineScope()
+        val context = LocalContext.current
 
-        LaunchedEffect(viewModel.viewModelEventFlow) {
-            viewModel.viewModelEventFlow.collect { event ->
-                when (event) {
-                    is FileBrowserViewModel.ViewModelEvent.PopBackStack -> {
-                        navigator.goBack()
-                    }
+        val filePickerLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.GetContent(),
+        ) { uri ->
+            uri?.let { selectedUri ->
+                val fileName = DocumentFile.fromSingleUri(context, selectedUri)?.name ?: "uploaded_file"
+                scope.launch {
+                    viewModel.handleFileUpload(selectedUri, fileName)
+                }
+            }
+        }
 
-                    is FileBrowserViewModel.ViewModelEvent.NavigateToFileBrowser -> {
-                        navigator.navigate(
-                            FileBrowser(
-                                storageId = event.storageId,
-                                path = event.path,
-                            ),
-                        )
-                    }
-
-                    is FileBrowserViewModel.ViewModelEvent.NavigateToImageViewer -> {
-                        navigator.navigate(
-                            ImageViewer(
-                                id = event.storageId,
-                                path = event.path,
-                                allPaths = event.allPaths,
-                            ),
-                        )
-                    }
-
-                    is FileBrowserViewModel.ViewModelEvent.NavigateToFolderBrowser -> {
-                        navigator.navigate(
-                            FolderBrowser(
-                                storageId = event.storageId,
-                                path = event.path,
-                            ),
-                        )
+        val folderPickerLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.OpenDocumentTree(),
+        ) { uri ->
+            uri?.let { treeUri ->
+                val documentFile = DocumentFile.fromTreeUri(context, treeUri)
+                documentFile?.let { folder ->
+                    val files = mutableListOf<Pair<android.net.Uri, String>>()
+                    collectFiles(folder, "", files)
+                    scope.launch {
+                        viewModel.handleFolderUpload(files)
                     }
                 }
             }
         }
+
+        FileBrowserEventHandler(viewModel, navigator, filePickerLauncher, folderPickerLauncher)
 
         FileBrowserScreen(
             uiState = uiStateValue,

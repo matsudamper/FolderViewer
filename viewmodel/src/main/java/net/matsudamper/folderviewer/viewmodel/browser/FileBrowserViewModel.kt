@@ -125,6 +125,18 @@ class FileBrowserViewModel @AssistedInject constructor(
                 }
             }
         }
+
+        override fun onUploadFileClick() {
+            viewModelScope.launch {
+                viewModelEventChannel.send(ViewModelEvent.LaunchFilePicker)
+            }
+        }
+
+        override fun onUploadFolderClick() {
+            viewModelScope.launch {
+                viewModelEventChannel.send(ViewModelEvent.LaunchFolderPicker)
+            }
+        }
     }
 
     val uiState: Flow<FileBrowserUiState> = channelFlow {
@@ -360,6 +372,60 @@ class FileBrowserViewModel @AssistedInject constructor(
             val path: String,
             val storageId: String,
         ) : ViewModelEvent
+
+        data object LaunchFilePicker : ViewModelEvent
+        data object LaunchFolderPicker : ViewModelEvent
+    }
+
+    suspend fun handleFileUpload(uri: android.net.Uri, fileName: String) {
+        runCatching {
+            val repository = getRepository()
+            val currentPath = viewModelStateFlow.value.currentPath
+            val contentResolver = getApplication<Application>().contentResolver
+            contentResolver.openInputStream(uri)?.use { inputStream ->
+                repository.uploadFile(currentPath, fileName, inputStream)
+            }
+            fetchFilesInternal(currentPath)
+            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ファイルをアップロードしました"))
+        }.onFailure { e ->
+            when (e) {
+                is CancellationException -> throw e
+
+                else -> {
+                    uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar("アップロード失敗: ${e.message}"))
+                }
+            }
+        }
+    }
+
+    suspend fun handleFolderUpload(uris: List<Pair<android.net.Uri, String>>) {
+        runCatching {
+            val repository = getRepository()
+            val currentPath = viewModelStateFlow.value.currentPath
+            val contentResolver = getApplication<Application>().contentResolver
+
+            val folderName = "uploaded_folder_${System.currentTimeMillis()}"
+            val filesToUpload = uris.mapNotNull { (uri, relativePath) ->
+                contentResolver.openInputStream(uri)?.let { inputStream ->
+                    net.matsudamper.folderviewer.repository.FileToUpload(
+                        relativePath = relativePath,
+                        inputStream = inputStream,
+                    )
+                }
+            }
+
+            repository.uploadFolder(currentPath, folderName, filesToUpload)
+            fetchFilesInternal(currentPath)
+            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("フォルダをアップロードしました"))
+        }.onFailure { e ->
+            when (e) {
+                is CancellationException -> throw e
+
+                else -> {
+                    uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar("アップロード失敗: ${e.message}"))
+                }
+            }
+        }
     }
 
     private inner class FileItemCallbacks(
