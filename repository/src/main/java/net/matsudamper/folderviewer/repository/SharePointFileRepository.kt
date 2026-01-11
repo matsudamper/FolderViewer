@@ -2,6 +2,7 @@ package net.matsudamper.folderviewer.repository
 
 import java.io.ByteArrayInputStream
 import java.io.InputStream
+import java.net.URL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.azure.identity.ClientSecretCredentialBuilder
@@ -96,9 +97,16 @@ class SharePointFileRepository(
     }
 
     override suspend fun getFileContent(path: String): InputStream = withContext(Dispatchers.IO) {
-        // TODO: Microsoft Graph APIを使用してファイルコンテンツを取得
-        // 例: GET https://graph.microsoft.com/v1.0/sites/{site-id}/drive/items/{item-id}/content
-        ByteArrayInputStream(ByteArray(0))
+        val driveId = getDriveId() ?: return@withContext ByteArrayInputStream(ByteArray(0))
+        val itemId = resolveItemIdByPath(driveId, path) ?: return@withContext ByteArrayInputStream(ByteArray(0))
+
+        try {
+            graphServiceClient.drives().byDriveId(driveId).items().byDriveItemId(itemId).content().get()
+                ?: ByteArrayInputStream(ByteArray(0))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            ByteArrayInputStream(ByteArray(0))
+        }
     }
 
     override suspend fun getThumbnail(path: String, thumbnailSize: Int): InputStream? {
