@@ -149,10 +149,17 @@ class FileBrowserViewModel @AssistedInject constructor(
                     callbacks = FileItemCallbacks(fileItem, sortedFiles),
                 )
             }
+            
+            val contentState = when {
+                viewModelState.isLoading && uiItems.isEmpty() -> FileBrowserUiState.ContentState.Loading
+                viewModelState.hasError && uiItems.isEmpty() -> FileBrowserUiState.ContentState.Error
+                uiItems.isEmpty() -> FileBrowserUiState.ContentState.Empty
+                else -> FileBrowserUiState.ContentState.Content
+            }
+            
             trySend(
                 FileBrowserUiState(
                     callbacks = callbacks,
-                    isLoading = viewModelState.isLoading,
                     isRefreshing = viewModelState.isRefreshing,
                     currentPath = viewModelState.currentPath,
                     title = viewModelState.currentPath.ifEmpty {
@@ -164,7 +171,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                     sortConfig = viewModelState.sortConfig,
                     displayConfig = viewModelState.displayConfig,
                     visibleFolderBrowserButton = arg.path != null,
-                    hasError = viewModelState.hasError,
+                    contentState = contentState,
                     favorites = viewModelState.favorites.map { favorite ->
                         FileBrowserUiState.UiFileItem.File(
                             name = favorite.path,

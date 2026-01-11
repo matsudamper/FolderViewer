@@ -4,7 +4,6 @@ import androidx.compose.runtime.Immutable
 import net.matsudamper.folderviewer.coil.FileImageSource
 
 data class FileBrowserUiState(
-    val isLoading: Boolean,
     val visibleFolderBrowserButton: Boolean,
     val visibleFavoriteButton: Boolean,
     val isRefreshing: Boolean,
@@ -16,8 +15,14 @@ data class FileBrowserUiState(
     val sortConfig: FileSortConfig,
     val displayConfig: UiDisplayConfig,
     val callbacks: Callbacks,
-    val hasError: Boolean = false,
+    val contentState: ContentState,
 ) {
+    sealed interface ContentState {
+        data object Loading : ContentState
+        data object Error : ContentState
+        data object Empty : ContentState
+        data object Content : ContentState
+    }
     sealed interface UiFileItem {
         data class Header(
             val title: String,

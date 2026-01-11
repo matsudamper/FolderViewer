@@ -54,8 +54,8 @@ internal fun FileBrowserBody(
             )
         },
     ) {
-        when {
-            uiState.isLoading && uiState.files.isEmpty() -> {
+        when (uiState.contentState) {
+            FileBrowserUiState.ContentState.Loading -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -66,7 +66,7 @@ internal fun FileBrowserBody(
                 }
             }
 
-            uiState.hasError && uiState.files.isEmpty() -> {
+            FileBrowserUiState.ContentState.Error -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -88,7 +88,7 @@ internal fun FileBrowserBody(
                 }
             }
 
-            uiState.files.isEmpty() -> {
+            FileBrowserUiState.ContentState.Empty -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -102,7 +102,7 @@ internal fun FileBrowserBody(
                 }
             }
 
-            else -> {
+            FileBrowserUiState.ContentState.Content -> {
                 FileBrowserContent(
                     uiState = uiState,
                     contentPadding = contentPadding,
