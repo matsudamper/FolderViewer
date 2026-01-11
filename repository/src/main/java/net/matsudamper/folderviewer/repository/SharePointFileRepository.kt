@@ -30,7 +30,7 @@ class SharePointFileRepository(
             val itemId = resolveItemIdByPath(driveId, path) ?: throw java.lang.IllegalStateException("Do not resolveItemIdByPath $driveId")
             val driveItems = fetchDriveItems(driveId, itemId)
 
-            mapToFileItems(driveItems.value, path)
+            mapToFileItems(driveItems.value.orEmpty(), path)
         }
     }
 
@@ -63,8 +63,8 @@ class SharePointFileRepository(
         return items.byDriveItemId(itemId).children().get()!!
     }
 
-    private fun mapToFileItems(driveItems: List<DriveItem>?, path: String): List<FileItem> {
-        return driveItems?.mapNotNull { item ->
+    private fun mapToFileItems(driveItems: List<DriveItem>, path: String): List<FileItem> {
+        return driveItems.map { item ->
             val itemName = item.name ?: throw IllegalStateException("Item name is null. $item")
             val itemPath = if (path.isEmpty()) {
                 itemName
@@ -79,10 +79,10 @@ class SharePointFileRepository(
                 size = item.size ?: 0L,
                 lastModified = item.lastModifiedDateTime?.toInstant()?.toEpochMilli() ?: 0L,
             )
-        }?.sortedWith(
+        }.sortedWith(
             compareBy<FileItem> { !it.isDirectory }
                 .thenBy { it.name.lowercase() },
-        ).orEmpty()
+        )
     }
 
     override suspend fun getFileContent(path: String): InputStream = withContext(Dispatchers.IO) {
