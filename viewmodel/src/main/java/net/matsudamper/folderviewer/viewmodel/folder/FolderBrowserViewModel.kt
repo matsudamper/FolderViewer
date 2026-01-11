@@ -266,6 +266,7 @@ class FolderBrowserViewModel @AssistedInject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                e.printStackTrace()
                 uiChannelEvent.trySend(FolderBrowserUiEvent.ShowSnackbar(e.message ?: "Unknown error"))
             } finally {
                 viewModelStateFlow.update {

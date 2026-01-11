@@ -330,6 +330,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                 is CancellationException -> throw e
 
                 else -> {
+                    e.printStackTrace()
                     viewModelStateFlow.update {
                         it.copy(
                             isLoading = false,
