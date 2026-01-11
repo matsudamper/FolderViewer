@@ -2,5 +2,6 @@
 <project version="4">
   <component name="JunieProject">
     <option name="guidelinesPath" value="AGENTS.md" />
+    <option name="questionFrequencyLevel" value="NeverAsk" />
   </component>
 </project>
