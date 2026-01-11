@@ -56,6 +56,12 @@ class HomeViewModel @Inject constructor(
                 is UiStorageConfiguration.Local -> {
                     // 何もしない
                 }
+
+                is UiStorageConfiguration.SharePoint -> {
+                    viewModelScope.launch {
+                        viewModelEventChannel.send(ViewModelEvent.NavigateToSharePointAdd(storage.id))
+                    }
+                }
             }
         }
 
@@ -92,6 +98,14 @@ class HomeViewModel @Inject constructor(
                                         rootPath = storage.rootPath,
                                     )
                                 }
+
+                                is StorageConfiguration.SharePoint -> {
+                                    UiStorageConfiguration.SharePoint(
+                                        id = storage.id,
+                                        name = storage.name,
+                                        objectId = storage.objectId,
+                                    )
+                                }
                             }
                         },
                         callbacks = callbacks,
@@ -122,6 +136,7 @@ class HomeViewModel @Inject constructor(
         data object NavigateToStorageTypeSelection : ViewModelEvent
         data class NavigateToFileBrowser(val storageId: String) : ViewModelEvent
         data class NavigateToSmbAdd(val storageId: String) : ViewModelEvent
+        data class NavigateToSharePointAdd(val storageId: String) : ViewModelEvent
     }
 
     private data class ViewModelState(

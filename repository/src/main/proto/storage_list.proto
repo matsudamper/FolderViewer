@@ -28,7 +28,7 @@ message LocalConfigurationProto {
 }
 
 message SharePointConfigurationProto {
-  string site_url = 1;
+  string object_id = 1;
 }
 
 message FavoriteConfigurationProto {

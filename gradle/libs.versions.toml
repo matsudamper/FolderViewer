@@ -27,6 +27,8 @@ protobufPlugin = "0.9.6"
 coil = "2.7.0"
 zoomable = "2.9.0"
 jakartaInject = "2.0.1"
+microsoftGraph = "6.6.0"
+azureIdentity = "1.12.0"
 
 [libraries]
 androidxCoreKtx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -66,6 +68,8 @@ protobufProtoc = { group = "com.google.protobuf", name = "protoc", version.ref =
 coilCompose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 zoomable = { group = "net.engawapg.lib", name = "zoomable", version.ref = "zoomable" }
 jakartaInject = { group = "jakarta.inject", name = "jakarta.inject-api", version.ref = "jakartaInject" }
+microsoftGraph = { group = "com.microsoft.graph", name = "microsoft-graph", version.ref = "microsoftGraph" }
+azureIdentity = { group = "com.azure", name = "azure-identity", version.ref = "azureIdentity" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

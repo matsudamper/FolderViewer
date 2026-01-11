@@ -4,7 +4,10 @@
       "Bash(./gradlew *)",
       "Bash(./gradlew:*)",
       "Bash(git pull:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "WebSearch",
+      "WebFetch(domain:devblogs.microsoft.com)",
+      "WebFetch(domain:github.com)"
     ],
     "defaultMode": "acceptEdits"
   }

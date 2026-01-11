@@ -49,8 +49,10 @@ class SharePointAddViewModel @AssistedInject constructor(
         MutableStateFlow(
             SharePointAddUiState(
                 name = "",
-                siteUrl = "",
-                apiKey = "",
+                objectId = "",
+                tenantId = "",
+                clientId = "",
+                clientSecret = "",
                 isEditMode = false,
                 isLoading = false,
                 callbacks = callbacks,
@@ -61,8 +63,10 @@ class SharePointAddViewModel @AssistedInject constructor(
                     mutableUiState.update {
                         it.copy(
                             name = viewModelState.name,
-                            siteUrl = viewModelState.siteUrl,
-                            apiKey = viewModelState.apiKey,
+                            objectId = viewModelState.objectId,
+                            tenantId = viewModelState.tenantId,
+                            clientId = viewModelState.clientId,
+                            clientSecret = viewModelState.clientSecret,
                             isEditMode = viewModelState.isEditMode,
                             isLoading = viewModelState.isLoading,
                             callbacks = callbacks,
@@ -82,8 +86,10 @@ class SharePointAddViewModel @AssistedInject constructor(
                     viewModelStateFlow.update {
                         it.copy(
                             name = storage.name,
-                            siteUrl = storage.siteUrl,
-                            apiKey = storage.apiKey,
+                            objectId = storage.objectId,
+                            tenantId = storage.tenantId,
+                            clientId = storage.clientId,
+                            clientSecret = storage.clientSecret,
                             isEditMode = true,
                             isLoading = false,
                         )
@@ -98,8 +104,10 @@ class SharePointAddViewModel @AssistedInject constructor(
     private fun onSaveInternal(input: SharePointInput) {
         val repoInput = StorageRepository.SharePointStorageInput(
             name = input.name,
-            siteUrl = input.siteUrl,
-            apiKey = input.apiKey,
+            objectId = input.objectId,
+            tenantId = input.tenantId,
+            clientId = input.clientId,
+            clientSecret = input.clientSecret,
         )
         viewModelScope.launch {
             if (storageId == null) {
@@ -118,8 +126,10 @@ class SharePointAddViewModel @AssistedInject constructor(
 
     private data class ViewModelState(
         val name: String = "",
-        val siteUrl: String = "",
-        val apiKey: String = "",
+        val objectId: String = "",
+        val tenantId: String = "",
+        val clientId: String = "",
+        val clientSecret: String = "",
         val isEditMode: Boolean = false,
         val isLoading: Boolean = false,
     )

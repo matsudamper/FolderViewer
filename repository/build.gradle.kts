@@ -38,6 +38,8 @@ dependencies {
     implementation(libs.hiltAndroid)
     ksp(libs.hiltCompiler)
     implementation(libs.jakartaInject)
+    implementation(libs.microsoftGraph)
+    implementation(libs.azureIdentity)
 }
 
 protobuf {

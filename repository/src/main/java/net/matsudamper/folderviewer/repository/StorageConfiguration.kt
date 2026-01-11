@@ -27,7 +27,9 @@ sealed interface StorageConfiguration {
     data class SharePoint(
         override val id: String,
         override val name: String,
-        val siteUrl: String,
-        val apiKey: String,
+        val objectId: String,
+        val tenantId: String,
+        val clientId: String,
+        val clientSecret: String,
     ) : StorageConfiguration
 }

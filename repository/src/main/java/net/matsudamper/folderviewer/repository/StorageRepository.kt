@@ -153,12 +153,16 @@ class StorageRepository @Inject constructor(
         val sharePointConfig = StorageConfiguration.SharePoint(
             id = id,
             name = config.name,
-            siteUrl = config.siteUrl,
-            apiKey = config.apiKey,
+            objectId = config.objectId,
+            tenantId = config.tenantId,
+            clientId = config.clientId,
+            clientSecret = config.clientSecret,
         )
 
         sharedPreferences.edit {
-            putString(id, config.apiKey)
+            putString("${id}_tenantId", config.tenantId)
+            putString("${id}_clientId", config.clientId)
+            putString("${id}_clientSecret", config.clientSecret)
         }
 
         context.dataStore.updateData { currentList ->
@@ -172,12 +176,16 @@ class StorageRepository @Inject constructor(
         val sharePointConfig = StorageConfiguration.SharePoint(
             id = id,
             name = config.name,
-            siteUrl = config.siteUrl,
-            apiKey = config.apiKey,
+            objectId = config.objectId,
+            tenantId = config.tenantId,
+            clientId = config.clientId,
+            clientSecret = config.clientSecret,
         )
 
         sharedPreferences.edit {
-            putString(id, config.apiKey)
+            putString("${id}_tenantId", config.tenantId)
+            putString("${id}_clientId", config.clientId)
+            putString("${id}_clientSecret", config.clientSecret)
         }
 
         context.dataStore.updateData { currentList ->
@@ -198,6 +206,9 @@ class StorageRepository @Inject constructor(
             if (index >= 0) {
                 sharedPreferences.edit {
                     remove(id)
+                    remove("${id}_tenantId")
+                    remove("${id}_clientId")
+                    remove("${id}_clientSecret")
                 }
                 currentList.toBuilder()
                     .removeList(index)
@@ -273,8 +284,10 @@ class StorageRepository @Inject constructor(
                 StorageConfiguration.SharePoint(
                     id = id,
                     name = name,
-                    siteUrl = sharepoint.siteUrl,
-                    apiKey = sharedPreferences.getString(id, null).orEmpty(),
+                    objectId = sharepoint.objectId,
+                    tenantId = sharedPreferences.getString("${id}_tenantId", null).orEmpty(),
+                    clientId = sharedPreferences.getString("${id}_clientId", null).orEmpty(),
+                    clientSecret = sharedPreferences.getString("${id}_clientSecret", null).orEmpty(),
                 )
             }
 
@@ -313,7 +326,7 @@ class StorageRepository @Inject constructor(
             .setName(name)
             .setSharepoint(
                 SharePointConfigurationProto.newBuilder()
-                    .setSiteUrl(siteUrl)
+                    .setObjectId(objectId)
                     .build(),
             )
             .build()
@@ -346,8 +359,10 @@ class StorageRepository @Inject constructor(
 
     data class SharePointStorageInput(
         val name: String,
-        val siteUrl: String,
-        val apiKey: String,
+        val objectId: String,
+        val tenantId: String,
+        val clientId: String,
+        val clientSecret: String,
     )
 }
 

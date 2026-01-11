@@ -16,10 +16,10 @@ import net.matsudamper.folderviewer.ui.R
 
 @Composable
 internal fun FileBrowserExpandedFab(
-    modifier: Modifier = Modifier,
     onUploadFolderClick: () -> Unit,
     onUploadFileClick: () -> Unit,
     onFolderBrowserClick: () -> Unit,
+    modifier: Modifier = Modifier,
     expandedChange: (Boolean) -> Unit,
 ) {
     Column(

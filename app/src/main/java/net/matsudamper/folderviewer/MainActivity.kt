@@ -149,6 +149,10 @@ private fun EntryProviderScope<NavKey>.homeEntry(navigator: Navigator) {
                     is HomeViewModel.ViewModelEvent.NavigateToSmbAdd -> {
                         navigator.navigate(SmbAdd(storageId = event.storageId))
                     }
+
+                    is HomeViewModel.ViewModelEvent.NavigateToSharePointAdd -> {
+                        navigator.navigate(SharePointAdd(storageId = event.storageId))
+                    }
                 }
             }
         }
@@ -295,7 +299,10 @@ private fun EntryProviderScope<NavKey>.smbAddEntry(navigator: Navigator) {
 
 private fun EntryProviderScope<NavKey>.sharePointAddEntry(navigator: Navigator) {
     entry<SharePointAdd> { key ->
-        val viewModel: SharePointAddViewModel = hiltViewModel<SharePointAddViewModel, SharePointAddViewModel.Companion.Factory>(
+        val viewModel: SharePointAddViewModel = hiltViewModel<
+            SharePointAddViewModel,
+            SharePointAddViewModel.Companion.Factory,
+            >(
             creationCallback = { factory: SharePointAddViewModel.Companion.Factory ->
                 factory.create(arguments = key)
             },

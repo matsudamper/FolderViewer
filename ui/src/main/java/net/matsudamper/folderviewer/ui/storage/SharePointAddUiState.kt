@@ -4,8 +4,10 @@ import androidx.compose.runtime.Immutable
 
 public data class SharePointAddUiState(
     val name: String,
-    val siteUrl: String,
-    val apiKey: String,
+    val objectId: String,
+    val tenantId: String,
+    val clientId: String,
+    val clientSecret: String,
     val isEditMode: Boolean,
     val isLoading: Boolean,
     val callbacks: Callbacks,

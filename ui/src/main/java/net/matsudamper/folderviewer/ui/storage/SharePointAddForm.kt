@@ -25,8 +25,10 @@ internal fun SharePointAddForm(
     modifier: Modifier = Modifier,
 ) {
     var name by remember(uiState.name) { mutableStateOf(uiState.name) }
-    var siteUrl by remember(uiState.siteUrl) { mutableStateOf(uiState.siteUrl) }
-    var apiKey by remember(uiState.apiKey) { mutableStateOf(uiState.apiKey) }
+    var objectId by remember(uiState.objectId) { mutableStateOf(uiState.objectId) }
+    var tenantId by remember(uiState.tenantId) { mutableStateOf(uiState.tenantId) }
+    var clientId by remember(uiState.clientId) { mutableStateOf(uiState.clientId) }
+    var clientSecret by remember(uiState.clientSecret) { mutableStateOf(uiState.clientSecret) }
 
     Column(
         modifier = modifier
@@ -42,16 +44,30 @@ internal fun SharePointAddForm(
         )
         Spacer(modifier = Modifier.height(PaddingSmall))
         OutlinedTextField(
-            value = siteUrl,
-            onValueChange = { siteUrl = it },
-            label = { Text("SharePoint Site URL") },
+            value = objectId,
+            onValueChange = { objectId = it },
+            label = { Text("User Object ID") },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(modifier = Modifier.height(PaddingSmall))
+        OutlinedTextField(
+            value = tenantId,
+            onValueChange = { tenantId = it },
+            label = { Text("Tenant ID") },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(modifier = Modifier.height(PaddingSmall))
+        OutlinedTextField(
+            value = clientId,
+            onValueChange = { clientId = it },
+            label = { Text("Client ID") },
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(modifier = Modifier.height(PaddingSmall))
         PasswordTextField(
-            value = apiKey,
-            onValueChange = { apiKey = it },
-            label = { Text("API Key") },
+            value = clientSecret,
+            onValueChange = { clientSecret = it },
+            label = { Text("Client Secret") },
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(modifier = Modifier.height(SpacerLarge))
@@ -60,12 +76,15 @@ internal fun SharePointAddForm(
                 uiState.callbacks.onSave(
                     SharePointInput(
                         name = name,
-                        siteUrl = siteUrl,
-                        apiKey = apiKey,
+                        objectId = objectId,
+                        tenantId = tenantId,
+                        clientId = clientId,
+                        clientSecret = clientSecret,
                     ),
                 )
             },
-            enabled = name.isNotBlank() && siteUrl.isNotBlank() && apiKey.isNotBlank(),
+            enabled = name.isNotBlank() && objectId.isNotBlank() && tenantId.isNotBlank() &&
+                clientId.isNotBlank() && clientSecret.isNotBlank(),
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text("Save")
