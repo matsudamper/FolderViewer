@@ -65,7 +65,7 @@ class SharePointFileRepository(
 
     private fun mapToFileItems(driveItems: List<DriveItem>?, path: String): List<FileItem> {
         return driveItems?.mapNotNull { item ->
-            val itemName = item.name ?: return@mapNotNull null
+            val itemName = item.name ?: throw IllegalStateException("Item name is null. $item")
             val itemPath = if (path.isEmpty()) {
                 itemName
             } else {
