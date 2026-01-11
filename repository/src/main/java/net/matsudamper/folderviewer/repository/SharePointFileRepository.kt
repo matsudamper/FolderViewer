@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.azure.identity.ClientSecretCredentialBuilder
 import com.microsoft.graph.models.DriveItem
+import com.microsoft.graph.models.DriveItemCollectionResponse
 import com.microsoft.graph.models.File
 import com.microsoft.graph.serviceclient.GraphServiceClient
 
@@ -23,23 +24,19 @@ class SharePointFileRepository(
         GraphServiceClient(credential, "https://graph.microsoft.com/.default")
     }
 
-    override suspend fun getFiles(path: String): List<FileItem> = withContext(Dispatchers.IO) {
-        val driveId = getDriveId() ?: return@withContext emptyList()
-        val itemId = resolveItemIdByPath(driveId, path) ?: return@withContext emptyList()
-        val driveItems = fetchDriveItems(driveId, itemId) ?: return@withContext emptyList()
+    override suspend fun getFiles(path: String): List<FileItem> {
+        return withContext(Dispatchers.IO) {
+            val driveId = getDriveId()
+            val itemId = resolveItemIdByPath(driveId, path) ?: throw java.lang.IllegalStateException("Do not resolveItemIdByPath $driveId")
+            val driveItems = fetchDriveItems(driveId, itemId)
 
-        mapToFileItems(driveItems.value, path)
+            mapToFileItems(driveItems.value, path)
+        }
     }
 
-    private fun getDriveId(): String? {
-        val drive = try {
-            graphServiceClient.users().byUserId(config.objectId).drive().get()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        } ?: return null
-
-        return drive.id
+    private fun getDriveId(): String {
+        val drive = graphServiceClient.users().byUserId(config.objectId).drive()
+        return drive.get()!!.id!!
     }
 
     private fun resolveItemIdByPath(driveId: String, path: String): String? {
@@ -51,13 +48,8 @@ class SharePointFileRepository(
         var currentItemId = "root"
 
         for (part in pathParts) {
-            val items = try {
-                graphServiceClient.drives().byDriveId(driveId).items()
-                    .byDriveItemId(currentItemId).children().get()
-            } catch (e: Exception) {
-                e.printStackTrace()
-                return null
-            }
+            val items = graphServiceClient.drives().byDriveId(driveId).items()
+                .byDriveItemId(currentItemId).children().get()!!
 
             val nextItem = items.value?.find { it.name == part } ?: return null
             currentItemId = nextItem.id ?: return null
@@ -66,11 +58,9 @@ class SharePointFileRepository(
         return currentItemId
     }
 
-    private fun fetchDriveItems(driveId: String, itemId: String) = try {
-        graphServiceClient.drives().byDriveId(driveId).items().byDriveItemId(itemId).children().get()
-    } catch (e: Exception) {
-        e.printStackTrace()
-        null
+    private fun fetchDriveItems(driveId: String, itemId: String): DriveItemCollectionResponse {
+        val items = graphServiceClient.drives().byDriveId(driveId).items()
+        return items.byDriveItemId(itemId).children().get()!!
     }
 
     private fun mapToFileItems(driveItems: List<DriveItem>?, path: String): List<FileItem> {
@@ -96,21 +86,16 @@ class SharePointFileRepository(
     }
 
     override suspend fun getFileContent(path: String): InputStream = withContext(Dispatchers.IO) {
-        val driveId = getDriveId() ?: return@withContext ByteArrayInputStream(ByteArray(0))
+        val driveId = getDriveId()
         val itemId = resolveItemIdByPath(driveId, path) ?: return@withContext ByteArrayInputStream(ByteArray(0))
 
-        try {
-            graphServiceClient.drives().byDriveId(driveId).items().byDriveItemId(itemId).content().get()
-                ?: ByteArrayInputStream(ByteArray(0))
-        } catch (e: Exception) {
-            e.printStackTrace()
-            ByteArrayInputStream(ByteArray(0))
-        }
+        graphServiceClient.drives().byDriveId(driveId).items().byDriveItemId(itemId).content().get()
+            ?: ByteArrayInputStream(ByteArray(0))
     }
 
     override suspend fun getThumbnail(path: String, thumbnailSize: Int): InputStream? {
         return withContext(Dispatchers.IO) {
-            val driveId = getDriveId() ?: return@withContext ByteArrayInputStream(ByteArray(0))
+            val driveId = getDriveId()
             val itemId = resolveItemIdByPath(driveId, path) ?: return@withContext ByteArrayInputStream(ByteArray(0))
 
             val thumbnails = graphServiceClient.drives().byDriveId(driveId)
@@ -134,7 +119,7 @@ class SharePointFileRepository(
         inputStream: InputStream,
     ) {
         withContext(Dispatchers.IO) {
-            val driveId = getDriveId() ?: throw IllegalStateException("Drive not found")
+            val driveId = getDriveId()
             val parentItemId = resolveItemIdByPath(driveId, destinationPath)
                 ?: throw IllegalArgumentException("Destination path not found: $destinationPath")
 
@@ -165,7 +150,7 @@ class SharePointFileRepository(
         files: List<FileToUpload>,
     ) {
         withContext(Dispatchers.IO) {
-            val driveId = getDriveId() ?: throw IllegalStateException("Drive not found")
+            val driveId = getDriveId()
             val parentItemId = resolveItemIdByPath(driveId, destinationPath)
                 ?: throw IllegalArgumentException("Destination path not found: $destinationPath")
 
