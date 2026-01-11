@@ -161,10 +161,51 @@ class FileBrowserViewModel @AssistedInject constructor(
                     callbacks = FileItemCallbacks(fileItem, sortedFiles),
                 )
             }
+
+            val favoriteItems = viewModelState.favorites.map { favorite ->
+                FileBrowserUiState.UiFileItem.File(
+                    name = favorite.path,
+                    path = favorite.path,
+                    isDirectory = true,
+                    size = 0,
+                    lastModified = 0,
+                    thumbnail = if (FileUtil.isImage(favorite.path)) {
+                        FileImageSource.Thumbnail(
+                            storageId = arg.storageId,
+                            path = favorite.path,
+                        )
+                    } else {
+                        null
+                    },
+                    callbacks = {
+                        viewModelScope.launch {
+                            viewModelEventChannel.send(
+                                ViewModelEvent.NavigateToFileBrowser(
+                                    path = favorite.path,
+                                    storageId = arg.storageId,
+                                ),
+                            )
+                        }
+                    },
+                )
+            }
+
+            val contentState = when {
+                viewModelState.isLoading && uiItems.isEmpty() -> FileBrowserUiState.ContentState.Loading
+
+                viewModelState.hasError && uiItems.isEmpty() -> FileBrowserUiState.ContentState.Error
+
+                uiItems.isEmpty() -> FileBrowserUiState.ContentState.Empty
+
+                else -> FileBrowserUiState.ContentState.Content(
+                    files = uiItems,
+                    favorites = favoriteItems,
+                )
+            }
+
             trySend(
                 FileBrowserUiState(
                     callbacks = callbacks,
-                    isLoading = viewModelState.isLoading,
                     isRefreshing = viewModelState.isRefreshing,
                     currentPath = viewModelState.currentPath,
                     title = viewModelState.currentPath.ifEmpty {
@@ -172,37 +213,10 @@ class FileBrowserViewModel @AssistedInject constructor(
                     },
                     isFavorite = viewModelState.favoriteId != null,
                     visibleFavoriteButton = viewModelState.currentPath.isNotEmpty(),
-                    files = uiItems,
                     sortConfig = viewModelState.sortConfig,
                     displayConfig = viewModelState.displayConfig,
                     visibleFolderBrowserButton = arg.path != null,
-                    favorites = viewModelState.favorites.map { favorite ->
-                        FileBrowserUiState.UiFileItem.File(
-                            name = favorite.path,
-                            path = favorite.path,
-                            isDirectory = true,
-                            size = 0,
-                            lastModified = 0,
-                            thumbnail = if (FileUtil.isImage(favorite.path)) {
-                                FileImageSource.Thumbnail(
-                                    storageId = arg.storageId,
-                                    path = favorite.path,
-                                )
-                            } else {
-                                null
-                            },
-                            callbacks = {
-                                viewModelScope.launch {
-                                    viewModelEventChannel.send(
-                                        ViewModelEvent.NavigateToFileBrowser(
-                                            path = favorite.path,
-                                            storageId = arg.storageId,
-                                        ),
-                                    )
-                                }
-                            },
-                        )
-                    },
+                    contentState = contentState,
                 ),
             )
         }
@@ -323,6 +337,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                     isRefreshing = false,
                     currentPath = path,
                     rawFiles = files,
+                    hasError = false,
                 )
             }
         }.onFailure { e ->
@@ -334,6 +349,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                         it.copy(
                             isLoading = false,
                             isRefreshing = false,
+                            hasError = true,
                         )
                     }
                     uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar(e.message ?: "Unknown error"))
@@ -464,6 +480,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         ),
         val favoriteId: String? = null,
         val favorites: List<FavoriteConfiguration> = emptyList(),
+        val hasError: Boolean = false,
     )
 
     companion object {

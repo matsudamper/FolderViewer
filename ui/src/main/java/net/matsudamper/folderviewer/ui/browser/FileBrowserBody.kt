@@ -1,8 +1,11 @@
 package net.matsudamper.folderviewer.ui.browser
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -12,6 +15,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
@@ -50,8 +54,8 @@ internal fun FileBrowserBody(
             )
         },
     ) {
-        when {
-            uiState.isLoading && uiState.files.isEmpty() -> {
+        when (val contentState = uiState.contentState) {
+            FileBrowserUiState.ContentState.Loading -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -62,7 +66,29 @@ internal fun FileBrowserBody(
                 }
             }
 
-            uiState.files.isEmpty() -> {
+            FileBrowserUiState.ContentState.Error -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(contentPadding)
+                        .verticalScroll(rememberScrollState()),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.error_loading_files),
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = onRefresh) {
+                            Text(text = stringResource(R.string.reload))
+                        }
+                    }
+                }
+            }
+
+            FileBrowserUiState.ContentState.Empty -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -76,9 +102,11 @@ internal fun FileBrowserBody(
                 }
             }
 
-            else -> {
+            is FileBrowserUiState.ContentState.Content -> {
                 FileBrowserContent(
-                    uiState = uiState,
+                    files = contentState.files,
+                    favorites = contentState.favorites,
+                    displayConfig = uiState.displayConfig,
                     contentPadding = contentPadding,
                 )
             }
@@ -88,15 +116,17 @@ internal fun FileBrowserBody(
 
 @Composable
 private fun FileBrowserContent(
-    uiState: FileBrowserUiState,
+    files: List<FileBrowserUiState.UiFileItem>,
+    favorites: List<FileBrowserUiState.UiFileItem.File>,
+    displayConfig: UiDisplayConfig,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
-    when (uiState.displayConfig.displayMode) {
+    when (displayConfig.displayMode) {
         UiDisplayConfig.DisplayMode.Grid -> {
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(
-                    minSize = when (uiState.displayConfig.displaySize) {
+                    minSize = when (displayConfig.displaySize) {
                         UiDisplayConfig.DisplaySize.Small -> 60.dp
                         UiDisplayConfig.DisplaySize.Medium -> 120.dp
                         UiDisplayConfig.DisplaySize.Large -> 240.dp
@@ -106,7 +136,7 @@ private fun FileBrowserContent(
                 contentPadding = contentPadding,
             ) {
                 items(
-                    items = uiState.files,
+                    items = files,
                     key = { item ->
                         when (item) {
                             is FileBrowserUiState.UiFileItem.Header -> "header_${item.title}"
@@ -116,7 +146,7 @@ private fun FileBrowserContent(
                     contentType = {
                         when (it) {
                             is FileBrowserUiState.UiFileItem.Header -> "Header"
-                            is FileBrowserUiState.UiFileItem.File -> uiState.displayConfig.displaySize
+                            is FileBrowserUiState.UiFileItem.File -> displayConfig.displaySize
                         }
                     },
                     span = { item ->
@@ -135,20 +165,20 @@ private fun FileBrowserContent(
                         is FileBrowserUiState.UiFileItem.File -> {
                             FileBrowserGridItem(
                                 file = item,
-                                displaySize = uiState.displayConfig.displaySize,
+                                displaySize = displayConfig.displaySize,
                                 textOverflow = TextOverflow.Ellipsis,
                             )
                         }
                     }
                 }
-                if (uiState.favorites.isNotEmpty()) {
+                if (favorites.isNotEmpty()) {
                     stickyHeader { FileHeaderItem(title = stringResource(R.string.favorites)) }
                     items(
-                        items = uiState.favorites,
+                        items = favorites,
                     ) { item ->
                         FileBrowserGridItem(
                             file = item,
-                            displaySize = uiState.displayConfig.displaySize,
+                            displaySize = displayConfig.displaySize,
                             textOverflow = TextOverflow.StartEllipsis,
                         )
                     }
@@ -162,7 +192,7 @@ private fun FileBrowserContent(
                 contentPadding = contentPadding,
             ) {
                 items(
-                    items = uiState.files,
+                    items = files,
                     key = { item ->
                         when (item) {
                             is FileBrowserUiState.UiFileItem.Header -> "header_${item.title}"
@@ -178,20 +208,20 @@ private fun FileBrowserContent(
                         is FileBrowserUiState.UiFileItem.File -> {
                             FileBrowserListItem(
                                 file = item,
-                                displaySize = uiState.displayConfig.displaySize,
+                                displaySize = displayConfig.displaySize,
                                 textOverflow = TextOverflow.Ellipsis,
                             )
                         }
                     }
                 }
-                if (uiState.favorites.isNotEmpty()) {
+                if (favorites.isNotEmpty()) {
                     stickyHeader { FileHeaderItem(title = stringResource(R.string.favorites)) }
                     items(
-                        items = uiState.favorites,
+                        items = favorites,
                     ) { item ->
                         FileBrowserListItem(
                             file = item,
-                            displaySize = uiState.displayConfig.displaySize,
+                            displaySize = displayConfig.displaySize,
                             textOverflow = TextOverflow.StartEllipsis,
                         )
                     }

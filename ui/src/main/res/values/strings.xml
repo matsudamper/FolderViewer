@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="no_files">ファイルがありません</string>
+    <string name="error_loading_files">ファイルの読み込みに失敗しました</string>
+    <string name="reload">再読み込み</string>
     <string name="root">Root</string>
     <string name="back">Back</string>
     <string name="folder_viewer">FolderViewer</string>
