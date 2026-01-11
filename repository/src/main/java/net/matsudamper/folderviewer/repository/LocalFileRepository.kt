@@ -107,5 +107,52 @@ internal class LocalFileRepository(
         return inSampleSize
     }
 
+    override suspend fun uploadFile(
+        destinationPath: String,
+        fileName: String,
+        inputStream: InputStream,
+    ): Unit = withContext(Dispatchers.IO) {
+        val destinationDir = buildAbsoluteFile(destinationPath)
+
+        require(destinationDir.exists() && destinationDir.isDirectory && destinationDir.canWrite()) {
+            "Destination directory not found or cannot write: $destinationPath"
+        }
+
+        val destinationFile = File(destinationDir, fileName)
+
+        inputStream.use { input ->
+            destinationFile.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        }
+    }
+
+    override suspend fun uploadFolder(
+        destinationPath: String,
+        folderName: String,
+        files: List<FileToUpload>,
+    ): Unit = withContext(Dispatchers.IO) {
+        val destinationDir = buildAbsoluteFile(destinationPath)
+
+        require(destinationDir.exists() && destinationDir.isDirectory && destinationDir.canWrite()) {
+            "Destination directory not found or cannot write: $destinationPath"
+        }
+
+        val folderDir = File(destinationDir, folderName)
+        folderDir.mkdirs()
+
+        files.forEach { fileToUpload ->
+            val targetFile = File(folderDir, fileToUpload.relativePath.replace("/", File.separator))
+
+            targetFile.parentFile?.mkdirs()
+
+            fileToUpload.inputStream.use { input ->
+                targetFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+        }
+    }
+
     companion object
 }

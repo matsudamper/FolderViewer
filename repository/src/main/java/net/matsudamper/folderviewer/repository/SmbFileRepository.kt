@@ -278,6 +278,109 @@ class SmbFileRepository(
             }
     }
 
+    override suspend fun uploadFile(
+        destinationPath: String,
+        fileName: String,
+        inputStream: InputStream,
+    ): Unit = withContext(Dispatchers.IO) {
+        client.connect(config.ip).use { connection ->
+            val session = connection.authenticate(
+                AuthenticationContext(
+                    config.username,
+                    config.password.toCharArray(),
+                    null,
+                ),
+            )
+
+            val parts = destinationPath.split("/", limit = PATH_SPLIT_LIMIT)
+            val shareName = parts[0]
+            val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+
+            val share = session.connectShare(shareName) as? DiskShare
+                ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+
+            share.use { diskShare ->
+                val fullPath = if (subPath.isEmpty()) fileName else "$subPath\\$fileName"
+
+                diskShare.openFile(
+                    fullPath,
+                    EnumSet.of(AccessMask.GENERIC_WRITE),
+                    null,
+                    SMB2ShareAccess.ALL,
+                    SMB2CreateDisposition.FILE_OVERWRITE_IF,
+                    null,
+                ).use { file ->
+                    file.outputStream.use { outputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                }
+            }
+        }
+    }
+
+    override suspend fun uploadFolder(
+        destinationPath: String,
+        folderName: String,
+        files: List<FileToUpload>,
+    ): Unit = withContext(Dispatchers.IO) {
+        client.connect(config.ip).use { connection ->
+            val session = connection.authenticate(
+                AuthenticationContext(
+                    config.username,
+                    config.password.toCharArray(),
+                    null,
+                ),
+            )
+
+            val parts = destinationPath.split("/", limit = PATH_SPLIT_LIMIT)
+            val shareName = parts[0]
+            val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+
+            val share = session.connectShare(shareName) as? DiskShare
+                ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+
+            share.use { diskShare ->
+                val basePath = if (subPath.isEmpty()) folderName else "$subPath\\$folderName"
+
+                diskShare.mkdir(basePath)
+
+                files.forEach { fileToUpload ->
+                    val fullPath = "$basePath\\${fileToUpload.relativePath.replace("/", "\\")}"
+
+                    val parentPath = fullPath.substringBeforeLast("\\", "")
+                    if (parentPath.isNotEmpty() && parentPath != basePath) {
+                        createDirectoryRecursively(diskShare, parentPath)
+                    }
+
+                    diskShare.openFile(
+                        fullPath,
+                        EnumSet.of(AccessMask.GENERIC_WRITE),
+                        null,
+                        SMB2ShareAccess.ALL,
+                        SMB2CreateDisposition.FILE_OVERWRITE_IF,
+                        null,
+                    ).use { file ->
+                        file.outputStream.use { outputStream ->
+                            fileToUpload.inputStream.copyTo(outputStream)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun createDirectoryRecursively(share: DiskShare, path: String) {
+        val parts = path.split("\\")
+        var currentPath = ""
+
+        parts.forEach { part ->
+            currentPath = if (currentPath.isEmpty()) part else "$currentPath\\$part"
+            runCatching {
+                share.mkdir(currentPath)
+            }
+        }
+    }
+
     companion object {
         private const val PATH_SPLIT_LIMIT = 2
         private const val MAX_THUMBNAIL_READ_SIZE = 1024 * 1024 // 1MB

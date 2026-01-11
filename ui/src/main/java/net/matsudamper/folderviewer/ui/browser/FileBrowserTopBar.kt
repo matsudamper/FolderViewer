@@ -36,6 +36,8 @@ internal fun FileBrowserTopBar(
     displayConfig: UiDisplayConfig,
     onDisplayConfigChange: (UiDisplayConfig) -> Unit,
     onFavoriteClick: () -> Unit,
+    onUploadFileClick: () -> Unit,
+    onUploadFolderClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
@@ -116,8 +118,63 @@ internal fun FileBrowserTopBar(
                 sortConfig = sortConfig,
                 onSortConfigChange = onSortConfigChange,
             )
+
+            var showMoreMenu by remember { mutableStateOf(false) }
+            IconButton(onClick = { showMoreMenu = true }) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_more_vert),
+                    contentDescription = "その他",
+                )
+            }
+
+            MoreMenuDropDown(
+                expanded = showMoreMenu,
+                onDismissRequest = { showMoreMenu = false },
+                onUploadFileClick = {
+                    showMoreMenu = false
+                    onUploadFileClick()
+                },
+                onUploadFolderClick = {
+                    showMoreMenu = false
+                    onUploadFolderClick()
+                },
+            )
         },
     )
+}
+
+@Composable
+private fun MoreMenuDropDown(
+    expanded: Boolean,
+    onDismissRequest: () -> Unit,
+    onUploadFileClick: () -> Unit,
+    onUploadFolderClick: () -> Unit,
+) {
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismissRequest,
+    ) {
+        DropdownMenuItem(
+            text = { Text("ファイルをアップロード") },
+            onClick = onUploadFileClick,
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_upload_file),
+                    contentDescription = null,
+                )
+            },
+        )
+        DropdownMenuItem(
+            text = { Text("フォルダをアップロード") },
+            onClick = onUploadFolderClick,
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_upload_file),
+                    contentDescription = null,
+                )
+            },
+        )
+    }
 }
 
 @Composable

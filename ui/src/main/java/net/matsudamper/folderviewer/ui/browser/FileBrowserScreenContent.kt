@@ -30,6 +30,8 @@ internal fun FileBrowserScreenContent(
                 displayConfig = uiState.displayConfig,
                 onDisplayConfigChange = callbacks::onDisplayModeChanged,
                 onFavoriteClick = callbacks::onFavoriteClick,
+                onUploadFileClick = callbacks::onUploadFileClick,
+                onUploadFolderClick = callbacks::onUploadFolderClick,
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },

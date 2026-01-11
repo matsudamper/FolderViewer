@@ -72,6 +72,7 @@ dependencies {
     implementation(libs.kotlinxSerializationJson)
     implementation(libs.coilCompose)
     implementation(libs.jakartaInject)
+    implementation(libs.androidxDocumentfile)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidxJunit)
     androidTestImplementation(libs.androidxEspressoCore)
