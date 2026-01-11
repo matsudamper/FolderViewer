@@ -60,7 +60,14 @@ class SharePointFileRepository(
 
     private fun fetchDriveItems(driveId: String, itemId: String): DriveItemCollectionResponse {
         val items = graphServiceClient.drives().byDriveId(driveId).items()
-        return items.byDriveItemId(itemId).children().get()!!
+        return items.byDriveItemId(itemId).children().get {
+            it.queryParameters.select = arrayOf(
+                "name",
+                "folder",
+                "size",
+                "lastModifiedDateTime",
+            )
+        }!!
     }
 
     private fun mapToFileItems(driveItems: List<DriveItem>, path: String): List<FileItem> {
