@@ -16,6 +16,7 @@ data class FileBrowserUiState(
     val sortConfig: FileSortConfig,
     val displayConfig: UiDisplayConfig,
     val callbacks: Callbacks,
+    val hasError: Boolean = false,
 ) {
     sealed interface UiFileItem {
         data class Header(

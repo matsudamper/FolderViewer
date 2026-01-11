@@ -164,6 +164,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                     sortConfig = viewModelState.sortConfig,
                     displayConfig = viewModelState.displayConfig,
                     visibleFolderBrowserButton = arg.path != null,
+                    hasError = viewModelState.hasError,
                     favorites = viewModelState.favorites.map { favorite ->
                         FileBrowserUiState.UiFileItem.File(
                             name = favorite.path,
@@ -311,6 +312,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                     isRefreshing = false,
                     currentPath = path,
                     rawFiles = files,
+                    hasError = false,
                 )
             }
         }.onFailure { e ->
@@ -322,6 +324,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                         it.copy(
                             isLoading = false,
                             isRefreshing = false,
+                            hasError = true,
                         )
                     }
                     uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar(e.message ?: "Unknown error"))
@@ -397,6 +400,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         ),
         val favoriteId: String? = null,
         val favorites: List<FavoriteConfiguration> = emptyList(),
+        val hasError: Boolean = false,
     )
 
     companion object {
