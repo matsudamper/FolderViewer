@@ -379,6 +379,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                 is CancellationException -> throw e
 
                 else -> {
+                    e.printStackTrace()
                     uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar("アップロード失敗: ${e.message}"))
                 }
             }

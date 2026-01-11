@@ -6,11 +6,10 @@ import java.net.URL
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.azure.identity.ClientSecretCredentialBuilder
+import com.microsoft.graph.models.DriveItem
+import com.microsoft.graph.models.File
 import com.microsoft.graph.serviceclient.GraphServiceClient
 
-/**
- * SharePoint用のFileRepository実装
- */
 class SharePointFileRepository(
     private val config: StorageConfiguration.SharePoint,
 ) : FileRepository {
@@ -74,7 +73,7 @@ class SharePointFileRepository(
         null
     }
 
-    private fun mapToFileItems(driveItems: List<com.microsoft.graph.models.DriveItem>?, path: String): List<FileItem> {
+    private fun mapToFileItems(driveItems: List<DriveItem>?, path: String): List<FileItem> {
         return driveItems?.mapNotNull { item ->
             val itemName = item.name ?: return@mapNotNull null
             val itemPath = if (path.isEmpty()) {
@@ -129,8 +128,35 @@ class SharePointFileRepository(
         }
     }
 
-    override suspend fun uploadFile(destinationPath: String, fileName: String, inputStream: InputStream) {
-        TODO("Not yet implemented")
+    override suspend fun uploadFile(
+        destinationPath: String,
+        fileName: String,
+        inputStream: InputStream,
+    ) {
+        withContext(Dispatchers.IO) {
+            val driveId = getDriveId() ?: throw IllegalStateException("Drive not found")
+            val parentItemId = resolveItemIdByPath(driveId, destinationPath)
+                ?: throw IllegalArgumentException("Destination path not found: $destinationPath")
+
+            val bytes = inputStream.readBytes()
+            val byteStream = ByteArrayInputStream(bytes)
+
+            val driveItem = DriveItem().also { item ->
+                item.name = fileName
+                item.file = File()
+            }
+
+            val newItem = graphServiceClient.drives().byDriveId(driveId)
+                .items().byDriveItemId(parentItemId)
+                .children()
+                .post(driveItem) ?: throw IllegalStateException("Failed to create item")
+
+            val itemId = newItem.id ?: throw IllegalStateException("Item ID is null")
+            graphServiceClient.drives().byDriveId(driveId)
+                .items().byDriveItemId(itemId)
+                .content()
+                .put(byteStream)
+        }
     }
 
     override suspend fun uploadFolder(destinationPath: String, folderName: String, files: List<FileToUpload>) {
