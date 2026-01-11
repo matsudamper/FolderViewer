@@ -27,7 +27,7 @@ class SharePointFileRepository(
     override suspend fun getFiles(path: String): List<FileItem> {
         return withContext(Dispatchers.IO) {
             val driveId = getDriveId()
-            val itemId = resolveItemIdByPath(driveId, path) ?: throw java.lang.IllegalStateException("Do not resolveItemIdByPath $driveId")
+            val itemId = resolveItemIdByPath(driveId, path) ?: throw IllegalStateException("Do not resolveItemIdByPath $driveId")
             val driveItems = fetchDriveItems(driveId, itemId)
 
             mapToFileItems(driveItems.value.orEmpty(), path)
