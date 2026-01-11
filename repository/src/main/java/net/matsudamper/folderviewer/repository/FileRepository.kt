@@ -5,7 +5,7 @@ import java.io.InputStream
 interface FileRepository {
     suspend fun getFiles(path: String): List<FileItem>
     suspend fun getFileContent(path: String): InputStream
-    suspend fun getThumbnail(path: String, thumbnailSize: Int): InputStream
+    suspend fun getThumbnail(path: String, thumbnailSize: Int): InputStream?
     suspend fun uploadFile(destinationPath: String, fileName: String, inputStream: InputStream)
     suspend fun uploadFolder(destinationPath: String, folderName: String, files: List<FileToUpload>)
 }

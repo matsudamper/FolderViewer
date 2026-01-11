@@ -77,7 +77,7 @@ private class FileRepositoryImageFetcher(
             }
 
             is FileImageSource.Original -> fileRepository.getFileContent(path)
-        }
+        } ?: throw IllegalStateException("Failed to image load: $path")
 
         val bufferedSource = inputStream.source().buffer()
 

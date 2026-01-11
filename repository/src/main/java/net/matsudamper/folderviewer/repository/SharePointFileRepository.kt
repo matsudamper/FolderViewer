@@ -101,10 +101,24 @@ class SharePointFileRepository(
         ByteArrayInputStream(ByteArray(0))
     }
 
-    override suspend fun getThumbnail(path: String, thumbnailSize: Int): InputStream = withContext(Dispatchers.IO) {
-        // TODO: Microsoft Graph APIを使用してサムネイルを取得
-        // 例: GET https://graph.microsoft.com/v1.0/sites/{site-id}/drive/items/{item-id}/thumbnails
-        getFileContent(path)
+    override suspend fun getThumbnail(path: String, thumbnailSize: Int): InputStream? {
+        return withContext(Dispatchers.IO) {
+            val driveId = getDriveId() ?: return@withContext ByteArrayInputStream(ByteArray(0))
+            val itemId = resolveItemIdByPath(driveId, path) ?: return@withContext ByteArrayInputStream(ByteArray(0))
+
+            val thumbnails = graphServiceClient.drives().byDriveId(driveId)
+                .items().byDriveItemId(itemId)
+                .thumbnails().get()
+
+            val thumbnail = thumbnails?.value?.firstOrNull()
+            val thumbnailUrl = when {
+                thumbnailSize <= 256 -> thumbnail?.small?.url
+                thumbnailSize <= 512 -> thumbnail?.medium?.url
+                else -> thumbnail?.large?.url
+            } ?: return@withContext null
+
+            return@withContext URL(thumbnailUrl).openStream()
+        }
     }
 
     override suspend fun uploadFile(destinationPath: String, fileName: String, inputStream: InputStream) {
