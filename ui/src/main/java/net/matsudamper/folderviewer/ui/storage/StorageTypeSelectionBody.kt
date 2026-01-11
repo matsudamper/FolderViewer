@@ -29,5 +29,12 @@ internal fun StorageTypeSelectionBody(
             modifier = Modifier.clickable(onClick = { uiState.callbacks.onLocalClick() }),
         )
         HorizontalDivider()
+
+        ListItem(
+            headlineContent = { Text("SharePoint") },
+            supportingContent = { Text("SharePoint Online のドキュメントライブラリにアクセス") },
+            modifier = Modifier.clickable(onClick = { uiState.callbacks.onSharePointClick() }),
+        )
+        HorizontalDivider()
     }
 }

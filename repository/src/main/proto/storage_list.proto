@@ -14,6 +14,7 @@ message StorageConfigurationProto {
   oneof config {
     SmbConfigurationProto smb = 3;
     LocalConfigurationProto local = 4;
+    SharePointConfigurationProto sharepoint = 5;
   }
 }
 
@@ -24,6 +25,10 @@ message SmbConfigurationProto {
 
 message LocalConfigurationProto {
   string root_path = 1;
+}
+
+message SharePointConfigurationProto {
+  string site_url = 1;
 }
 
 message FavoriteConfigurationProto {

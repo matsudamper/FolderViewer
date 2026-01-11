@@ -22,4 +22,12 @@ sealed interface StorageConfiguration {
         override val name: String,
         val rootPath: String,
     ) : StorageConfiguration
+
+    @Serializable
+    data class SharePoint(
+        override val id: String,
+        override val name: String,
+        val siteUrl: String,
+        val apiKey: String,
+    ) : StorageConfiguration
 }

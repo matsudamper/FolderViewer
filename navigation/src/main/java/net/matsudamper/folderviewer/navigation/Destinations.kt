@@ -19,6 +19,9 @@ object PermissionRequest : NavKey
 data class SmbAdd(val storageId: String? = null) : NavKey
 
 @Serializable
+data class SharePointAdd(val storageId: String? = null) : NavKey
+
+@Serializable
 data class FileBrowser(val storageId: String, val path: String?) : NavKey
 
 @Serializable

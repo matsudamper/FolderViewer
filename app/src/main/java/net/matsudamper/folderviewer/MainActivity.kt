@@ -31,6 +31,7 @@ import net.matsudamper.folderviewer.navigation.ImageViewer
 import net.matsudamper.folderviewer.navigation.Navigator
 import net.matsudamper.folderviewer.navigation.PermissionRequest
 import net.matsudamper.folderviewer.navigation.Settings
+import net.matsudamper.folderviewer.navigation.SharePointAdd
 import net.matsudamper.folderviewer.navigation.SmbAdd
 import net.matsudamper.folderviewer.navigation.StorageTypeSelection
 import net.matsudamper.folderviewer.navigation.rememberNavigationState
@@ -43,6 +44,7 @@ import net.matsudamper.folderviewer.ui.home.HomeScreen
 import net.matsudamper.folderviewer.ui.home.UiStorageConfiguration
 import net.matsudamper.folderviewer.ui.permission.PermissionRequestScreen
 import net.matsudamper.folderviewer.ui.settings.SettingsScreen
+import net.matsudamper.folderviewer.ui.storage.SharePointAddScreen
 import net.matsudamper.folderviewer.ui.storage.SmbAddScreen
 import net.matsudamper.folderviewer.ui.storage.StorageTypeSelectionScreen
 import net.matsudamper.folderviewer.ui.theme.FolderViewerTheme
@@ -52,6 +54,7 @@ import net.matsudamper.folderviewer.viewmodel.folder.FolderBrowserViewModel
 import net.matsudamper.folderviewer.viewmodel.home.HomeViewModel
 import net.matsudamper.folderviewer.viewmodel.permission.PermissionRequestViewModel
 import net.matsudamper.folderviewer.viewmodel.settings.SettingsViewModel
+import net.matsudamper.folderviewer.viewmodel.storage.SharePointAddViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.SmbAddViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.StorageTypeSelectionViewModel
 
@@ -89,6 +92,7 @@ private fun AppContent(
         storageTypeSelectionEntry(navigator)
         permissionRequestEntry(navigator)
         smbAddEntry(navigator)
+        sharePointAddEntry(navigator)
         fileBrowserEntry(navigator)
         folderBrowserEntry(navigator)
         imageViewerEntry(navigator)
@@ -182,6 +186,10 @@ private fun EntryProviderScope<NavKey>.storageTypeSelectionEntry(
                         navigator.navigate(SmbAdd())
                     }
 
+                    StorageTypeSelectionViewModel.ViewModelEvent.NavigateToSharePointAdd -> {
+                        navigator.navigate(SharePointAdd())
+                    }
+
                     StorageTypeSelectionViewModel.ViewModelEvent.NavigateBack -> {
                         navigator.goBack()
                     }
@@ -259,6 +267,35 @@ private fun EntryProviderScope<NavKey>.smbAddEntry(navigator: Navigator) {
         }
 
         SmbAddScreen(
+            uiState = uiState,
+        )
+    }
+}
+
+private fun EntryProviderScope<NavKey>.sharePointAddEntry(navigator: Navigator) {
+    entry<SharePointAdd> { key ->
+        val viewModel: SharePointAddViewModel = hiltViewModel<SharePointAddViewModel, SharePointAddViewModel.Companion.Factory>(
+            creationCallback = { factory: SharePointAddViewModel.Companion.Factory ->
+                factory.create(arguments = key)
+            },
+        )
+        val uiState by viewModel.uiState.collectAsState()
+
+        LaunchedEffect(viewModel.viewModelEventFlow) {
+            viewModel.viewModelEventFlow.collect { event ->
+                when (event) {
+                    SharePointAddViewModel.ViewModelEvent.SaveSuccess -> {
+                        navigator.popBackStack(Home, inclusive = false)
+                    }
+
+                    SharePointAddViewModel.ViewModelEvent.NavigateBack -> {
+                        navigator.goBack()
+                    }
+                }
+            }
+        }
+
+        SharePointAddScreen(
             uiState = uiState,
         )
     }

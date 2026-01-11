@@ -9,6 +9,7 @@ data class StorageTypeSelectionUiState(
     interface Callbacks {
         fun onSmbClick()
         fun onLocalClick()
+        fun onSharePointClick()
         fun onBack()
     }
 }

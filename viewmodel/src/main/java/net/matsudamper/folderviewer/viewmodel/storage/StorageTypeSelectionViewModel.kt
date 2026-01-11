@@ -37,6 +37,12 @@ class StorageTypeSelectionViewModel @Inject constructor(
             onLocalClickInternal()
         }
 
+        override fun onSharePointClick() {
+            viewModelScope.launch {
+                viewModelEventChannel.send(ViewModelEvent.NavigateToSharePointAdd)
+            }
+        }
+
         override fun onBack() {
             viewModelScope.launch {
                 viewModelEventChannel.send(ViewModelEvent.NavigateBack)
@@ -70,6 +76,7 @@ class StorageTypeSelectionViewModel @Inject constructor(
         data object NavigateToHome : ViewModelEvent
         data object NavigateToPermissionRequest : ViewModelEvent
         data object NavigateToSmbAdd : ViewModelEvent
+        data object NavigateToSharePointAdd : ViewModelEvent
         data object NavigateBack : ViewModelEvent
         data object ShowAlreadyAddedMessage : ViewModelEvent
     }
