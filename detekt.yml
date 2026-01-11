@@ -34,6 +34,8 @@ style:
       - 'androidx.compose.ui.tooling.preview.Preview'
   ReturnCount:
     active: false
+  MaxLineLength:
+    active: false
 
 exceptions:
   TooGenericExceptionCaught:
