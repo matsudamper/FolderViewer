@@ -40,8 +40,6 @@ class FolderBrowserViewModel @AssistedInject constructor(
     application: Application,
     @Assisted private val arg: FolderBrowser,
 ) : AndroidViewModel(application) {
-    private val resources get() = getApplication<Application>().resources
-
     private val viewModelEventChannel = Channel<ViewModelEvent>(Channel.UNLIMITED)
     val viewModelEventFlow = viewModelEventChannel.receiveAsFlow()
 
@@ -51,9 +49,8 @@ class FolderBrowserViewModel @AssistedInject constructor(
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> =
         MutableStateFlow(
             ViewModelState(
-                currentPath = arg.path,
                 folder = ViewModelState.Folder(
-                    path = arg.path,
+                    path = arg.fileId,
                     files = listOf(),
                     folders = listOf(),
                 ),
@@ -98,6 +95,7 @@ class FolderBrowserViewModel @AssistedInject constructor(
         }
 
         override fun onFavoriteClick() {
+            val displayPath = arg.displayPath ?: return
             viewModelScope.launch {
                 val state = viewModelStateFlow.value
                 val favoriteId = state.favoriteId
@@ -105,15 +103,15 @@ class FolderBrowserViewModel @AssistedInject constructor(
                     storageRepository.removeFavorite(favoriteId)
                     uiChannelEvent.send(FolderBrowserUiEvent.ShowSnackbar("Removed from favorites"))
                 } else {
-                    val name = if (arg.path.isEmpty()) {
+                    val name = if (arg.fileId.isEmpty()) {
                         state.storageName ?: "Storage"
                     } else {
-                        arg.path.trim('/').split('/').lastOrNull() ?: arg.path
+                        arg.fileId.trim('/').split('/').lastOrNull() ?: arg.fileId
                     }
 
                     storageRepository.addFavorite(
                         storageId = arg.storageId,
-                        path = arg.path,
+                        path = displayPath,
                         name = name,
                     )
                     uiChannelEvent.send(FolderBrowserUiEvent.ShowSnackbar("Added to favorites"))
@@ -125,7 +123,8 @@ class FolderBrowserViewModel @AssistedInject constructor(
     private val uiStateCreator = FolderBrowserUiStateCreator(
         callbacks = callbacks,
         viewModelScope = viewModelScope,
-        path = arg.path,
+        fileId = arg.fileId,
+        displayPath = arg.displayPath,
         storageId = arg.storageId,
         viewModelEventChannel = viewModelEventChannel,
     )
@@ -155,7 +154,7 @@ class FolderBrowserViewModel @AssistedInject constructor(
         viewModelScope.launch {
             storageRepository.favorites
                 .map { favorites ->
-                    favorites.find { it.storageId == arg.storageId && it.path == arg.path }?.id
+                    favorites.find { it.storageId == arg.storageId && it.path == arg.fileId }?.id
                 }
                 .collect { favoriteId ->
                     viewModelStateFlow.update { it.copy(favoriteId = favoriteId) }
@@ -252,7 +251,7 @@ class FolderBrowserViewModel @AssistedInject constructor(
             viewModelStateFlow.update {
                 it.copy(
                     folder = ViewModelState.Folder(
-                        path = arg.path,
+                        path = arg.fileId,
                         files = listOf(),
                         folders = listOf(),
                     ),
@@ -262,7 +261,7 @@ class FolderBrowserViewModel @AssistedInject constructor(
             }
             try {
                 val repository = getRepository()
-                fetchAllFilesRecursive(repository, arg.path)
+                fetchAllFilesRecursive(repository, arg.fileId)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -336,6 +335,7 @@ class FolderBrowserViewModel @AssistedInject constructor(
         data class NavigateToFolderBrowser(
             val path: String,
             val storageId: String,
+            val displayPath: String?,
         ) : ViewModelEvent
     }
 
@@ -366,7 +366,6 @@ class FolderBrowserViewModel @AssistedInject constructor(
     data class ViewModelState(
         val isLoading: Boolean = false,
         val isRefreshing: Boolean = false,
-        val currentPath: String = "",
         val storageName: String? = null,
         val folder: Folder,
         val folderSortConfig: FolderBrowserUiState.FileSortConfig = FolderBrowserUiState.FileSortConfig(

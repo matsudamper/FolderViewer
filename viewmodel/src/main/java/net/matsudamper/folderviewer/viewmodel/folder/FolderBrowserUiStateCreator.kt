@@ -14,9 +14,10 @@ import net.matsudamper.folderviewer.viewmodel.folder.FolderBrowserViewModel.View
 class FolderBrowserUiStateCreator(
     private val callbacks: FolderBrowserUiState.Callbacks,
     private val viewModelScope: CoroutineScope,
-    private val path: String?,
+    private val fileId: String?,
     private val storageId: String,
     private val viewModelEventChannel: Channel<ViewModelEvent>,
+    private val displayPath: String?,
 ) {
     fun create(
         viewModelState: FolderBrowserViewModel.ViewModelState,
@@ -46,16 +47,13 @@ class FolderBrowserUiStateCreator(
             callbacks = callbacks,
             isLoading = viewModelState.isLoading,
             isRefreshing = viewModelState.isRefreshing,
-            currentPath = viewModelState.currentPath,
-            title = viewModelState.currentPath.ifEmpty {
-                viewModelState.storageName ?: viewModelState.currentPath
-            },
+            title = displayPath ?: viewModelState.storageName ?: "null",
             files = uiItems,
             folderSortConfig = viewModelState.folderSortConfig,
             fileSortConfig = viewModelState.fileSortConfig,
             displayConfig = viewModelState.displayConfig,
             isFavorite = viewModelState.favoriteId != null,
-            visibleFavoriteButton = viewModelState.currentPath.isNotEmpty(),
+            visibleFavoriteButton = fileId != null,
         )
     }
 
@@ -98,10 +96,10 @@ class FolderBrowserUiStateCreator(
         allImagePaths: List<String>,
     ) {
         if (!isRoot) {
-            val titleText = if (path.isNullOrEmpty()) {
+            val titleText = if (fileId.isNullOrEmpty()) {
                 folder.path
             } else {
-                folder.path.removePrefix(path).removePrefix(File.separator)
+                folder.path.removePrefix(fileId).removePrefix(File.separator)
             }
             add(FolderBrowserUiState.UiFileItem.Header(title = titleText))
         }
@@ -161,7 +159,11 @@ class FolderBrowserUiStateCreator(
                 val isImage = FileUtil.isImage(file.displayName)
                 if (file.isDirectory) {
                     viewModelEventChannel.send(
-                        ViewModelEvent.NavigateToFolderBrowser(path = file.id, storageId = storageId),
+                        ViewModelEvent.NavigateToFolderBrowser(
+                            path = file.id,
+                            storageId = storageId,
+                            displayPath = file.displayName,
+                        ),
                     )
                 } else if (isImage) {
                     viewModelEventChannel.send(

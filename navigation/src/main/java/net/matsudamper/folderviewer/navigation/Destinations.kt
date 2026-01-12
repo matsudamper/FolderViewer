@@ -25,7 +25,7 @@ data class SharePointAdd(val storageId: String? = null) : NavKey
 data class FileBrowser(val storageId: String, val displayPath: String?, val fileId: String?) : NavKey
 
 @Serializable
-data class FolderBrowser(val storageId: String, val path: String) : NavKey
+data class FolderBrowser(val storageId: String, val displayPath: String?, val fileId: String) : NavKey
 
 @Serializable
 data class ImageViewer(val id: String, val path: String, val allPaths: List<String>) : NavKey

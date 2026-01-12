@@ -97,6 +97,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                     ViewModelEvent.NavigateToFolderBrowser(
                         id = fileId,
                         storageId = arg.storageId,
+                        displayPath = arg.displayPath,
                     ),
                 )
             }
@@ -360,6 +361,7 @@ class FileBrowserViewModel @AssistedInject constructor(
 
         data class NavigateToFolderBrowser(
             val id: String,
+            val displayPath: String?,
             val storageId: String,
         ) : ViewModelEvent
 

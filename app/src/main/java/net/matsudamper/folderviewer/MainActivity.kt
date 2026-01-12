@@ -299,9 +299,9 @@ private fun EntryProviderScope<NavKey>.smbAddEntry(navigator: Navigator) {
 private fun EntryProviderScope<NavKey>.sharePointAddEntry(navigator: Navigator) {
     entry<SharePointAdd> { key ->
         val viewModel: SharePointAddViewModel = hiltViewModel<
-            SharePointAddViewModel,
-            SharePointAddViewModel.Companion.Factory,
-            >(
+                SharePointAddViewModel,
+                SharePointAddViewModel.Companion.Factory,
+                >(
             creationCallback = { factory: SharePointAddViewModel.Companion.Factory ->
                 factory.create(arguments = key)
             },
@@ -349,7 +349,13 @@ private fun FileBrowserEventHandler(
                 }
 
                 is FileBrowserViewModel.ViewModelEvent.NavigateToFolderBrowser -> {
-                    navigator.navigate(FolderBrowser(storageId = event.storageId, path = event.id))
+                    navigator.navigate(
+                        FolderBrowser(
+                            storageId = event.storageId,
+                            displayPath = event.displayPath,
+                            fileId = event.id,
+                        ),
+                    )
                 }
 
                 is FileBrowserViewModel.ViewModelEvent.LaunchFilePicker -> filePickerLauncher.launch("*/*")
@@ -363,9 +369,9 @@ private fun FileBrowserEventHandler(
 private fun EntryProviderScope<NavKey>.fileBrowserEntry(navigator: Navigator) {
     entry<FileBrowser> { key ->
         val viewModel: FileBrowserViewModel = hiltViewModel<
-            FileBrowserViewModel,
-            FileBrowserViewModel.Companion.Factory,
-            >(
+                FileBrowserViewModel,
+                FileBrowserViewModel.Companion.Factory,
+                >(
             creationCallback = { factory: FileBrowserViewModel.Companion.Factory ->
                 factory.create(arguments = key)
             },
@@ -413,9 +419,9 @@ private fun EntryProviderScope<NavKey>.fileBrowserEntry(navigator: Navigator) {
 private fun EntryProviderScope<NavKey>.folderBrowserEntry(navigator: Navigator) {
     entry<FolderBrowser> { key ->
         val viewModel: FolderBrowserViewModel = hiltViewModel<
-            FolderBrowserViewModel,
-            FolderBrowserViewModel.Companion.Factory,
-            >(
+                FolderBrowserViewModel,
+                FolderBrowserViewModel.Companion.Factory,
+                >(
             creationCallback = { factory: FolderBrowserViewModel.Companion.Factory ->
                 factory.create(arguments = key)
             },
@@ -454,7 +460,8 @@ private fun EntryProviderScope<NavKey>.folderBrowserEntry(navigator: Navigator) 
                         navigator.navigate(
                             FolderBrowser(
                                 storageId = event.storageId,
-                                path = event.path,
+                                fileId = event.path,
+                                displayPath = event.displayPath,
                             ),
                         )
                     }
@@ -472,9 +479,9 @@ private fun EntryProviderScope<NavKey>.folderBrowserEntry(navigator: Navigator) 
 private fun EntryProviderScope<NavKey>.imageViewerEntry(navigator: Navigator) {
     entry<ImageViewer> { key ->
         val viewModel: ImageViewerViewModel = hiltViewModel<
-            ImageViewerViewModel,
-            ImageViewerViewModel.Companion.Factory,
-            >(
+                ImageViewerViewModel,
+                ImageViewerViewModel.Companion.Factory,
+                >(
             creationCallback = { factory: ImageViewerViewModel.Companion.Factory ->
                 factory.create(arguments = key)
             },
