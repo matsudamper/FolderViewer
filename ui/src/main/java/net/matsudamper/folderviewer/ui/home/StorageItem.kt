@@ -79,7 +79,7 @@ private fun StorageItemContent(
         val type = when (storage) {
             is UiStorageConfiguration.Smb -> "SMB: ${storage.ip}"
             is UiStorageConfiguration.Local -> "ローカル: ${storage.rootPath}"
-            is UiStorageConfiguration.SharePoint -> "SharePoint: ${storage.objectId}"
+            is UiStorageConfiguration.SharePoint -> storage.objectId
         }
         Text(text = type, style = MaterialTheme.typography.bodyMedium)
     }
