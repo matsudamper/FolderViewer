@@ -99,7 +99,7 @@ class SharePointFileRepository(
     override suspend fun getThumbnail(path: String, thumbnailSize: Int): InputStream? {
         return withContext(Dispatchers.IO) {
             val driveId = getDriveId()
-            val itemId = resolveItemIdByPath(path) ?: return@withContext ByteArrayInputStream(ByteArray(0))
+            val itemId = resolveItemIdByPath(path) ?: return@withContext null
 
             val thumbnails = graphServiceClient.drives().byDriveId(driveId)
                 .items().byDriveItemId(itemId)
