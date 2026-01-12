@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import net.matsudamper.folderviewer.common.StorageId
 
 @Composable
 fun HomeScreenContent(
@@ -13,7 +14,7 @@ fun HomeScreenContent(
     onAddStorageClick: () -> Unit,
     onStorageClick: (UiStorageConfiguration) -> Unit,
     onEditStorageClick: (UiStorageConfiguration) -> Unit,
-    onDeleteStorageClick: (String) -> Unit,
+    onDeleteStorageClick: (StorageId) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(

@@ -6,6 +6,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.common.FileObjectId
+import net.matsudamper.folderviewer.common.StorageId
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiState
 import net.matsudamper.folderviewer.viewmodel.FileSortComparator
@@ -16,7 +17,7 @@ class FolderBrowserUiStateCreator(
     private val callbacks: FolderBrowserUiState.Callbacks,
     private val viewModelScope: CoroutineScope,
     private val fileObjectId: FileObjectId,
-    private val storageId: String,
+    private val storageId: StorageId,
     private val viewModelEventChannel: Channel<ViewModelEvent>,
     private val displayPath: String?,
 ) {

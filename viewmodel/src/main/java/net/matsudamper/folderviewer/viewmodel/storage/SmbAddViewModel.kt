@@ -14,6 +14,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import net.matsudamper.folderviewer.common.StorageId
 import net.matsudamper.folderviewer.navigation.SmbAdd
 import net.matsudamper.folderviewer.repository.StorageConfiguration
 import net.matsudamper.folderviewer.repository.StorageRepository
@@ -25,7 +26,7 @@ class SmbAddViewModel @AssistedInject constructor(
     private val storageRepository: StorageRepository,
     @Assisted private val arg: SmbAdd,
 ) : ViewModel() {
-    private val storageId: String? = arg.storageId
+    private val storageId: StorageId? = arg.storageId
 
     private val viewModelEventChannel = Channel<ViewModelEvent>(Channel.UNLIMITED)
     val viewModelEventFlow = viewModelEventChannel.receiveAsFlow()

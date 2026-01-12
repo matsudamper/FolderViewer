@@ -37,7 +37,7 @@ object CoilImageLoaderFactory {
 private class FileImageSourceKeyer : Keyer<FileImageSource> {
     override fun key(data: FileImageSource, options: Options): String? {
         return when (data) {
-            is FileImageSource.Thumbnail -> "thumbnail:${data.storageId}:${data.fileId.id}"
+            is FileImageSource.Thumbnail -> "thumbnail:${data.storageId.id}:${data.fileId.id}"
             is FileImageSource.Original -> null
         }
     }

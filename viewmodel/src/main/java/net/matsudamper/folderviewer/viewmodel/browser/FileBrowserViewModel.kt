@@ -20,6 +20,7 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.common.FileObjectId
+import net.matsudamper.folderviewer.common.StorageId
 import net.matsudamper.folderviewer.navigation.FileBrowser
 import net.matsudamper.folderviewer.repository.FavoriteConfiguration
 import net.matsudamper.folderviewer.repository.FileItem
@@ -357,20 +358,20 @@ class FileBrowserViewModel @AssistedInject constructor(
         data object PopBackStack : ViewModelEvent
         data class NavigateToFileBrowser(
             val displayPath: String,
-            val storageId: String,
+            val storageId: StorageId,
             val id: FileObjectId.Item,
         ) : ViewModelEvent
 
         data class NavigateToImageViewer(
             val id: FileObjectId.Item,
-            val storageId: String,
+            val storageId: StorageId,
             val allPaths: List<FileObjectId.Item>,
         ) : ViewModelEvent
 
         data class NavigateToFolderBrowser(
             val id: FileObjectId,
             val displayPath: String?,
-            val storageId: String,
+            val storageId: StorageId,
         ) : ViewModelEvent
 
         data object LaunchFilePicker : ViewModelEvent
