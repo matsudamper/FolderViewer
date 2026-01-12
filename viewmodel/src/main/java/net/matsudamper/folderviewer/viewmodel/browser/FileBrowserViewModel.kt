@@ -225,7 +225,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         viewModelScope.launch {
             storageRepository.favorites
                 .map { favorites ->
-                    favorites.find { it.storageId == arg.storageId && it.path == (arg.displayPath.orEmpty()) }?.id
+                    favorites.find { it.storageId == arg.storageId && it.path == (arg.fileId.orEmpty()) }?.id
                 }
                 .collectLatest { favoriteId ->
                     viewModelStateFlow.update { it.copy(favoriteId = favoriteId) }

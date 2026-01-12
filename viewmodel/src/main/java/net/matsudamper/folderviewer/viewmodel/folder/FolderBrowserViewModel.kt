@@ -96,7 +96,6 @@ class FolderBrowserViewModel @AssistedInject constructor(
         }
 
         override fun onFavoriteClick() {
-            val displayPath = arg.displayPath ?: return
             viewModelScope.launch {
                 val state = viewModelStateFlow.value
                 val favoriteId = state.favoriteId
@@ -112,7 +111,7 @@ class FolderBrowserViewModel @AssistedInject constructor(
 
                     storageRepository.addFavorite(
                         storageId = arg.storageId,
-                        path = displayPath,
+                        path = arg.fileId,
                         name = name,
                     )
                     uiChannelEvent.send(FolderBrowserUiEvent.ShowSnackbar("Added to favorites"))
