@@ -68,31 +68,10 @@ class SharePointFileRepository(
         return drive.id
     }
 
-    private suspend fun resolveItemIdByPath(path: String): String? {
-        if (path.isEmpty()) {
-            return "root"
-        }
-
-        val pathParts = path.split("/")
-        var currentItemId = "root"
-
-        for (part in pathParts) {
-            val items = graphApiClient.getDriveItemChildren(
-                itemId = currentItemId,
-            )
-
-            val nextItem = items.value.find { it.name == part } ?: return null
-            currentItemId = nextItem.id
-        }
-
-        return currentItemId
-    }
-
     override suspend fun getFileContent(fileId: FileObjectId.Item): InputStream = withContext(Dispatchers.IO) {
         val driveId = getDriveId()
-        val itemId = resolveItemIdByPath(fileId.id) ?: return@withContext ByteArrayInputStream(ByteArray(0))
 
-        graphServiceClient.drives().byDriveId(driveId).items().byDriveItemId(itemId).content().get()
+        graphServiceClient.drives().byDriveId(driveId).items().byDriveItemId(fileId.id).content().get()
             ?: ByteArrayInputStream(ByteArray(0))
     }
 
@@ -120,16 +99,8 @@ class SharePointFileRepository(
         fileName: String,
         inputStream: InputStream,
     ) {
-        val path = when (id) {
-            is FileObjectId.Root -> return
-
-            // TODO rootへのアップロードを対応
-            is FileObjectId.Item -> id.id
-        }
         withContext(Dispatchers.IO) {
             val driveId = getDriveId()
-            val parentItemId = resolveItemIdByPath(path)
-                ?: throw IllegalArgumentException("Destination path not found: $path")
 
             val bytes = inputStream.readBytes()
             val byteStream = ByteArrayInputStream(bytes)
@@ -140,7 +111,15 @@ class SharePointFileRepository(
             }
 
             val newItem = graphServiceClient.drives().byDriveId(driveId)
-                .items().byDriveItemId(parentItemId)
+                .items()
+                .byDriveItemId(
+                    when (id) {
+                        // TODO rootへのアップロードを対応
+                        is FileObjectId.Root -> return@withContext
+
+                        is FileObjectId.Item -> id.id
+                    },
+                )
                 .children()
                 .post(driveItem) ?: throw IllegalStateException("Failed to create item")
 
@@ -157,16 +136,8 @@ class SharePointFileRepository(
         folderName: String,
         files: List<FileToUpload>,
     ) {
-        val path = when (id) {
-            is FileObjectId.Root -> return
-
-            // TODO rootへのアップロードを対応
-            is FileObjectId.Item -> id.id
-        }
         withContext(Dispatchers.IO) {
             val driveId = getDriveId()
-            val parentItemId = resolveItemIdByPath(path)
-                ?: throw IllegalArgumentException("Destination path not found: $path")
 
             val folderItem = DriveItem().also { item ->
                 item.name = folderName
@@ -174,7 +145,15 @@ class SharePointFileRepository(
             }
 
             val createdFolder = graphServiceClient.drives().byDriveId(driveId)
-                .items().byDriveItemId(parentItemId)
+                .items()
+                .byDriveItemId(
+                    when (id) {
+                        // TODO rootへのアップロードを対応
+                        is FileObjectId.Root -> return@withContext
+
+                        is FileObjectId.Item -> id.id
+                    },
+                )
                 .children()
                 .post(folderItem) ?: throw IllegalStateException("Failed to create folder")
 
