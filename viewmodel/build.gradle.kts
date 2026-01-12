@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.kotlinAndroid)
+    alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.daggerHilt)
     alias(libs.plugins.detekt)
@@ -38,9 +39,13 @@ dependencies {
     implementation(libs.androidxLifecycleRuntimeKtx)
     implementation(libs.androidxLifecycleViewmodelKtx)
     implementation(libs.hiltAndroid)
+    implementation(libs.androidxWorkManagerRuntime)
+    implementation(libs.androidxWorkManagerHilt)
     ksp(libs.hiltCompiler)
+    ksp(libs.androidxHiltCompiler)
 
     implementation(libs.androidxNavigation3Runtime)
 
     implementation(libs.jakartaInject)
+    implementation(libs.kotlinxSerializationJson)
 }

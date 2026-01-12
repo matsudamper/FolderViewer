@@ -364,6 +364,21 @@ private fun FileBrowserEventHandler(
     }
 }
 
+private fun requestNotificationPermissionIfNeeded(
+    context: android.content.Context,
+    launcher: androidx.activity.compose.ManagedActivityResultLauncher<String, Boolean>,
+) {
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.POST_NOTIFICATIONS,
+            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            launcher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+}
+
 private fun EntryProviderScope<NavKey>.fileBrowserEntry(navigator: Navigator) {
     entry<FileBrowser> { key ->
         val viewModel: FileBrowserViewModel = hiltViewModel<FileBrowserViewModel, FileBrowserViewModel.Companion.Factory>(
@@ -376,10 +391,16 @@ private fun EntryProviderScope<NavKey>.fileBrowserEntry(navigator: Navigator) {
         val scope = rememberCoroutineScope()
         val context = LocalContext.current
 
+        val notificationPermissionLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission(),
+        ) { isGranted ->
+        }
+
         val filePickerLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetContent(),
         ) { uri ->
             uri?.let { selectedUri ->
+                requestNotificationPermissionIfNeeded(context, notificationPermissionLauncher)
                 val fileName = DocumentFile.fromSingleUri(context, selectedUri)?.name ?: "uploaded_file"
                 scope.launch {
                     viewModel.handleFileUpload(selectedUri, fileName)
@@ -391,6 +412,7 @@ private fun EntryProviderScope<NavKey>.fileBrowserEntry(navigator: Navigator) {
             contract = ActivityResultContracts.OpenDocumentTree(),
         ) { uri ->
             uri?.let { treeUri ->
+                requestNotificationPermissionIfNeeded(context, notificationPermissionLauncher)
                 val documentFile = DocumentFile.fromTreeUri(context, treeUri)
                 documentFile?.let { folder ->
                     val files = mutableListOf<Pair<android.net.Uri, String>>()

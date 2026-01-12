@@ -3,6 +3,9 @@ package net.matsudamper.folderviewer.viewmodel.browser
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.Data
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -14,6 +17,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -31,6 +36,8 @@ import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 import net.matsudamper.folderviewer.viewmodel.FileUtil
+import net.matsudamper.folderviewer.viewmodel.worker.FileUploadWorker
+import net.matsudamper.folderviewer.viewmodel.worker.FolderUploadWorker
 
 @HiltViewModel(assistedFactory = FileBrowserViewModel.Companion.Factory::class)
 class FileBrowserViewModel @AssistedInject constructor(
@@ -379,50 +386,53 @@ class FileBrowserViewModel @AssistedInject constructor(
     }
 
     suspend fun handleFileUpload(uri: android.net.Uri, fileName: String) {
+        val inputData = Data.Builder()
+            .putString(FileUploadWorker.KEY_STORAGE_ID, Json.encodeToString(arg.storageId))
+            .putString(FileUploadWorker.KEY_FILE_OBJECT_ID, Json.encodeToString(fileObjectId))
+            .putString(FileUploadWorker.KEY_URI, uri.toString())
+            .putString(FileUploadWorker.KEY_FILE_NAME, fileName)
+            .build()
+
+        WorkManager.getInstance(getApplication())
+            .enqueue(
+                OneTimeWorkRequestBuilder<FileUploadWorker>()
+                    .setInputData(inputData)
+                    .build(),
+            )
+        uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ファイルのアップロードを開始しました"))
+    }
+
+    suspend fun handleFolderUpload(uris: List<Pair<android.net.Uri, String>>) {
         runCatching {
-            val repository = getRepository()
-            val contentResolver = getApplication<Application>().contentResolver
-            contentResolver.openInputStream(uri)?.use { inputStream ->
-                repository.uploadFile(fileObjectId, fileName, inputStream)
+            val workManager = WorkManager.getInstance(getApplication())
+            val folderName = "uploaded_folder_${System.currentTimeMillis()}"
+            val uriDataList = uris.map { (uri, relativePath) ->
+                FolderUploadWorker.UriData(
+                    uri = uri.toString(),
+                    relativePath = relativePath,
+                )
             }
-            fetchFilesInternal()
-            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ファイルをアップロードしました"))
+
+            val inputData = Data.Builder()
+                .putString(FolderUploadWorker.KEY_STORAGE_ID, Json.encodeToString(arg.storageId))
+                .putString(FolderUploadWorker.KEY_FILE_OBJECT_ID, Json.encodeToString(fileObjectId))
+                .putString(FolderUploadWorker.KEY_FOLDER_NAME, folderName)
+                .putString(FolderUploadWorker.KEY_URI_DATA_LIST, Json.encodeToString(uriDataList))
+                .build()
+
+            val uploadWorkRequest = OneTimeWorkRequestBuilder<FolderUploadWorker>()
+                .setInputData(inputData)
+                .build()
+
+            workManager.enqueue(uploadWorkRequest)
+            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("フォルダのアップロードを開始しました"))
         }.onFailure { e ->
             when (e) {
                 is CancellationException -> throw e
 
                 else -> {
                     e.printStackTrace()
-                    uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar("アップロード失敗: ${e.message}"))
-                }
-            }
-        }
-    }
-
-    suspend fun handleFolderUpload(uris: List<Pair<android.net.Uri, String>>) {
-        runCatching {
-            val repository = getRepository()
-            val contentResolver = getApplication<Application>().contentResolver
-
-            val folderName = "uploaded_folder_${System.currentTimeMillis()}"
-            val filesToUpload = uris.mapNotNull { (uri, relativePath) ->
-                contentResolver.openInputStream(uri)?.let { inputStream ->
-                    net.matsudamper.folderviewer.repository.FileToUpload(
-                        relativePath = relativePath,
-                        inputStream = inputStream,
-                    )
-                }
-            }
-
-            repository.uploadFolder(fileObjectId, folderName, filesToUpload)
-            fetchFilesInternal()
-            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("フォルダをアップロードしました"))
-        }.onFailure { e ->
-            when (e) {
-                is CancellationException -> throw e
-
-                else -> {
-                    uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar("アップロード失敗: ${e.message}"))
+                    uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar("アップロード開始失敗: ${e.message}"))
                 }
             }
         }

@@ -30,6 +30,7 @@ zoomable = "2.9.0"
 jakartaInject = "2.0.1"
 microsoftGraph = "6.6.0"
 azureIdentity = "1.12.0"
+workManager = "2.10.0"
 
 [libraries]
 androidxCoreKtx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -75,6 +76,9 @@ zoomable = { group = "net.engawapg.lib", name = "zoomable", version.ref = "zooma
 jakartaInject = { group = "jakarta.inject", name = "jakarta.inject-api", version.ref = "jakartaInject" }
 microsoftGraph = { group = "com.microsoft.graph", name = "microsoft-graph", version.ref = "microsoftGraph" }
 azureIdentity = { group = "com.azure", name = "azure-identity", version.ref = "azureIdentity" }
+androidxWorkManagerRuntime = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workManager" }
+androidxWorkManagerHilt = { group = "androidx.hilt", name = "hilt-work", version.ref = "daggerHiltLifecycleCompose" }
+androidxHiltCompiler = { group = "androidx.hilt", name = "hilt-compiler", version.ref = "daggerHiltLifecycleCompose" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

@@ -77,6 +77,8 @@ dependencies {
 
     implementation(libs.hiltAndroid)
     implementation(libs.hiltLifecycleViewmodelCompose)
+    implementation(libs.androidxWorkManagerRuntime)
+    implementation(libs.androidxWorkManagerHilt)
     ksp(libs.hiltCompiler)
     implementation(libs.kotlinxSerializationJson)
     implementation(libs.coilCompose)
