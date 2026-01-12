@@ -29,8 +29,8 @@ class FolderBrowserUiStateCreator(
             )
         }
 
-        val allImagePaths = allFiles.filter { !it.isDirectory && FileUtil.isImage(it.name) }
-            .map { it.path }
+        val allImagePaths = allFiles.filter { !it.isDirectory && FileUtil.isImage(it.displayName) }
+            .map { it.id }
 
         val uiItems = buildList {
             addUiItemsRecursive(
@@ -70,7 +70,7 @@ class FolderBrowserUiStateCreator(
                     config = fileSortConfig,
                     sizeProvider = { it.size },
                     lastModifiedProvider = { it.lastModified },
-                    nameProvider = { it.name },
+                    nameProvider = { it.displayName },
                 ),
             ),
         )
@@ -111,19 +111,19 @@ class FolderBrowserUiStateCreator(
                 config = fileSortConfig,
                 sizeProvider = { it.size },
                 lastModifiedProvider = { it.lastModified },
-                nameProvider = { it.name },
+                nameProvider = { it.displayName },
             ),
         ).forEach { file ->
-            val isImage = FileUtil.isImage(file.name)
+            val isImage = FileUtil.isImage(file.displayName)
             add(
                 FolderBrowserUiState.UiFileItem.File(
-                    name = file.name,
-                    path = file.path,
+                    name = file.displayName,
+                    path = file.id,
                     isDirectory = file.isDirectory,
                     size = file.size,
                     lastModified = file.lastModified,
                     thumbnail = if (isImage) {
-                        FileImageSource.Thumbnail(storageId = storageId, path = file.path)
+                        FileImageSource.Thumbnail(storageId = storageId, path = file.id)
                     } else {
                         null
                     },
@@ -158,15 +158,15 @@ class FolderBrowserUiStateCreator(
     ) : FolderBrowserUiState.UiFileItem.File.Callbacks {
         override fun onClick() {
             viewModelScope.launch {
-                val isImage = FileUtil.isImage(file.name)
+                val isImage = FileUtil.isImage(file.displayName)
                 if (file.isDirectory) {
                     viewModelEventChannel.send(
-                        ViewModelEvent.NavigateToFolderBrowser(path = file.path, storageId = storageId),
+                        ViewModelEvent.NavigateToFolderBrowser(path = file.id, storageId = storageId),
                     )
                 } else if (isImage) {
                     viewModelEventChannel.send(
                         ViewModelEvent.NavigateToImageViewer(
-                            path = file.path,
+                            path = file.id,
                             storageId = storageId,
                             allPaths = allImagePaths,
                         ),

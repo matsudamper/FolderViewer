@@ -3,13 +3,15 @@ package net.matsudamper.folderviewer.repository
 import java.io.ByteArrayInputStream
 import java.io.InputStream
 import java.net.URL
+import java.time.OffsetDateTime
+import kotlin.collections.map
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.azure.identity.ClientSecretCredentialBuilder
 import com.microsoft.graph.models.DriveItem
-import com.microsoft.graph.models.DriveItemCollectionResponse
 import com.microsoft.graph.models.File
 import com.microsoft.graph.serviceclient.GraphServiceClient
+import net.matsudamper.folderviewer.dao.graphapi.GraphApiClient
 
 class SharePointFileRepository(
     private val config: StorageConfiguration.SharePoint,
@@ -24,22 +26,44 @@ class SharePointFileRepository(
         GraphServiceClient(credential, "https://graph.microsoft.com/.default")
     }
 
-    override suspend fun getFiles(path: String): List<FileItem> {
-        return withContext(Dispatchers.IO) {
-            val driveId = getDriveId()
-            val itemId = resolveItemIdByPath(driveId, path) ?: throw IllegalStateException("Do not resolveItemIdByPath $driveId")
-            val driveItems = fetchDriveItems(driveId, itemId)
+    private val graphApiClient: GraphApiClient by lazy {
+        GraphApiClient(
+            tenantId = config.tenantId,
+            clientId = config.clientId,
+            clientSecret = config.clientSecret,
+            objectId = config.objectId,
+        )
+    }
 
-            mapToFileItems(driveItems.value.orEmpty(), path)
+    override suspend fun getFiles(id: String?): List<FileItem> {
+        return withContext(Dispatchers.IO) {
+            val driveItems = graphApiClient.getDriveItemChildren(
+                itemId = id,
+            )
+
+            driveItems.value.map { item ->
+                val itemName = item.name
+
+                FileItem(
+                    displayName = itemName,
+                    id = item.id,
+                    isDirectory = item.folder != null,
+                    size = item.size ?: 0L,
+                    lastModified = item.lastModifiedDateTime?.let { OffsetDateTime.parse(it).toInstant().toEpochMilli() } ?: 0L,
+                )
+            }.sortedWith(
+                compareBy<FileItem> { !it.isDirectory }
+                    .thenBy { it.displayName.lowercase() },
+            )
         }
     }
 
-    private fun getDriveId(): String {
-        val drive = graphServiceClient.users().byUserId(config.objectId).drive()
-        return drive.get()!!.id!!
+    private suspend fun getDriveId(): String {
+        val drive = graphApiClient.getDrive(config.objectId)
+        return drive.id
     }
 
-    private fun resolveItemIdByPath(driveId: String, path: String): String? {
+    private suspend fun resolveItemIdByPath(path: String): String? {
         if (path.isEmpty()) {
             return "root"
         }
@@ -48,53 +72,20 @@ class SharePointFileRepository(
         var currentItemId = "root"
 
         for (part in pathParts) {
-            val items = graphServiceClient.drives().byDriveId(driveId).items()
-                .byDriveItemId(currentItemId).children().get()!!
+            val items = graphApiClient.getDriveItemChildren(
+                itemId = currentItemId,
+            )
 
-            val nextItem = items.value?.find { it.name == part } ?: return null
-            currentItemId = nextItem.id ?: return null
+            val nextItem = items.value.find { it.name == part } ?: return null
+            currentItemId = nextItem.id
         }
 
         return currentItemId
     }
 
-    private fun fetchDriveItems(driveId: String, itemId: String): DriveItemCollectionResponse {
-        val items = graphServiceClient.drives().byDriveId(driveId).items()
-        return items.byDriveItemId(itemId).children().get {
-            it.queryParameters.select = arrayOf(
-                "name",
-                "folder",
-                "size",
-                "lastModifiedDateTime",
-            )
-        }!!
-    }
-
-    private fun mapToFileItems(driveItems: List<DriveItem>, path: String): List<FileItem> {
-        return driveItems.map { item ->
-            val itemName = item.name ?: throw IllegalStateException("Item name is null. $item")
-            val itemPath = if (path.isEmpty()) {
-                itemName
-            } else {
-                "$path/$itemName"
-            }
-
-            FileItem(
-                name = itemName,
-                path = itemPath,
-                isDirectory = item.folder != null,
-                size = item.size ?: 0L,
-                lastModified = item.lastModifiedDateTime?.toInstant()?.toEpochMilli() ?: 0L,
-            )
-        }.sortedWith(
-            compareBy<FileItem> { !it.isDirectory }
-                .thenBy { it.name.lowercase() },
-        )
-    }
-
     override suspend fun getFileContent(path: String): InputStream = withContext(Dispatchers.IO) {
         val driveId = getDriveId()
-        val itemId = resolveItemIdByPath(driveId, path) ?: return@withContext ByteArrayInputStream(ByteArray(0))
+        val itemId = resolveItemIdByPath(path) ?: return@withContext ByteArrayInputStream(ByteArray(0))
 
         graphServiceClient.drives().byDriveId(driveId).items().byDriveItemId(itemId).content().get()
             ?: ByteArrayInputStream(ByteArray(0))
@@ -103,7 +94,7 @@ class SharePointFileRepository(
     override suspend fun getThumbnail(path: String, thumbnailSize: Int): InputStream? {
         return withContext(Dispatchers.IO) {
             val driveId = getDriveId()
-            val itemId = resolveItemIdByPath(driveId, path) ?: return@withContext ByteArrayInputStream(ByteArray(0))
+            val itemId = resolveItemIdByPath(path) ?: return@withContext ByteArrayInputStream(ByteArray(0))
 
             val thumbnails = graphServiceClient.drives().byDriveId(driveId)
                 .items().byDriveItemId(itemId)
@@ -121,14 +112,15 @@ class SharePointFileRepository(
     }
 
     override suspend fun uploadFile(
-        destinationPath: String,
+        id: String?,
         fileName: String,
         inputStream: InputStream,
     ) {
+        id ?: return // TODO rootへのアップロードを対応
         withContext(Dispatchers.IO) {
             val driveId = getDriveId()
-            val parentItemId = resolveItemIdByPath(driveId, destinationPath)
-                ?: throw IllegalArgumentException("Destination path not found: $destinationPath")
+            val parentItemId = resolveItemIdByPath(id)
+                ?: throw IllegalArgumentException("Destination path not found: $id")
 
             val bytes = inputStream.readBytes()
             val byteStream = ByteArrayInputStream(bytes)
@@ -152,14 +144,15 @@ class SharePointFileRepository(
     }
 
     override suspend fun uploadFolder(
-        destinationPath: String,
+        id: String?,
         folderName: String,
         files: List<FileToUpload>,
     ) {
+        id ?: return // TODO rootへのアップロードを対応
         withContext(Dispatchers.IO) {
             val driveId = getDriveId()
-            val parentItemId = resolveItemIdByPath(driveId, destinationPath)
-                ?: throw IllegalArgumentException("Destination path not found: $destinationPath")
+            val parentItemId = resolveItemIdByPath(id)
+                ?: throw IllegalArgumentException("Destination path not found: $id")
 
             val folderItem = DriveItem().also { item ->
                 item.name = folderName

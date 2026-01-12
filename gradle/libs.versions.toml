@@ -13,6 +13,7 @@ activityCompose = "1.12.2"
 composeBom = "2025.12.01"
 navigation3 = "1.0.0"
 kotlinxSerialization = "1.9.0"
+ktor = "3.0.3"
 ktlint = "1.8.0"
 ktlintGradle = "14.0.1"
 detekt = "1.23.8"
@@ -55,6 +56,10 @@ hiltAndroid = { group = "com.google.dagger", name = "hilt-android", version.ref 
 hiltCompiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "daggerHilt" }
 hiltLifecycleViewmodelCompose = { group = "androidx.hilt", name = "hilt-lifecycle-viewmodel-compose", version.ref = "daggerHiltLifecycleCompose" }
 kotlinxSerializationJson = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+ktorClientCore = { group = "io.ktor", name = "ktor-client-core", version.ref = "ktor" }
+ktorClientCio = { group = "io.ktor", name = "ktor-client-cio", version.ref = "ktor" }
+ktorClientContentNegotiation = { group = "io.ktor", name = "ktor-client-content-negotiation", version.ref = "ktor" }
+ktorSerializationKotlinxJson = { group = "io.ktor", name = "ktor-serialization-kotlinx-json", version.ref = "ktor" }
 # 自動アップデートの為に定義している
 ktlintCli = { group = "com.pinterest.ktlint", name = "ktlint-cli", version.ref = "ktlint" }
 detektCompose = { group = "io.nlopez.compose.rules", name = "detekt", version.ref = "detektCompose" }

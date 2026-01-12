@@ -292,7 +292,7 @@ class FolderBrowserViewModel @AssistedInject constructor(
                     config = viewModelStateFlow.value.folderSortConfig,
                     sizeProvider = { it.size },
                     lastModifiedProvider = { it.lastModified },
-                    nameProvider = { it.name },
+                    nameProvider = { it.displayName },
                 ),
             )
         viewModelStateFlow.update { viewModelState ->
@@ -304,7 +304,7 @@ class FolderBrowserViewModel @AssistedInject constructor(
                         files = files,
                         folders = folders.map {
                             ViewModelState.Folder(
-                                path = it.path,
+                                path = it.id,
                                 files = listOf(),
                                 folders = listOf(),
                             )
@@ -316,7 +316,7 @@ class FolderBrowserViewModel @AssistedInject constructor(
         }
 
         for (folder in folders) {
-            fetchAllFilesRecursive(repository, folder.path)
+            fetchAllFilesRecursive(repository, folder.id)
         }
     }
 

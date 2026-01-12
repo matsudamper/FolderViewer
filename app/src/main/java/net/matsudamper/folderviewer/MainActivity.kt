@@ -44,7 +44,6 @@ import net.matsudamper.folderviewer.ui.browser.FileBrowserScreen
 import net.matsudamper.folderviewer.ui.browser.ImageViewerScreen
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserScreen
 import net.matsudamper.folderviewer.ui.home.HomeScreen
-import net.matsudamper.folderviewer.ui.home.UiStorageConfiguration
 import net.matsudamper.folderviewer.ui.permission.PermissionRequestScreen
 import net.matsudamper.folderviewer.ui.settings.SettingsScreen
 import net.matsudamper.folderviewer.ui.storage.SharePointAddScreen
@@ -143,7 +142,7 @@ private fun EntryProviderScope<NavKey>.homeEntry(navigator: Navigator) {
                     }
 
                     is HomeViewModel.ViewModelEvent.NavigateToFileBrowser -> {
-                        navigator.navigate(FileBrowser(storageId = event.storageId, path = null))
+                        navigator.navigate(FileBrowser(storageId = event.storageId, displayPath = null, fileId = null))
                     }
 
                     is HomeViewModel.ViewModelEvent.NavigateToSmbAdd -> {
@@ -342,7 +341,7 @@ private fun FileBrowserEventHandler(
                 is FileBrowserViewModel.ViewModelEvent.PopBackStack -> navigator.goBack()
 
                 is FileBrowserViewModel.ViewModelEvent.NavigateToFileBrowser -> {
-                    navigator.navigate(FileBrowser(storageId = event.storageId, path = event.path))
+                    navigator.navigate(FileBrowser(storageId = event.storageId, displayPath = event.displayPath, fileId = event.id))
                 }
 
                 is FileBrowserViewModel.ViewModelEvent.NavigateToImageViewer -> {
@@ -350,7 +349,7 @@ private fun FileBrowserEventHandler(
                 }
 
                 is FileBrowserViewModel.ViewModelEvent.NavigateToFolderBrowser -> {
-                    navigator.navigate(FolderBrowser(storageId = event.storageId, path = event.path))
+                    navigator.navigate(FolderBrowser(storageId = event.storageId, path = event.id))
                 }
 
                 is FileBrowserViewModel.ViewModelEvent.LaunchFilePicker -> filePickerLauncher.launch("*/*")
@@ -435,7 +434,8 @@ private fun EntryProviderScope<NavKey>.folderBrowserEntry(navigator: Navigator) 
                         navigator.navigate(
                             FileBrowser(
                                 storageId = event.storageId,
-                                path = event.path,
+                                displayPath = event.path,
+                                fileId = event.path,
                             ),
                         )
                     }

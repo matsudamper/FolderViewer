@@ -8,7 +8,6 @@ data class FileBrowserUiState(
     val visibleFolderBrowserButton: Boolean,
     val visibleFavoriteButton: Boolean,
     val isRefreshing: Boolean,
-    val currentPath: String,
     val title: String,
     val isFavorite: Boolean,
     val files: List<UiFileItem>,

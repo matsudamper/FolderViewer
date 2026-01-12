@@ -2,7 +2,6 @@ package net.matsudamper.folderviewer.repository
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.os.Build
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -26,7 +25,8 @@ class SmbFileRepository(
 ) : FileRepository {
     private val client = SMBClient()
 
-    override suspend fun getFiles(path: String): List<FileItem> = withContext(Dispatchers.IO) {
+    override suspend fun getFiles(id: String?): List<FileItem> = withContext(Dispatchers.IO) {
+        val path = id.orEmpty()
         client.connect(config.ip).use { connection ->
             val session = connection.authenticate(
                 AuthenticationContext(
@@ -235,8 +235,8 @@ class SmbFileRepository(
                 .filter { it.type == 0 } // STYPE_DISKTREE
                 .map {
                     FileItem(
-                        name = it.netName,
-                        path = it.netName,
+                        displayName = it.netName,
+                        id = it.netName,
                         isDirectory = true,
                         size = 0,
                         lastModified = 0,
@@ -269,8 +269,8 @@ class SmbFileRepository(
                 val isDirectory = (info.fileAttributes and FileAttributes.FILE_ATTRIBUTE_DIRECTORY.value) != 0L
                 val displaySubPath = if (subPath.isEmpty()) "" else "${subPath.replace("\\", "/")}/"
                 FileItem(
-                    name = info.fileName,
-                    path = "$shareName/$displaySubPath${info.fileName}",
+                    displayName = info.fileName,
+                    id = "$shareName/$displaySubPath${info.fileName}",
                     isDirectory = isDirectory,
                     size = info.endOfFile,
                     lastModified = info.changeTime.toEpochMillis(),
@@ -279,78 +279,30 @@ class SmbFileRepository(
     }
 
     override suspend fun uploadFile(
-        destinationPath: String,
+        id: String?,
         fileName: String,
         inputStream: InputStream,
-    ): Unit = withContext(Dispatchers.IO) {
-        client.connect(config.ip).use { connection ->
-            val session = connection.authenticate(
-                AuthenticationContext(
-                    config.username,
-                    config.password.toCharArray(),
-                    null,
-                ),
-            )
+    ) {
+        id ?: return
+        withContext(Dispatchers.IO) {
+            client.connect(config.ip).use { connection ->
+                val session = connection.authenticate(
+                    AuthenticationContext(
+                        config.username,
+                        config.password.toCharArray(),
+                        null,
+                    ),
+                )
 
-            val parts = destinationPath.split("/", limit = PATH_SPLIT_LIMIT)
-            val shareName = parts[0]
-            val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+                val parts = id.split("/", limit = PATH_SPLIT_LIMIT)
+                val shareName = parts[0]
+                val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
 
-            val share = session.connectShare(shareName) as? DiskShare
-                ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+                val share = session.connectShare(shareName) as? DiskShare
+                    ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
 
-            share.use { diskShare ->
-                val fullPath = if (subPath.isEmpty()) fileName else "$subPath\\$fileName"
-
-                diskShare.openFile(
-                    fullPath,
-                    EnumSet.of(AccessMask.GENERIC_WRITE),
-                    null,
-                    SMB2ShareAccess.ALL,
-                    SMB2CreateDisposition.FILE_OVERWRITE_IF,
-                    null,
-                ).use { file ->
-                    file.outputStream.use { outputStream ->
-                        inputStream.copyTo(outputStream)
-                    }
-                }
-            }
-        }
-    }
-
-    override suspend fun uploadFolder(
-        destinationPath: String,
-        folderName: String,
-        files: List<FileToUpload>,
-    ): Unit = withContext(Dispatchers.IO) {
-        client.connect(config.ip).use { connection ->
-            val session = connection.authenticate(
-                AuthenticationContext(
-                    config.username,
-                    config.password.toCharArray(),
-                    null,
-                ),
-            )
-
-            val parts = destinationPath.split("/", limit = PATH_SPLIT_LIMIT)
-            val shareName = parts[0]
-            val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
-
-            val share = session.connectShare(shareName) as? DiskShare
-                ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
-
-            share.use { diskShare ->
-                val basePath = if (subPath.isEmpty()) folderName else "$subPath\\$folderName"
-
-                diskShare.mkdir(basePath)
-
-                files.forEach { fileToUpload ->
-                    val fullPath = "$basePath\\${fileToUpload.relativePath.replace("/", "\\")}"
-
-                    val parentPath = fullPath.substringBeforeLast("\\", "")
-                    if (parentPath.isNotEmpty() && parentPath != basePath) {
-                        createDirectoryRecursively(diskShare, parentPath)
-                    }
+                share.use { diskShare ->
+                    val fullPath = if (subPath.isEmpty()) fileName else "$subPath\\$fileName"
 
                     diskShare.openFile(
                         fullPath,
@@ -361,7 +313,61 @@ class SmbFileRepository(
                         null,
                     ).use { file ->
                         file.outputStream.use { outputStream ->
-                            fileToUpload.inputStream.copyTo(outputStream)
+                            inputStream.copyTo(outputStream)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    override suspend fun uploadFolder(
+        id: String?,
+        folderName: String,
+        files: List<FileToUpload>,
+    ) {
+        id ?: return
+        withContext(Dispatchers.IO) {
+            client.connect(config.ip).use { connection ->
+                val session = connection.authenticate(
+                    AuthenticationContext(
+                        config.username,
+                        config.password.toCharArray(),
+                        null,
+                    ),
+                )
+
+                val parts = id.split("/", limit = PATH_SPLIT_LIMIT)
+                val shareName = parts[0]
+                val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+
+                val share = session.connectShare(shareName) as? DiskShare
+                    ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+
+                share.use { diskShare ->
+                    val basePath = if (subPath.isEmpty()) folderName else "$subPath\\$folderName"
+
+                    diskShare.mkdir(basePath)
+
+                    files.forEach { fileToUpload ->
+                        val fullPath = "$basePath\\${fileToUpload.relativePath.replace("/", "\\")}"
+
+                        val parentPath = fullPath.substringBeforeLast("\\", "")
+                        if (parentPath.isNotEmpty() && parentPath != basePath) {
+                            createDirectoryRecursively(diskShare, parentPath)
+                        }
+
+                        diskShare.openFile(
+                            fullPath,
+                            EnumSet.of(AccessMask.GENERIC_WRITE),
+                            null,
+                            SMB2ShareAccess.ALL,
+                            SMB2CreateDisposition.FILE_OVERWRITE_IF,
+                            null,
+                        ).use { file ->
+                            file.outputStream.use { outputStream ->
+                                fileToUpload.inputStream.copyTo(outputStream)
+                            }
                         }
                     }
                 }
