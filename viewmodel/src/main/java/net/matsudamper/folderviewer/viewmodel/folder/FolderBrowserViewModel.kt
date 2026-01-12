@@ -270,7 +270,7 @@ class FolderBrowserViewModel @AssistedInject constructor(
                 fetchAllFilesRecursive(
                     repository = repository,
                     fileObjectId = arg.fileId,
-                    displayPath = arg.displayPath,
+                    displayPath = arg.displayPath.orEmpty(),
                 )
             } catch (e: CancellationException) {
                 throw e
@@ -291,7 +291,7 @@ class FolderBrowserViewModel @AssistedInject constructor(
     private suspend fun fetchAllFilesRecursive(
         repository: FileRepository,
         fileObjectId: FileObjectId,
-        displayPath: String?,
+        displayPath: String,
     ) {
         val items = repository.getFiles(fileObjectId)
         val files = items.filter { !it.isDirectory }
@@ -322,7 +322,7 @@ class FolderBrowserViewModel @AssistedInject constructor(
                             )
                         },
                     ),
-                    addDisplayPath = displayPath!!,
+                    addDisplayPath = displayPath,
                 ),
             )
         }

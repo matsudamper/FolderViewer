@@ -183,7 +183,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                     visibleFolderBrowserButton = arg.displayPath != null,
                     favorites = viewModelState.favorites.map { favorite ->
                         FileBrowserUiState.UiFileItem.File(
-                            name = favorite.path,
+                            name = favorite.name,
                             path = favorite.path,
                             isDirectory = true,
                             size = 0,

@@ -78,7 +78,7 @@ class FolderBrowserUiStateCreator(
                 config = folderSortConfig,
                 sizeProvider = { 0L },
                 lastModifiedProvider = { 0L },
-                nameProvider = { File(it.displayPath!!).name },
+                nameProvider = { File(it.displayPath.orEmpty()).name },
             ),
         ).forEach { childFolder ->
             addFoldersRecursive(
@@ -101,7 +101,7 @@ class FolderBrowserUiStateCreator(
             val titleText = if (folderPath.isNullOrEmpty()) {
                 folderPath ?: "null"
             } else {
-                folderPath.removePrefix(displayPath!!).removePrefix(File.separator)
+                folderPath.removePrefix(displayPath.orEmpty()).removePrefix(File.separator)
             }
             add(FolderBrowserUiState.UiFileItem.Header(title = titleText))
         }
@@ -139,7 +139,7 @@ class FolderBrowserUiStateCreator(
                 config = folderSortConfig,
                 sizeProvider = { 0L },
                 lastModifiedProvider = { 0L },
-                nameProvider = { File(it.displayPath!!).name },
+                nameProvider = { File(it.displayPath.orEmpty()).name },
             ),
         ).forEach { childFolder ->
             addUiItemsRecursive(
