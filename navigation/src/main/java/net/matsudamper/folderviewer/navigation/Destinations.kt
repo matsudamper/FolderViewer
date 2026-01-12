@@ -29,4 +29,4 @@ data class FileBrowser(val storageId: String, val displayPath: String?, val file
 data class FolderBrowser(val storageId: String, val displayPath: String?, val fileId: FileObjectId) : NavKey
 
 @Serializable
-data class ImageViewer(val id: String, val path: String, val allPaths: List<String>) : NavKey
+data class ImageViewer(val storageId: String, val fileId: FileObjectId.Item, val allPaths: List<FileObjectId.Item>) : NavKey

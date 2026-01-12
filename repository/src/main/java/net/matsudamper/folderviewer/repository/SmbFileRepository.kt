@@ -48,9 +48,9 @@ class SmbFileRepository(
         }
     }
 
-    override suspend fun getFileContent(path: String): InputStream = getFileContentInternal(path)
+    override suspend fun getFileContent(fileId: FileObjectId.Item): InputStream = getFileContentInternal(fileId.id)
 
-    override suspend fun getThumbnail(path: String, thumbnailSize: Int): InputStream = withContext(Dispatchers.IO) {
+    override suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream = withContext(Dispatchers.IO) {
         val connection = client.connect(config.ip)
         try {
             val session = connection.authenticate(
@@ -61,7 +61,7 @@ class SmbFileRepository(
                 ),
             )
 
-            val parts = path.split("/", limit = PATH_SPLIT_LIMIT)
+            val parts = fileId.id.split("/", limit = PATH_SPLIT_LIMIT)
             val shareName = parts[0]
             val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
 
@@ -85,7 +85,7 @@ class SmbFileRepository(
                 val height = options.outHeight
 
                 if (width <= 0 || height <= 0) {
-                    return@withContext getFileContentInternal(path, maxReadSize = MAX_THUMBNAIL_READ_SIZE.toLong())
+                    return@withContext getFileContentInternal(fileId.id, maxReadSize = MAX_THUMBNAIL_READ_SIZE.toLong())
                 }
 
                 val decodeOptions = BitmapFactory.Options().apply {
@@ -94,7 +94,7 @@ class SmbFileRepository(
 
                 val bitmap = file.inputStream.use { inputStream ->
                     BitmapFactory.decodeStream(inputStream, null, decodeOptions)
-                } ?: return@withContext getFileContentInternal(path, maxReadSize = MAX_THUMBNAIL_READ_SIZE.toLong())
+                } ?: return@withContext getFileContentInternal(fileId.id, maxReadSize = MAX_THUMBNAIL_READ_SIZE.toLong())
 
                 val bos = ByteArrayOutputStream()
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 80, bos)
@@ -106,7 +106,7 @@ class SmbFileRepository(
             throw e
         } catch (e: Exception) {
             e.printStackTrace()
-            getFileContentInternal(path, maxReadSize = MAX_THUMBNAIL_READ_SIZE.toLong())
+            getFileContentInternal(fileId.id, maxReadSize = MAX_THUMBNAIL_READ_SIZE.toLong())
         } finally {
             connection.close()
         }
@@ -240,7 +240,7 @@ class SmbFileRepository(
                 .map {
                     FileItem(
                         displayPath = it.netName,
-                        id = it.netName,
+                        id = FileObjectId.Item(it.netName),
                         isDirectory = true,
                         size = 0,
                         lastModified = 0,
@@ -274,7 +274,7 @@ class SmbFileRepository(
                 val displaySubPath = if (subPath.isEmpty()) "" else "${subPath.replace("\\", "/")}/"
                 FileItem(
                     displayPath = info.fileName,
-                    id = "$shareName/$displaySubPath${info.fileName}",
+                    id = FileObjectId.Item("$shareName/$displaySubPath${info.fileName}"),
                     isDirectory = isDirectory,
                     size = info.endOfFile,
                     lastModified = info.changeTime.toEpochMillis(),

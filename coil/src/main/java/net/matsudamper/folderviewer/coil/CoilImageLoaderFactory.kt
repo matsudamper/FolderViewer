@@ -37,7 +37,7 @@ object CoilImageLoaderFactory {
 private class FileImageSourceKeyer : Keyer<FileImageSource> {
     override fun key(data: FileImageSource, options: Options): String? {
         return when (data) {
-            is FileImageSource.Thumbnail -> "thumbnail:${data.storageId}:${data.path}"
+            is FileImageSource.Thumbnail -> "thumbnail:${data.storageId}:${data.fileId.id}"
             is FileImageSource.Original -> null
         }
     }
@@ -61,7 +61,6 @@ private class FileRepositoryImageFetcher(
     private val storageRepository: StorageRepository,
 ) : Fetcher {
     override suspend fun fetch(): FetchResult {
-        val path = fileImageSource.path
         val storageId = fileImageSource.storageId
 
         val fileRepository = storageRepository.getFileRepository(storageId)
@@ -73,11 +72,11 @@ private class FileRepositoryImageFetcher(
                     is Dimension.Pixels -> width.px
                     else -> CoilImageLoaderFactory.DEFAULT_THUMBNAIL_SIZE
                 }
-                fileRepository.getThumbnail(path, thumbnailSize)
+                fileRepository.getThumbnail(fileImageSource.fileId, thumbnailSize)
             }
 
-            is FileImageSource.Original -> fileRepository.getFileContent(path)
-        } ?: throw IllegalStateException("Failed to image load: $path")
+            is FileImageSource.Original -> fileRepository.getFileContent(fileImageSource.fileId)
+        } ?: throw IllegalStateException("Failed to image load: ${fileImageSource.fileId}")
 
         val bufferedSource = inputStream.source().buffer()
 

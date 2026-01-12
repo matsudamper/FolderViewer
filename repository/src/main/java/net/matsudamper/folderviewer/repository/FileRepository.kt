@@ -5,8 +5,8 @@ import net.matsudamper.folderviewer.common.FileObjectId
 
 interface FileRepository {
     suspend fun getFiles(id: FileObjectId): List<FileItem>
-    suspend fun getFileContent(path: String): InputStream
-    suspend fun getThumbnail(path: String, thumbnailSize: Int): InputStream?
+    suspend fun getFileContent(fileId: FileObjectId.Item): InputStream
+    suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream?
     suspend fun uploadFile(id: FileObjectId, fileName: String, inputStream: InputStream)
     suspend fun uploadFolder(id: FileObjectId, folderName: String, files: List<FileToUpload>)
 }
@@ -17,8 +17,8 @@ data class FileToUpload(
 )
 
 data class FileItem(
+    val id: FileObjectId.Item,
     val displayPath: String,
-    val id: String,
     val isDirectory: Boolean,
     val size: Long,
     val lastModified: Long,

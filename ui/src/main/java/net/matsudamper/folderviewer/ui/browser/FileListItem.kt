@@ -337,7 +337,7 @@ private fun PreviewFileLargeGridItem() {
 @Composable
 private fun previewUiFileItem() = FileBrowserUiState.UiFileItem.File(
     name = "FileName.txt",
-    path = "/path/to/FileName.txt",
+    key = "/path/to/FileName.txt",
     isDirectory = false,
     size = 1024L * 1024L,
     lastModified = 0L,

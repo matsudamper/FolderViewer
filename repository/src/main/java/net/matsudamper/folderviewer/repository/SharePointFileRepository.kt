@@ -51,7 +51,7 @@ class SharePointFileRepository(
 
                 FileItem(
                     displayPath = itemName,
-                    id = item.id,
+                    id = FileObjectId.Item(item.id),
                     isDirectory = item.folder != null,
                     size = item.size ?: 0L,
                     lastModified = item.lastModifiedDateTime?.let { OffsetDateTime.parse(it).toInstant().toEpochMilli() } ?: 0L,
@@ -88,21 +88,20 @@ class SharePointFileRepository(
         return currentItemId
     }
 
-    override suspend fun getFileContent(path: String): InputStream = withContext(Dispatchers.IO) {
+    override suspend fun getFileContent(fileId: FileObjectId.Item): InputStream = withContext(Dispatchers.IO) {
         val driveId = getDriveId()
-        val itemId = resolveItemIdByPath(path) ?: return@withContext ByteArrayInputStream(ByteArray(0))
+        val itemId = resolveItemIdByPath(fileId.id) ?: return@withContext ByteArrayInputStream(ByteArray(0))
 
         graphServiceClient.drives().byDriveId(driveId).items().byDriveItemId(itemId).content().get()
             ?: ByteArrayInputStream(ByteArray(0))
     }
 
-    override suspend fun getThumbnail(path: String, thumbnailSize: Int): InputStream? {
+    override suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream? {
         return withContext(Dispatchers.IO) {
             val driveId = getDriveId()
-            val itemId = resolveItemIdByPath(path) ?: return@withContext null
 
             val thumbnails = graphServiceClient.drives().byDriveId(driveId)
-                .items().byDriveItemId(itemId)
+                .items().byDriveItemId(fileId.id)
                 .thumbnails().get()
 
             val thumbnail = thumbnails?.value?.firstOrNull()

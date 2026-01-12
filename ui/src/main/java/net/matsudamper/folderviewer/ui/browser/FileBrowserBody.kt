@@ -110,7 +110,7 @@ private fun FileBrowserContent(
                     key = { item ->
                         when (item) {
                             is FileBrowserUiState.UiFileItem.Header -> "header_${item.title}"
-                            is FileBrowserUiState.UiFileItem.File -> item.path
+                            is FileBrowserUiState.UiFileItem.File -> item.key
                         }
                     },
                     contentType = {
@@ -166,7 +166,7 @@ private fun FileBrowserContent(
                     key = { item ->
                         when (item) {
                             is FileBrowserUiState.UiFileItem.Header -> "header_${item.title}"
-                            is FileBrowserUiState.UiFileItem.File -> item.path
+                            is FileBrowserUiState.UiFileItem.File -> item.key
                         }
                     },
                 ) { item ->

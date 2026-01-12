@@ -155,14 +155,14 @@ class FileBrowserViewModel @AssistedInject constructor(
                 val isImage = FileUtil.isImage(fileItem.displayPath)
                 FileBrowserUiState.UiFileItem.File(
                     name = fileItem.displayPath,
-                    path = fileItem.id,
+                    key = fileItem.id.id,
                     isDirectory = fileItem.isDirectory,
                     size = fileItem.size,
                     lastModified = fileItem.lastModified,
                     thumbnail = if (isImage) {
                         FileImageSource.Thumbnail(
                             storageId = arg.storageId,
-                            path = fileItem.id,
+                            fileId = fileItem.id,
                         )
                     } else {
                         null
@@ -185,14 +185,14 @@ class FileBrowserViewModel @AssistedInject constructor(
                     favorites = viewModelState.favorites.map { favorite ->
                         FileBrowserUiState.UiFileItem.File(
                             name = favorite.displayPath,
-                            path = favorite.fileId.id,
+                            key = favorite.fileId.id,
                             isDirectory = true,
                             size = 0,
                             lastModified = 0,
                             thumbnail = if (FileUtil.isImage(favorite.displayPath)) {
                                 FileImageSource.Thumbnail(
                                     storageId = arg.storageId,
-                                    path = favorite.fileId.id,
+                                    fileId = favorite.fileId,
                                 )
                             } else {
                                 null
@@ -203,7 +203,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                                         ViewModelEvent.NavigateToFileBrowser(
                                             displayPath = favorite.displayPath,
                                             storageId = arg.storageId,
-                                            id = favorite.fileId.id,
+                                            id = favorite.fileId,
                                         ),
                                     )
                                 }
@@ -358,13 +358,13 @@ class FileBrowserViewModel @AssistedInject constructor(
         data class NavigateToFileBrowser(
             val displayPath: String,
             val storageId: String,
-            val id: String,
+            val id: FileObjectId.Item,
         ) : ViewModelEvent
 
         data class NavigateToImageViewer(
-            val path: String,
+            val id: FileObjectId.Item,
             val storageId: String,
-            val allPaths: List<String>,
+            val allPaths: List<FileObjectId.Item>,
         ) : ViewModelEvent
 
         data class NavigateToFolderBrowser(
@@ -449,7 +449,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                     viewModelScope.launch {
                         viewModelEventChannel.send(
                             ViewModelEvent.NavigateToImageViewer(
-                                path = fileItem.id,
+                                id = fileItem.id,
                                 storageId = arg.storageId,
                                 allPaths = sortedFiles.filter { FileUtil.isImage(it.displayPath) }.map { it.id },
                             ),

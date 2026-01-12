@@ -34,7 +34,7 @@ internal class LocalFileRepository(
 
             FileItem(
                 displayPath = file.name,
-                id = relativePath,
+                id = FileObjectId.Item(relativePath),
                 isDirectory = file.isDirectory,
                 size = if (file.isDirectory) 0 else file.length(),
                 lastModified = file.lastModified(),
@@ -45,20 +45,20 @@ internal class LocalFileRepository(
         ).orEmpty()
     }
 
-    override suspend fun getFileContent(path: String): InputStream = withContext(Dispatchers.IO) {
-        val file = buildAbsoluteFile(path)
+    override suspend fun getFileContent(fileId: FileObjectId.Item): InputStream = withContext(Dispatchers.IO) {
+        val file = buildAbsoluteFile(fileId.id)
 
-        require(file.exists() && file.canRead()) { "File not found or cannot read: $path" }
+        require(file.exists() && file.canRead()) { "File not found or cannot read: ${fileId.id}" }
 
         FileInputStream(file)
     }
 
-    override suspend fun getThumbnail(path: String, thumbnailSize: Int): InputStream = withContext(Dispatchers.IO) {
+    override suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream = withContext(Dispatchers.IO) {
         try {
-            val file = buildAbsoluteFile(path)
+            val file = buildAbsoluteFile(fileId.id)
 
             if (!file.exists() || !file.canRead()) {
-                return@withContext getFileContent(path)
+                return@withContext getFileContent(fileId)
             }
 
             FileInputStream(file).use { stream ->
@@ -69,7 +69,7 @@ internal class LocalFileRepository(
                 val height = options.outHeight
 
                 if (width <= 0 || height <= 0) {
-                    return@withContext getFileContent(path)
+                    return@withContext getFileContent(fileId)
                 }
 
                 val decodeOptions = BitmapFactory.Options().apply {
@@ -78,7 +78,7 @@ internal class LocalFileRepository(
 
                 FileInputStream(file).use { decodeStream ->
                     val bitmap = BitmapFactory.decodeStream(decodeStream, null, decodeOptions)
-                        ?: return@withContext getFileContent(path)
+                        ?: return@withContext getFileContent(fileId)
 
                     val bos = ByteArrayOutputStream()
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 80, bos)
@@ -89,7 +89,7 @@ internal class LocalFileRepository(
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            getFileContent(path)
+            getFileContent(fileId)
         }
     }
 

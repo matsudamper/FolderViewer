@@ -317,7 +317,7 @@ class FolderBrowserViewModel @AssistedInject constructor(
                         displayPath = displayPath,
                         folders = folders.map { folder ->
                             ViewModelState.Folder(
-                                fileObjectId = FileObjectId.Item(folder.id),
+                                fileObjectId = folder.id,
                                 displayPath = "$displayPath/${folder.displayPath}",
                                 files = listOf(),
                                 folders = listOf(),
@@ -332,7 +332,7 @@ class FolderBrowserViewModel @AssistedInject constructor(
         for (folder in folders) {
             fetchAllFilesRecursive(
                 repository = repository,
-                fileObjectId = FileObjectId.Item(folder.id),
+                fileObjectId = folder.id,
                 displayPath = "$displayPath/${folder.displayPath}",
             )
         }
@@ -346,13 +346,13 @@ class FolderBrowserViewModel @AssistedInject constructor(
         ) : ViewModelEvent
 
         data class NavigateToImageViewer(
-            val path: String,
+            val fileId: FileObjectId.Item,
             val storageId: String,
-            val allPaths: List<String>,
+            val allPaths: List<FileObjectId.Item>,
         ) : ViewModelEvent
 
         data class NavigateToFolderBrowser(
-            val path: String,
+            val fileId: FileObjectId.Item,
             val storageId: String,
             val displayPath: String?,
         ) : ViewModelEvent

@@ -27,6 +27,8 @@ kotlin {
 
 dependencies {
     implementation(project(":repository"))
+    implementation(project(":common"))
+
     implementation(libs.androidxCoreKtx)
     implementation(libs.coilCompose)
     implementation(libs.hiltAndroid)

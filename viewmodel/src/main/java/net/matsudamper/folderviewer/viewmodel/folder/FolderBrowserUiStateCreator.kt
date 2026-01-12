@@ -94,7 +94,7 @@ class FolderBrowserUiStateCreator(
         isRoot: Boolean,
         folderSortConfig: FolderBrowserUiState.FileSortConfig,
         fileSortConfig: FolderBrowserUiState.FileSortConfig,
-        allImagePaths: List<String>,
+        allImagePaths: List<FileObjectId.Item>,
     ) {
         if (!isRoot) {
             val folderPath = folder.displayPath
@@ -118,12 +118,12 @@ class FolderBrowserUiStateCreator(
             add(
                 FolderBrowserUiState.UiFileItem.File(
                     name = file.displayPath,
-                    path = file.id,
+                    key = file.id.id,
                     isDirectory = file.isDirectory,
                     size = file.size,
                     lastModified = file.lastModified,
                     thumbnail = if (isImage) {
-                        FileImageSource.Thumbnail(storageId = storageId, path = file.id)
+                        FileImageSource.Thumbnail(storageId = storageId, fileId = file.id)
                     } else {
                         null
                     },
@@ -154,7 +154,7 @@ class FolderBrowserUiStateCreator(
 
     private inner class FileItemCallbacks(
         private val file: FileItem,
-        private val allImagePaths: List<String>,
+        private val allImagePaths: List<FileObjectId.Item>,
     ) : FolderBrowserUiState.UiFileItem.File.Callbacks {
         override fun onClick() {
             viewModelScope.launch {
@@ -162,7 +162,7 @@ class FolderBrowserUiStateCreator(
                 if (file.isDirectory) {
                     viewModelEventChannel.send(
                         ViewModelEvent.NavigateToFolderBrowser(
-                            path = file.id,
+                            fileId = file.id,
                             storageId = storageId,
                             displayPath = file.displayPath,
                         ),
@@ -170,7 +170,7 @@ class FolderBrowserUiStateCreator(
                 } else if (isImage) {
                     viewModelEventChannel.send(
                         ViewModelEvent.NavigateToImageViewer(
-                            path = file.id,
+                            fileId = file.id,
                             storageId = storageId,
                             allPaths = allImagePaths,
                         ),

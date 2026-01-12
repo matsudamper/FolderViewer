@@ -23,7 +23,7 @@ data class FolderBrowserUiState(
 
         data class File(
             val name: String,
-            val path: String,
+            val key: String,
             val isDirectory: Boolean,
             val size: Long,
             val lastModified: Long,
