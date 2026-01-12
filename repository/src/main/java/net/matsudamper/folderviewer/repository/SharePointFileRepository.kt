@@ -11,6 +11,7 @@ import com.azure.identity.ClientSecretCredentialBuilder
 import com.microsoft.graph.models.DriveItem
 import com.microsoft.graph.models.File
 import com.microsoft.graph.serviceclient.GraphServiceClient
+import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.dao.graphapi.GraphApiClient
 
 class SharePointFileRepository(
@@ -35,10 +36,14 @@ class SharePointFileRepository(
         )
     }
 
-    override suspend fun getFiles(id: String?): List<FileItem> {
+    override suspend fun getFiles(id: FileObjectId): List<FileItem> {
         return withContext(Dispatchers.IO) {
+            val itemId = when (id) {
+                is FileObjectId.Root -> null
+                is FileObjectId.Item -> id.id
+            }
             val driveItems = graphApiClient.getDriveItemChildren(
-                itemId = id,
+                itemId = itemId,
             )
 
             driveItems.value.map { item ->
@@ -112,15 +117,20 @@ class SharePointFileRepository(
     }
 
     override suspend fun uploadFile(
-        id: String?,
+        id: FileObjectId,
         fileName: String,
         inputStream: InputStream,
     ) {
-        id ?: return // TODO rootへのアップロードを対応
+        val path = when (id) {
+            is FileObjectId.Root -> return
+
+            // TODO rootへのアップロードを対応
+            is FileObjectId.Item -> id.id
+        }
         withContext(Dispatchers.IO) {
             val driveId = getDriveId()
-            val parentItemId = resolveItemIdByPath(id)
-                ?: throw IllegalArgumentException("Destination path not found: $id")
+            val parentItemId = resolveItemIdByPath(path)
+                ?: throw IllegalArgumentException("Destination path not found: $path")
 
             val bytes = inputStream.readBytes()
             val byteStream = ByteArrayInputStream(bytes)
@@ -144,15 +154,20 @@ class SharePointFileRepository(
     }
 
     override suspend fun uploadFolder(
-        id: String?,
+        id: FileObjectId,
         folderName: String,
         files: List<FileToUpload>,
     ) {
-        id ?: return // TODO rootへのアップロードを対応
+        val path = when (id) {
+            is FileObjectId.Root -> return
+
+            // TODO rootへのアップロードを対応
+            is FileObjectId.Item -> id.id
+        }
         withContext(Dispatchers.IO) {
             val driveId = getDriveId()
-            val parentItemId = resolveItemIdByPath(id)
-                ?: throw IllegalArgumentException("Destination path not found: $id")
+            val parentItemId = resolveItemIdByPath(path)
+                ?: throw IllegalArgumentException("Destination path not found: $path")
 
             val folderItem = DriveItem().also { item ->
                 item.name = folderName

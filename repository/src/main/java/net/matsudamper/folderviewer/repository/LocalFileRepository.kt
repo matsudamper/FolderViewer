@@ -9,12 +9,16 @@ import java.io.FileInputStream
 import java.io.InputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import net.matsudamper.folderviewer.common.FileObjectId
 
 internal class LocalFileRepository(
     private val config: StorageConfiguration.Local,
 ) : FileRepository {
-    override suspend fun getFiles(id: String?): List<FileItem> = withContext(Dispatchers.IO) {
-        val path = id.orEmpty()
+    override suspend fun getFiles(id: FileObjectId): List<FileItem> = withContext(Dispatchers.IO) {
+        val path = when (id) {
+            is FileObjectId.Root -> ""
+            is FileObjectId.Item -> id.id
+        }
         val targetDir = buildAbsoluteFile(path)
 
         if (!targetDir.exists() || !targetDir.canRead()) {
@@ -109,15 +113,18 @@ internal class LocalFileRepository(
     }
 
     override suspend fun uploadFile(
-        id: String?,
+        id: FileObjectId,
         fileName: String,
         inputStream: InputStream,
     ): Unit = withContext(Dispatchers.IO) {
-        id ?: return@withContext
-        val destinationDir = buildAbsoluteFile(id)
+        val path = when (id) {
+            is FileObjectId.Root -> ""
+            is FileObjectId.Item -> id.id
+        }
+        val destinationDir = buildAbsoluteFile(path)
 
         require(destinationDir.exists() && destinationDir.isDirectory && destinationDir.canWrite()) {
-            "Destination directory not found or cannot write: $id"
+            "Destination directory not found or cannot write: $path"
         }
 
         val destinationFile = File(destinationDir, fileName)
@@ -130,15 +137,18 @@ internal class LocalFileRepository(
     }
 
     override suspend fun uploadFolder(
-        id: String?,
+        id: FileObjectId,
         folderName: String,
         files: List<FileToUpload>,
     ): Unit = withContext(Dispatchers.IO) {
-        id ?: return@withContext
-        val destinationDir = buildAbsoluteFile(id)
+        val path = when (id) {
+            is FileObjectId.Root -> ""
+            is FileObjectId.Item -> id.id
+        }
+        val destinationDir = buildAbsoluteFile(path)
 
         require(destinationDir.exists() && destinationDir.isDirectory && destinationDir.canWrite()) {
-            "Destination directory not found or cannot write: $id"
+            "Destination directory not found or cannot write: $path"
         }
 
         val folderDir = File(destinationDir, folderName)

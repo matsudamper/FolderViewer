@@ -28,6 +28,7 @@ kotlin {
 }
 
 dependencies {
+    implementation(project(":common"))
     implementation(project(":repository"))
     implementation(project(":navigation"))
     implementation(project(":ui"))

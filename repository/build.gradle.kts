@@ -29,6 +29,7 @@ kotlin {
 
 dependencies {
     implementation(project(":dao:graph-api"))
+    implementation(project(":common"))
     implementation(libs.androidxCoreKtx)
     implementation(libs.smbj)
     implementation(libs.smbjRpc)

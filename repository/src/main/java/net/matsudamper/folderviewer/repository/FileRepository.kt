@@ -1,13 +1,14 @@
 package net.matsudamper.folderviewer.repository
 
 import java.io.InputStream
+import net.matsudamper.folderviewer.common.FileObjectId
 
 interface FileRepository {
-    suspend fun getFiles(id: String?): List<FileItem>
+    suspend fun getFiles(id: FileObjectId): List<FileItem>
     suspend fun getFileContent(path: String): InputStream
     suspend fun getThumbnail(path: String, thumbnailSize: Int): InputStream?
-    suspend fun uploadFile(id: String?, fileName: String, inputStream: InputStream)
-    suspend fun uploadFolder(id: String?, folderName: String, files: List<FileToUpload>)
+    suspend fun uploadFile(id: FileObjectId, fileName: String, inputStream: InputStream)
+    suspend fun uploadFolder(id: FileObjectId, folderName: String, files: List<FileToUpload>)
 }
 
 data class FileToUpload(

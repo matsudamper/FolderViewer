@@ -2,6 +2,7 @@ package net.matsudamper.folderviewer.navigation
 
 import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
+import net.matsudamper.folderviewer.common.FileObjectId
 
 @Serializable
 object Home : NavKey
@@ -22,10 +23,10 @@ data class SmbAdd(val storageId: String? = null) : NavKey
 data class SharePointAdd(val storageId: String? = null) : NavKey
 
 @Serializable
-data class FileBrowser(val storageId: String, val displayPath: String?, val fileId: String?) : NavKey
+data class FileBrowser(val storageId: String, val displayPath: String?, val fileId: FileObjectId) : NavKey
 
 @Serializable
-data class FolderBrowser(val storageId: String, val displayPath: String?, val fileId: String) : NavKey
+data class FolderBrowser(val storageId: String, val displayPath: String?, val fileId: FileObjectId) : NavKey
 
 @Serializable
 data class ImageViewer(val id: String, val path: String, val allPaths: List<String>) : NavKey

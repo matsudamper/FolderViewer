@@ -19,6 +19,7 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import net.matsudamper.folderviewer.coil.FileImageSource
+import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.navigation.FileBrowser
 import net.matsudamper.folderviewer.repository.FavoriteConfiguration
 import net.matsudamper.folderviewer.repository.FileItem
@@ -43,7 +44,7 @@ class FileBrowserViewModel @AssistedInject constructor(
 
     private val uiChannelEvent = Channel<FileBrowserUiEvent>()
     val uiEvent: Flow<FileBrowserUiEvent> = uiChannelEvent.receiveAsFlow()
-    private val fileId = arg.fileId
+    private val fileObjectId = arg.fileId
 
     private val displayName get() = arg.displayPath ?: viewModelStateFlow.value.storageName ?: "null"
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> = MutableStateFlow(ViewModelState())
@@ -91,11 +92,10 @@ class FileBrowserViewModel @AssistedInject constructor(
         }
 
         override fun onFolderBrowserClick() {
-            val fileId = arg.fileId ?: return
             viewModelScope.launch {
                 viewModelEventChannel.send(
                     ViewModelEvent.NavigateToFolderBrowser(
-                        id = fileId,
+                        id = fileObjectId,
                         storageId = arg.storageId,
                         displayPath = arg.displayPath,
                     ),
@@ -104,7 +104,10 @@ class FileBrowserViewModel @AssistedInject constructor(
         }
 
         override fun onFavoriteClick() {
-            val fileId = arg.fileId ?: return
+            val path = when (fileObjectId) {
+                is FileObjectId.Root -> ""
+                is FileObjectId.Item -> fileObjectId.id
+            }
             viewModelScope.launch {
                 val state = viewModelStateFlow.value
                 val favoriteId = state.favoriteId
@@ -123,7 +126,7 @@ class FileBrowserViewModel @AssistedInject constructor(
 
                     storageRepository.addFavorite(
                         storageId = arg.storageId,
-                        path = fileId,
+                        path = path,
                         name = name,
                     )
                     uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("Added to favorites"))
@@ -223,9 +226,13 @@ class FileBrowserViewModel @AssistedInject constructor(
             loadDisplayMode()
         }
         viewModelScope.launch {
+            val path = when (fileObjectId) {
+                is FileObjectId.Root -> return@launch
+                is FileObjectId.Item -> fileObjectId.id
+            }
             storageRepository.favorites
                 .map { favorites ->
-                    favorites.find { it.storageId == arg.storageId && it.path == (arg.fileId.orEmpty()) }?.id
+                    favorites.find { it.storageId == arg.storageId && it.path == path }?.id
                 }
                 .collectLatest { favoriteId ->
                     viewModelStateFlow.update { it.copy(favoriteId = favoriteId) }
@@ -319,7 +326,7 @@ class FileBrowserViewModel @AssistedInject constructor(
     private suspend fun fetchFilesInternal() {
         runCatching {
             val repository = getRepository()
-            val files = repository.getFiles(fileId)
+            val files = repository.getFiles(fileObjectId)
             viewModelStateFlow.update {
                 it.copy(
                     isLoading = false,
@@ -360,7 +367,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         ) : ViewModelEvent
 
         data class NavigateToFolderBrowser(
-            val id: String,
+            val id: FileObjectId,
             val displayPath: String?,
             val storageId: String,
         ) : ViewModelEvent
@@ -374,7 +381,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             val repository = getRepository()
             val contentResolver = getApplication<Application>().contentResolver
             contentResolver.openInputStream(uri)?.use { inputStream ->
-                repository.uploadFile(arg.fileId, fileName, inputStream)
+                repository.uploadFile(fileObjectId, fileName, inputStream)
             }
             fetchFilesInternal()
             uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ファイルをアップロードしました"))
@@ -405,7 +412,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                 }
             }
 
-            repository.uploadFolder(arg.fileId, folderName, filesToUpload)
+            repository.uploadFolder(fileObjectId, folderName, filesToUpload)
             fetchFilesInternal()
             uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("フォルダをアップロードしました"))
         }.onFailure { e ->

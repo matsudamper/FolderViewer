@@ -27,6 +27,7 @@ import coil.Coil
 import coil.ImageLoader
 import dagger.hilt.android.AndroidEntryPoint
 import jakarta.inject.Inject
+import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.navigation.FileBrowser
 import net.matsudamper.folderviewer.navigation.FolderBrowser
 import net.matsudamper.folderviewer.navigation.Home
@@ -142,7 +143,7 @@ private fun EntryProviderScope<NavKey>.homeEntry(navigator: Navigator) {
                     }
 
                     is HomeViewModel.ViewModelEvent.NavigateToFileBrowser -> {
-                        navigator.navigate(FileBrowser(storageId = event.storageId, displayPath = null, fileId = null))
+                        navigator.navigate(FileBrowser(storageId = event.storageId, displayPath = null, fileId = FileObjectId.Root))
                     }
 
                     is HomeViewModel.ViewModelEvent.NavigateToSmbAdd -> {
@@ -341,7 +342,7 @@ private fun FileBrowserEventHandler(
                 is FileBrowserViewModel.ViewModelEvent.PopBackStack -> navigator.goBack()
 
                 is FileBrowserViewModel.ViewModelEvent.NavigateToFileBrowser -> {
-                    navigator.navigate(FileBrowser(storageId = event.storageId, displayPath = event.displayPath, fileId = event.id))
+                    navigator.navigate(FileBrowser(storageId = event.storageId, displayPath = event.displayPath, fileId = FileObjectId.Item(event.id)))
                 }
 
                 is FileBrowserViewModel.ViewModelEvent.NavigateToImageViewer -> {
@@ -441,7 +442,7 @@ private fun EntryProviderScope<NavKey>.folderBrowserEntry(navigator: Navigator) 
                             FileBrowser(
                                 storageId = event.storageId,
                                 displayPath = event.path,
-                                fileId = event.path,
+                                fileId = FileObjectId.Item(event.path),
                             ),
                         )
                     }
@@ -460,7 +461,7 @@ private fun EntryProviderScope<NavKey>.folderBrowserEntry(navigator: Navigator) 
                         navigator.navigate(
                             FolderBrowser(
                                 storageId = event.storageId,
-                                fileId = event.path,
+                                fileId = FileObjectId.Item(event.path),
                                 displayPath = event.displayPath,
                             ),
                         )

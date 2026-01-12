@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "net.matsudamper.folderviewer.navigation"
+    namespace = "net.matsudamper.folderviewer.common"
     compileSdk = 36
 
     defaultConfig {
@@ -25,7 +25,5 @@ kotlin {
 }
 
 dependencies {
-    implementation(project(":common"))
     implementation(libs.kotlinxSerializationJson)
-    implementation(libs.androidxNavigation3Runtime)
 }

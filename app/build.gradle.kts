@@ -55,6 +55,7 @@ kotlin {
 }
 
 dependencies {
+    implementation(project(":common"))
     implementation(project(":navigation"))
     implementation(project(":ui"))
     implementation(project(":repository"))

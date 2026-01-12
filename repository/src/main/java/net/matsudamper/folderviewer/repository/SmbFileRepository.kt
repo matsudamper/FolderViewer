@@ -19,14 +19,18 @@ import com.hierynomus.smbj.session.Session
 import com.hierynomus.smbj.share.DiskShare
 import com.rapid7.client.dcerpc.mssrvs.ServerService
 import com.rapid7.client.dcerpc.transport.SMBTransportFactories
+import net.matsudamper.folderviewer.common.FileObjectId
 
 class SmbFileRepository(
     private val config: StorageConfiguration.Smb,
 ) : FileRepository {
     private val client = SMBClient()
 
-    override suspend fun getFiles(id: String?): List<FileItem> = withContext(Dispatchers.IO) {
-        val path = id.orEmpty()
+    override suspend fun getFiles(id: FileObjectId): List<FileItem> = withContext(Dispatchers.IO) {
+        val path = when (id) {
+            is FileObjectId.Root -> ""
+            is FileObjectId.Item -> id.id
+        }
         client.connect(config.ip).use { connection ->
             val session = connection.authenticate(
                 AuthenticationContext(
@@ -279,11 +283,14 @@ class SmbFileRepository(
     }
 
     override suspend fun uploadFile(
-        id: String?,
+        id: FileObjectId,
         fileName: String,
         inputStream: InputStream,
     ) {
-        id ?: return
+        val path = when (id) {
+            is FileObjectId.Root -> return
+            is FileObjectId.Item -> id.id
+        }
         withContext(Dispatchers.IO) {
             client.connect(config.ip).use { connection ->
                 val session = connection.authenticate(
@@ -294,7 +301,7 @@ class SmbFileRepository(
                     ),
                 )
 
-                val parts = id.split("/", limit = PATH_SPLIT_LIMIT)
+                val parts = path.split("/", limit = PATH_SPLIT_LIMIT)
                 val shareName = parts[0]
                 val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
 
@@ -322,11 +329,14 @@ class SmbFileRepository(
     }
 
     override suspend fun uploadFolder(
-        id: String?,
+        id: FileObjectId,
         folderName: String,
         files: List<FileToUpload>,
     ) {
-        id ?: return
+        val path = when (id) {
+            is FileObjectId.Root -> return
+            is FileObjectId.Item -> id.id
+        }
         withContext(Dispatchers.IO) {
             client.connect(config.ip).use { connection ->
                 val session = connection.authenticate(
@@ -337,7 +347,7 @@ class SmbFileRepository(
                     ),
                 )
 
-                val parts = id.split("/", limit = PATH_SPLIT_LIMIT)
+                val parts = path.split("/", limit = PATH_SPLIT_LIMIT)
                 val shareName = parts[0]
                 val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
 
