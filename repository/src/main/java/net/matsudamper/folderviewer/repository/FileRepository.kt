@@ -16,7 +16,7 @@ data class FileToUpload(
 )
 
 data class FileItem(
-    val displayName: String,
+    val displayPath: String,
     val id: String,
     val isDirectory: Boolean,
     val size: Long,

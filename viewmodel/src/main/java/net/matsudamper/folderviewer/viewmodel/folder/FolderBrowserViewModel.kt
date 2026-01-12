@@ -50,7 +50,8 @@ class FolderBrowserViewModel @AssistedInject constructor(
         MutableStateFlow(
             ViewModelState(
                 folder = ViewModelState.Folder(
-                    path = arg.fileId,
+                    fileId = arg.fileId,
+                    displayPath = arg.displayPath,
                     files = listOf(),
                     folders = listOf(),
                 ),
@@ -251,7 +252,8 @@ class FolderBrowserViewModel @AssistedInject constructor(
             viewModelStateFlow.update {
                 it.copy(
                     folder = ViewModelState.Folder(
-                        path = arg.fileId,
+                        fileId = arg.fileId,
+                        displayPath = arg.displayPath,
                         files = listOf(),
                         folders = listOf(),
                     ),
@@ -261,7 +263,11 @@ class FolderBrowserViewModel @AssistedInject constructor(
             }
             try {
                 val repository = getRepository()
-                fetchAllFilesRecursive(repository, arg.fileId)
+                fetchAllFilesRecursive(
+                    repository = repository,
+                    fileId = arg.fileId,
+                    displayPath = arg.displayPath,
+                )
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -280,9 +286,10 @@ class FolderBrowserViewModel @AssistedInject constructor(
 
     private suspend fun fetchAllFilesRecursive(
         repository: FileRepository,
-        path: String,
+        fileId: String,
+        displayPath: String?,
     ) {
-        val items = repository.getFiles(path)
+        val items = repository.getFiles(fileId)
         val files = items.filter { !it.isDirectory }
         // フォルダは読み込み順番に影響するのでフォルダのみソートする。表示はUIState側でソートする
         val folders = items.filter { it.isDirectory }
@@ -291,7 +298,7 @@ class FolderBrowserViewModel @AssistedInject constructor(
                     config = viewModelStateFlow.value.folderSortConfig,
                     sizeProvider = { it.size },
                     lastModifiedProvider = { it.lastModified },
-                    nameProvider = { it.displayName },
+                    nameProvider = { it.displayPath },
                 ),
             )
         viewModelStateFlow.update { viewModelState ->
@@ -299,23 +306,29 @@ class FolderBrowserViewModel @AssistedInject constructor(
                 folder = mergeFolder(
                     original = viewModelState.folder,
                     addFolder = ViewModelState.Folder(
-                        path = path,
+                        fileId = fileId,
                         files = files,
-                        folders = folders.map {
+                        displayPath = displayPath,
+                        folders = folders.map { folder ->
                             ViewModelState.Folder(
-                                path = it.id,
+                                fileId = folder.id,
+                                displayPath = "$displayPath/${folder.displayPath}",
                                 files = listOf(),
                                 folders = listOf(),
                             )
                         },
                     ),
-                    addPath = path,
+                    addDisplayPath = displayPath!!,
                 ),
             )
         }
 
         for (folder in folders) {
-            fetchAllFilesRecursive(repository, folder.id)
+            fetchAllFilesRecursive(
+                repository = repository,
+                fileId = folder.id,
+                displayPath = "$displayPath/${folder.displayPath}",
+            )
         }
     }
 
@@ -342,19 +355,19 @@ class FolderBrowserViewModel @AssistedInject constructor(
     private fun mergeFolder(
         original: ViewModelState.Folder,
         addFolder: ViewModelState.Folder,
-        addPath: String,
+        addDisplayPath: String,
     ): ViewModelState.Folder {
-        if (original.path == addPath) {
+        if (original.displayPath == addDisplayPath) {
             return addFolder
         }
-        val targetPath = Paths.get(addPath)
+        val targetPath = Paths.get(addDisplayPath)
         return original.copy(
             folders = original.folders.map { folder ->
-                if (targetPath.startsWith(Paths.get(folder.path))) {
+                if (targetPath.startsWith(Paths.get(folder.displayPath))) {
                     mergeFolder(
                         original = folder,
                         addFolder = addFolder,
-                        addPath = addPath,
+                        addDisplayPath = addDisplayPath,
                     )
                 } else {
                     folder
@@ -384,7 +397,8 @@ class FolderBrowserViewModel @AssistedInject constructor(
         val favorites: List<FavoriteConfiguration> = emptyList(),
     ) {
         data class Folder(
-            val path: String,
+            val fileId: String,
+            val displayPath: String?,
             val files: List<FileItem>,
             val folders: List<Folder>,
         )

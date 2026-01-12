@@ -30,7 +30,7 @@ class FolderBrowserUiStateCreator(
             )
         }
 
-        val allImagePaths = allFiles.filter { !it.isDirectory && FileUtil.isImage(it.displayName) }
+        val allImagePaths = allFiles.filter { !it.isDirectory && FileUtil.isImage(it.displayPath) }
             .map { it.id }
 
         val uiItems = buildList {
@@ -68,7 +68,7 @@ class FolderBrowserUiStateCreator(
                     config = fileSortConfig,
                     sizeProvider = { it.size },
                     lastModifiedProvider = { it.lastModified },
-                    nameProvider = { it.displayName },
+                    nameProvider = { it.displayPath },
                 ),
             ),
         )
@@ -77,7 +77,7 @@ class FolderBrowserUiStateCreator(
                 config = folderSortConfig,
                 sizeProvider = { 0L },
                 lastModifiedProvider = { 0L },
-                nameProvider = { File(it.path).name },
+                nameProvider = { File(it.displayPath!!).name },
             ),
         ).forEach { childFolder ->
             addFoldersRecursive(
@@ -96,10 +96,11 @@ class FolderBrowserUiStateCreator(
         allImagePaths: List<String>,
     ) {
         if (!isRoot) {
-            val titleText = if (fileId.isNullOrEmpty()) {
-                folder.path
+            val folderPath = folder.displayPath
+            val titleText = if (folderPath.isNullOrEmpty()) {
+                folderPath ?: "null"
             } else {
-                folder.path.removePrefix(fileId).removePrefix(File.separator)
+                folderPath.removePrefix(displayPath!!).removePrefix(File.separator)
             }
             add(FolderBrowserUiState.UiFileItem.Header(title = titleText))
         }
@@ -109,13 +110,13 @@ class FolderBrowserUiStateCreator(
                 config = fileSortConfig,
                 sizeProvider = { it.size },
                 lastModifiedProvider = { it.lastModified },
-                nameProvider = { it.displayName },
+                nameProvider = { it.displayPath },
             ),
         ).forEach { file ->
-            val isImage = FileUtil.isImage(file.displayName)
+            val isImage = FileUtil.isImage(file.displayPath)
             add(
                 FolderBrowserUiState.UiFileItem.File(
-                    name = file.displayName,
+                    name = file.displayPath,
                     path = file.id,
                     isDirectory = file.isDirectory,
                     size = file.size,
@@ -137,7 +138,7 @@ class FolderBrowserUiStateCreator(
                 config = folderSortConfig,
                 sizeProvider = { 0L },
                 lastModifiedProvider = { 0L },
-                nameProvider = { File(it.path).name },
+                nameProvider = { File(it.displayPath!!).name },
             ),
         ).forEach { childFolder ->
             addUiItemsRecursive(
@@ -156,13 +157,13 @@ class FolderBrowserUiStateCreator(
     ) : FolderBrowserUiState.UiFileItem.File.Callbacks {
         override fun onClick() {
             viewModelScope.launch {
-                val isImage = FileUtil.isImage(file.displayName)
+                val isImage = FileUtil.isImage(file.displayPath)
                 if (file.isDirectory) {
                     viewModelEventChannel.send(
                         ViewModelEvent.NavigateToFolderBrowser(
                             path = file.id,
                             storageId = storageId,
-                            displayPath = file.displayName,
+                            displayPath = file.displayPath,
                         ),
                     )
                 } else if (isImage) {

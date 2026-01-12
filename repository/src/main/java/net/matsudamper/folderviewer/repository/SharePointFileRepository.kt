@@ -45,7 +45,7 @@ class SharePointFileRepository(
                 val itemName = item.name
 
                 FileItem(
-                    displayName = itemName,
+                    displayPath = itemName,
                     id = item.id,
                     isDirectory = item.folder != null,
                     size = item.size ?: 0L,
@@ -53,7 +53,7 @@ class SharePointFileRepository(
                 )
             }.sortedWith(
                 compareBy<FileItem> { !it.isDirectory }
-                    .thenBy { it.displayName.lowercase() },
+                    .thenBy { it.displayPath.lowercase() },
             )
         }
     }

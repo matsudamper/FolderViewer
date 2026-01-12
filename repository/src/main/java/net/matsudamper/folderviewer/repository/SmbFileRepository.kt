@@ -235,7 +235,7 @@ class SmbFileRepository(
                 .filter { it.type == 0 } // STYPE_DISKTREE
                 .map {
                     FileItem(
-                        displayName = it.netName,
+                        displayPath = it.netName,
                         id = it.netName,
                         isDirectory = true,
                         size = 0,
@@ -269,7 +269,7 @@ class SmbFileRepository(
                 val isDirectory = (info.fileAttributes and FileAttributes.FILE_ATTRIBUTE_DIRECTORY.value) != 0L
                 val displaySubPath = if (subPath.isEmpty()) "" else "${subPath.replace("\\", "/")}/"
                 FileItem(
-                    displayName = info.fileName,
+                    displayPath = info.fileName,
                     id = "$shareName/$displaySubPath${info.fileName}",
                     isDirectory = isDirectory,
                     size = info.endOfFile,

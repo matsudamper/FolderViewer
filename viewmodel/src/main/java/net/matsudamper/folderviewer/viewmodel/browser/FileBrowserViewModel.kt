@@ -148,9 +148,9 @@ class FileBrowserViewModel @AssistedInject constructor(
         viewModelStateFlow.collectLatest { viewModelState ->
             val sortedFiles = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig))
             val uiItems = sortedFiles.map { fileItem ->
-                val isImage = FileUtil.isImage(fileItem.displayName)
+                val isImage = FileUtil.isImage(fileItem.displayPath)
                 FileBrowserUiState.UiFileItem.File(
-                    name = fileItem.displayName,
+                    name = fileItem.displayPath,
                     path = fileItem.id,
                     isDirectory = fileItem.isDirectory,
                     size = fileItem.size,
@@ -289,7 +289,7 @@ class FileBrowserViewModel @AssistedInject constructor(
 
     private fun createComparator(config: FileBrowserUiState.FileSortConfig): Comparator<FileItem> {
         val comparator: Comparator<FileItem> = when (config.key) {
-            FileBrowserUiState.FileSortKey.Name -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.displayName }
+            FileBrowserUiState.FileSortKey.Name -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.displayPath }
             FileBrowserUiState.FileSortKey.Date -> compareBy { it.lastModified }
             FileBrowserUiState.FileSortKey.Size -> compareBy { it.size }
         }
@@ -428,14 +428,14 @@ class FileBrowserViewModel @AssistedInject constructor(
                 viewModelScope.launch {
                     viewModelEventChannel.send(
                         ViewModelEvent.NavigateToFileBrowser(
-                            displayPath = "$displayName/${fileItem.displayName}",
+                            displayPath = "$displayName/${fileItem.displayPath}",
                             storageId = arg.storageId,
                             id = fileItem.id,
                         ),
                     )
                 }
             } else {
-                val isImage = FileUtil.isImage(fileItem.displayName.lowercase())
+                val isImage = FileUtil.isImage(fileItem.displayPath.lowercase())
 
                 if (isImage) {
                     viewModelScope.launch {
@@ -443,7 +443,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                             ViewModelEvent.NavigateToImageViewer(
                                 path = fileItem.id,
                                 storageId = arg.storageId,
-                                allPaths = sortedFiles.filter { FileUtil.isImage(it.displayName) }.map { it.id },
+                                allPaths = sortedFiles.filter { FileUtil.isImage(it.displayPath) }.map { it.id },
                             ),
                         )
                     }

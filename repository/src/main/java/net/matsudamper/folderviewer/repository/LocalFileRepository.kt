@@ -29,7 +29,7 @@ internal class LocalFileRepository(
             }
 
             FileItem(
-                displayName = file.name,
+                displayPath = file.name,
                 id = relativePath,
                 isDirectory = file.isDirectory,
                 size = if (file.isDirectory) 0 else file.length(),
@@ -37,7 +37,7 @@ internal class LocalFileRepository(
             )
         }?.sortedWith(
             compareBy<FileItem> { !it.isDirectory }
-                .thenBy { it.displayName.lowercase() },
+                .thenBy { it.displayPath.lowercase() },
         ).orEmpty()
     }
 
