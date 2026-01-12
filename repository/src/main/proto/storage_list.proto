@@ -36,4 +36,6 @@ message FavoriteConfigurationProto {
   string name = 2;
   string storage_id = 3;
   string path = 4;
+  string file_id = 5;
+  string display_path = 6;
 }

@@ -19,6 +19,7 @@ import com.google.protobuf.InvalidProtocolBufferException
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
+import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.proto.FavoriteConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.LocalConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.SharePointConfigurationProto
@@ -219,13 +220,15 @@ class StorageRepository @Inject constructor(
         }
     }
 
-    suspend fun addFavorite(storageId: String, path: String, name: String) {
+    suspend fun addFavorite(storageId: String, fileId: String, displayPath: String, name: String) {
         val id = UUID.randomUUID().toString()
         val config = FavoriteConfiguration(
             id = id,
             name = name,
             storageId = storageId,
-            path = path,
+            path = fileId,
+            fileId = FileObjectId.Item(fileId),
+            displayPath = displayPath,
         )
 
         context.dataStore.updateData { currentList ->
@@ -333,11 +336,14 @@ class StorageRepository @Inject constructor(
     }
 
     private fun FavoriteConfigurationProto.toDomain(): FavoriteConfiguration {
+        val fileIdString = if (fileId.isNotEmpty()) fileId else path
         return FavoriteConfiguration(
             id = id,
             name = name,
             storageId = storageId,
-            path = path,
+            path = fileIdString,
+            fileId = FileObjectId.Item(fileIdString),
+            displayPath = if (displayPath.isNotEmpty()) displayPath else path,
         )
     }
 
@@ -347,6 +353,8 @@ class StorageRepository @Inject constructor(
             .setName(name)
             .setStorageId(storageId)
             .setPath(path)
+            .setFileId(fileId.id)
+            .setDisplayPath(displayPath)
             .build()
     }
 

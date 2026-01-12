@@ -104,7 +104,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         }
 
         override fun onFavoriteClick() {
-            val path = when (fileObjectId) {
+            val fileId = when (fileObjectId) {
                 is FileObjectId.Root -> ""
                 is FileObjectId.Item -> fileObjectId.id
             }
@@ -115,8 +115,8 @@ class FileBrowserViewModel @AssistedInject constructor(
                     storageRepository.removeFavorite(favoriteId)
                     uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("Removed from favorites"))
                 } else {
-                    val displayPath = arg.displayPath
-                    val name = if (displayPath == null) {
+                    val displayPath = arg.displayPath.orEmpty()
+                    val name = if (displayPath.isEmpty()) {
                         state.storageName ?: "Storage"
                     } else {
                         displayPath.trim('/').split('/').lastOrNull()
@@ -126,7 +126,8 @@ class FileBrowserViewModel @AssistedInject constructor(
 
                     storageRepository.addFavorite(
                         storageId = arg.storageId,
-                        path = path,
+                        fileId = fileId,
+                        displayPath = displayPath,
                         name = name,
                     )
                     uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("Added to favorites"))
@@ -183,15 +184,15 @@ class FileBrowserViewModel @AssistedInject constructor(
                     visibleFolderBrowserButton = arg.displayPath != null,
                     favorites = viewModelState.favorites.map { favorite ->
                         FileBrowserUiState.UiFileItem.File(
-                            name = favorite.name,
-                            path = favorite.path,
+                            name = favorite.displayPath,
+                            path = favorite.fileId.id,
                             isDirectory = true,
                             size = 0,
                             lastModified = 0,
-                            thumbnail = if (FileUtil.isImage(favorite.path)) {
+                            thumbnail = if (FileUtil.isImage(favorite.displayPath)) {
                                 FileImageSource.Thumbnail(
                                     storageId = arg.storageId,
-                                    path = favorite.path,
+                                    path = favorite.fileId.id,
                                 )
                             } else {
                                 null
@@ -200,9 +201,9 @@ class FileBrowserViewModel @AssistedInject constructor(
                                 viewModelScope.launch {
                                     viewModelEventChannel.send(
                                         ViewModelEvent.NavigateToFileBrowser(
-                                            displayPath = favorite.path,
+                                            displayPath = favorite.displayPath,
                                             storageId = arg.storageId,
-                                            id = favorite.path,
+                                            id = favorite.fileId.id,
                                         ),
                                     )
                                 }
@@ -226,13 +227,13 @@ class FileBrowserViewModel @AssistedInject constructor(
             loadDisplayMode()
         }
         viewModelScope.launch {
-            val path = when (fileObjectId) {
+            val fileId = when (fileObjectId) {
                 is FileObjectId.Root -> return@launch
                 is FileObjectId.Item -> fileObjectId.id
             }
             storageRepository.favorites
                 .map { favorites ->
-                    favorites.find { it.storageId == arg.storageId && it.path == path }?.id
+                    favorites.find { it.storageId == arg.storageId && it.fileId.id == fileId }?.id
                 }
                 .collectLatest { favoriteId ->
                     viewModelStateFlow.update { it.copy(favoriteId = favoriteId) }

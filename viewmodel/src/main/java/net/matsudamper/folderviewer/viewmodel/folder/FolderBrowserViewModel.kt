@@ -100,19 +100,21 @@ class FolderBrowserViewModel @AssistedInject constructor(
             viewModelScope.launch {
                 val state = viewModelStateFlow.value
                 val favoriteId = state.favoriteId
-                val path = when (val fileId = arg.fileId) {
+                val fileId = when (val id = arg.fileId) {
                     is FileObjectId.Root -> return@launch
-                    is FileObjectId.Item -> fileId.id
+                    is FileObjectId.Item -> id.id
                 }
                 if (favoriteId != null) {
                     storageRepository.removeFavorite(favoriteId)
                     uiChannelEvent.send(FolderBrowserUiEvent.ShowSnackbar("Removed from favorites"))
                 } else {
-                    val name = path.trim('/').split('/').lastOrNull() ?: path
+                    val displayPath = arg.displayPath.orEmpty()
+                    val name = displayPath.trim('/').split('/').lastOrNull() ?: displayPath
 
                     storageRepository.addFavorite(
                         storageId = arg.storageId,
-                        path = path,
+                        fileId = fileId,
+                        displayPath = displayPath,
                         name = name,
                     )
                     uiChannelEvent.send(FolderBrowserUiEvent.ShowSnackbar("Added to favorites"))
@@ -153,13 +155,13 @@ class FolderBrowserViewModel @AssistedInject constructor(
             collectDisplayMode()
         }
         viewModelScope.launch {
-            val path = when (val fileId = arg.fileId) {
+            val fileId = when (val id = arg.fileId) {
                 is FileObjectId.Root -> return@launch
-                is FileObjectId.Item -> fileId.id
+                is FileObjectId.Item -> id.id
             }
             storageRepository.favorites
                 .map { favorites ->
-                    favorites.find { it.storageId == arg.storageId && it.path == path }?.id
+                    favorites.find { it.storageId == arg.storageId && it.fileId.id == fileId }?.id
                 }
                 .collect { favoriteId ->
                     viewModelStateFlow.update { it.copy(favoriteId = favoriteId) }
