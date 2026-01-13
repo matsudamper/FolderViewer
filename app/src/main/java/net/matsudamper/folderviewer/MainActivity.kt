@@ -6,6 +6,22 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -13,12 +29,16 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.documentfile.provider.DocumentFile
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.EntryProviderScope
+import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
@@ -101,13 +121,66 @@ class MainActivity : ComponentActivity() {
 private fun AppContent(
     modifier: Modifier = Modifier,
 ) {
-    val navigationState = rememberNavigationState(
-        startRoute = Home,
-        topLevelRoutes = setOf(Home),
-    )
-    val navigator = remember { Navigator(navigationState) }
+    val pagerState = rememberPagerState { 2 }
 
-    val entryProvider = entryProvider {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        HorizontalPager(
+            modifier = modifier,
+            state = pagerState,
+        ) {
+            val navigationState = rememberNavigationState(
+                startRoute = Home,
+                topLevelRoutes = setOf(Home),
+            )
+            val navigator = remember { Navigator(navigationState) }
+            val entryProvider = entryProvider(navigator)
+
+            NavDisplay(
+                modifier = Modifier.fillMaxSize(),
+                entries = navigationState.toEntries(entryProvider),
+                onBack = { navigator.goBack() },
+            )
+        }
+
+        Row(
+            modifier = Modifier
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
+                .padding(bottom = 8.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.background.copy(0.2f)),
+        ) {
+            IndicatorItem(isActive = pagerState.currentPage == 0)
+            IndicatorItem(isActive = pagerState.currentPage == 1)
+        }
+    }
+}
+
+@Composable
+private fun IndicatorItem(
+    isActive: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val size by animateDpAsState(targetValue = if (isActive) 12.dp else 6.dp)
+    Box(
+        modifier = modifier
+            .size(24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(size)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primary),
+        )
+    }
+}
+
+@Composable
+private fun entryProvider(navigator: Navigator): (NavKey) -> NavEntry<NavKey> {
+    return entryProvider {
         homeEntry(navigator)
         settingsEntry(navigator)
         storageTypeSelectionEntry(navigator)
@@ -118,12 +191,6 @@ private fun AppContent(
         folderBrowserEntry(navigator)
         imageViewerEntry(navigator)
     }
-
-    NavDisplay(
-        modifier = modifier,
-        entries = navigationState.toEntries(entryProvider),
-        onBack = { navigator.goBack() },
-    )
 }
 
 private fun EntryProviderScope<NavKey>.homeEntry(navigator: Navigator) {
