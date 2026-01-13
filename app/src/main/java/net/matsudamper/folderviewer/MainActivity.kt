@@ -124,11 +124,11 @@ private fun AppContent(
     val pagerState = rememberPagerState { 2 }
 
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.BottomCenter,
     ) {
         HorizontalPager(
-            modifier = modifier,
+            modifier = Modifier.fillMaxSize(),
             state = pagerState,
         ) {
             val navigationState = rememberNavigationState(
