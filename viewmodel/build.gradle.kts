@@ -38,6 +38,7 @@ dependencies {
     implementation(libs.androidxCoreKtx)
     implementation(libs.androidxLifecycleRuntimeKtx)
     implementation(libs.androidxLifecycleViewmodelKtx)
+    implementation(libs.androidxDocumentfile)
     implementation(libs.hiltAndroid)
     implementation(libs.androidxWorkManagerRuntime)
     implementation(libs.androidxWorkManagerHilt)

@@ -402,11 +402,36 @@ class FileBrowserViewModel @AssistedInject constructor(
         uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ファイルのアップロードを開始しました"))
     }
 
-    suspend fun handleFolderUpload(uris: List<Pair<android.net.Uri, String>>) {
+    suspend fun handleFolderUpload(folderUri: android.net.Uri) {
         runCatching {
+            val documentFile = androidx.documentfile.provider.DocumentFile.fromTreeUri(
+                getApplication(),
+                folderUri,
+            )
+            if (documentFile == null) {
+                uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("フォルダの取得に失敗しました"))
+                return
+            }
+
+            val folderName = documentFile.name
+            if (folderName == null) {
+                uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("フォルダ名の取得に失敗しました"))
+                return
+            }
+
+            val existingFiles = viewModelStateFlow.value.rawFiles
+            val folderExists = existingFiles.any { it.displayPath == folderName && it.isDirectory }
+
+            if (folderExists) {
+                uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("同じ名前のフォルダが既に存在します: $folderName"))
+                return
+            }
+
+            val files = mutableListOf<Pair<android.net.Uri, String>>()
+            collectFiles(documentFile, "", files)
+
             val workManager = WorkManager.getInstance(getApplication())
-            val folderName = "uploaded_folder_${System.currentTimeMillis()}"
-            val uriDataList = uris.map { (uri, relativePath) ->
+            val uriDataList = files.map { (uri, relativePath) ->
                 FolderUploadWorker.UriData(
                     uri = uri.toString(),
                     relativePath = relativePath,
@@ -433,6 +458,32 @@ class FileBrowserViewModel @AssistedInject constructor(
                 else -> {
                     e.printStackTrace()
                     uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar("アップロード開始失敗: ${e.message}"))
+                }
+            }
+        }
+    }
+
+    private fun collectFiles(
+        folder: androidx.documentfile.provider.DocumentFile,
+        relativePath: String,
+        files: MutableList<Pair<android.net.Uri, String>>,
+    ) {
+        folder.listFiles().forEach { file ->
+            if (file.isDirectory) {
+                val newRelativePath = if (relativePath.isEmpty()) {
+                    file.name.orEmpty()
+                } else {
+                    "$relativePath/${file.name}"
+                }
+                collectFiles(file, newRelativePath, files)
+            } else {
+                val filePath = if (relativePath.isEmpty()) {
+                    file.name.orEmpty()
+                } else {
+                    "$relativePath/${file.name}"
+                }
+                file.uri.let { uri ->
+                    files.add(uri to filePath)
                 }
             }
         }

@@ -81,24 +81,6 @@ import net.matsudamper.folderviewer.viewmodel.storage.SharePointAddViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.SmbAddViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.StorageTypeSelectionViewModel
 
-private fun collectFiles(
-    folder: DocumentFile,
-    relativePath: String,
-    files: MutableList<Pair<android.net.Uri, String>>,
-) {
-    folder.listFiles().forEach { file ->
-        if (file.isDirectory) {
-            val newRelativePath = if (relativePath.isEmpty()) file.name.orEmpty() else "$relativePath/${file.name}"
-            collectFiles(file, newRelativePath, files)
-        } else {
-            val filePath = if (relativePath.isEmpty()) file.name.orEmpty() else "$relativePath/${file.name}"
-            file.uri.let { uri ->
-                files.add(uri to filePath)
-            }
-        }
-    }
-}
-
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @Inject
@@ -466,28 +448,27 @@ private fun EntryProviderScope<NavKey>.fileBrowserEntry(navigator: Navigator) {
         val filePickerLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.GetContent(),
         ) { uri ->
-            uri?.let { selectedUri ->
-                requestNotificationPermissionIfNeeded(context, notificationPermissionLauncher)
-                val fileName = DocumentFile.fromSingleUri(context, selectedUri)?.name ?: "uploaded_file"
-                scope.launch {
-                    viewModel.handleFileUpload(selectedUri, fileName)
-                }
+            if (uri == null) return@rememberLauncherForActivityResult
+            requestNotificationPermissionIfNeeded(context, notificationPermissionLauncher)
+            val documentFile = DocumentFile.fromSingleUri(context, uri)
+            val fileName = if (documentFile == null) {
+                "uploaded_file"
+            } else {
+                val name = documentFile.name
+                if (name == null) "uploaded_file" else name
+            }
+            scope.launch {
+                viewModel.handleFileUpload(uri, fileName)
             }
         }
 
         val folderPickerLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.OpenDocumentTree(),
         ) { uri ->
-            uri?.let { treeUri ->
-                requestNotificationPermissionIfNeeded(context, notificationPermissionLauncher)
-                val documentFile = DocumentFile.fromTreeUri(context, treeUri)
-                documentFile?.let { folder ->
-                    val files = mutableListOf<Pair<android.net.Uri, String>>()
-                    collectFiles(folder, "", files)
-                    scope.launch {
-                        viewModel.handleFolderUpload(files)
-                    }
-                }
+            if (uri == null) return@rememberLauncherForActivityResult
+            requestNotificationPermissionIfNeeded(context, notificationPermissionLauncher)
+            scope.launch {
+                viewModel.handleFolderUpload(uri)
             }
         }
 
