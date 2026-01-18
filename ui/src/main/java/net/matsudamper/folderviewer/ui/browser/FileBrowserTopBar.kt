@@ -120,6 +120,32 @@ internal fun FileBrowserTopBar(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun FileBrowserSelectionTopBar(
+    selectedCount: Int,
+    onCancelSelection: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    TopAppBar(
+        modifier = modifier,
+        colors = MyTopAppBarDefaults.topAppBarColors(),
+        title = {
+            Text(
+                text = selectedCount.toString(),
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = onCancelSelection) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_close),
+                    contentDescription = stringResource(R.string.cancel_selection),
+                )
+            }
+        },
+    )
+}
+
 @Composable
 private fun DropDownMenu(
     showSortMenu: Boolean,

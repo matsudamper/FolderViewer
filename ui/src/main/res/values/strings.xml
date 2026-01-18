@@ -29,4 +29,5 @@
     <string name="add_to_favorites">お気に入りに追加</string>
     <string name="storages">ストレージ</string>
     <string name="favorites">お気に入り</string>
+    <string name="cancel_selection">選択をキャンセル</string>
 </resources>

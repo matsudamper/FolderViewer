@@ -1,7 +1,8 @@
 package net.matsudamper.folderviewer.ui.browser
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -52,19 +54,31 @@ internal fun FileHeaderItem(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun FileSmallListItem(
     file: FileBrowserUiState.UiFileItem.File,
     textOverflow: TextOverflow,
+    isSelectionMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = file.callbacks::onClick)
+            .combinedClickable(
+                onClick = file.callbacks::onClick,
+                onLongClick = file.callbacks::onLongClick,
+            )
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (isSelectionMode) {
+            Checkbox(
+                checked = file.isSelected,
+                onCheckedChange = file.callbacks::onCheckedChange,
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+        }
         FileIcon(
             file = file,
             modifier = Modifier
@@ -81,19 +95,31 @@ internal fun FileSmallListItem(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun FileMediumListItem(
     file: FileBrowserUiState.UiFileItem.File,
     textOverflow: TextOverflow,
+    isSelectionMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = file.callbacks::onClick)
+            .combinedClickable(
+                onClick = file.callbacks::onClick,
+                onLongClick = file.callbacks::onLongClick,
+            )
             .padding(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (isSelectionMode) {
+            Checkbox(
+                checked = file.isSelected,
+                onCheckedChange = file.callbacks::onCheckedChange,
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+        }
         FileIcon(
             file = file,
             modifier = Modifier
@@ -120,19 +146,31 @@ internal fun FileMediumListItem(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun FileLargeListItem(
     file: FileBrowserUiState.UiFileItem.File,
     textOverflow: TextOverflow,
+    isSelectionMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = file.callbacks::onClick)
+            .combinedClickable(
+                onClick = file.callbacks::onClick,
+                onLongClick = file.callbacks::onLongClick,
+            )
             .padding(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (isSelectionMode) {
+            Checkbox(
+                checked = file.isSelected,
+                onCheckedChange = file.callbacks::onCheckedChange,
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+        }
         FileIcon(
             file = file,
             modifier = Modifier
@@ -179,6 +217,7 @@ private fun FileNameText(
 internal fun FileSmallGridItem(
     file: FileBrowserUiState.UiFileItem.File,
     textOverflow: TextOverflow,
+    isSelectionMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
     FileGridItem(
@@ -186,6 +225,7 @@ internal fun FileSmallGridItem(
         modifier = modifier,
         textOverflow = textOverflow,
         padding = 4.dp,
+        isSelectionMode = isSelectionMode,
     )
 }
 
@@ -193,6 +233,7 @@ internal fun FileSmallGridItem(
 internal fun FileLargeGridItem(
     file: FileBrowserUiState.UiFileItem.File,
     textOverflow: TextOverflow,
+    isSelectionMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
     FileGridItem(
@@ -200,30 +241,45 @@ internal fun FileLargeGridItem(
         modifier = modifier,
         textOverflow = textOverflow,
         padding = 8.dp,
+        isSelectionMode = isSelectionMode,
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FileGridItem(
     file: FileBrowserUiState.UiFileItem.File,
     padding: Dp,
     textOverflow: TextOverflow,
+    isSelectionMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
-            .clickable(onClick = file.callbacks::onClick)
+            .combinedClickable(
+                onClick = file.callbacks::onClick,
+                onLongClick = file.callbacks::onLongClick,
+            )
             .padding(padding),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        FileIcon(
-            file = file,
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .clip(MaterialTheme.shapes.medium)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-        )
+        Box {
+            FileIcon(
+                file = file,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .clip(MaterialTheme.shapes.medium)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+            )
+            if (isSelectionMode) {
+                Checkbox(
+                    checked = file.isSelected,
+                    onCheckedChange = file.callbacks::onCheckedChange,
+                    modifier = Modifier.align(Alignment.TopStart),
+                )
+            }
+        }
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = file.name,
@@ -286,6 +342,7 @@ private fun PreviewFileSmallListItem() {
         FileSmallListItem(
             file = previewUiFileItem(),
             textOverflow = TextOverflow.Ellipsis,
+            isSelectionMode = false,
         )
     }
 }
@@ -297,6 +354,7 @@ private fun PreviewFileMediumListItem() {
         FileMediumListItem(
             file = previewUiFileItem(),
             textOverflow = TextOverflow.Ellipsis,
+            isSelectionMode = false,
         )
     }
 }
@@ -308,6 +366,7 @@ private fun PreviewFileLargeListItem() {
         FileLargeListItem(
             file = previewUiFileItem(),
             textOverflow = TextOverflow.Ellipsis,
+            isSelectionMode = false,
         )
     }
 }
@@ -319,6 +378,7 @@ private fun PreviewFileSmallGridItem() {
         FileSmallGridItem(
             file = previewUiFileItem(),
             textOverflow = TextOverflow.Ellipsis,
+            isSelectionMode = false,
         )
     }
 }
@@ -330,6 +390,7 @@ private fun PreviewFileLargeGridItem() {
         FileLargeGridItem(
             file = previewUiFileItem(),
             textOverflow = TextOverflow.Ellipsis,
+            isSelectionMode = false,
         )
     }
 }
@@ -342,5 +403,10 @@ private fun previewUiFileItem() = FileBrowserUiState.UiFileItem.File(
     size = 1024L * 1024L,
     lastModified = 0L,
     thumbnail = null,
-    callbacks = { },
+    isSelected = false,
+    callbacks = object : FileBrowserUiState.UiFileItem.File.Callbacks {
+        override fun onClick() = Unit
+        override fun onLongClick() = Unit
+        override fun onCheckedChange(checked: Boolean) = Unit
+    },
 )

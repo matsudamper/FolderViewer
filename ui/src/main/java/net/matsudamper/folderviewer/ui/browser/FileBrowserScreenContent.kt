@@ -1,5 +1,6 @@
 package net.matsudamper.folderviewer.ui.browser
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -26,12 +27,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.zIndex
 import net.matsudamper.folderviewer.ui.R
 
 @Composable
@@ -40,6 +39,9 @@ internal fun FileBrowserScreenContent(
     snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier,
 ) {
+    BackHandler(enabled = uiState.isSelectionMode) {
+        uiState.callbacks.onCancelSelection()
+    }
     val callbacks = uiState.callbacks
     val containerColor = MaterialTheme.colorScheme.background
     var fabExpanded by remember { mutableStateOf(false) }
@@ -47,17 +49,24 @@ internal fun FileBrowserScreenContent(
         modifier = modifier,
         containerColor = containerColor,
         topBar = {
-            FileBrowserTopBar(
-                title = uiState.title,
-                isFavorite = uiState.isFavorite,
-                visibleFavoriteButton = uiState.visibleFavoriteButton,
-                onBack = callbacks::onBack,
-                sortConfig = uiState.sortConfig,
-                onSortConfigChange = callbacks::onSortConfigChanged,
-                displayConfig = uiState.displayConfig,
-                onDisplayConfigChange = callbacks::onDisplayModeChanged,
-                onFavoriteClick = callbacks::onFavoriteClick,
-            )
+            if (uiState.isSelectionMode) {
+                FileBrowserSelectionTopBar(
+                    selectedCount = uiState.selectedCount,
+                    onCancelSelection = callbacks::onCancelSelection,
+                )
+            } else {
+                FileBrowserTopBar(
+                    title = uiState.title,
+                    isFavorite = uiState.isFavorite,
+                    visibleFavoriteButton = uiState.visibleFavoriteButton,
+                    onBack = callbacks::onBack,
+                    sortConfig = uiState.sortConfig,
+                    onSortConfigChange = callbacks::onSortConfigChanged,
+                    displayConfig = uiState.displayConfig,
+                    onDisplayConfigChange = callbacks::onDisplayModeChanged,
+                    onFavoriteClick = callbacks::onFavoriteClick,
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {

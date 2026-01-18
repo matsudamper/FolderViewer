@@ -14,6 +14,8 @@ data class FileBrowserUiState(
     val favorites: List<UiFileItem.File>,
     val sortConfig: FileSortConfig,
     val displayConfig: UiDisplayConfig,
+    val isSelectionMode: Boolean,
+    val selectedCount: Int,
     val callbacks: Callbacks,
 ) {
     sealed interface UiFileItem {
@@ -29,11 +31,14 @@ data class FileBrowserUiState(
             val size: Long,
             val lastModified: Long,
             val thumbnail: FileImageSource.Thumbnail?,
+            val isSelected: Boolean,
             val callbacks: Callbacks,
         ) : UiFileItem {
             @Immutable
-            fun interface Callbacks {
+            interface Callbacks {
                 fun onClick()
+                fun onLongClick()
+                fun onCheckedChange(checked: Boolean)
             }
         }
     }
@@ -59,5 +64,6 @@ data class FileBrowserUiState(
         fun onFavoriteClick()
         fun onUploadFileClick()
         fun onUploadFolderClick()
+        fun onCancelSelection()
     }
 }

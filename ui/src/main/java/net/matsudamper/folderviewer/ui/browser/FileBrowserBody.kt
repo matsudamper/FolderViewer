@@ -137,6 +137,7 @@ private fun FileBrowserContent(
                                 file = item,
                                 displaySize = uiState.displayConfig.displaySize,
                                 textOverflow = TextOverflow.Ellipsis,
+                                isSelectionMode = uiState.isSelectionMode,
                             )
                         }
                     }
@@ -150,6 +151,7 @@ private fun FileBrowserContent(
                             file = item,
                             displaySize = uiState.displayConfig.displaySize,
                             textOverflow = TextOverflow.StartEllipsis,
+                            isSelectionMode = uiState.isSelectionMode,
                         )
                     }
                 }
@@ -180,6 +182,7 @@ private fun FileBrowserContent(
                                 file = item,
                                 displaySize = uiState.displayConfig.displaySize,
                                 textOverflow = TextOverflow.Ellipsis,
+                                isSelectionMode = uiState.isSelectionMode,
                             )
                         }
                     }
@@ -193,6 +196,7 @@ private fun FileBrowserContent(
                             file = item,
                             displaySize = uiState.displayConfig.displaySize,
                             textOverflow = TextOverflow.StartEllipsis,
+                            isSelectionMode = uiState.isSelectionMode,
                         )
                     }
                 }
@@ -206,12 +210,14 @@ private fun FileBrowserGridItem(
     file: FileBrowserUiState.UiFileItem.File,
     displaySize: UiDisplayConfig.DisplaySize,
     textOverflow: TextOverflow,
+    isSelectionMode: Boolean,
 ) {
     when (displaySize) {
         UiDisplayConfig.DisplaySize.Small -> {
             FileSmallGridItem(
                 file = file,
                 textOverflow = textOverflow,
+                isSelectionMode = isSelectionMode,
             )
         }
 
@@ -219,6 +225,7 @@ private fun FileBrowserGridItem(
             FileLargeGridItem(
                 file = file,
                 textOverflow = textOverflow,
+                isSelectionMode = isSelectionMode,
             )
         }
 
@@ -226,6 +233,7 @@ private fun FileBrowserGridItem(
             FileLargeGridItem(
                 file = file,
                 textOverflow = textOverflow,
+                isSelectionMode = isSelectionMode,
             )
         }
     }
@@ -236,12 +244,14 @@ private fun FileBrowserListItem(
     file: FileBrowserUiState.UiFileItem.File,
     displaySize: UiDisplayConfig.DisplaySize,
     textOverflow: TextOverflow,
+    isSelectionMode: Boolean,
 ) {
     when (displaySize) {
         UiDisplayConfig.DisplaySize.Small -> {
             FileSmallListItem(
                 file = file,
                 textOverflow = textOverflow,
+                isSelectionMode = isSelectionMode,
             )
         }
 
@@ -249,6 +259,7 @@ private fun FileBrowserListItem(
             FileMediumListItem(
                 file = file,
                 textOverflow = textOverflow,
+                isSelectionMode = isSelectionMode,
             )
         }
 
@@ -256,6 +267,7 @@ private fun FileBrowserListItem(
             FileLargeListItem(
                 file = file,
                 textOverflow = textOverflow,
+                isSelectionMode = isSelectionMode,
             )
         }
     }

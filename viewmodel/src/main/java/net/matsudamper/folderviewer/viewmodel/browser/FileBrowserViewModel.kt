@@ -154,11 +154,16 @@ class FileBrowserViewModel @AssistedInject constructor(
                 viewModelEventChannel.send(ViewModelEvent.LaunchFolderPicker)
             }
         }
+
+        override fun onCancelSelection() {
+            viewModelStateFlow.update { it.copy(selectedKeys = emptySet()) }
+        }
     }
 
     val uiState: Flow<FileBrowserUiState> = channelFlow {
         viewModelStateFlow.collectLatest { viewModelState ->
             val sortedFiles = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig))
+            val isSelectionMode = viewModelState.selectedKeys.isNotEmpty()
             val uiItems = sortedFiles.map { fileItem ->
                 val isImage = FileUtil.isImage(fileItem.displayPath)
                 FileBrowserUiState.UiFileItem.File(
@@ -175,7 +180,8 @@ class FileBrowserViewModel @AssistedInject constructor(
                     } else {
                         null
                     },
-                    callbacks = FileItemCallbacks(fileItem, sortedFiles),
+                    isSelected = viewModelState.selectedKeys.contains(fileItem.id),
+                    callbacks = FileItemCallbacks(fileItem, sortedFiles, isSelectionMode),
                 )
             }
             trySend(
@@ -190,6 +196,8 @@ class FileBrowserViewModel @AssistedInject constructor(
                     sortConfig = viewModelState.sortConfig,
                     displayConfig = viewModelState.displayConfig,
                     visibleFolderBrowserButton = arg.displayPath != null,
+                    isSelectionMode = isSelectionMode,
+                    selectedCount = viewModelState.selectedKeys.size,
                     favorites = viewModelState.favorites.map { favorite ->
                         FileBrowserUiState.UiFileItem.File(
                             name = favorite.displayPath,
@@ -205,17 +213,8 @@ class FileBrowserViewModel @AssistedInject constructor(
                             } else {
                                 null
                             },
-                            callbacks = {
-                                viewModelScope.launch {
-                                    viewModelEventChannel.send(
-                                        ViewModelEvent.NavigateToFileBrowser(
-                                            displayPath = favorite.displayPath,
-                                            storageId = arg.storageId,
-                                            id = favorite.fileId,
-                                        ),
-                                    )
-                                }
-                            },
+                            isSelected = false,
+                            callbacks = FavoriteItemCallbacks(favorite),
                         )
                     },
                 ),
@@ -492,8 +491,13 @@ class FileBrowserViewModel @AssistedInject constructor(
     private inner class FileItemCallbacks(
         private val fileItem: FileItem,
         private val sortedFiles: List<FileItem>,
+        private val isSelectionMode: Boolean,
     ) : FileBrowserUiState.UiFileItem.File.Callbacks {
         override fun onClick() {
+            if (isSelectionMode) {
+                toggleSelection(fileItem.id)
+                return
+            }
             if (fileItem.isDirectory) {
                 viewModelScope.launch {
                     viewModelEventChannel.send(
@@ -520,6 +524,48 @@ class FileBrowserViewModel @AssistedInject constructor(
                 }
             }
         }
+
+        override fun onLongClick() {
+            toggleSelection(fileItem.id)
+        }
+
+        override fun onCheckedChange(checked: Boolean) {
+            if (checked) {
+                viewModelStateFlow.update { it.copy(selectedKeys = it.selectedKeys + fileItem.id) }
+            } else {
+                viewModelStateFlow.update { it.copy(selectedKeys = it.selectedKeys - fileItem.id) }
+            }
+        }
+    }
+
+    private inner class FavoriteItemCallbacks(
+        private val favorite: FavoriteConfiguration,
+    ) : FileBrowserUiState.UiFileItem.File.Callbacks {
+        override fun onClick() {
+            viewModelScope.launch {
+                viewModelEventChannel.send(
+                    ViewModelEvent.NavigateToFileBrowser(
+                        displayPath = favorite.displayPath,
+                        storageId = arg.storageId,
+                        id = favorite.fileId,
+                    ),
+                )
+            }
+        }
+
+        override fun onLongClick() = Unit
+        override fun onCheckedChange(checked: Boolean) = Unit
+    }
+
+    private fun toggleSelection(fileId: FileObjectId.Item) {
+        viewModelStateFlow.update {
+            val newKeys = if (it.selectedKeys.contains(fileId)) {
+                it.selectedKeys - fileId
+            } else {
+                it.selectedKeys + fileId
+            }
+            it.copy(selectedKeys = newKeys)
+        }
     }
 
     private data class ViewModelState(
@@ -537,6 +583,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         ),
         val favoriteId: String? = null,
         val favorites: List<FavoriteConfiguration> = emptyList(),
+        val selectedKeys: Set<FileObjectId.Item> = emptySet(),
     )
 
     companion object {
