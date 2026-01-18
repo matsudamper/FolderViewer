@@ -1,5 +1,21 @@
 # このアプリについて
-ファイルビューアです。
+Androidのファイルビューアです。
+
+# 構成
+- /app
+  - Androidのappモジュール。アプリのrootとNavigation周りを行っている。
+- /ui
+  - UI Composableが入っているモジュール。各画面のUI実装がある。
+- viewmodel
+  - ViewModelが入っているモジュール。UIとはUiStateやEventを通してやり取りする
+- /repository
+  - 抽象化可能なデータの保存、取得が入っているモジュール
+- /common
+  - 共通で使用されるコードが入っているモジュール
+- /navigation
+  - Navigationの定義が入っている。NavigationにはNavigation3が使用されている
+- /dao/*
+  - 具体的な各サービスへのアクセスするためのコードが入っている
 
 # 指示
 コードの編集が完了した後にビルドを行い、ビルドが通るかを確認してください。
