@@ -10,6 +10,7 @@ data class HomeUiState(
     @Immutable
     interface Callbacks {
         fun onNavigateToSettings()
+        fun onNavigateToUploadProgress()
         fun onAddStorageClick()
         fun onStorageClick(storage: UiStorageConfiguration)
         fun onEditStorageClick(storage: UiStorageConfiguration)

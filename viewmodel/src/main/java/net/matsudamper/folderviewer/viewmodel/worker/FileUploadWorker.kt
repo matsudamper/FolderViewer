@@ -32,12 +32,20 @@ internal class FileUploadWorker @AssistedInject constructor(
         Log.d("LOG", "doWork")
         return withContext(Dispatchers.IO) {
             try {
-                setForeground(createForegroundInfo())
-
                 val storageIdString = inputData.getString(KEY_STORAGE_ID) ?: return@withContext Result.failure()
                 val fileObjectIdString = inputData.getString(KEY_FILE_OBJECT_ID) ?: return@withContext Result.failure()
                 val uriString = inputData.getString(KEY_URI) ?: return@withContext Result.failure()
                 val fileName = inputData.getString(KEY_FILE_NAME) ?: return@withContext Result.failure()
+
+                setProgress(
+                    androidx.work.Data.Builder()
+                        .putString(KEY_STORAGE_ID, storageIdString)
+                        .putString(KEY_FILE_OBJECT_ID, fileObjectIdString)
+                        .putString(KEY_FILE_NAME, fileName)
+                        .build(),
+                )
+
+                setForeground(createForegroundInfo())
 
                 val storageId = Json.decodeFromString<StorageId>(storageIdString)
                 val fileObjectId = Json.decodeFromString<FileObjectId>(fileObjectIdString)
@@ -101,6 +109,7 @@ internal class FileUploadWorker @AssistedInject constructor(
         private const val CHANNEL_ID = "file_upload_channel"
         private const val NOTIFICATION_ID = 1
 
+        const val TAG_UPLOAD = "upload"
         const val KEY_STORAGE_ID = "storage_id"
         const val KEY_FILE_OBJECT_ID = "file_object_id"
         const val KEY_URI = "uri"

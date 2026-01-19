@@ -58,6 +58,7 @@ import net.matsudamper.folderviewer.navigation.Settings
 import net.matsudamper.folderviewer.navigation.SharePointAdd
 import net.matsudamper.folderviewer.navigation.SmbAdd
 import net.matsudamper.folderviewer.navigation.StorageTypeSelection
+import net.matsudamper.folderviewer.navigation.UploadProgress
 import net.matsudamper.folderviewer.navigation.rememberNavigationState
 import net.matsudamper.folderviewer.navigation.toEntries
 import net.matsudamper.folderviewer.repository.PermissionUtil
@@ -71,6 +72,7 @@ import net.matsudamper.folderviewer.ui.storage.SharePointAddScreen
 import net.matsudamper.folderviewer.ui.storage.SmbAddScreen
 import net.matsudamper.folderviewer.ui.storage.StorageTypeSelectionScreen
 import net.matsudamper.folderviewer.ui.theme.FolderViewerTheme
+import net.matsudamper.folderviewer.ui.upload.UploadProgressScreen
 import net.matsudamper.folderviewer.viewmodel.browser.FileBrowserViewModel
 import net.matsudamper.folderviewer.viewmodel.browser.ImageViewerViewModel
 import net.matsudamper.folderviewer.viewmodel.folder.FolderBrowserViewModel
@@ -80,6 +82,7 @@ import net.matsudamper.folderviewer.viewmodel.settings.SettingsViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.SharePointAddViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.SmbAddViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.StorageTypeSelectionViewModel
+import net.matsudamper.folderviewer.viewmodel.upload.UploadProgressViewModel
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -172,6 +175,7 @@ private fun entryProvider(navigator: Navigator): (NavKey) -> NavEntry<NavKey> {
         fileBrowserEntry(navigator)
         folderBrowserEntry(navigator)
         imageViewerEntry(navigator)
+        uploadProgressEntry(navigator)
     }
 }
 
@@ -201,6 +205,10 @@ private fun EntryProviderScope<NavKey>.homeEntry(navigator: Navigator) {
 
                     is HomeViewModel.ViewModelEvent.NavigateToSharePointAdd -> {
                         navigator.navigate(SharePointAdd(storageId = event.storageId))
+                    }
+
+                    HomeViewModel.ViewModelEvent.NavigateToUploadProgress -> {
+                        navigator.navigate(UploadProgress)
                     }
                 }
             }
@@ -558,6 +566,37 @@ private fun EntryProviderScope<NavKey>.imageViewerEntry(navigator: Navigator) {
         }
 
         ImageViewerScreen(
+            uiState = uiState,
+        )
+    }
+}
+
+private fun EntryProviderScope<NavKey>.uploadProgressEntry(navigator: Navigator) {
+    entry<UploadProgress> {
+        val viewModel: UploadProgressViewModel = hiltViewModel()
+        val uiState by viewModel.uiState.collectAsState()
+
+        LaunchedEffect(viewModel.viewModelEventFlow) {
+            viewModel.viewModelEventFlow.collect { event ->
+                when (event) {
+                    UploadProgressViewModel.ViewModelEvent.NavigateBack -> {
+                        navigator.goBack()
+                    }
+
+                    is UploadProgressViewModel.ViewModelEvent.NavigateToFileBrowser -> {
+                        navigator.navigate(
+                            FileBrowser(
+                                storageId = event.storageId,
+                                displayPath = null,
+                                fileId = event.fileObjectId,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+
+        UploadProgressScreen(
             uiState = uiState,
         )
     }

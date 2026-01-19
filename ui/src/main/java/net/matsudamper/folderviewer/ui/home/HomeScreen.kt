@@ -19,6 +19,7 @@ public fun HomeScreen(
     HomeScreenContent(
         storages = uiState.storages,
         onNavigateToSettings = { uiState.callbacks.onNavigateToSettings() },
+        onNavigateToUploadProgress = { uiState.callbacks.onNavigateToUploadProgress() },
         onAddStorageClick = { uiState.callbacks.onAddStorageClick() },
         onStorageClick = { uiState.callbacks.onStorageClick(it) },
         onEditStorageClick = { uiState.callbacks.onEditStorageClick(it) },
@@ -30,11 +31,18 @@ public fun HomeScreen(
 @Composable
 internal fun HomeTopBar(
     onNavigateToSettings: () -> Unit,
+    onNavigateToUploadProgress: () -> Unit,
 ) {
     TopAppBar(
         colors = MyTopAppBarDefaults.topAppBarColors(),
         title = { Text("FolderViewer") },
         actions = {
+            IconButton(onClick = onNavigateToUploadProgress) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_upload_file),
+                    contentDescription = "Upload Progress",
+                )
+            }
             IconButton(onClick = onNavigateToSettings) {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_settings),

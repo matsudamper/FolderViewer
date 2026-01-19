@@ -31,3 +31,6 @@ data class FolderBrowser(val storageId: StorageId, val displayPath: String?, val
 
 @Serializable
 data class ImageViewer(val storageId: StorageId, val fileId: FileObjectId.Item, val allPaths: List<FileObjectId.Item>) : NavKey
+
+@Serializable
+object UploadProgress : NavKey

@@ -32,6 +32,7 @@ import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.PreferencesRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
+import net.matsudamper.folderviewer.repository.UploadJobRepository
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
@@ -43,6 +44,7 @@ import net.matsudamper.folderviewer.viewmodel.worker.FolderUploadWorker
 class FileBrowserViewModel @AssistedInject constructor(
     private val storageRepository: StorageRepository,
     private val preferencesRepository: PreferencesRepository,
+    private val uploadJobRepository: UploadJobRepository,
     application: Application,
     @Assisted private val arg: FileBrowser,
 ) : AndroidViewModel(application) {
@@ -392,12 +394,20 @@ class FileBrowserViewModel @AssistedInject constructor(
             .putString(FileUploadWorker.KEY_FILE_NAME, fileName)
             .build()
 
-        WorkManager.getInstance(getApplication())
-            .enqueue(
-                OneTimeWorkRequestBuilder<FileUploadWorker>()
-                    .setInputData(inputData)
-                    .build(),
-            )
+        val workRequest = OneTimeWorkRequestBuilder<FileUploadWorker>()
+            .setInputData(inputData)
+            .addTag(FileUploadWorker.TAG_UPLOAD)
+            .build()
+
+        uploadJobRepository.saveJob(
+            workerId = workRequest.id.toString(),
+            name = fileName,
+            isFolder = false,
+            storageId = arg.storageId,
+            fileObjectId = fileObjectId,
+        )
+
+        WorkManager.getInstance(getApplication()).enqueue(workRequest)
         uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ファイルのアップロードを開始しました"))
     }
 
@@ -446,7 +456,16 @@ class FileBrowserViewModel @AssistedInject constructor(
 
             val uploadWorkRequest = OneTimeWorkRequestBuilder<FolderUploadWorker>()
                 .setInputData(inputData)
+                .addTag(FolderUploadWorker.TAG_UPLOAD)
                 .build()
+
+            uploadJobRepository.saveJob(
+                workerId = uploadWorkRequest.id.toString(),
+                name = folderName,
+                isFolder = true,
+                storageId = arg.storageId,
+                fileObjectId = fileObjectId,
+            )
 
             workManager.enqueue(uploadWorkRequest)
             uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("フォルダのアップロードを開始しました"))

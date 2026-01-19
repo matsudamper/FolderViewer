@@ -19,6 +19,7 @@ private fun HomeScreenPreview() {
             ),
             callbacks = object : HomeUiState.Callbacks {
                 override fun onNavigateToSettings() = Unit
+                override fun onNavigateToUploadProgress() = Unit
                 override fun onAddStorageClick() = Unit
                 override fun onStorageClick(storage: UiStorageConfiguration) = Unit
                 override fun onEditStorageClick(storage: UiStorageConfiguration) = Unit

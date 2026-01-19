@@ -11,6 +11,7 @@ import net.matsudamper.folderviewer.common.StorageId
 fun HomeScreenContent(
     storages: List<UiStorageConfiguration>,
     onNavigateToSettings: () -> Unit,
+    onNavigateToUploadProgress: () -> Unit,
     onAddStorageClick: () -> Unit,
     onStorageClick: (UiStorageConfiguration) -> Unit,
     onEditStorageClick: (UiStorageConfiguration) -> Unit,
@@ -20,7 +21,10 @@ fun HomeScreenContent(
     Scaffold(
         modifier = modifier,
         topBar = {
-            HomeTopBar(onNavigateToSettings = onNavigateToSettings)
+            HomeTopBar(
+                onNavigateToSettings = onNavigateToSettings,
+                onNavigateToUploadProgress = onNavigateToUploadProgress,
+            )
         },
         floatingActionButton = {
             HomeFab(onAddStorageClick = onAddStorageClick)

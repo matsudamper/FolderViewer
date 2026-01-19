@@ -42,6 +42,9 @@ dependencies {
     implementation(libs.jakartaInject)
     implementation(libs.microsoftGraph)
     implementation(libs.azureIdentity)
+    implementation(libs.androidxRoomRuntime)
+    implementation(libs.androidxRoomKtx)
+    ksp(libs.androidxRoomCompiler)
 }
 
 protobuf {

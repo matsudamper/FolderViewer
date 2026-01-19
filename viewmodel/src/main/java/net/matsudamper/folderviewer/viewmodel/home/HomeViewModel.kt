@@ -34,6 +34,12 @@ class HomeViewModel @Inject constructor(
             }
         }
 
+        override fun onNavigateToUploadProgress() {
+            viewModelScope.launch {
+                viewModelEventChannel.send(ViewModelEvent.NavigateToUploadProgress)
+            }
+        }
+
         override fun onAddStorageClick() {
             viewModelScope.launch {
                 viewModelEventChannel.send(ViewModelEvent.NavigateToStorageTypeSelection)
@@ -134,6 +140,7 @@ class HomeViewModel @Inject constructor(
 
     sealed interface ViewModelEvent {
         data object NavigateToSettings : ViewModelEvent
+        data object NavigateToUploadProgress : ViewModelEvent
         data object NavigateToStorageTypeSelection : ViewModelEvent
         data class NavigateToFileBrowser(val storageId: StorageId) : ViewModelEvent
         data class NavigateToSmbAdd(val storageId: StorageId) : ViewModelEvent
