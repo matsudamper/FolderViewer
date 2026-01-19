@@ -51,6 +51,7 @@ class UploadProgressViewModel @Inject constructor(
                     ViewModelEvent.NavigateToFileBrowser(
                         storageId = job.storageId,
                         fileObjectId = job.fileObjectId,
+                        displayPath = job.displayPath,
                     ),
                 )
             }
@@ -129,6 +130,7 @@ class UploadProgressViewModel @Inject constructor(
         data class NavigateToFileBrowser(
             val storageId: StorageId,
             val fileObjectId: FileObjectId,
+            val displayPath: String,
         ) : ViewModelEvent
     }
 

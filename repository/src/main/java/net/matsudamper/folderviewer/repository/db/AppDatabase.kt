@@ -5,7 +5,7 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [UploadJobEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 internal abstract class AppDatabase : RoomDatabase() {

@@ -587,7 +587,7 @@ private fun EntryProviderScope<NavKey>.uploadProgressEntry(navigator: Navigator)
                         navigator.navigate(
                             FileBrowser(
                                 storageId = event.storageId,
-                                displayPath = null,
+                                displayPath = event.displayPath.ifEmpty { null },
                                 fileId = event.fileObjectId,
                             ),
                         )

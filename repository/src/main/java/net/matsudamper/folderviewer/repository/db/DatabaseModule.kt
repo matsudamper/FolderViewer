@@ -19,7 +19,7 @@ internal object DatabaseModule {
             context,
             AppDatabase::class.java,
             "folder_viewer_db",
-        ).build()
+        ).fallbackToDestructiveMigration(dropAllTables = true).build()
     }
 
     @Provides

@@ -400,11 +400,14 @@ class FileBrowserViewModel @AssistedInject constructor(
             .build()
 
         uploadJobRepository.saveJob(
-            workerId = workRequest.id.toString(),
-            name = fileName,
-            isFolder = false,
-            storageId = arg.storageId,
-            fileObjectId = fileObjectId,
+            UploadJobRepository.UploadJob(
+                workerId = workRequest.id.toString(),
+                name = fileName,
+                isFolder = false,
+                storageId = arg.storageId,
+                fileObjectId = fileObjectId,
+                displayPath = arg.displayPath.orEmpty(),
+            ),
         )
 
         WorkManager.getInstance(getApplication()).enqueue(workRequest)
@@ -436,38 +439,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                 return
             }
 
-            val files = mutableListOf<Pair<android.net.Uri, String>>()
-            collectFiles(documentFile, "", files)
-
-            val workManager = WorkManager.getInstance(getApplication())
-            val uriDataList = files.map { (uri, relativePath) ->
-                FolderUploadWorker.UriData(
-                    uri = uri.toString(),
-                    relativePath = relativePath,
-                )
-            }
-
-            val inputData = Data.Builder()
-                .putString(FolderUploadWorker.KEY_STORAGE_ID, Json.encodeToString(arg.storageId))
-                .putString(FolderUploadWorker.KEY_FILE_OBJECT_ID, Json.encodeToString(fileObjectId))
-                .putString(FolderUploadWorker.KEY_FOLDER_NAME, folderName)
-                .putString(FolderUploadWorker.KEY_URI_DATA_LIST, Json.encodeToString(uriDataList))
-                .build()
-
-            val uploadWorkRequest = OneTimeWorkRequestBuilder<FolderUploadWorker>()
-                .setInputData(inputData)
-                .addTag(FolderUploadWorker.TAG_UPLOAD)
-                .build()
-
-            uploadJobRepository.saveJob(
-                workerId = uploadWorkRequest.id.toString(),
-                name = folderName,
-                isFolder = true,
-                storageId = arg.storageId,
-                fileObjectId = fileObjectId,
-            )
-
-            workManager.enqueue(uploadWorkRequest)
+            enqueueFolderUpload(documentFile, folderName)
             uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("フォルダのアップロードを開始しました"))
         }.onFailure { e ->
             when (e) {
@@ -479,6 +451,43 @@ class FileBrowserViewModel @AssistedInject constructor(
                 }
             }
         }
+    }
+
+    private suspend fun enqueueFolderUpload(
+        documentFile: androidx.documentfile.provider.DocumentFile,
+        folderName: String,
+    ) {
+        val files = mutableListOf<Pair<android.net.Uri, String>>()
+        collectFiles(documentFile, "", files)
+
+        val uriDataList = files.map { (uri, relativePath) ->
+            FolderUploadWorker.UriData(uri = uri.toString(), relativePath = relativePath)
+        }
+
+        val inputData = Data.Builder()
+            .putString(FolderUploadWorker.KEY_STORAGE_ID, Json.encodeToString(arg.storageId))
+            .putString(FolderUploadWorker.KEY_FILE_OBJECT_ID, Json.encodeToString(fileObjectId))
+            .putString(FolderUploadWorker.KEY_FOLDER_NAME, folderName)
+            .putString(FolderUploadWorker.KEY_URI_DATA_LIST, Json.encodeToString(uriDataList))
+            .build()
+
+        val uploadWorkRequest = OneTimeWorkRequestBuilder<FolderUploadWorker>()
+            .setInputData(inputData)
+            .addTag(FolderUploadWorker.TAG_UPLOAD)
+            .build()
+
+        uploadJobRepository.saveJob(
+            UploadJobRepository.UploadJob(
+                workerId = uploadWorkRequest.id.toString(),
+                name = folderName,
+                isFolder = true,
+                storageId = arg.storageId,
+                fileObjectId = fileObjectId,
+                displayPath = arg.displayPath.orEmpty(),
+            ),
+        )
+
+        WorkManager.getInstance(getApplication()).enqueue(uploadWorkRequest)
     }
 
     private fun collectFiles(

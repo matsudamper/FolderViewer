@@ -11,5 +11,6 @@ internal data class UploadJobEntity(
     val isFolder: Boolean,
     val storageId: String,
     val fileObjectId: String,
+    val displayPath: String,
     val createdAt: Long,
 )

@@ -24,6 +24,7 @@ class UploadJobRepository @Inject internal constructor(
                         isFolder = entity.isFolder,
                         storageId = Json.decodeFromString<StorageId>(entity.storageId),
                         fileObjectId = Json.decodeFromString<FileObjectId>(entity.fileObjectId),
+                        displayPath = entity.displayPath,
                     )
                 }.getOrNull()
             }
@@ -39,24 +40,20 @@ class UploadJobRepository @Inject internal constructor(
                 isFolder = entity.isFolder,
                 storageId = Json.decodeFromString<StorageId>(entity.storageId),
                 fileObjectId = Json.decodeFromString<FileObjectId>(entity.fileObjectId),
+                displayPath = entity.displayPath,
             )
         }.getOrNull()
     }
 
-    suspend fun saveJob(
-        workerId: String,
-        name: String,
-        isFolder: Boolean,
-        storageId: StorageId,
-        fileObjectId: FileObjectId,
-    ) {
+    suspend fun saveJob(job: UploadJob) {
         uploadJobDao.insert(
             UploadJobEntity(
-                workerId = workerId,
-                name = name,
-                isFolder = isFolder,
-                storageId = Json.encodeToString(storageId),
-                fileObjectId = Json.encodeToString(fileObjectId),
+                workerId = job.workerId,
+                name = job.name,
+                isFolder = job.isFolder,
+                storageId = Json.encodeToString(job.storageId),
+                fileObjectId = Json.encodeToString(job.fileObjectId),
+                displayPath = job.displayPath,
                 createdAt = System.currentTimeMillis(),
             ),
         )
@@ -72,5 +69,6 @@ class UploadJobRepository @Inject internal constructor(
         val isFolder: Boolean,
         val storageId: StorageId,
         val fileObjectId: FileObjectId,
+        val displayPath: String,
     )
 }
