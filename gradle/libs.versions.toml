@@ -31,7 +31,7 @@ jakartaInject = "2.0.1"
 microsoftGraph = "6.60.0"
 azureIdentity = "1.18.2"
 workManager = "2.11.0"
-room = "2.7.1"
+room = "2.8.4"
 
 [libraries]
 androidxCoreKtx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
