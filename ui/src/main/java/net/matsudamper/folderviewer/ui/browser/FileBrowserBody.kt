@@ -104,8 +104,7 @@ internal fun FileBrowserBody(
 
             is FileBrowserUiState.ContentState.Content -> {
                 FileBrowserContent(
-                    files = contentState.files,
-                    favorites = contentState.favorites,
+                    content = contentState,
                     displayConfig = uiState.displayConfig,
                     contentPadding = contentPadding,
                 )
@@ -116,8 +115,7 @@ internal fun FileBrowserBody(
 
 @Composable
 private fun FileBrowserContent(
-    files: List<FileBrowserUiState.UiFileItem>,
-    favorites: List<FileBrowserUiState.UiFileItem.File>,
+    content: FileBrowserUiState.ContentState.Content,
     displayConfig: UiDisplayConfig,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
@@ -136,7 +134,7 @@ private fun FileBrowserContent(
                 contentPadding = contentPadding,
             ) {
                 items(
-                    items = files,
+                    items = content.files,
                     key = { item ->
                         when (item) {
                             is FileBrowserUiState.UiFileItem.Header -> "header_${item.title}"
@@ -171,10 +169,10 @@ private fun FileBrowserContent(
                         }
                     }
                 }
-                if (favorites.isNotEmpty()) {
+                if (content.favorites.isNotEmpty()) {
                     stickyHeader { FileHeaderItem(title = stringResource(R.string.favorites)) }
                     items(
-                        items = favorites,
+                        items = content.favorites,
                     ) { item ->
                         FileBrowserGridItem(
                             file = item,
@@ -192,7 +190,7 @@ private fun FileBrowserContent(
                 contentPadding = contentPadding,
             ) {
                 items(
-                    items = files,
+                    items = content.files,
                     key = { item ->
                         when (item) {
                             is FileBrowserUiState.UiFileItem.Header -> "header_${item.title}"
@@ -214,10 +212,10 @@ private fun FileBrowserContent(
                         }
                     }
                 }
-                if (favorites.isNotEmpty()) {
+                if (content.favorites.isNotEmpty()) {
                     stickyHeader { FileHeaderItem(title = stringResource(R.string.favorites)) }
                     items(
-                        items = favorites,
+                        items = content.favorites,
                     ) { item ->
                         FileBrowserListItem(
                             file = item,
