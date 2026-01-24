@@ -36,7 +36,7 @@ import net.matsudamper.folderviewer.repository.UploadJobRepository
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
-import net.matsudamper.folderviewer.viewmodel.FileUtil
+import net.matsudamper.folderviewer.viewmodel.util.FileUtil
 import net.matsudamper.folderviewer.viewmodel.worker.FileUploadWorker
 import net.matsudamper.folderviewer.viewmodel.worker.FolderUploadWorker
 

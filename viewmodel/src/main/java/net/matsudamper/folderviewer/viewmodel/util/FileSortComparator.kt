@@ -1,4 +1,4 @@
-package net.matsudamper.folderviewer.viewmodel
+package net.matsudamper.folderviewer.viewmodel.util
 
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiState
 
