@@ -218,4 +218,12 @@ class SharePointFileRepository(
 
         return requireNotNull(createdFolder?.id) { "Failed to create folder or folder ID is null" }
     }
+
+    override suspend fun getViewSourceUri(fileId: FileObjectId.Item): ViewSourceUri =
+        withContext(Dispatchers.IO) {
+            val response = graphApiClient.getDriveItemWithDownloadUrl(fileId.id)
+            val downloadUrl = response.downloadUrl
+                ?: throw IllegalStateException("Download URL not available")
+            ViewSourceUri.RemoteUrl(downloadUrl)
+        }
 }

@@ -1,5 +1,6 @@
 package net.matsudamper.folderviewer
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -34,6 +35,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -42,6 +45,7 @@ import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
+import java.io.File
 import kotlinx.coroutines.launch
 import coil.Coil
 import coil.ImageLoader
@@ -62,6 +66,7 @@ import net.matsudamper.folderviewer.navigation.UploadProgress
 import net.matsudamper.folderviewer.navigation.rememberNavigationState
 import net.matsudamper.folderviewer.navigation.toEntries
 import net.matsudamper.folderviewer.repository.PermissionUtil
+import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.FileBrowserScreen
 import net.matsudamper.folderviewer.ui.browser.ImageViewerScreen
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserScreen
@@ -390,6 +395,7 @@ private fun FileBrowserEventHandler(
     filePickerLauncher: androidx.activity.compose.ManagedActivityResultLauncher<String, android.net.Uri?>,
     folderPickerLauncher: androidx.activity.compose.ManagedActivityResultLauncher<android.net.Uri?, android.net.Uri?>,
 ) {
+    val context = LocalContext.current
     LaunchedEffect(viewModel.viewModelEventFlow) {
         viewModel.viewModelEventFlow.collect { event ->
             when (event) {
@@ -416,6 +422,37 @@ private fun FileBrowserEventHandler(
                 is FileBrowserViewModel.ViewModelEvent.LaunchFilePicker -> filePickerLauncher.launch("*/*")
 
                 is FileBrowserViewModel.ViewModelEvent.LaunchFolderPicker -> folderPickerLauncher.launch(null)
+
+                is FileBrowserViewModel.ViewModelEvent.OpenWithExternalPlayer -> {
+                    val uri = when (val externalUri = event.viewSourceUri) {
+                        is ViewSourceUri.LocalFile -> {
+                            FileProvider.getUriForFile(
+                                context,
+                                "${context.packageName}.fileprovider",
+                                File(externalUri.path),
+                            )
+                        }
+
+                        is ViewSourceUri.RemoteUrl -> {
+                            externalUri.url.toUri()
+                        }
+
+                        is ViewSourceUri.StreamProvider -> {
+                            StreamingContentProvider.buildUri(
+                                storageId = event.storageId,
+                                fileId = externalUri.fileId,
+                                fileName = event.fileName,
+                            )
+                        }
+                    }
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(uri, event.mimeType ?: "video/*")
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    runCatching {
+                        context.startActivity(intent)
+                    }
+                }
             }
         }
     }

@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -33,6 +32,7 @@ import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.PreferencesRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.UploadJobRepository
+import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
@@ -384,6 +384,14 @@ class FileBrowserViewModel @AssistedInject constructor(
 
         data object LaunchFilePicker : ViewModelEvent
         data object LaunchFolderPicker : ViewModelEvent
+
+        data class OpenWithExternalPlayer(
+            val viewSourceUri: ViewSourceUri,
+            val storageId: StorageId,
+            val fileId: FileObjectId.Item,
+            val fileName: String,
+            val mimeType: String?,
+        ) : ViewModelEvent
     }
 
     suspend fun handleFileUpload(uri: android.net.Uri, fileName: String) {
@@ -538,16 +546,25 @@ class FileBrowserViewModel @AssistedInject constructor(
                 }
             } else {
                 val isImage = FileUtil.isImage(fileItem.displayPath.lowercase())
+                val isVideo = FileUtil.isVideo(fileItem.displayPath.lowercase())
 
-                if (isImage) {
-                    viewModelScope.launch {
-                        viewModelEventChannel.send(
-                            ViewModelEvent.NavigateToImageViewer(
-                                id = fileItem.id,
-                                storageId = arg.storageId,
-                                allPaths = sortedFiles.filter { FileUtil.isImage(it.displayPath) }.map { it.id },
-                            ),
-                        )
+                when {
+                    isImage -> {
+                        viewModelScope.launch {
+                            viewModelEventChannel.send(
+                                ViewModelEvent.NavigateToImageViewer(
+                                    id = fileItem.id,
+                                    storageId = arg.storageId,
+                                    allPaths = sortedFiles.filter { FileUtil.isImage(it.displayPath) }.map { it.id },
+                                ),
+                            )
+                        }
+                    }
+
+                    isVideo -> {
+                        viewModelScope.launch {
+                            openWithExternalPlayer(fileItem)
+                        }
                     }
                 }
             }
@@ -562,6 +579,33 @@ class FileBrowserViewModel @AssistedInject constructor(
                 viewModelStateFlow.update { it.copy(selectedKeys = it.selectedKeys + fileItem.id) }
             } else {
                 viewModelStateFlow.update { it.copy(selectedKeys = it.selectedKeys - fileItem.id) }
+            }
+        }
+    }
+
+    private suspend fun openWithExternalPlayer(fileItem: FileItem) {
+        runCatching {
+            val repository = getRepository()
+            val externalPlayerUri = repository.getViewSourceUri(fileItem.id)
+            val mimeType = FileUtil.getMimeType(fileItem.displayPath)
+
+            viewModelEventChannel.send(
+                ViewModelEvent.OpenWithExternalPlayer(
+                    viewSourceUri = externalPlayerUri,
+                    storageId = arg.storageId,
+                    fileId = fileItem.id,
+                    fileName = fileItem.displayPath,
+                    mimeType = mimeType,
+                ),
+            )
+        }.onFailure { e ->
+            when (e) {
+                is CancellationException -> throw e
+
+                else -> {
+                    e.printStackTrace()
+                    uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar("外部プレイヤーで開けませんでした: ${e.message}"))
+                }
             }
         }
     }
