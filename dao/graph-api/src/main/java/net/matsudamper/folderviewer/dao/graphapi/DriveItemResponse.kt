@@ -1,5 +1,6 @@
 package net.matsudamper.folderviewer.dao.graphapi
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -14,6 +15,14 @@ data class DriveItemResponse(
     val folder: FolderFacet? = null,
     val size: Long? = null,
     val lastModifiedDateTime: String? = null,
+)
+
+@Serializable
+data class DriveItemWithDownloadUrlResponse(
+    val id: String,
+    val name: String,
+    @SerialName("@microsoft.graph.downloadUrl")
+    val downloadUrl: String? = null,
 )
 
 @Serializable
