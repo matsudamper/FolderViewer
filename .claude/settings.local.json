@@ -9,6 +9,10 @@
       "WebFetch(domain:devblogs.microsoft.com)",
       "WebFetch(domain:github.com)"
     ],
+    "deny": [
+      "Bach(git push:*)",
+      "Write(**/detekt.yml)"
+    ],
     "defaultMode": "acceptEdits"
   }
 }
