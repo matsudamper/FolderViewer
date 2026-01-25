@@ -24,7 +24,15 @@ import net.matsudamper.folderviewer.common.FileObjectId
 class SmbFileRepository(
     private val config: StorageConfiguration.Smb,
 ) : FileRepository {
-    private val client = SMBClient()
+    private val client = SMBClient(
+        com.hierynomus.smbj.SmbConfig.builder()
+            .withTimeout(120, java.util.concurrent.TimeUnit.SECONDS) // 接続/読み取りタイムアウトを120秒に
+            .withSoTimeout(120, java.util.concurrent.TimeUnit.SECONDS) // ソケットタイムアウトを120秒に
+            .withReadBufferSize(1024 * 1024) // 読み取りバッファを1MBに増加
+            .withWriteBufferSize(1024 * 1024) // 書き込みバッファを1MBに増加
+            .withMultiProtocolNegotiate(true) // マルチプロトコルネゴシエーションを有効化
+            .build(),
+    )
 
     override suspend fun getFiles(id: FileObjectId): List<FileItem> = withContext(Dispatchers.IO) {
         val path = when (id) {
