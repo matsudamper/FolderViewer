@@ -86,6 +86,17 @@ class GraphApiClient(
         }.body()
     }
 
+    suspend fun getDriveItem(itemId: String): DriveItemResponse {
+        val token = getAccessToken()
+        val selectParam = "id,name,size,lastModifiedDateTime"
+        return client.get(
+            "https://graph.microsoft.com/v1.0/users/$objectId/drive/items/$itemId?select=$selectParam",
+        ) {
+            header("Authorization", "Bearer $token")
+            contentType(ContentType.Application.Json)
+        }.body()
+    }
+
     fun close() {
         client.close()
     }

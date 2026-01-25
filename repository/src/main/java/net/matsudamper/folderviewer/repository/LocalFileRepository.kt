@@ -53,6 +53,12 @@ internal class LocalFileRepository(
         FileInputStream(file)
     }
 
+    override suspend fun getFileSize(fileId: FileObjectId.Item): Long = withContext(Dispatchers.IO) {
+        val file = buildAbsoluteFile(fileId.id)
+        require(file.exists() && file.canRead()) { "File not found or cannot read: ${fileId.id}" }
+        file.length()
+    }
+
     override suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream = withContext(Dispatchers.IO) {
         try {
             val file = buildAbsoluteFile(fileId.id)

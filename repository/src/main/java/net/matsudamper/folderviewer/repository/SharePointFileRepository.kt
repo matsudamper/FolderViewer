@@ -75,6 +75,11 @@ class SharePointFileRepository(
             ?: ByteArrayInputStream(ByteArray(0))
     }
 
+    override suspend fun getFileSize(fileId: FileObjectId.Item): Long = withContext(Dispatchers.IO) {
+        val item = graphApiClient.getDriveItem(fileId.id)
+        item.size ?: 0L
+    }
+
     override suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream? {
         return withContext(Dispatchers.IO) {
             val driveId = getDriveId()
