@@ -446,7 +446,7 @@ private fun FileBrowserEventHandler(
                         }
                     }
                     val intent = Intent(Intent.ACTION_VIEW).apply {
-                        setDataAndType(uri, event.mimeType ?: "video/*")
+                        setDataAndType(uri, event.mimeType ?: "*/*")
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
                     runCatching {

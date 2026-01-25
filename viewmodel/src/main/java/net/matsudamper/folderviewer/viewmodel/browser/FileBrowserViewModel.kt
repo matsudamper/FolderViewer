@@ -566,6 +566,12 @@ class FileBrowserViewModel @AssistedInject constructor(
                             openWithExternalPlayer(fileItem)
                         }
                     }
+
+                    else -> {
+                        viewModelScope.launch {
+                            openWithExternalPlayer(fileItem)
+                        }
+                    }
                 }
             }
         }
