@@ -326,6 +326,8 @@ class SmbFileRepository(
         id: FileObjectId,
         fileName: String,
         inputStream: InputStream,
+        fileSize: Long,
+        onProgress: (Float) -> Unit,
     ) {
         val path = when (id) {
             is FileObjectId.Root -> return
@@ -360,7 +362,7 @@ class SmbFileRepository(
                         null,
                     ).use { file ->
                         file.outputStream.use { outputStream ->
-                            inputStream.copyTo(outputStream)
+                            inputStream.copyToWithProgress(outputStream, fileSize, onProgress)
                         }
                     }
                 }
@@ -372,6 +374,7 @@ class SmbFileRepository(
         id: FileObjectId,
         folderName: String,
         files: List<FileToUpload>,
+        onProgress: (Float) -> Unit,
     ) {
         val path = when (id) {
             is FileObjectId.Root -> return
@@ -399,6 +402,9 @@ class SmbFileRepository(
 
                     diskShare.mkdir(basePath)
 
+                    val totalSize = files.sumOf { it.size }
+                    var uploadedSize = 0L
+
                     files.forEach { fileToUpload ->
                         val fullPath = "$basePath\\${fileToUpload.relativePath.replace("/", "\\")}"
 
@@ -416,9 +422,19 @@ class SmbFileRepository(
                             null,
                         ).use { file ->
                             file.outputStream.use { outputStream ->
-                                fileToUpload.inputStream.copyTo(outputStream)
+                                fileToUpload.inputStream.copyToWithProgress(
+                                    out = outputStream,
+                                    totalSize = fileToUpload.size,
+                                    onProgress = { fileProgress ->
+                                        val currentUploaded = (fileProgress * fileToUpload.size).toLong()
+                                        if (totalSize > 0) {
+                                            onProgress((uploadedSize + currentUploaded).toFloat() / totalSize)
+                                        }
+                                    },
+                                )
                             }
                         }
+                        uploadedSize += fileToUpload.size
                     }
                 }
             }

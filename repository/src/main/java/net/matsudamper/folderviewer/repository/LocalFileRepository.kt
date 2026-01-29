@@ -123,6 +123,8 @@ internal class LocalFileRepository(
         id: FileObjectId,
         fileName: String,
         inputStream: InputStream,
+        fileSize: Long,
+        onProgress: (Float) -> Unit,
     ): Unit = withContext(Dispatchers.IO) {
         val path = when (id) {
             is FileObjectId.Root -> ""
@@ -138,7 +140,7 @@ internal class LocalFileRepository(
 
         inputStream.use { input ->
             destinationFile.outputStream().use { output ->
-                input.copyTo(output)
+                input.copyToWithProgress(output, fileSize, onProgress)
             }
         }
     }
@@ -147,6 +149,7 @@ internal class LocalFileRepository(
         id: FileObjectId,
         folderName: String,
         files: List<FileToUpload>,
+        onProgress: (Float) -> Unit,
     ): Unit = withContext(Dispatchers.IO) {
         val path = when (id) {
             is FileObjectId.Root -> ""
@@ -161,6 +164,9 @@ internal class LocalFileRepository(
         val folderDir = File(destinationDir, folderName)
         folderDir.mkdirs()
 
+        val totalSize = files.sumOf { it.size }
+        var uploadedSize = 0L
+
         files.forEach { fileToUpload ->
             val targetFile = File(folderDir, fileToUpload.relativePath.replace("/", File.separator))
 
@@ -168,9 +174,19 @@ internal class LocalFileRepository(
 
             fileToUpload.inputStream.use { input ->
                 targetFile.outputStream().use { output ->
-                    input.copyTo(output)
+                    input.copyToWithProgress(
+                        out = output,
+                        totalSize = fileToUpload.size,
+                        onProgress = { fileProgress ->
+                            val currentUploaded = (fileProgress * fileToUpload.size).toLong()
+                            if (totalSize > 0) {
+                                onProgress((uploadedSize + currentUploaded).toFloat() / totalSize)
+                            }
+                        },
+                    )
                 }
             }
+            uploadedSize += fileToUpload.size
         }
     }
 

@@ -81,6 +81,8 @@ class UploadProgressViewModel @Inject constructor(
                                 null -> UploadProgressUiState.UploadState.SUCCEEDED
                             }
 
+                            val progress = workInfo?.progress?.getFloat("Progress", 0f) ?: 0f
+
                             if (job.isFolder) {
                                 UploadProgressUiState.UploadItem.Folder(
                                     id = job.workerId,
@@ -88,6 +90,7 @@ class UploadProgressViewModel @Inject constructor(
                                     state = uploadState,
                                     canNavigate = true,
                                     fileCount = 0,
+                                    progress = progress,
                                 )
                             } else {
                                 UploadProgressUiState.UploadItem.File(
@@ -95,6 +98,7 @@ class UploadProgressViewModel @Inject constructor(
                                     name = job.name,
                                     state = uploadState,
                                     canNavigate = true,
+                                    progress = progress,
                                 )
                             }
                         },

@@ -5,12 +5,17 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.provider.OpenableColumns
 import androidx.core.app.NotificationCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -52,17 +57,34 @@ internal class FolderUploadWorker @AssistedInject constructor(
             val repository = storageRepository.getFileRepository(storageId)
                 ?: return@withContext Result.failure()
 
-            val filesToUpload = uriDataList.mapNotNull { uriData ->
-                val uri = android.net.Uri.parse(uriData.uri)
-                context.contentResolver.openInputStream(uri)?.let { inputStream ->
-                    FileToUpload(
-                        relativePath = uriData.relativePath,
-                        inputStream = inputStream,
+            val filesToUpload = getFilesToUpload(uriDataList)
+
+            val progressChannel = Channel<Float>(Channel.CONFLATED)
+            val progressJob = launch {
+                progressChannel.receiveAsFlow().collectLatest { progress ->
+                    setProgress(
+                        androidx.work.Data.Builder()
+                            .putString(KEY_STORAGE_ID, storageIdString)
+                            .putString(KEY_FILE_OBJECT_ID, fileObjectIdString)
+                            .putString(KEY_FOLDER_NAME, folderName)
+                            .putFloat("Progress", progress)
+                            .build(),
                     )
                 }
             }
 
-            repository.uploadFolder(fileObjectId, folderName, filesToUpload)
+            try {
+                repository.uploadFolder(
+                    id = fileObjectId,
+                    folderName = folderName,
+                    files = filesToUpload,
+                    onProgress = { progress ->
+                        progressChannel.trySend(progress)
+                    },
+                )
+            } finally {
+                progressJob.cancel()
+            }
 
             Result.success()
         } catch (e: Exception) {
@@ -110,6 +132,33 @@ internal class FolderUploadWorker @AssistedInject constructor(
 
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
+    }
+
+    private fun getFileSize(uri: android.net.Uri): Long {
+        return context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+            if (cursor.moveToFirst() && !cursor.isNull(sizeIndex)) {
+                cursor.getLong(sizeIndex)
+            } else {
+                0L
+            }
+        } ?: 0L
+    }
+
+    private fun getFilesToUpload(uriDataList: List<UriData>): List<FileToUpload> {
+        return uriDataList.mapNotNull { uriData ->
+            val uri = android.net.Uri.parse(uriData.uri)
+
+            val fileSize = getFileSize(uri)
+
+            context.contentResolver.openInputStream(uri)?.let { inputStream ->
+                FileToUpload(
+                    relativePath = uriData.relativePath,
+                    inputStream = inputStream,
+                    size = fileSize,
+                )
+            }
+        }
     }
 
     @Serializable

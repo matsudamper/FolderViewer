@@ -136,6 +136,7 @@ private fun UploadItemRow(
         when (item.state) {
             UploadProgressUiState.UploadState.RUNNING -> {
                 CircularProgressIndicator(
+                    progress = { item.progress },
                     modifier = Modifier.padding(4.dp),
                     strokeWidth = 2.dp,
                 )

@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.provider.OpenableColumns
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.hilt.work.HiltWorker
@@ -12,6 +13,10 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import dagger.assisted.Assisted
@@ -53,8 +58,36 @@ internal class FileUploadWorker @AssistedInject constructor(
                     ?: return@withContext Result.failure()
 
                 val uri = android.net.Uri.parse(uriString)
-                context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                    repository.uploadFile(fileObjectId, fileName, inputStream)
+                val fileSize = getFileSize(uri)
+
+                val progressChannel = Channel<Float>(Channel.CONFLATED)
+                val progressJob = launch {
+                    progressChannel.receiveAsFlow().collectLatest { progress ->
+                        setProgress(
+                            androidx.work.Data.Builder()
+                                .putString(KEY_STORAGE_ID, storageIdString)
+                                .putString(KEY_FILE_OBJECT_ID, fileObjectIdString)
+                                .putString(KEY_FILE_NAME, fileName)
+                                .putFloat("Progress", progress)
+                                .build(),
+                        )
+                    }
+                }
+
+                try {
+                    context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                        repository.uploadFile(
+                            id = fileObjectId,
+                            fileName = fileName,
+                            inputStream = inputStream,
+                            fileSize = fileSize,
+                            onProgress = { progress ->
+                                progressChannel.trySend(progress)
+                            },
+                        )
+                    }
+                } finally {
+                    progressJob.cancel()
                 }
 
                 Result.success()
@@ -103,6 +136,17 @@ internal class FileUploadWorker @AssistedInject constructor(
 
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
+    }
+
+    private fun getFileSize(uri: android.net.Uri): Long {
+        return context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
+            if (cursor.moveToFirst() && !cursor.isNull(sizeIndex)) {
+                cursor.getLong(sizeIndex)
+            } else {
+                0L
+            }
+        } ?: 0L
     }
 
     companion object {
