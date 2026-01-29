@@ -21,6 +21,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -34,6 +36,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -76,6 +80,18 @@ fun FolderBrowserScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
 
+    var showCreateFolderDialog by remember { mutableStateOf(false) }
+
+    if (showCreateFolderDialog) {
+        CreateFolderDialog(
+            onDismissRequest = { showCreateFolderDialog = false },
+            onConfirm = { name ->
+                uiState.callbacks.onCreateFolder(name)
+                showCreateFolderDialog = false
+            },
+        )
+    }
+
     LaunchedEffect(uiEvent) {
         uiEvent.collect { event ->
             when (event) {
@@ -101,6 +117,7 @@ fun FolderBrowserScreen(
                 displayConfig = uiState.displayConfig,
                 onDisplayConfigChange = uiState.callbacks::onDisplayModeChanged,
                 onFavoriteClick = uiState.callbacks::onFavoriteClick,
+                onCreateFolderClick = { showCreateFolderDialog = true },
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -145,6 +162,7 @@ private fun FolderBrowserTopBar(
     displayConfig: UiDisplayConfig,
     onDisplayConfigChange: (UiDisplayConfig) -> Unit,
     onFavoriteClick: () -> Unit,
+    onCreateFolderClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
@@ -174,6 +192,13 @@ private fun FolderBrowserTopBar(
             }
         },
         actions = {
+            IconButton(onClick = onCreateFolderClick) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_add),
+                    contentDescription = stringResource(R.string.create_folder),
+                )
+            }
+
             if (visibleFavoriteButton) {
                 IconButton(onClick = onFavoriteClick) {
                     Icon(
@@ -293,6 +318,42 @@ private fun SortTabItem(
             }
         }
     }
+}
+
+@Composable
+private fun CreateFolderDialog(
+    onDismissRequest: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    var text by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        title = { Text(stringResource(R.string.create_folder)) },
+        text = {
+            TextField(
+                value = text,
+                onValueChange = { text = it },
+                label = { Text(stringResource(R.string.folder_name)) },
+                singleLine = true,
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (text.isNotBlank()) {
+                        onConfirm(text)
+                    }
+                },
+            ) {
+                Text(stringResource(R.string.create))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismissRequest) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+    )
 }
 
 @Composable

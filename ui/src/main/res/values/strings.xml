@@ -37,4 +37,8 @@
     <string name="upload_state_failed">失敗</string>
     <string name="upload_state_cancelled">キャンセル</string>
     <string name="no_uploads">アップロードはありません</string>
+    <string name="create_folder">フォルダ作成</string>
+    <string name="folder_name">フォルダ名</string>
+    <string name="create">作成</string>
+    <string name="cancel">キャンセル</string>
 </resources>

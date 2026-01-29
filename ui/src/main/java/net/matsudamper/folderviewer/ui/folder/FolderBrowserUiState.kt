@@ -56,5 +56,6 @@ data class FolderBrowserUiState(
         fun onFileSortConfigChanged(config: FileSortConfig)
         fun onDisplayModeChanged(config: UiDisplayConfig)
         fun onFavoriteClick()
+        fun onCreateFolder(name: String)
     }
 }

@@ -368,6 +368,36 @@ class SmbFileRepository(
         }
     }
 
+    override suspend fun createDirectory(id: FileObjectId, name: String) {
+        val path = when (id) {
+            is FileObjectId.Root -> throw UnsupportedOperationException("Cannot create folder in root (Shares list)")
+            is FileObjectId.Item -> id.id
+        }
+        withContext(Dispatchers.IO) {
+            client.connect(config.ip).use { connection ->
+                val session = connection.authenticate(
+                    AuthenticationContext(
+                        config.username,
+                        config.password.toCharArray(),
+                        null,
+                    ),
+                )
+
+                val parts = path.split("/", limit = PATH_SPLIT_LIMIT)
+                val shareName = parts[0]
+                val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+
+                val share = session.connectShare(shareName) as? DiskShare
+                    ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+
+                share.use { diskShare ->
+                    val fullPath = if (subPath.isEmpty()) name else "$subPath\\$name"
+                    diskShare.mkdir(fullPath)
+                }
+            }
+        }
+    }
+
     override suspend fun uploadFolder(
         id: FileObjectId,
         folderName: String,

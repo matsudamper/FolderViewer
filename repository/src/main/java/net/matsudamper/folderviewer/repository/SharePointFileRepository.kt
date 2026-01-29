@@ -119,9 +119,7 @@ class SharePointFileRepository(
                 .items()
                 .byDriveItemId(
                     when (id) {
-                        // TODO rootへのアップロードを対応
-                        is FileObjectId.Root -> return@withContext
-
+                        is FileObjectId.Root -> "root"
                         is FileObjectId.Item -> id.id
                     },
                 )
@@ -133,6 +131,28 @@ class SharePointFileRepository(
                 .items().byDriveItemId(itemId)
                 .content()
                 .put(byteStream)
+        }
+    }
+
+    override suspend fun createDirectory(id: FileObjectId, name: String) {
+        withContext(Dispatchers.IO) {
+            val driveId = getDriveId()
+
+            val folderItem = DriveItem().also { item ->
+                item.name = name
+                item.folder = com.microsoft.graph.models.Folder()
+            }
+
+            graphServiceClient.drives().byDriveId(driveId)
+                .items()
+                .byDriveItemId(
+                    when (id) {
+                        is FileObjectId.Root -> "root"
+                        is FileObjectId.Item -> id.id
+                    },
+                )
+                .children()
+                .post(folderItem) ?: throw IllegalStateException("Failed to create folder")
         }
     }
 

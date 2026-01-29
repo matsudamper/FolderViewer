@@ -143,6 +143,26 @@ internal class LocalFileRepository(
         }
     }
 
+    override suspend fun createDirectory(id: FileObjectId, name: String): Unit = withContext(Dispatchers.IO) {
+        val path = when (id) {
+            is FileObjectId.Root -> ""
+            is FileObjectId.Item -> id.id
+        }
+        val destinationDir = buildAbsoluteFile(path)
+
+        require(destinationDir.exists() && destinationDir.isDirectory && destinationDir.canWrite()) {
+            "Destination directory not found or cannot write: $path"
+        }
+
+        val folderDir = File(destinationDir, name)
+        if (!folderDir.exists()) {
+            val success = folderDir.mkdirs()
+            if (!success) {
+                throw IllegalStateException("Failed to create directory: $name")
+            }
+        }
+    }
+
     override suspend fun uploadFolder(
         id: FileObjectId,
         folderName: String,

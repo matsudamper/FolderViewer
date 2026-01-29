@@ -122,6 +122,25 @@ class FolderBrowserViewModel @AssistedInject constructor(
                 }
             }
         }
+
+        override fun onCreateFolder(name: String) {
+            viewModelScope.launch {
+                if (name.contains("/") || name.contains("\\") || name == "." || name == "..") {
+                    uiChannelEvent.send(FolderBrowserUiEvent.ShowSnackbar("Invalid folder name"))
+                    return@launch
+                }
+
+                try {
+                    val repository = getRepository()
+                    repository.createDirectory(arg.fileId, name)
+                    refresh()
+                    uiChannelEvent.send(FolderBrowserUiEvent.ShowSnackbar("Folder created"))
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    uiChannelEvent.send(FolderBrowserUiEvent.ShowSnackbar(e.message ?: "Unknown error"))
+                }
+            }
+        }
     }
 
     private val uiStateCreator = FolderBrowserUiStateCreator(

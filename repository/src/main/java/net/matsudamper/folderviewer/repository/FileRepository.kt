@@ -11,6 +11,7 @@ interface FileRepository {
     suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream?
     suspend fun uploadFile(id: FileObjectId, fileName: String, inputStream: InputStream)
     suspend fun uploadFolder(id: FileObjectId, folderName: String, files: List<FileToUpload>)
+    suspend fun createDirectory(id: FileObjectId, name: String)
     suspend fun getViewSourceUri(fileId: FileObjectId.Item): ViewSourceUri
 }
 
