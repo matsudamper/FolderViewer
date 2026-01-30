@@ -362,9 +362,7 @@ class SmbFileRepository(
                         null,
                     ).use { file ->
                         file.outputStream.use { outputStream ->
-                            ProgressInputStream(inputStream, fileSize, onProgress).use { progressInput ->
-                                progressInput.copyTo(outputStream)
-                            }
+                            inputStream.copyToWithProgress(outputStream, fileSize, onProgress)
                         }
                     }
                 }
@@ -424,8 +422,8 @@ class SmbFileRepository(
                             null,
                         ).use { file ->
                             file.outputStream.use { outputStream ->
-                                ProgressInputStream(
-                                    inputStream = fileToUpload.inputStream,
+                                fileToUpload.inputStream.copyToWithProgress(
+                                    out = outputStream,
                                     totalSize = fileToUpload.size,
                                     onProgress = { fileProgress ->
                                         val currentUploaded = (fileProgress * fileToUpload.size).toLong()
@@ -433,9 +431,7 @@ class SmbFileRepository(
                                             onProgress((uploadedSize + currentUploaded).toFloat() / totalSize)
                                         }
                                     },
-                                ).use { progressInput ->
-                                    progressInput.copyTo(outputStream)
-                                }
+                                )
                             }
                         }
                         uploadedSize += fileToUpload.size
