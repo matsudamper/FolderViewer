@@ -9,6 +9,9 @@ import java.io.FileInputStream
 import java.io.InputStream
 import java.io.RandomAccessFile
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import net.matsudamper.folderviewer.common.FileObjectId
 
@@ -124,7 +127,7 @@ internal class LocalFileRepository(
         fileName: String,
         inputStream: InputStream,
         fileSize: Long,
-        onRead: (Long) -> Unit,
+        onRead: FlowCollector<Long>,
     ): Unit = withContext(Dispatchers.IO) {
         val path = when (id) {
             is FileObjectId.Root -> ""
@@ -138,9 +141,16 @@ internal class LocalFileRepository(
 
         val destinationFile = File(destinationDir, fileName)
 
-        ProgressInputStream(inputStream, onRead).use { input ->
-            destinationFile.outputStream().use { output ->
-                input.copyTo(output)
+        coroutineScope {
+            val progressInputStream = ProgressInputStream(inputStream)
+            launch {
+                progressInputStream.onRead.collect(onRead)
+            }
+
+            progressInputStream.use { input ->
+                destinationFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
             }
         }
     }
@@ -149,7 +159,7 @@ internal class LocalFileRepository(
         id: FileObjectId,
         folderName: String,
         files: List<FileToUpload>,
-        onRead: (Long) -> Unit,
+        onRead: FlowCollector<Long>,
     ): Unit = withContext(Dispatchers.IO) {
         val path = when (id) {
             is FileObjectId.Root -> ""
@@ -164,15 +174,23 @@ internal class LocalFileRepository(
         val folderDir = File(destinationDir, folderName)
         folderDir.mkdirs()
 
-        files.forEach { fileToUpload ->
-            val targetFile = File(folderDir, fileToUpload.relativePath.replace("/", File.separator))
+        coroutineScope {
+            files.forEach { fileToUpload ->
+                val targetFile = File(folderDir, fileToUpload.relativePath.replace("/", File.separator))
 
-            targetFile.parentFile?.mkdirs()
+                targetFile.parentFile?.mkdirs()
 
-            ProgressInputStream(fileToUpload.inputStream, onRead).use { input ->
-                targetFile.outputStream().use { output ->
-                    input.copyTo(output)
+                val progressInputStream = ProgressInputStream(fileToUpload.inputStream)
+                val job = launch {
+                    progressInputStream.onRead.collect(onRead)
                 }
+
+                progressInputStream.use { input ->
+                    targetFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                job.cancel()
             }
         }
     }

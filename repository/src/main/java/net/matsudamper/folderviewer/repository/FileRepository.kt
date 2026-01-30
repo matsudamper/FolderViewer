@@ -2,6 +2,7 @@ package net.matsudamper.folderviewer.repository
 
 import java.io.Closeable
 import java.io.InputStream
+import kotlinx.coroutines.flow.FlowCollector
 import net.matsudamper.folderviewer.common.FileObjectId
 
 interface FileRepository {
@@ -18,14 +19,14 @@ interface FileRepository {
         fileName: String,
         inputStream: InputStream,
         fileSize: Long,
-        onRead: (Long) -> Unit,
+        onRead: FlowCollector<Long>,
     )
 
     suspend fun uploadFolder(
         id: FileObjectId,
         folderName: String,
         files: List<FileToUpload>,
-        onRead: (Long) -> Unit,
+        onRead: FlowCollector<Long>,
     )
 
     suspend fun getViewSourceUri(fileId: FileObjectId.Item): ViewSourceUri

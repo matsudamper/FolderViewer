@@ -1,15 +1,24 @@
 package net.matsudamper.folderviewer.repository
 
 import java.io.InputStream
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 class ProgressInputStream(
     private val inputStream: InputStream,
-    private val onRead: (Long) -> Unit,
 ) : InputStream() {
+    private val _onRead = MutableSharedFlow<Long>(
+        extraBufferCapacity = Int.MAX_VALUE,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST,
+    )
+    val onRead: Flow<Long> = _onRead.asSharedFlow()
+
     override fun read(): Int {
         val b = inputStream.read()
         if (b != -1) {
-            onRead(1)
+            _onRead.tryEmit(1)
         }
         return b
     }
@@ -17,7 +26,7 @@ class ProgressInputStream(
     override fun read(b: ByteArray): Int {
         val count = inputStream.read(b)
         if (count != -1) {
-            onRead(count.toLong())
+            _onRead.tryEmit(count.toLong())
         }
         return count
     }
@@ -25,14 +34,14 @@ class ProgressInputStream(
     override fun read(b: ByteArray, off: Int, len: Int): Int {
         val count = inputStream.read(b, off, len)
         if (count != -1) {
-            onRead(count.toLong())
+            _onRead.tryEmit(count.toLong())
         }
         return count
     }
 
     override fun skip(n: Long): Long {
         val count = inputStream.skip(n)
-        onRead(count)
+        _onRead.tryEmit(count)
         return count
     }
 

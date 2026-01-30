@@ -8,6 +8,9 @@ import java.io.IOException
 import java.io.InputStream
 import java.util.EnumSet
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.hierynomus.msdtyp.AccessMask
 import com.hierynomus.msfscc.FileAttributes
@@ -327,7 +330,7 @@ class SmbFileRepository(
         fileName: String,
         inputStream: InputStream,
         fileSize: Long,
-        onRead: (Long) -> Unit,
+        onRead: FlowCollector<Long>,
     ) {
         val path = when (id) {
             is FileObjectId.Root -> return
@@ -362,8 +365,15 @@ class SmbFileRepository(
                         null,
                     ).use { file ->
                         file.outputStream.use { outputStream ->
-                            ProgressInputStream(inputStream, onRead).use { input ->
-                                input.copyTo(outputStream)
+                            coroutineScope {
+                                val progressInputStream = ProgressInputStream(inputStream)
+                                launch {
+                                    progressInputStream.onRead.collect(onRead)
+                                }
+
+                                progressInputStream.use { input ->
+                                    input.copyTo(outputStream)
+                                }
                             }
                         }
                     }
@@ -376,7 +386,7 @@ class SmbFileRepository(
         id: FileObjectId,
         folderName: String,
         files: List<FileToUpload>,
-        onRead: (Long) -> Unit,
+        onRead: FlowCollector<Long>,
     ) {
         val path = when (id) {
             is FileObjectId.Root -> return
@@ -421,11 +431,16 @@ class SmbFileRepository(
                             null,
                         ).use { file ->
                             file.outputStream.use { outputStream ->
-                                ProgressInputStream(
-                                    inputStream = fileToUpload.inputStream,
-                                    onRead = onRead,
-                                ).use { input ->
-                                    input.copyTo(outputStream)
+                                coroutineScope {
+                                    val progressInputStream = ProgressInputStream(fileToUpload.inputStream)
+                                    val job = launch {
+                                        progressInputStream.onRead.collect(onRead)
+                                    }
+
+                                    progressInputStream.use { input ->
+                                        input.copyTo(outputStream)
+                                    }
+                                    job.cancel()
                                 }
                             }
                         }

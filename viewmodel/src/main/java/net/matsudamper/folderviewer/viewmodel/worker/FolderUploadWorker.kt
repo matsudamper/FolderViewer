@@ -12,9 +12,9 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -60,10 +60,13 @@ internal class FolderUploadWorker @AssistedInject constructor(
             val filesToUpload = getFilesToUpload(uriDataList)
             val totalSize = filesToUpload.sumOf { it.size }
 
-            val progressChannel = Channel<Long>(Channel.CONFLATED)
+            val progressFlow = MutableSharedFlow<Long>(
+                extraBufferCapacity = Int.MAX_VALUE,
+                onBufferOverflow = BufferOverflow.DROP_OLDEST,
+            )
             val progressJob = launch {
                 var uploadedBytes = 0L
-                progressChannel.receiveAsFlow().collectLatest { size ->
+                progressFlow.collectLatest { size ->
                     uploadedBytes += size
                     setProgress(
                         androidx.work.Data.Builder()
@@ -82,9 +85,7 @@ internal class FolderUploadWorker @AssistedInject constructor(
                     id = fileObjectId,
                     folderName = folderName,
                     files = filesToUpload,
-                    onRead = { size ->
-                        progressChannel.trySend(size)
-                    },
+                    onRead = progressFlow,
                 )
             } finally {
                 progressJob.cancel()
