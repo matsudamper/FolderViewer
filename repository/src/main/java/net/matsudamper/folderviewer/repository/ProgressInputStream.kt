@@ -1,27 +1,6 @@
 package net.matsudamper.folderviewer.repository
 
 import java.io.InputStream
-import java.io.OutputStream
-
-fun InputStream.copyToWithProgress(
-    out: OutputStream,
-    totalSize: Long,
-    onProgress: (Float) -> Unit,
-    bufferSize: Int = 8 * 1024,
-): Long {
-    var bytesCopied: Long = 0
-    val buffer = ByteArray(bufferSize)
-    var bytes = read(buffer)
-    while (bytes >= 0) {
-        out.write(buffer, 0, bytes)
-        bytesCopied += bytes
-        if (totalSize > 0) {
-            onProgress(bytesCopied.toFloat() / totalSize)
-        }
-        bytes = read(buffer)
-    }
-    return bytesCopied
-}
 
 class ProgressInputStream(
     private val inputStream: InputStream,

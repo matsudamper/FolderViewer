@@ -138,9 +138,9 @@ internal class LocalFileRepository(
 
         val destinationFile = File(destinationDir, fileName)
 
-        inputStream.use { input ->
+        ProgressInputStream(inputStream, fileSize, onProgress).use { input ->
             destinationFile.outputStream().use { output ->
-                input.copyToWithProgress(output, fileSize, onProgress)
+                input.copyTo(output)
             }
         }
     }
@@ -172,10 +172,10 @@ internal class LocalFileRepository(
 
             targetFile.parentFile?.mkdirs()
 
-            fileToUpload.inputStream.use { input ->
+            fileToUpload.inputStream.use { inputStream ->
                 targetFile.outputStream().use { output ->
-                    input.copyToWithProgress(
-                        out = output,
+                    ProgressInputStream(
+                        inputStream = inputStream,
                         totalSize = fileToUpload.size,
                         onProgress = { fileProgress ->
                             val currentUploaded = (fileProgress * fileToUpload.size).toLong()
@@ -183,7 +183,9 @@ internal class LocalFileRepository(
                                 onProgress((uploadedSize + currentUploaded).toFloat() / totalSize)
                             }
                         },
-                    )
+                    ).use { progressInput ->
+                        progressInput.copyTo(output)
+                    }
                 }
             }
             uploadedSize += fileToUpload.size
