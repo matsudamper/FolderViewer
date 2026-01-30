@@ -106,7 +106,7 @@ internal fun FileBrowserBody(
                 FileBrowserContent(
                     content = contentState,
                     displayConfig = uiState.displayConfig,
-                    isSelectionMode = isSelectionMode,
+                    isSelectionMode = uiState.isSelectionMode,
                     contentPadding = contentPadding,
                 )
             }
