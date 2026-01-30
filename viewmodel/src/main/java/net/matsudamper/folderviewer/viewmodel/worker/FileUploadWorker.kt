@@ -60,15 +60,18 @@ internal class FileUploadWorker @AssistedInject constructor(
                 val uri = android.net.Uri.parse(uriString)
                 val fileSize = getFileSize(uri)
 
-                val progressChannel = Channel<Float>(Channel.CONFLATED)
+                val progressChannel = Channel<Long>(Channel.CONFLATED)
                 val progressJob = launch {
-                    progressChannel.receiveAsFlow().collectLatest { progress ->
+                    var uploadedBytes = 0L
+                    progressChannel.receiveAsFlow().collectLatest { size ->
+                        uploadedBytes += size
                         setProgress(
                             androidx.work.Data.Builder()
                                 .putString(KEY_STORAGE_ID, storageIdString)
                                 .putString(KEY_FILE_OBJECT_ID, fileObjectIdString)
                                 .putString(KEY_FILE_NAME, fileName)
-                                .putFloat("Progress", progress)
+                                .putLong("CurrentBytes", uploadedBytes)
+                                .putLong("TotalBytes", fileSize)
                                 .build(),
                         )
                     }
@@ -81,8 +84,8 @@ internal class FileUploadWorker @AssistedInject constructor(
                             fileName = fileName,
                             inputStream = inputStream,
                             fileSize = fileSize,
-                            onProgress = { progress ->
-                                progressChannel.trySend(progress)
+                            onRead = { size ->
+                                progressChannel.trySend(size)
                             },
                         )
                     }

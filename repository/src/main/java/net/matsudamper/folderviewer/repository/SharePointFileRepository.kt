@@ -104,12 +104,12 @@ class SharePointFileRepository(
         fileName: String,
         inputStream: InputStream,
         fileSize: Long,
-        onProgress: (Float) -> Unit,
+        onRead: (Long) -> Unit,
     ) {
         withContext(Dispatchers.IO) {
             val driveId = getDriveId()
 
-            val progressStream = ProgressInputStream(inputStream, fileSize, onProgress)
+            val progressStream = ProgressInputStream(inputStream, onRead)
 
             val driveItem = DriveItem().also { item ->
                 item.name = fileName
@@ -141,7 +141,7 @@ class SharePointFileRepository(
         id: FileObjectId,
         folderName: String,
         files: List<FileToUpload>,
-        onProgress: (Float) -> Unit,
+        onRead: (Long) -> Unit,
     ) {
         withContext(Dispatchers.IO) {
             val driveId = getDriveId()
@@ -166,9 +166,6 @@ class SharePointFileRepository(
 
             val folderId = createdFolder.id ?: throw IllegalStateException("Folder ID is null")
 
-            val totalSize = files.sumOf { it.size }
-            var uploadedSize = 0L
-
             files.forEach { fileToUpload ->
                 val pathParts = fileToUpload.relativePath.split("/")
                 val fileName = pathParts.last()
@@ -181,13 +178,7 @@ class SharePointFileRepository(
 
                 val progressStream = ProgressInputStream(
                     inputStream = fileToUpload.inputStream,
-                    totalSize = fileToUpload.size,
-                    onProgress = { fileProgress ->
-                        val currentUploaded = (fileProgress * fileToUpload.size).toLong()
-                        if (totalSize > 0) {
-                            onProgress((uploadedSize + currentUploaded).toFloat() / totalSize)
-                        }
-                    },
+                    onRead = onRead,
                 )
 
                 val fileItem = DriveItem().also { item ->
@@ -205,8 +196,6 @@ class SharePointFileRepository(
                     .items().byDriveItemId(itemId)
                     .content()
                     .put(progressStream)
-
-                uploadedSize += fileToUpload.size
             }
         }
     }

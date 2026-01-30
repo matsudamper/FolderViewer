@@ -124,7 +124,7 @@ internal class LocalFileRepository(
         fileName: String,
         inputStream: InputStream,
         fileSize: Long,
-        onProgress: (Float) -> Unit,
+        onRead: (Long) -> Unit,
     ): Unit = withContext(Dispatchers.IO) {
         val path = when (id) {
             is FileObjectId.Root -> ""
@@ -138,9 +138,9 @@ internal class LocalFileRepository(
 
         val destinationFile = File(destinationDir, fileName)
 
-        inputStream.use { input ->
+        ProgressInputStream(inputStream, onRead).use { input ->
             destinationFile.outputStream().use { output ->
-                input.copyToWithProgress(output, fileSize, onProgress)
+                input.copyTo(output)
             }
         }
     }
@@ -149,7 +149,7 @@ internal class LocalFileRepository(
         id: FileObjectId,
         folderName: String,
         files: List<FileToUpload>,
-        onProgress: (Float) -> Unit,
+        onRead: (Long) -> Unit,
     ): Unit = withContext(Dispatchers.IO) {
         val path = when (id) {
             is FileObjectId.Root -> ""
@@ -164,29 +164,16 @@ internal class LocalFileRepository(
         val folderDir = File(destinationDir, folderName)
         folderDir.mkdirs()
 
-        val totalSize = files.sumOf { it.size }
-        var uploadedSize = 0L
-
         files.forEach { fileToUpload ->
             val targetFile = File(folderDir, fileToUpload.relativePath.replace("/", File.separator))
 
             targetFile.parentFile?.mkdirs()
 
-            fileToUpload.inputStream.use { input ->
+            ProgressInputStream(fileToUpload.inputStream, onRead).use { input ->
                 targetFile.outputStream().use { output ->
-                    input.copyToWithProgress(
-                        out = output,
-                        totalSize = fileToUpload.size,
-                        onProgress = { fileProgress ->
-                            val currentUploaded = (fileProgress * fileToUpload.size).toLong()
-                            if (totalSize > 0) {
-                                onProgress((uploadedSize + currentUploaded).toFloat() / totalSize)
-                            }
-                        },
-                    )
+                    input.copyTo(output)
                 }
             }
-            uploadedSize += fileToUpload.size
         }
     }
 

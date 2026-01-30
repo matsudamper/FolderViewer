@@ -13,15 +13,16 @@ interface FileRepository {
         id: FileObjectId,
         fileName: String,
         inputStream: InputStream,
+        /** [Bytes] */
         fileSize: Long,
-        onProgress: (Float) -> Unit,
+        onRead: (Long) -> Unit,
     )
 
     suspend fun uploadFolder(
         id: FileObjectId,
         folderName: String,
         files: List<FileToUpload>,
-        onProgress: (Float) -> Unit,
+        onRead: (Long) -> Unit,
     )
 
     suspend fun getViewSourceUri(fileId: FileObjectId.Item): ViewSourceUri
@@ -32,6 +33,7 @@ interface RandomAccessFileRepository : FileRepository {
 }
 
 interface RandomAccessSource : Closeable {
+    /** [Bytes] */
     val size: Long
     fun readAt(offset: Long, buffer: ByteArray, bufferOffset: Int, length: Int): Int
 }
@@ -58,6 +60,7 @@ sealed interface ViewSourceUri {
 data class FileToUpload(
     val relativePath: String,
     val inputStream: InputStream,
+    /** [Bytes] */
     val size: Long,
 )
 
@@ -65,6 +68,7 @@ data class FileItem(
     val id: FileObjectId.Item,
     val displayPath: String,
     val isDirectory: Boolean,
+    /** [Bytes] */
     val size: Long,
     val lastModified: Long,
 )
