@@ -201,7 +201,6 @@ class StreamingContentProvider : ContentProvider() {
         }
 
         override fun onFsync() {
-            // no-op
         }
     }
 

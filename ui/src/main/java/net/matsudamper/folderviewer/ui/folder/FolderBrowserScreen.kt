@@ -27,7 +27,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -118,15 +117,8 @@ fun FolderBrowserScreen(
                 displayConfig = uiState.displayConfig,
                 onDisplayConfigChange = uiState.callbacks::onDisplayModeChanged,
                 onFavoriteClick = uiState.callbacks::onFavoriteClick,
+                onCreateFolderClick = { showCreateFolderDialog = true },
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { showCreateFolderDialog = true }) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_add),
-                    contentDescription = stringResource(R.string.create_folder),
-                )
-            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { paddingValues ->
@@ -170,6 +162,7 @@ private fun FolderBrowserTopBar(
     displayConfig: UiDisplayConfig,
     onDisplayConfigChange: (UiDisplayConfig) -> Unit,
     onFavoriteClick: () -> Unit,
+    onCreateFolderClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
@@ -282,6 +275,34 @@ private fun FolderBrowserTopBar(
                             },
                         )
                     }
+                }
+            }
+
+            var showMoreMenu by remember { mutableStateOf(false) }
+            IconButton(onClick = { showMoreMenu = true }) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_more_vert),
+                    contentDescription = stringResource(R.string.settings),
+                )
+            }
+            if (showMoreMenu) {
+                DropdownMenu(
+                    expanded = showMoreMenu,
+                    onDismissRequest = { showMoreMenu = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.create_folder)) },
+                        onClick = {
+                            showMoreMenu = false
+                            onCreateFolderClick()
+                        },
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_add),
+                                contentDescription = null,
+                            )
+                        },
+                    )
                 }
             }
         },
