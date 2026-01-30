@@ -15,10 +15,13 @@ class ProgressInputStream(
     )
     val onRead: Flow<Long> = _onRead.asSharedFlow()
 
+    private var markedBytesRead: Long = 0
+
     override fun read(): Int {
         val b = inputStream.read()
         if (b != -1) {
             _onRead.tryEmit(1)
+            markedBytesRead += 1
         }
         return b
     }
@@ -27,6 +30,7 @@ class ProgressInputStream(
         val count = inputStream.read(b)
         if (count != -1) {
             _onRead.tryEmit(count.toLong())
+            markedBytesRead += count
         }
         return count
     }
@@ -35,6 +39,7 @@ class ProgressInputStream(
         val count = inputStream.read(b, off, len)
         if (count != -1) {
             _onRead.tryEmit(count.toLong())
+            markedBytesRead += count
         }
         return count
     }
@@ -42,6 +47,7 @@ class ProgressInputStream(
     override fun skip(n: Long): Long {
         val count = inputStream.skip(n)
         _onRead.tryEmit(count)
+        markedBytesRead += count
         return count
     }
 
@@ -53,10 +59,13 @@ class ProgressInputStream(
 
     override fun mark(readlimit: Int) {
         inputStream.mark(readlimit)
+        markedBytesRead = 0
     }
 
     override fun reset() {
         inputStream.reset()
+        _onRead.tryEmit(-markedBytesRead)
+        markedBytesRead = 0
     }
 
     override fun markSupported(): Boolean = inputStream.markSupported()
