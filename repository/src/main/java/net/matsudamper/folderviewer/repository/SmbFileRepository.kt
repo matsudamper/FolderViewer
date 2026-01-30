@@ -414,6 +414,7 @@ class SmbFileRepository(
 
                     diskShare.mkdir(basePath)
 
+                    var uploadedSize = 0L
                     files.forEach { fileToUpload ->
                         val fullPath = "$basePath\\${fileToUpload.relativePath.replace("/", "\\")}"
 
@@ -434,7 +435,9 @@ class SmbFileRepository(
                                 coroutineScope {
                                     val progressInputStream = ProgressInputStream(fileToUpload.inputStream)
                                     val job = launch {
-                                        progressInputStream.onRead.collect(onRead)
+                                        progressInputStream.onRead.collect { fileReadSize ->
+                                            onRead.emit(uploadedSize + fileReadSize)
+                                        }
                                     }
 
                                     progressInputStream.use { input ->
@@ -444,6 +447,7 @@ class SmbFileRepository(
                                 }
                             }
                         }
+                        uploadedSize += fileToUpload.size
                     }
                 }
             }

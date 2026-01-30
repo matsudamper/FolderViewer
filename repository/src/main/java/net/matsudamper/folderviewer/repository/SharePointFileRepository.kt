@@ -176,6 +176,7 @@ class SharePointFileRepository(
             val folderId = createdFolder.id ?: throw IllegalStateException("Folder ID is null")
 
             coroutineScope {
+                var uploadedSize = 0L
                 files.forEach { fileToUpload ->
                     val pathParts = fileToUpload.relativePath.split("/")
                     val fileName = pathParts.last()
@@ -200,7 +201,9 @@ class SharePointFileRepository(
 
                     val progressInputStream = ProgressInputStream(fileToUpload.inputStream)
                     val job = launch {
-                        progressInputStream.onRead.collect(onRead)
+                        progressInputStream.onRead.collect { fileReadSize ->
+                            onRead.emit(uploadedSize + fileReadSize)
+                        }
                     }
 
                     graphServiceClient.drives().byDriveId(driveId)
@@ -209,6 +212,7 @@ class SharePointFileRepository(
                         .put(progressInputStream)
 
                     job.cancel()
+                    uploadedSize += fileToUpload.size
                 }
             }
         }

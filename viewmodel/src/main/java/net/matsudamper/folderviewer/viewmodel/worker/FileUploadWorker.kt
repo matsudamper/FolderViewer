@@ -13,8 +13,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -60,14 +59,9 @@ internal class FileUploadWorker @AssistedInject constructor(
                 val uri = android.net.Uri.parse(uriString)
                 val fileSize = getFileSize(uri)
 
-                val progressFlow = MutableSharedFlow<Long>(
-                    extraBufferCapacity = Int.MAX_VALUE,
-                    onBufferOverflow = BufferOverflow.DROP_OLDEST,
-                )
+                val progressFlow = MutableStateFlow(0L)
                 val progressJob = launch {
-                    var uploadedBytes = 0L
-                    progressFlow.collectLatest { size ->
-                        uploadedBytes += size
+                    progressFlow.collectLatest { uploadedBytes ->
                         setProgress(
                             androidx.work.Data.Builder()
                                 .putString(KEY_STORAGE_ID, storageIdString)

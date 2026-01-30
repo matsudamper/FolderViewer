@@ -175,6 +175,7 @@ internal class LocalFileRepository(
         folderDir.mkdirs()
 
         coroutineScope {
+            var uploadedSize = 0L
             files.forEach { fileToUpload ->
                 val targetFile = File(folderDir, fileToUpload.relativePath.replace("/", File.separator))
 
@@ -182,7 +183,9 @@ internal class LocalFileRepository(
 
                 val progressInputStream = ProgressInputStream(fileToUpload.inputStream)
                 val job = launch {
-                    progressInputStream.onRead.collect(onRead)
+                    progressInputStream.onRead.collect { fileReadSize ->
+                        onRead.emit(uploadedSize + fileReadSize)
+                    }
                 }
 
                 progressInputStream.use { input ->
@@ -191,6 +194,7 @@ internal class LocalFileRepository(
                     }
                 }
                 job.cancel()
+                uploadedSize += fileToUpload.size
             }
         }
     }
