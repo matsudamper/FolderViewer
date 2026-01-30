@@ -9,11 +9,14 @@ interface FileRepository {
     suspend fun getFileContent(fileId: FileObjectId.Item): InputStream
     suspend fun getFileSize(fileId: FileObjectId.Item): Long
     suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream?
+
+    /**
+     * @param fileSize [Bytes]
+     */
     suspend fun uploadFile(
         id: FileObjectId,
         fileName: String,
         inputStream: InputStream,
-        /** [Bytes] */
         fileSize: Long,
         onRead: (Long) -> Unit,
     )
@@ -33,7 +36,9 @@ interface RandomAccessFileRepository : FileRepository {
 }
 
 interface RandomAccessSource : Closeable {
-    /** [Bytes] */
+    /**
+     * [Bytes]
+     */
     val size: Long
     fun readAt(offset: Long, buffer: ByteArray, bufferOffset: Int, length: Int): Int
 }
@@ -57,18 +62,22 @@ sealed interface ViewSourceUri {
     data class StreamProvider(val fileId: FileObjectId.Item) : ViewSourceUri
 }
 
+/**
+ * @property size [Bytes]
+ */
 data class FileToUpload(
     val relativePath: String,
     val inputStream: InputStream,
-    /** [Bytes] */
     val size: Long,
 )
 
+/**
+ * @property size [Bytes]
+ */
 data class FileItem(
     val id: FileObjectId.Item,
     val displayPath: String,
     val isDirectory: Boolean,
-    /** [Bytes] */
     val size: Long,
     val lastModified: Long,
 )
