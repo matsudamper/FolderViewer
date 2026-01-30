@@ -117,8 +117,15 @@ fun FolderBrowserScreen(
                 displayConfig = uiState.displayConfig,
                 onDisplayConfigChange = uiState.callbacks::onDisplayModeChanged,
                 onFavoriteClick = uiState.callbacks::onFavoriteClick,
-                onCreateFolderClick = { showCreateFolderDialog = true },
             )
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = { showCreateFolderDialog = true }) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_add),
+                    contentDescription = stringResource(R.string.create_folder),
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { paddingValues ->
@@ -162,7 +169,6 @@ private fun FolderBrowserTopBar(
     displayConfig: UiDisplayConfig,
     onDisplayConfigChange: (UiDisplayConfig) -> Unit,
     onFavoriteClick: () -> Unit,
-    onCreateFolderClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
@@ -192,13 +198,6 @@ private fun FolderBrowserTopBar(
             }
         },
         actions = {
-            IconButton(onClick = onCreateFolderClick) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_add),
-                    contentDescription = stringResource(R.string.create_folder),
-                )
-            }
-
             if (visibleFavoriteButton) {
                 IconButton(onClick = onFavoriteClick) {
                     Icon(
