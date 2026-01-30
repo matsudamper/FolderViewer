@@ -106,6 +106,7 @@ internal fun FileBrowserBody(
                 FileBrowserContent(
                     content = contentState,
                     displayConfig = uiState.displayConfig,
+                    isSelectionMode = isSelectionMode,
                     contentPadding = contentPadding,
                 )
             }
@@ -117,6 +118,7 @@ internal fun FileBrowserBody(
 private fun FileBrowserContent(
     content: FileBrowserUiState.ContentState.Content,
     displayConfig: UiDisplayConfig,
+    isSelectionMode: Boolean,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
@@ -165,7 +167,7 @@ private fun FileBrowserContent(
                                 file = item,
                                 displaySize = displayConfig.displaySize,
                                 textOverflow = TextOverflow.Ellipsis,
-                                isSelectionMode = uiState.isSelectionMode,
+                                isSelectionMode = isSelectionMode,
                             )
                         }
                     }
@@ -179,7 +181,7 @@ private fun FileBrowserContent(
                             file = item,
                             displaySize = displayConfig.displaySize,
                             textOverflow = TextOverflow.StartEllipsis,
-                            isSelectionMode = uiState.isSelectionMode,
+                            isSelectionMode = isSelectionMode,
                         )
                     }
                 }
@@ -210,7 +212,7 @@ private fun FileBrowserContent(
                                 file = item,
                                 displaySize = displayConfig.displaySize,
                                 textOverflow = TextOverflow.Ellipsis,
-                                isSelectionMode = uiState.isSelectionMode,
+                                isSelectionMode = isSelectionMode,
                             )
                         }
                     }
@@ -224,7 +226,7 @@ private fun FileBrowserContent(
                             file = item,
                             displaySize = displayConfig.displaySize,
                             textOverflow = TextOverflow.StartEllipsis,
-                            isSelectionMode = uiState.isSelectionMode,
+                            isSelectionMode = isSelectionMode,
                         )
                     }
                 }
