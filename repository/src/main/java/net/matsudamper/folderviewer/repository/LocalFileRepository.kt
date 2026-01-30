@@ -7,13 +7,14 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.InputStream
+import java.io.RandomAccessFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import net.matsudamper.folderviewer.common.FileObjectId
 
 internal class LocalFileRepository(
     private val config: StorageConfiguration.Local,
-) : FileRepository {
+) : RandomAccessFileRepository {
     override suspend fun getFiles(id: FileObjectId): List<FileItem> = withContext(Dispatchers.IO) {
         val path = when (id) {
             is FileObjectId.Root -> ""
@@ -51,6 +52,12 @@ internal class LocalFileRepository(
         require(file.exists() && file.canRead()) { "File not found or cannot read: ${fileId.id}" }
 
         FileInputStream(file)
+    }
+
+    override suspend fun getFileSize(fileId: FileObjectId.Item): Long = withContext(Dispatchers.IO) {
+        val file = buildAbsoluteFile(fileId.id)
+        require(file.exists() && file.canRead()) { "File not found or cannot read: ${fileId.id}" }
+        file.length()
     }
 
     override suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream = withContext(Dispatchers.IO) {
@@ -164,6 +171,44 @@ internal class LocalFileRepository(
                     input.copyTo(output)
                 }
             }
+        }
+    }
+
+    override suspend fun getViewSourceUri(fileId: FileObjectId.Item): ViewSourceUri {
+        val file = buildAbsoluteFile(fileId.id)
+        return ViewSourceUri.LocalFile(file.absolutePath)
+    }
+
+    override suspend fun openRandomAccess(fileId: FileObjectId.Item): RandomAccessSource {
+        return withContext(Dispatchers.IO) {
+            val file = buildAbsoluteFile(fileId.id)
+            if (!file.exists() || !file.canRead()) {
+                throw IllegalStateException("File not found or cannot read: ${fileId.id}")
+            }
+
+            RandomAccessSourceImpl(
+                RandomAccessFile(file, "r"),
+            )
+        }
+    }
+
+    private class RandomAccessSourceImpl(
+        private val randomAccessFile: RandomAccessFile,
+    ) : RandomAccessSource {
+        override val size: Long = randomAccessFile.length()
+
+        override fun readAt(offset: Long, buffer: ByteArray, bufferOffset: Int, length: Int): Int {
+            return try {
+                randomAccessFile.seek(offset)
+                val bytesRead = randomAccessFile.read(buffer, bufferOffset, length)
+                bytesRead
+            } catch (_: Exception) {
+                -1
+            }
+        }
+
+        override fun close() {
+            randomAccessFile.close()
         }
     }
 

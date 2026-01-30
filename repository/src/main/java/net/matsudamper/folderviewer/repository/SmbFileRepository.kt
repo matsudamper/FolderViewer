@@ -23,8 +23,16 @@ import net.matsudamper.folderviewer.common.FileObjectId
 
 class SmbFileRepository(
     private val config: StorageConfiguration.Smb,
-) : FileRepository {
-    private val client = SMBClient()
+) : RandomAccessFileRepository {
+    private val client = SMBClient(
+        com.hierynomus.smbj.SmbConfig.builder()
+            .withTimeout(120, java.util.concurrent.TimeUnit.SECONDS) // 接続/読み取りタイムアウトを120秒に
+            .withSoTimeout(120, java.util.concurrent.TimeUnit.SECONDS) // ソケットタイムアウトを120秒に
+            .withReadBufferSize(1024 * 1024) // 読み取りバッファを1MBに増加
+            .withWriteBufferSize(1024 * 1024) // 書き込みバッファを1MBに増加
+            .withMultiProtocolNegotiate(true) // マルチプロトコルネゴシエーションを有効化
+            .build(),
+    )
 
     override suspend fun getFiles(id: FileObjectId): List<FileItem> = withContext(Dispatchers.IO) {
         val path = when (id) {
@@ -49,6 +57,38 @@ class SmbFileRepository(
     }
 
     override suspend fun getFileContent(fileId: FileObjectId.Item): InputStream = getFileContentInternal(fileId.id)
+
+    override suspend fun getFileSize(fileId: FileObjectId.Item): Long = withContext(Dispatchers.IO) {
+        client.connect(config.ip).use { connection ->
+            val session = connection.authenticate(
+                AuthenticationContext(
+                    config.username,
+                    config.password.toCharArray(),
+                    null,
+                ),
+            )
+
+            val parts = fileId.id.split("/", limit = PATH_SPLIT_LIMIT)
+            val shareName = parts[0]
+            val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+
+            val share = session.connectShare(shareName) as? DiskShare
+                ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+
+            share.use { diskShare ->
+                diskShare.openFile(
+                    subPath,
+                    EnumSet.of(AccessMask.GENERIC_READ),
+                    null,
+                    SMB2ShareAccess.ALL,
+                    SMB2CreateDisposition.FILE_OPEN,
+                    null,
+                ).use { file ->
+                    file.fileInformation.standardInformation.endOfFile
+                }
+            }
+        }
+    }
 
     override suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream = withContext(Dispatchers.IO) {
         val connection = client.connect(config.ip)
@@ -394,6 +434,97 @@ class SmbFileRepository(
             runCatching {
                 share.mkdir(currentPath)
             }
+        }
+    }
+
+    override suspend fun getViewSourceUri(fileId: FileObjectId.Item): ViewSourceUri {
+        return ViewSourceUri.StreamProvider(fileId)
+    }
+
+    override suspend fun openRandomAccess(fileId: FileObjectId.Item): RandomAccessSource {
+        return withContext(Dispatchers.IO) {
+            val parts = fileId.id.split("/", limit = PATH_SPLIT_LIMIT)
+            val shareName = parts[0]
+            val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+
+            val connection = client.connect(config.ip)
+            val session = connection.authenticate(
+                AuthenticationContext(
+                    config.username,
+                    config.password.toCharArray(),
+                    null,
+                ),
+            )
+
+            val share = session.connectShare(shareName) as? DiskShare
+            if (share == null) {
+                session.close()
+                connection.close()
+                throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+            }
+
+            val file = share.openFile(
+                subPath,
+                EnumSet.of(AccessMask.GENERIC_READ),
+                null,
+                SMB2ShareAccess.ALL,
+                SMB2CreateDisposition.FILE_OPEN,
+                null,
+            )
+
+            val fileSize = file.fileInformation.standardInformation.endOfFile
+
+            RandomAccessSourceImpl(
+                file = file,
+                fileSize = fileSize,
+                share = share,
+                session = session,
+                connection = connection,
+            )
+        }
+    }
+
+    private class RandomAccessSourceImpl(
+        private val file: com.hierynomus.smbj.share.File,
+        fileSize: Long,
+        private val share: DiskShare,
+        private val session: Session,
+        private val connection: com.hierynomus.smbj.connection.Connection,
+    ) : RandomAccessSource {
+        override val size: Long = fileSize
+        private var closed = false
+
+        override fun readAt(offset: Long, buffer: ByteArray, bufferOffset: Int, length: Int): Int {
+            return try {
+                if (offset >= size) {
+                    return 0
+                }
+
+                val maxLength = (size - offset).coerceAtMost(length.toLong()).toInt()
+                if (maxLength <= 0) {
+                    return 0
+                }
+
+                val bytesRead = file.read(buffer, offset, bufferOffset, maxLength)
+
+                when {
+                    bytesRead < 0 -> -1
+                    bytesRead == 0 && offset < size -> 0
+                    else -> bytesRead
+                }
+            } catch (_: Exception) {
+                -1
+            }
+        }
+
+        override fun close() {
+            if (closed) return
+            closed = true
+
+            runCatching { file.close() }
+            runCatching { share.close() }
+            runCatching { session.close() }
+            runCatching { connection.close() }
         }
     }
 

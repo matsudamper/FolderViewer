@@ -9,9 +9,9 @@ import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.common.StorageId
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiState
-import net.matsudamper.folderviewer.viewmodel.FileSortComparator
-import net.matsudamper.folderviewer.viewmodel.FileUtil
 import net.matsudamper.folderviewer.viewmodel.folder.FolderBrowserViewModel.ViewModelEvent
+import net.matsudamper.folderviewer.viewmodel.util.FileSortComparator
+import net.matsudamper.folderviewer.viewmodel.util.FileUtil
 
 class FolderBrowserUiStateCreator(
     private val callbacks: FolderBrowserUiState.Callbacks,

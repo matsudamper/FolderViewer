@@ -33,7 +33,7 @@ import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiEvent
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiState
-import net.matsudamper.folderviewer.viewmodel.FileSortComparator
+import net.matsudamper.folderviewer.viewmodel.util.FileSortComparator
 
 @HiltViewModel(assistedFactory = FolderBrowserViewModel.Companion.Factory::class)
 class FolderBrowserViewModel @AssistedInject constructor(
