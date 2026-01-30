@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.CircularProgressIndicator
@@ -395,7 +394,7 @@ private fun FolderBrowserList(
                 }
 
                 is FolderBrowserUiState.UiFileItem.File -> {
-                    item(key = item.path) {
+                    item(key = item.key) {
                         FileListItem(
                             file = item,
                             displaySize = uiState.displayConfig.displaySize,
@@ -435,7 +434,7 @@ private fun FolderBrowserGrid(
                 }
 
                 is FolderBrowserUiState.UiFileItem.File -> {
-                    item(key = item.path) {
+                    item(key = item.key) {
                         FileGridItem(
                             file = item,
                             displaySize = uiState.displayConfig.displaySize,

@@ -2,7 +2,6 @@ package net.matsudamper.folderviewer.repository
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.os.Build
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
@@ -20,13 +19,26 @@ import com.hierynomus.smbj.session.Session
 import com.hierynomus.smbj.share.DiskShare
 import com.rapid7.client.dcerpc.mssrvs.ServerService
 import com.rapid7.client.dcerpc.transport.SMBTransportFactories
+import net.matsudamper.folderviewer.common.FileObjectId
 
 class SmbFileRepository(
     private val config: StorageConfiguration.Smb,
-) : FileRepository {
-    private val client = SMBClient()
+) : RandomAccessFileRepository {
+    private val client = SMBClient(
+        com.hierynomus.smbj.SmbConfig.builder()
+            .withTimeout(120, java.util.concurrent.TimeUnit.SECONDS) // 接続/読み取りタイムアウトを120秒に
+            .withSoTimeout(120, java.util.concurrent.TimeUnit.SECONDS) // ソケットタイムアウトを120秒に
+            .withReadBufferSize(1024 * 1024) // 読み取りバッファを1MBに増加
+            .withWriteBufferSize(1024 * 1024) // 書き込みバッファを1MBに増加
+            .withMultiProtocolNegotiate(true) // マルチプロトコルネゴシエーションを有効化
+            .build(),
+    )
 
-    override suspend fun getFiles(path: String): List<FileItem> = withContext(Dispatchers.IO) {
+    override suspend fun getFiles(id: FileObjectId): List<FileItem> = withContext(Dispatchers.IO) {
+        val path = when (id) {
+            is FileObjectId.Root -> ""
+            is FileObjectId.Item -> id.id
+        }
         client.connect(config.ip).use { connection ->
             val session = connection.authenticate(
                 AuthenticationContext(
@@ -44,9 +56,41 @@ class SmbFileRepository(
         }
     }
 
-    override suspend fun getFileContent(path: String): InputStream = getFileContentInternal(path)
+    override suspend fun getFileContent(fileId: FileObjectId.Item): InputStream = getFileContentInternal(fileId.id)
 
-    override suspend fun getThumbnail(path: String, thumbnailSize: Int): InputStream = withContext(Dispatchers.IO) {
+    override suspend fun getFileSize(fileId: FileObjectId.Item): Long = withContext(Dispatchers.IO) {
+        client.connect(config.ip).use { connection ->
+            val session = connection.authenticate(
+                AuthenticationContext(
+                    config.username,
+                    config.password.toCharArray(),
+                    null,
+                ),
+            )
+
+            val parts = fileId.id.split("/", limit = PATH_SPLIT_LIMIT)
+            val shareName = parts[0]
+            val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+
+            val share = session.connectShare(shareName) as? DiskShare
+                ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+
+            share.use { diskShare ->
+                diskShare.openFile(
+                    subPath,
+                    EnumSet.of(AccessMask.GENERIC_READ),
+                    null,
+                    SMB2ShareAccess.ALL,
+                    SMB2CreateDisposition.FILE_OPEN,
+                    null,
+                ).use { file ->
+                    file.fileInformation.standardInformation.endOfFile
+                }
+            }
+        }
+    }
+
+    override suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream = withContext(Dispatchers.IO) {
         val connection = client.connect(config.ip)
         try {
             val session = connection.authenticate(
@@ -57,7 +101,7 @@ class SmbFileRepository(
                 ),
             )
 
-            val parts = path.split("/", limit = PATH_SPLIT_LIMIT)
+            val parts = fileId.id.split("/", limit = PATH_SPLIT_LIMIT)
             val shareName = parts[0]
             val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
 
@@ -81,7 +125,7 @@ class SmbFileRepository(
                 val height = options.outHeight
 
                 if (width <= 0 || height <= 0) {
-                    return@withContext getFileContentInternal(path, maxReadSize = MAX_THUMBNAIL_READ_SIZE.toLong())
+                    return@withContext getFileContentInternal(fileId.id, maxReadSize = MAX_THUMBNAIL_READ_SIZE.toLong())
                 }
 
                 val decodeOptions = BitmapFactory.Options().apply {
@@ -90,7 +134,7 @@ class SmbFileRepository(
 
                 val bitmap = file.inputStream.use { inputStream ->
                     BitmapFactory.decodeStream(inputStream, null, decodeOptions)
-                } ?: return@withContext getFileContentInternal(path, maxReadSize = MAX_THUMBNAIL_READ_SIZE.toLong())
+                } ?: return@withContext getFileContentInternal(fileId.id, maxReadSize = MAX_THUMBNAIL_READ_SIZE.toLong())
 
                 val bos = ByteArrayOutputStream()
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 80, bos)
@@ -102,7 +146,7 @@ class SmbFileRepository(
             throw e
         } catch (e: Exception) {
             e.printStackTrace()
-            getFileContentInternal(path, maxReadSize = MAX_THUMBNAIL_READ_SIZE.toLong())
+            getFileContentInternal(fileId.id, maxReadSize = MAX_THUMBNAIL_READ_SIZE.toLong())
         } finally {
             connection.close()
         }
@@ -235,8 +279,8 @@ class SmbFileRepository(
                 .filter { it.type == 0 } // STYPE_DISKTREE
                 .map {
                     FileItem(
-                        name = it.netName,
-                        path = it.netName,
+                        displayPath = it.netName,
+                        id = FileObjectId.Item(it.netName),
                         isDirectory = true,
                         size = 0,
                         lastModified = 0,
@@ -269,8 +313,8 @@ class SmbFileRepository(
                 val isDirectory = (info.fileAttributes and FileAttributes.FILE_ATTRIBUTE_DIRECTORY.value) != 0L
                 val displaySubPath = if (subPath.isEmpty()) "" else "${subPath.replace("\\", "/")}/"
                 FileItem(
-                    name = info.fileName,
-                    path = "$shareName/$displaySubPath${info.fileName}",
+                    displayPath = info.fileName,
+                    id = FileObjectId.Item("$shareName/$displaySubPath${info.fileName}"),
                     isDirectory = isDirectory,
                     size = info.endOfFile,
                     lastModified = info.changeTime.toEpochMillis(),
@@ -279,78 +323,33 @@ class SmbFileRepository(
     }
 
     override suspend fun uploadFile(
-        destinationPath: String,
+        id: FileObjectId,
         fileName: String,
         inputStream: InputStream,
-    ): Unit = withContext(Dispatchers.IO) {
-        client.connect(config.ip).use { connection ->
-            val session = connection.authenticate(
-                AuthenticationContext(
-                    config.username,
-                    config.password.toCharArray(),
-                    null,
-                ),
-            )
-
-            val parts = destinationPath.split("/", limit = PATH_SPLIT_LIMIT)
-            val shareName = parts[0]
-            val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
-
-            val share = session.connectShare(shareName) as? DiskShare
-                ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
-
-            share.use { diskShare ->
-                val fullPath = if (subPath.isEmpty()) fileName else "$subPath\\$fileName"
-
-                diskShare.openFile(
-                    fullPath,
-                    EnumSet.of(AccessMask.GENERIC_WRITE),
-                    null,
-                    SMB2ShareAccess.ALL,
-                    SMB2CreateDisposition.FILE_OVERWRITE_IF,
-                    null,
-                ).use { file ->
-                    file.outputStream.use { outputStream ->
-                        inputStream.copyTo(outputStream)
-                    }
-                }
-            }
+    ) {
+        val path = when (id) {
+            is FileObjectId.Root -> return
+            is FileObjectId.Item -> id.id
         }
-    }
+        withContext(Dispatchers.IO) {
+            client.connect(config.ip).use { connection ->
+                val session = connection.authenticate(
+                    AuthenticationContext(
+                        config.username,
+                        config.password.toCharArray(),
+                        null,
+                    ),
+                )
 
-    override suspend fun uploadFolder(
-        destinationPath: String,
-        folderName: String,
-        files: List<FileToUpload>,
-    ): Unit = withContext(Dispatchers.IO) {
-        client.connect(config.ip).use { connection ->
-            val session = connection.authenticate(
-                AuthenticationContext(
-                    config.username,
-                    config.password.toCharArray(),
-                    null,
-                ),
-            )
+                val parts = path.split("/", limit = PATH_SPLIT_LIMIT)
+                val shareName = parts[0]
+                val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
 
-            val parts = destinationPath.split("/", limit = PATH_SPLIT_LIMIT)
-            val shareName = parts[0]
-            val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+                val share = session.connectShare(shareName) as? DiskShare
+                    ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
 
-            val share = session.connectShare(shareName) as? DiskShare
-                ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
-
-            share.use { diskShare ->
-                val basePath = if (subPath.isEmpty()) folderName else "$subPath\\$folderName"
-
-                diskShare.mkdir(basePath)
-
-                files.forEach { fileToUpload ->
-                    val fullPath = "$basePath\\${fileToUpload.relativePath.replace("/", "\\")}"
-
-                    val parentPath = fullPath.substringBeforeLast("\\", "")
-                    if (parentPath.isNotEmpty() && parentPath != basePath) {
-                        createDirectoryRecursively(diskShare, parentPath)
-                    }
+                share.use { diskShare ->
+                    val fullPath = if (subPath.isEmpty()) fileName else "$subPath\\$fileName"
 
                     diskShare.openFile(
                         fullPath,
@@ -361,7 +360,64 @@ class SmbFileRepository(
                         null,
                     ).use { file ->
                         file.outputStream.use { outputStream ->
-                            fileToUpload.inputStream.copyTo(outputStream)
+                            inputStream.copyTo(outputStream)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    override suspend fun uploadFolder(
+        id: FileObjectId,
+        folderName: String,
+        files: List<FileToUpload>,
+    ) {
+        val path = when (id) {
+            is FileObjectId.Root -> return
+            is FileObjectId.Item -> id.id
+        }
+        withContext(Dispatchers.IO) {
+            client.connect(config.ip).use { connection ->
+                val session = connection.authenticate(
+                    AuthenticationContext(
+                        config.username,
+                        config.password.toCharArray(),
+                        null,
+                    ),
+                )
+
+                val parts = path.split("/", limit = PATH_SPLIT_LIMIT)
+                val shareName = parts[0]
+                val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+
+                val share = session.connectShare(shareName) as? DiskShare
+                    ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+
+                share.use { diskShare ->
+                    val basePath = if (subPath.isEmpty()) folderName else "$subPath\\$folderName"
+
+                    diskShare.mkdir(basePath)
+
+                    files.forEach { fileToUpload ->
+                        val fullPath = "$basePath\\${fileToUpload.relativePath.replace("/", "\\")}"
+
+                        val parentPath = fullPath.substringBeforeLast("\\", "")
+                        if (parentPath.isNotEmpty() && parentPath != basePath) {
+                            createDirectoryRecursively(diskShare, parentPath)
+                        }
+
+                        diskShare.openFile(
+                            fullPath,
+                            EnumSet.of(AccessMask.GENERIC_WRITE),
+                            null,
+                            SMB2ShareAccess.ALL,
+                            SMB2CreateDisposition.FILE_OVERWRITE_IF,
+                            null,
+                        ).use { file ->
+                            file.outputStream.use { outputStream ->
+                                fileToUpload.inputStream.copyTo(outputStream)
+                            }
                         }
                     }
                 }
@@ -378,6 +434,97 @@ class SmbFileRepository(
             runCatching {
                 share.mkdir(currentPath)
             }
+        }
+    }
+
+    override suspend fun getViewSourceUri(fileId: FileObjectId.Item): ViewSourceUri {
+        return ViewSourceUri.StreamProvider(fileId)
+    }
+
+    override suspend fun openRandomAccess(fileId: FileObjectId.Item): RandomAccessSource {
+        return withContext(Dispatchers.IO) {
+            val parts = fileId.id.split("/", limit = PATH_SPLIT_LIMIT)
+            val shareName = parts[0]
+            val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+
+            val connection = client.connect(config.ip)
+            val session = connection.authenticate(
+                AuthenticationContext(
+                    config.username,
+                    config.password.toCharArray(),
+                    null,
+                ),
+            )
+
+            val share = session.connectShare(shareName) as? DiskShare
+            if (share == null) {
+                session.close()
+                connection.close()
+                throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+            }
+
+            val file = share.openFile(
+                subPath,
+                EnumSet.of(AccessMask.GENERIC_READ),
+                null,
+                SMB2ShareAccess.ALL,
+                SMB2CreateDisposition.FILE_OPEN,
+                null,
+            )
+
+            val fileSize = file.fileInformation.standardInformation.endOfFile
+
+            RandomAccessSourceImpl(
+                file = file,
+                fileSize = fileSize,
+                share = share,
+                session = session,
+                connection = connection,
+            )
+        }
+    }
+
+    private class RandomAccessSourceImpl(
+        private val file: com.hierynomus.smbj.share.File,
+        fileSize: Long,
+        private val share: DiskShare,
+        private val session: Session,
+        private val connection: com.hierynomus.smbj.connection.Connection,
+    ) : RandomAccessSource {
+        override val size: Long = fileSize
+        private var closed = false
+
+        override fun readAt(offset: Long, buffer: ByteArray, bufferOffset: Int, length: Int): Int {
+            return try {
+                if (offset >= size) {
+                    return 0
+                }
+
+                val maxLength = (size - offset).coerceAtMost(length.toLong()).toInt()
+                if (maxLength <= 0) {
+                    return 0
+                }
+
+                val bytesRead = file.read(buffer, offset, bufferOffset, maxLength)
+
+                when {
+                    bytesRead < 0 -> -1
+                    bytesRead == 0 && offset < size -> 0
+                    else -> bytesRead
+                }
+            } catch (_: Exception) {
+                -1
+            }
+        }
+
+        override fun close() {
+            if (closed) return
+            closed = true
+
+            runCatching { file.close() }
+            runCatching { share.close() }
+            runCatching { session.close() }
+            runCatching { connection.close() }
         }
     }
 

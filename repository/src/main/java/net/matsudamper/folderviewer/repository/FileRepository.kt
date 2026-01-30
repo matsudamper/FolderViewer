@@ -1,13 +1,45 @@
 package net.matsudamper.folderviewer.repository
 
+import java.io.Closeable
 import java.io.InputStream
+import net.matsudamper.folderviewer.common.FileObjectId
 
 interface FileRepository {
-    suspend fun getFiles(path: String): List<FileItem>
-    suspend fun getFileContent(path: String): InputStream
-    suspend fun getThumbnail(path: String, thumbnailSize: Int): InputStream
-    suspend fun uploadFile(destinationPath: String, fileName: String, inputStream: InputStream)
-    suspend fun uploadFolder(destinationPath: String, folderName: String, files: List<FileToUpload>)
+    suspend fun getFiles(id: FileObjectId): List<FileItem>
+    suspend fun getFileContent(fileId: FileObjectId.Item): InputStream
+    suspend fun getFileSize(fileId: FileObjectId.Item): Long
+    suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream?
+    suspend fun uploadFile(id: FileObjectId, fileName: String, inputStream: InputStream)
+    suspend fun uploadFolder(id: FileObjectId, folderName: String, files: List<FileToUpload>)
+    suspend fun getViewSourceUri(fileId: FileObjectId.Item): ViewSourceUri
+}
+
+interface RandomAccessFileRepository : FileRepository {
+    suspend fun openRandomAccess(fileId: FileObjectId.Item): RandomAccessSource
+}
+
+interface RandomAccessSource : Closeable {
+    val size: Long
+    fun readAt(offset: Long, buffer: ByteArray, bufferOffset: Int, length: Int): Int
+}
+
+sealed interface ViewSourceUri {
+    /**
+     * 端末内のファイル
+     */
+    data class LocalFile(val path: String) : ViewSourceUri
+
+    /**
+     * 認証付きURLが発行される場合
+     * Sharepoint等
+     */
+    data class RemoteUrl(val url: String) : ViewSourceUri
+
+    /**
+     * Streamを中継する必要がある場合
+     * SMB等
+     */
+    data class StreamProvider(val fileId: FileObjectId.Item) : ViewSourceUri
 }
 
 data class FileToUpload(
@@ -16,8 +48,8 @@ data class FileToUpload(
 )
 
 data class FileItem(
-    val name: String,
-    val path: String,
+    val id: FileObjectId.Item,
+    val displayPath: String,
     val isDirectory: Boolean,
     val size: Long,
     val lastModified: Long,

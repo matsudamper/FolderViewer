@@ -3,6 +3,9 @@ package net.matsudamper.folderviewer.viewmodel.browser
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.Data
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -14,26 +17,34 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import net.matsudamper.folderviewer.coil.FileImageSource
+import net.matsudamper.folderviewer.common.FileObjectId
+import net.matsudamper.folderviewer.common.StorageId
 import net.matsudamper.folderviewer.navigation.FileBrowser
 import net.matsudamper.folderviewer.repository.FavoriteConfiguration
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.PreferencesRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
+import net.matsudamper.folderviewer.repository.UploadJobRepository
+import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
-import net.matsudamper.folderviewer.viewmodel.FileUtil
+import net.matsudamper.folderviewer.viewmodel.util.FileUtil
+import net.matsudamper.folderviewer.viewmodel.worker.FileUploadWorker
+import net.matsudamper.folderviewer.viewmodel.worker.FolderUploadWorker
 
 @HiltViewModel(assistedFactory = FileBrowserViewModel.Companion.Factory::class)
 class FileBrowserViewModel @AssistedInject constructor(
     private val storageRepository: StorageRepository,
     private val preferencesRepository: PreferencesRepository,
+    private val uploadJobRepository: UploadJobRepository,
     application: Application,
     @Assisted private val arg: FileBrowser,
 ) : AndroidViewModel(application) {
@@ -43,16 +54,16 @@ class FileBrowserViewModel @AssistedInject constructor(
 
     private val uiChannelEvent = Channel<FileBrowserUiEvent>()
     val uiEvent: Flow<FileBrowserUiEvent> = uiChannelEvent.receiveAsFlow()
+    private val fileObjectId = arg.fileId
 
-    private val viewModelStateFlow: MutableStateFlow<ViewModelState> =
-        MutableStateFlow(ViewModelState(currentPath = arg.path.orEmpty()))
+    private val displayName get() = arg.displayPath ?: viewModelStateFlow.value.storageName ?: "null"
+    private val viewModelStateFlow: MutableStateFlow<ViewModelState> = MutableStateFlow(ViewModelState())
 
     private val callbacks: FileBrowserUiState.Callbacks = object : FileBrowserUiState.Callbacks {
         override fun onRefresh() {
-            val path = viewModelStateFlow.value.currentPath
             viewModelScope.launch {
                 viewModelStateFlow.update { it.copy(isRefreshing = true) }
-                fetchFilesInternal(path)
+                fetchFilesInternal()
             }
         }
 
@@ -94,31 +105,39 @@ class FileBrowserViewModel @AssistedInject constructor(
             viewModelScope.launch {
                 viewModelEventChannel.send(
                     ViewModelEvent.NavigateToFolderBrowser(
-                        path = viewModelStateFlow.value.currentPath,
+                        id = fileObjectId,
                         storageId = arg.storageId,
+                        displayPath = arg.displayPath,
                     ),
                 )
             }
         }
 
         override fun onFavoriteClick() {
+            val fileId = when (fileObjectId) {
+                is FileObjectId.Root -> ""
+                is FileObjectId.Item -> fileObjectId.id
+            }
             viewModelScope.launch {
                 val state = viewModelStateFlow.value
                 val favoriteId = state.favoriteId
-                val currentPath = state.currentPath
                 if (favoriteId != null) {
                     storageRepository.removeFavorite(favoriteId)
                     uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("Removed from favorites"))
                 } else {
-                    val name = if (currentPath.isEmpty()) {
+                    val displayPath = arg.displayPath.orEmpty()
+                    val name = if (displayPath.isEmpty()) {
                         state.storageName ?: "Storage"
                     } else {
-                        currentPath.trim('/').split('/').lastOrNull() ?: currentPath
+                        displayPath.trim('/').split('/').lastOrNull()
+                            ?: viewModelStateFlow.value.storageName
+                            ?: "null"
                     }
 
                     storageRepository.addFavorite(
                         storageId = arg.storageId,
-                        path = currentPath,
+                        fileId = fileId,
+                        displayPath = displayPath,
                         name = name,
                     )
                     uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("Added to favorites"))
@@ -137,56 +156,54 @@ class FileBrowserViewModel @AssistedInject constructor(
                 viewModelEventChannel.send(ViewModelEvent.LaunchFolderPicker)
             }
         }
+
+        override fun onCancelSelection() {
+            viewModelStateFlow.update { it.copy(selectedKeys = emptySet()) }
+        }
     }
 
     val uiState: Flow<FileBrowserUiState> = channelFlow {
         viewModelStateFlow.collectLatest { viewModelState ->
             val sortedFiles = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig))
+            val isSelectionMode = viewModelState.selectedKeys.isNotEmpty()
             val uiItems = sortedFiles.map { fileItem ->
-                val isImage = FileUtil.isImage(fileItem.name)
+                val isImage = FileUtil.isImage(fileItem.displayPath)
                 FileBrowserUiState.UiFileItem.File(
-                    name = fileItem.name,
-                    path = fileItem.path,
+                    name = fileItem.displayPath,
+                    key = fileItem.id.id,
                     isDirectory = fileItem.isDirectory,
                     size = fileItem.size,
                     lastModified = fileItem.lastModified,
                     thumbnail = if (isImage) {
                         FileImageSource.Thumbnail(
                             storageId = arg.storageId,
-                            path = fileItem.path,
+                            fileId = fileItem.id,
                         )
                     } else {
                         null
                     },
-                    callbacks = FileItemCallbacks(fileItem, sortedFiles),
+                    isSelected = viewModelState.selectedKeys.contains(fileItem.id),
+                    callbacks = FileItemCallbacks(fileItem, sortedFiles, isSelectionMode),
                 )
             }
 
             val favoriteItems = viewModelState.favorites.map { favorite ->
                 FileBrowserUiState.UiFileItem.File(
-                    name = favorite.path,
-                    path = favorite.path,
+                    name = favorite.displayPath,
+                    key = favorite.fileId.id,
                     isDirectory = true,
                     size = 0,
                     lastModified = 0,
-                    thumbnail = if (FileUtil.isImage(favorite.path)) {
+                    thumbnail = if (FileUtil.isImage(favorite.displayPath)) {
                         FileImageSource.Thumbnail(
                             storageId = arg.storageId,
-                            path = favorite.path,
+                            fileId = favorite.fileId,
                         )
                     } else {
                         null
                     },
-                    callbacks = {
-                        viewModelScope.launch {
-                            viewModelEventChannel.send(
-                                ViewModelEvent.NavigateToFileBrowser(
-                                    path = favorite.path,
-                                    storageId = arg.storageId,
-                                ),
-                            )
-                        }
-                    },
+                    isSelected = false,
+                    callbacks = FavoriteItemCallbacks(favorite),
                 )
             }
 
@@ -207,15 +224,14 @@ class FileBrowserViewModel @AssistedInject constructor(
                 FileBrowserUiState(
                     callbacks = callbacks,
                     isRefreshing = viewModelState.isRefreshing,
-                    currentPath = viewModelState.currentPath,
-                    title = viewModelState.currentPath.ifEmpty {
-                        viewModelState.storageName ?: viewModelState.currentPath
-                    },
+                    title = arg.displayPath ?: viewModelState.storageName ?: "null",
                     isFavorite = viewModelState.favoriteId != null,
-                    visibleFavoriteButton = viewModelState.currentPath.isNotEmpty(),
+                    visibleFavoriteButton = arg.displayPath != null,
                     sortConfig = viewModelState.sortConfig,
                     displayConfig = viewModelState.displayConfig,
-                    visibleFolderBrowserButton = arg.path != null,
+                    visibleFolderBrowserButton = arg.displayPath != null,
+                    isSelectionMode = isSelectionMode,
+                    selectedCount = viewModelState.selectedKeys.size,
                     contentState = contentState,
                 ),
             )
@@ -225,7 +241,7 @@ class FileBrowserViewModel @AssistedInject constructor(
     private var fileRepository: FileRepository? = null
 
     init {
-        loadFiles(arg.path.orEmpty())
+        loadFiles()
         loadStorageName()
         viewModelScope.launch {
             loadSortConfig()
@@ -234,16 +250,20 @@ class FileBrowserViewModel @AssistedInject constructor(
             loadDisplayMode()
         }
         viewModelScope.launch {
+            val fileId = when (fileObjectId) {
+                is FileObjectId.Root -> return@launch
+                is FileObjectId.Item -> fileObjectId.id
+            }
             storageRepository.favorites
                 .map { favorites ->
-                    favorites.find { it.storageId == arg.storageId && it.path == (arg.path.orEmpty()) }?.id
+                    favorites.find { it.storageId == arg.storageId && it.fileId.id == fileId }?.id
                 }
                 .collectLatest { favoriteId ->
                     viewModelStateFlow.update { it.copy(favoriteId = favoriteId) }
                 }
         }
         // Rootの時だけお気に入りを表示する
-        if (arg.path == null) {
+        if (arg.displayPath == null) {
             viewModelScope.launch {
                 storageRepository.favorites
                     .map { favorites ->
@@ -300,7 +320,7 @@ class FileBrowserViewModel @AssistedInject constructor(
 
     private fun createComparator(config: FileBrowserUiState.FileSortConfig): Comparator<FileItem> {
         val comparator: Comparator<FileItem> = when (config.key) {
-            FileBrowserUiState.FileSortKey.Name -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.name }
+            FileBrowserUiState.FileSortKey.Name -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.displayPath }
             FileBrowserUiState.FileSortKey.Date -> compareBy { it.lastModified }
             FileBrowserUiState.FileSortKey.Size -> compareBy { it.size }
         }
@@ -320,22 +340,21 @@ class FileBrowserViewModel @AssistedInject constructor(
         return newRepo
     }
 
-    private fun loadFiles(path: String) {
+    private fun loadFiles() {
         viewModelScope.launch {
             viewModelStateFlow.update { it.copy(isLoading = true) }
-            fetchFilesInternal(path)
+            fetchFilesInternal()
         }
     }
 
-    private suspend fun fetchFilesInternal(path: String) {
+    private suspend fun fetchFilesInternal() {
         runCatching {
             val repository = getRepository()
-            val files = repository.getFiles(path)
+            val files = repository.getFiles(fileObjectId)
             viewModelStateFlow.update {
                 it.copy(
                     isLoading = false,
                     isRefreshing = false,
-                    currentPath = path,
                     rawFiles = files,
                     hasError = false,
                 )
@@ -345,6 +364,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                 is CancellationException -> throw e
 
                 else -> {
+                    e.printStackTrace()
                     viewModelStateFlow.update {
                         it.copy(
                             isLoading = false,
@@ -361,71 +381,160 @@ class FileBrowserViewModel @AssistedInject constructor(
     sealed interface ViewModelEvent {
         data object PopBackStack : ViewModelEvent
         data class NavigateToFileBrowser(
-            val path: String,
-            val storageId: String,
+            val displayPath: String,
+            val storageId: StorageId,
+            val id: FileObjectId.Item,
         ) : ViewModelEvent
 
         data class NavigateToImageViewer(
-            val path: String,
-            val storageId: String,
-            val allPaths: List<String>,
+            val id: FileObjectId.Item,
+            val storageId: StorageId,
+            val allPaths: List<FileObjectId.Item>,
         ) : ViewModelEvent
 
         data class NavigateToFolderBrowser(
-            val path: String,
-            val storageId: String,
+            val id: FileObjectId,
+            val displayPath: String?,
+            val storageId: StorageId,
         ) : ViewModelEvent
 
         data object LaunchFilePicker : ViewModelEvent
         data object LaunchFolderPicker : ViewModelEvent
+
+        data class OpenWithExternalPlayer(
+            val viewSourceUri: ViewSourceUri,
+            val storageId: StorageId,
+            val fileId: FileObjectId.Item,
+            val fileName: String,
+            val mimeType: String?,
+        ) : ViewModelEvent
     }
 
     suspend fun handleFileUpload(uri: android.net.Uri, fileName: String) {
+        val inputData = Data.Builder()
+            .putString(FileUploadWorker.KEY_STORAGE_ID, Json.encodeToString(arg.storageId))
+            .putString(FileUploadWorker.KEY_FILE_OBJECT_ID, Json.encodeToString(fileObjectId))
+            .putString(FileUploadWorker.KEY_URI, uri.toString())
+            .putString(FileUploadWorker.KEY_FILE_NAME, fileName)
+            .build()
+
+        val workRequest = OneTimeWorkRequestBuilder<FileUploadWorker>()
+            .setInputData(inputData)
+            .addTag(FileUploadWorker.TAG_UPLOAD)
+            .build()
+
+        uploadJobRepository.saveJob(
+            UploadJobRepository.UploadJob(
+                workerId = workRequest.id.toString(),
+                name = fileName,
+                isFolder = false,
+                storageId = arg.storageId,
+                fileObjectId = fileObjectId,
+                displayPath = arg.displayPath.orEmpty(),
+            ),
+        )
+
+        WorkManager.getInstance(getApplication()).enqueue(workRequest)
+        uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ファイルのアップロードを開始しました"))
+    }
+
+    suspend fun handleFolderUpload(folderUri: android.net.Uri) {
         runCatching {
-            val repository = getRepository()
-            val currentPath = viewModelStateFlow.value.currentPath
-            val contentResolver = getApplication<Application>().contentResolver
-            contentResolver.openInputStream(uri)?.use { inputStream ->
-                repository.uploadFile(currentPath, fileName, inputStream)
+            val documentFile = androidx.documentfile.provider.DocumentFile.fromTreeUri(
+                getApplication(),
+                folderUri,
+            )
+            if (documentFile == null) {
+                uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("フォルダの取得に失敗しました"))
+                return
             }
-            fetchFilesInternal(currentPath)
-            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ファイルをアップロードしました"))
+
+            val folderName = documentFile.name
+            if (folderName == null) {
+                uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("フォルダ名の取得に失敗しました"))
+                return
+            }
+
+            val existingFiles = viewModelStateFlow.value.rawFiles
+            val folderExists = existingFiles.any { it.displayPath == folderName && it.isDirectory }
+
+            if (folderExists) {
+                uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("同じ名前のフォルダが既に存在します: $folderName"))
+                return
+            }
+
+            enqueueFolderUpload(documentFile, folderName)
+            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("フォルダのアップロードを開始しました"))
         }.onFailure { e ->
             when (e) {
                 is CancellationException -> throw e
 
                 else -> {
-                    uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar("アップロード失敗: ${e.message}"))
+                    e.printStackTrace()
+                    uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar("アップロード開始失敗: ${e.message}"))
                 }
             }
         }
     }
 
-    suspend fun handleFolderUpload(uris: List<Pair<android.net.Uri, String>>) {
-        runCatching {
-            val repository = getRepository()
-            val currentPath = viewModelStateFlow.value.currentPath
-            val contentResolver = getApplication<Application>().contentResolver
+    private suspend fun enqueueFolderUpload(
+        documentFile: androidx.documentfile.provider.DocumentFile,
+        folderName: String,
+    ) {
+        val files = mutableListOf<Pair<android.net.Uri, String>>()
+        collectFiles(documentFile, "", files)
 
-            val folderName = "uploaded_folder_${System.currentTimeMillis()}"
-            val filesToUpload = uris.mapNotNull { (uri, relativePath) ->
-                contentResolver.openInputStream(uri)?.let { inputStream ->
-                    net.matsudamper.folderviewer.repository.FileToUpload(
-                        relativePath = relativePath,
-                        inputStream = inputStream,
-                    )
+        val uriDataList = files.map { (uri, relativePath) ->
+            FolderUploadWorker.UriData(uri = uri.toString(), relativePath = relativePath)
+        }
+
+        val inputData = Data.Builder()
+            .putString(FolderUploadWorker.KEY_STORAGE_ID, Json.encodeToString(arg.storageId))
+            .putString(FolderUploadWorker.KEY_FILE_OBJECT_ID, Json.encodeToString(fileObjectId))
+            .putString(FolderUploadWorker.KEY_FOLDER_NAME, folderName)
+            .putString(FolderUploadWorker.KEY_URI_DATA_LIST, Json.encodeToString(uriDataList))
+            .build()
+
+        val uploadWorkRequest = OneTimeWorkRequestBuilder<FolderUploadWorker>()
+            .setInputData(inputData)
+            .addTag(FolderUploadWorker.TAG_UPLOAD)
+            .build()
+
+        uploadJobRepository.saveJob(
+            UploadJobRepository.UploadJob(
+                workerId = uploadWorkRequest.id.toString(),
+                name = folderName,
+                isFolder = true,
+                storageId = arg.storageId,
+                fileObjectId = fileObjectId,
+                displayPath = arg.displayPath.orEmpty(),
+            ),
+        )
+
+        WorkManager.getInstance(getApplication()).enqueue(uploadWorkRequest)
+    }
+
+    private fun collectFiles(
+        folder: androidx.documentfile.provider.DocumentFile,
+        relativePath: String,
+        files: MutableList<Pair<android.net.Uri, String>>,
+    ) {
+        folder.listFiles().forEach { file ->
+            if (file.isDirectory) {
+                val newRelativePath = if (relativePath.isEmpty()) {
+                    file.name.orEmpty()
+                } else {
+                    "$relativePath/${file.name}"
                 }
-            }
-
-            repository.uploadFolder(currentPath, folderName, filesToUpload)
-            fetchFilesInternal(currentPath)
-            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("フォルダをアップロードしました"))
-        }.onFailure { e ->
-            when (e) {
-                is CancellationException -> throw e
-
-                else -> {
-                    uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar("アップロード失敗: ${e.message}"))
+                collectFiles(file, newRelativePath, files)
+            } else {
+                val filePath = if (relativePath.isEmpty()) {
+                    file.name.orEmpty()
+                } else {
+                    "$relativePath/${file.name}"
+                }
+                file.uri.let { uri ->
+                    files.add(uri to filePath)
                 }
             }
         }
@@ -434,39 +543,128 @@ class FileBrowserViewModel @AssistedInject constructor(
     private inner class FileItemCallbacks(
         private val fileItem: FileItem,
         private val sortedFiles: List<FileItem>,
+        private val isSelectionMode: Boolean,
     ) : FileBrowserUiState.UiFileItem.File.Callbacks {
         override fun onClick() {
+            if (isSelectionMode) {
+                toggleSelection(fileItem.id)
+                return
+            }
             if (fileItem.isDirectory) {
                 viewModelScope.launch {
                     viewModelEventChannel.send(
                         ViewModelEvent.NavigateToFileBrowser(
-                            path = fileItem.path,
+                            displayPath = "$displayName/${fileItem.displayPath}",
                             storageId = arg.storageId,
+                            id = fileItem.id,
                         ),
                     )
                 }
             } else {
-                val isImage = FileUtil.isImage(fileItem.name.lowercase())
+                val isImage = FileUtil.isImage(fileItem.displayPath.lowercase())
+                val isVideo = FileUtil.isVideo(fileItem.displayPath.lowercase())
 
-                if (isImage) {
-                    viewModelScope.launch {
-                        viewModelEventChannel.send(
-                            ViewModelEvent.NavigateToImageViewer(
-                                path = fileItem.path,
-                                storageId = arg.storageId,
-                                allPaths = sortedFiles.filter { FileUtil.isImage(it.name) }.map { it.path },
-                            ),
-                        )
+                when {
+                    isImage -> {
+                        viewModelScope.launch {
+                            viewModelEventChannel.send(
+                                ViewModelEvent.NavigateToImageViewer(
+                                    id = fileItem.id,
+                                    storageId = arg.storageId,
+                                    allPaths = sortedFiles.filter { FileUtil.isImage(it.displayPath) }.map { it.id },
+                                ),
+                            )
+                        }
+                    }
+
+                    isVideo -> {
+                        viewModelScope.launch {
+                            openWithExternalPlayer(fileItem)
+                        }
+                    }
+
+                    else -> {
+                        viewModelScope.launch {
+                            openWithExternalPlayer(fileItem)
+                        }
                     }
                 }
             }
+        }
+
+        override fun onLongClick() {
+            toggleSelection(fileItem.id)
+        }
+
+        override fun onCheckedChange(checked: Boolean) {
+            if (checked) {
+                viewModelStateFlow.update { it.copy(selectedKeys = it.selectedKeys + fileItem.id) }
+            } else {
+                viewModelStateFlow.update { it.copy(selectedKeys = it.selectedKeys - fileItem.id) }
+            }
+        }
+    }
+
+    private suspend fun openWithExternalPlayer(fileItem: FileItem) {
+        runCatching {
+            val repository = getRepository()
+            val externalPlayerUri = repository.getViewSourceUri(fileItem.id)
+            val mimeType = FileUtil.getMimeType(fileItem.displayPath)
+
+            viewModelEventChannel.send(
+                ViewModelEvent.OpenWithExternalPlayer(
+                    viewSourceUri = externalPlayerUri,
+                    storageId = arg.storageId,
+                    fileId = fileItem.id,
+                    fileName = fileItem.displayPath,
+                    mimeType = mimeType,
+                ),
+            )
+        }.onFailure { e ->
+            when (e) {
+                is CancellationException -> throw e
+
+                else -> {
+                    e.printStackTrace()
+                    uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar("外部プレイヤーで開けませんでした: ${e.message}"))
+                }
+            }
+        }
+    }
+
+    private inner class FavoriteItemCallbacks(
+        private val favorite: FavoriteConfiguration,
+    ) : FileBrowserUiState.UiFileItem.File.Callbacks {
+        override fun onClick() {
+            viewModelScope.launch {
+                viewModelEventChannel.send(
+                    ViewModelEvent.NavigateToFileBrowser(
+                        displayPath = favorite.displayPath,
+                        storageId = arg.storageId,
+                        id = favorite.fileId,
+                    ),
+                )
+            }
+        }
+
+        override fun onLongClick() = Unit
+        override fun onCheckedChange(checked: Boolean) = Unit
+    }
+
+    private fun toggleSelection(fileId: FileObjectId.Item) {
+        viewModelStateFlow.update {
+            val newKeys = if (it.selectedKeys.contains(fileId)) {
+                it.selectedKeys - fileId
+            } else {
+                it.selectedKeys + fileId
+            }
+            it.copy(selectedKeys = newKeys)
         }
     }
 
     private data class ViewModelState(
         val isLoading: Boolean = false,
         val isRefreshing: Boolean = false,
-        val currentPath: String = "",
         val storageName: String? = null,
         val rawFiles: List<FileItem> = emptyList(),
         val sortConfig: FileBrowserUiState.FileSortConfig = FileBrowserUiState.FileSortConfig(
@@ -480,6 +678,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         val favoriteId: String? = null,
         val favorites: List<FavoriteConfiguration> = emptyList(),
         val hasError: Boolean = false,
+        val selectedKeys: Set<FileObjectId.Item> = emptySet(),
     )
 
     companion object {

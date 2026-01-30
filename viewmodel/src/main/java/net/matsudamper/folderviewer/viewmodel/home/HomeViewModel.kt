@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
+import net.matsudamper.folderviewer.common.StorageId
 import net.matsudamper.folderviewer.repository.StorageConfiguration
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.ui.home.HomeUiState
@@ -30,6 +31,12 @@ class HomeViewModel @Inject constructor(
         override fun onNavigateToSettings() {
             viewModelScope.launch {
                 viewModelEventChannel.send(ViewModelEvent.NavigateToSettings)
+            }
+        }
+
+        override fun onNavigateToUploadProgress() {
+            viewModelScope.launch {
+                viewModelEventChannel.send(ViewModelEvent.NavigateToUploadProgress)
             }
         }
 
@@ -56,10 +63,16 @@ class HomeViewModel @Inject constructor(
                 is UiStorageConfiguration.Local -> {
                     // 何もしない
                 }
+
+                is UiStorageConfiguration.SharePoint -> {
+                    viewModelScope.launch {
+                        viewModelEventChannel.send(ViewModelEvent.NavigateToSharePointAdd(storage.id))
+                    }
+                }
             }
         }
 
-        override fun onDeleteStorageClick(id: String) {
+        override fun onDeleteStorageClick(id: StorageId) {
             onDeleteStorage(id)
         }
     }
@@ -92,6 +105,14 @@ class HomeViewModel @Inject constructor(
                                         rootPath = storage.rootPath,
                                     )
                                 }
+
+                                is StorageConfiguration.SharePoint -> {
+                                    UiStorageConfiguration.SharePoint(
+                                        id = storage.id,
+                                        name = storage.name,
+                                        objectId = storage.objectId,
+                                    )
+                                }
                             }
                         },
                         callbacks = callbacks,
@@ -111,7 +132,7 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private fun onDeleteStorage(id: String) {
+    private fun onDeleteStorage(id: StorageId) {
         viewModelScope.launch {
             storageRepository.deleteStorage(id)
         }
@@ -119,9 +140,11 @@ class HomeViewModel @Inject constructor(
 
     sealed interface ViewModelEvent {
         data object NavigateToSettings : ViewModelEvent
+        data object NavigateToUploadProgress : ViewModelEvent
         data object NavigateToStorageTypeSelection : ViewModelEvent
-        data class NavigateToFileBrowser(val storageId: String) : ViewModelEvent
-        data class NavigateToSmbAdd(val storageId: String) : ViewModelEvent
+        data class NavigateToFileBrowser(val storageId: StorageId) : ViewModelEvent
+        data class NavigateToSmbAdd(val storageId: StorageId) : ViewModelEvent
+        data class NavigateToSharePointAdd(val storageId: StorageId) : ViewModelEvent
     }
 
     private data class ViewModelState(

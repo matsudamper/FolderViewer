@@ -28,6 +28,8 @@ kotlin {
 }
 
 dependencies {
+    implementation(project(":dao:graph-api"))
+    implementation(project(":common"))
     implementation(libs.androidxCoreKtx)
     implementation(libs.smbj)
     implementation(libs.smbjRpc)
@@ -38,6 +40,11 @@ dependencies {
     implementation(libs.hiltAndroid)
     ksp(libs.hiltCompiler)
     implementation(libs.jakartaInject)
+    implementation(libs.microsoftGraph)
+    implementation(libs.azureIdentity)
+    implementation(libs.androidxRoomRuntime)
+    implementation(libs.androidxRoomKtx)
+    ksp(libs.androidxRoomCompiler)
 }
 
 protobuf {

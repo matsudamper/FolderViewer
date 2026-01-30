@@ -25,6 +25,7 @@ kotlin {
 }
 
 dependencies {
+    implementation(project(":common"))
     implementation(libs.kotlinxSerializationJson)
     implementation(libs.androidxNavigation3Runtime)
 }

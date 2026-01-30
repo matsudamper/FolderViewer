@@ -19,8 +19,11 @@ import com.google.protobuf.InvalidProtocolBufferException
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
+import net.matsudamper.folderviewer.common.FileObjectId
+import net.matsudamper.folderviewer.common.StorageId
 import net.matsudamper.folderviewer.repository.proto.FavoriteConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.LocalConfigurationProto
+import net.matsudamper.folderviewer.repository.proto.SharePointConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.SmbConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.StorageConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.StorageListProto
@@ -60,7 +63,7 @@ class StorageRepository @Inject constructor(
         }
 
     suspend fun addSmbStorage(config: SmbStorageInput) {
-        val id = UUID.randomUUID().toString()
+        val id = StorageId(UUID.randomUUID().toString())
         val smbConfig = StorageConfiguration.Smb(
             id = id,
             name = config.name,
@@ -71,7 +74,7 @@ class StorageRepository @Inject constructor(
 
         // パスワードを安全に保存する
         sharedPreferences.edit {
-            putString(id, config.password)
+            putString(id.id, config.password)
         }
 
         // DataStoreを更新する
@@ -82,7 +85,7 @@ class StorageRepository @Inject constructor(
         }
     }
 
-    suspend fun updateSmbStorage(id: String, config: SmbStorageInput) {
+    suspend fun updateSmbStorage(id: StorageId, config: SmbStorageInput) {
         val smbConfig = StorageConfiguration.Smb(
             id = id,
             name = config.name,
@@ -92,11 +95,11 @@ class StorageRepository @Inject constructor(
         )
 
         sharedPreferences.edit {
-            putString(id, config.password)
+            putString(id.id, config.password)
         }
 
         context.dataStore.updateData { currentList ->
-            val index = currentList.listList.indexOfFirst { it.id == id }
+            val index = currentList.listList.indexOfFirst { it.id == id.id }
             if (index >= 0) {
                 currentList.toBuilder()
                     .setList(index, smbConfig.toProto())
@@ -118,7 +121,7 @@ class StorageRepository @Inject constructor(
             val primaryPath = primaryStorage.absolutePath
             if (primaryPath !in existingStorages) {
                 val localConfig = StorageConfiguration.Local(
-                    id = UUID.randomUUID().toString(),
+                    id = StorageId(UUID.randomUUID().toString()),
                     name = "ローカルストレージ",
                     rootPath = primaryPath,
                 )
@@ -133,7 +136,7 @@ class StorageRepository @Inject constructor(
     }
 
     suspend fun addLocalStorage(name: String, rootPath: String) {
-        val id = UUID.randomUUID().toString()
+        val id = StorageId(UUID.randomUUID().toString())
         val localConfig = StorageConfiguration.Local(
             id = id,
             name = name,
@@ -147,12 +150,67 @@ class StorageRepository @Inject constructor(
         }
     }
 
-    suspend fun deleteStorage(id: String) {
+    suspend fun addSharePointStorage(config: SharePointStorageInput) {
+        val id = StorageId(UUID.randomUUID().toString())
+        val sharePointConfig = StorageConfiguration.SharePoint(
+            id = id,
+            name = config.name,
+            objectId = config.objectId,
+            tenantId = config.tenantId,
+            clientId = config.clientId,
+            clientSecret = config.clientSecret,
+        )
+
+        sharedPreferences.edit {
+            putString("${id.id}_tenantId", config.tenantId)
+            putString("${id.id}_clientId", config.clientId)
+            putString("${id.id}_clientSecret", config.clientSecret)
+        }
+
         context.dataStore.updateData { currentList ->
-            val index = currentList.listList.indexOfFirst { it.id == id }
+            currentList.toBuilder()
+                .addList(sharePointConfig.toProto())
+                .build()
+        }
+    }
+
+    suspend fun updateSharePointStorage(id: StorageId, config: SharePointStorageInput) {
+        val sharePointConfig = StorageConfiguration.SharePoint(
+            id = id,
+            name = config.name,
+            objectId = config.objectId,
+            tenantId = config.tenantId,
+            clientId = config.clientId,
+            clientSecret = config.clientSecret,
+        )
+
+        sharedPreferences.edit {
+            putString("${id.id}_tenantId", config.tenantId)
+            putString("${id.id}_clientId", config.clientId)
+            putString("${id.id}_clientSecret", config.clientSecret)
+        }
+
+        context.dataStore.updateData { currentList ->
+            val index = currentList.listList.indexOfFirst { it.id == id.id }
+            if (index >= 0) {
+                currentList.toBuilder()
+                    .setList(index, sharePointConfig.toProto())
+                    .build()
+            } else {
+                currentList
+            }
+        }
+    }
+
+    suspend fun deleteStorage(id: StorageId) {
+        context.dataStore.updateData { currentList ->
+            val index = currentList.listList.indexOfFirst { it.id == id.id }
             if (index >= 0) {
                 sharedPreferences.edit {
-                    remove(id)
+                    remove(id.id)
+                    remove("${id.id}_tenantId")
+                    remove("${id.id}_clientId")
+                    remove("${id.id}_clientSecret")
                 }
                 currentList.toBuilder()
                     .removeList(index)
@@ -163,13 +221,15 @@ class StorageRepository @Inject constructor(
         }
     }
 
-    suspend fun addFavorite(storageId: String, path: String, name: String) {
+    suspend fun addFavorite(storageId: StorageId, fileId: String, displayPath: String, name: String) {
         val id = UUID.randomUUID().toString()
         val config = FavoriteConfiguration(
             id = id,
             name = name,
             storageId = storageId,
-            path = path,
+            path = fileId,
+            fileId = FileObjectId.Item(fileId),
+            displayPath = displayPath,
         )
 
         context.dataStore.updateData { currentList ->
@@ -192,13 +252,14 @@ class StorageRepository @Inject constructor(
         }
     }
 
-    suspend fun getFileRepository(id: String): FileRepository? {
+    suspend fun getFileRepository(id: StorageId): FileRepository? {
         val proto = context.dataStore.data.first()
-        val configProto = proto.listList.find { it.id == id } ?: return null
+        val configProto = proto.listList.find { it.id == id.id } ?: return null
 
         return when (val config = configProto.toDomain()) {
             is StorageConfiguration.Smb -> SmbFileRepository(config)
             is StorageConfiguration.Local -> LocalFileRepository(config)
+            is StorageConfiguration.SharePoint -> SharePointFileRepository(config)
             null -> null
         }
     }
@@ -207,7 +268,7 @@ class StorageRepository @Inject constructor(
         return when (configCase) {
             StorageConfigurationProto.ConfigCase.SMB -> {
                 StorageConfiguration.Smb(
-                    id = id,
+                    id = StorageId(id),
                     name = name,
                     ip = smb.ip,
                     username = smb.username,
@@ -217,9 +278,20 @@ class StorageRepository @Inject constructor(
 
             StorageConfigurationProto.ConfigCase.LOCAL -> {
                 StorageConfiguration.Local(
-                    id = id,
+                    id = StorageId(id),
                     name = name,
                     rootPath = local.rootPath,
+                )
+            }
+
+            StorageConfigurationProto.ConfigCase.SHAREPOINT -> {
+                StorageConfiguration.SharePoint(
+                    id = StorageId(id),
+                    name = name,
+                    objectId = sharepoint.objectId,
+                    tenantId = sharedPreferences.getString("${id}_tenantId", null).orEmpty(),
+                    clientId = sharedPreferences.getString("${id}_clientId", null).orEmpty(),
+                    clientSecret = sharedPreferences.getString("${id}_clientSecret", null).orEmpty(),
                 )
             }
 
@@ -229,7 +301,7 @@ class StorageRepository @Inject constructor(
 
     private fun StorageConfiguration.Smb.toProto(): StorageConfigurationProto {
         return StorageConfigurationProto.newBuilder()
-            .setId(id)
+            .setId(id.id)
             .setName(name)
             .setSmb(
                 SmbConfigurationProto.newBuilder()
@@ -242,7 +314,7 @@ class StorageRepository @Inject constructor(
 
     private fun StorageConfiguration.Local.toProto(): StorageConfigurationProto {
         return StorageConfigurationProto.newBuilder()
-            .setId(id)
+            .setId(id.id)
             .setName(name)
             .setLocal(
                 LocalConfigurationProto.newBuilder()
@@ -252,12 +324,27 @@ class StorageRepository @Inject constructor(
             .build()
     }
 
+    private fun StorageConfiguration.SharePoint.toProto(): StorageConfigurationProto {
+        return StorageConfigurationProto.newBuilder()
+            .setId(id.id)
+            .setName(name)
+            .setSharepoint(
+                SharePointConfigurationProto.newBuilder()
+                    .setObjectId(objectId)
+                    .build(),
+            )
+            .build()
+    }
+
     private fun FavoriteConfigurationProto.toDomain(): FavoriteConfiguration {
+        val fileIdString = if (fileId.isNotEmpty()) fileId else path
         return FavoriteConfiguration(
             id = id,
             name = name,
-            storageId = storageId,
-            path = path,
+            storageId = StorageId(storageId),
+            path = fileIdString,
+            fileId = FileObjectId.Item(fileIdString),
+            displayPath = if (displayPath.isNotEmpty()) displayPath else path,
         )
     }
 
@@ -265,8 +352,10 @@ class StorageRepository @Inject constructor(
         return FavoriteConfigurationProto.newBuilder()
             .setId(id)
             .setName(name)
-            .setStorageId(storageId)
+            .setStorageId(storageId.id)
             .setPath(path)
+            .setFileId(fileId.id)
+            .setDisplayPath(displayPath)
             .build()
     }
 
@@ -275,6 +364,14 @@ class StorageRepository @Inject constructor(
         val ip: String,
         val username: String,
         val password: String,
+    )
+
+    data class SharePointStorageInput(
+        val name: String,
+        val objectId: String,
+        val tenantId: String,
+        val clientId: String,
+        val clientSecret: String,
     )
 }
 

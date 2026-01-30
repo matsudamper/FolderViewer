@@ -2,6 +2,8 @@ package net.matsudamper.folderviewer.navigation
 
 import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
+import net.matsudamper.folderviewer.common.FileObjectId
+import net.matsudamper.folderviewer.common.StorageId
 
 @Serializable
 object Home : NavKey
@@ -16,13 +18,19 @@ object StorageTypeSelection : NavKey
 object PermissionRequest : NavKey
 
 @Serializable
-data class SmbAdd(val storageId: String? = null) : NavKey
+data class SmbAdd(val storageId: StorageId? = null) : NavKey
 
 @Serializable
-data class FileBrowser(val storageId: String, val path: String?) : NavKey
+data class SharePointAdd(val storageId: StorageId? = null) : NavKey
 
 @Serializable
-data class FolderBrowser(val storageId: String, val path: String) : NavKey
+data class FileBrowser(val storageId: StorageId, val displayPath: String?, val fileId: FileObjectId) : NavKey
 
 @Serializable
-data class ImageViewer(val id: String, val path: String, val allPaths: List<String>) : NavKey
+data class FolderBrowser(val storageId: StorageId, val displayPath: String?, val fileId: FileObjectId) : NavKey
+
+@Serializable
+data class ImageViewer(val storageId: StorageId, val fileId: FileObjectId.Item, val allPaths: List<FileObjectId.Item>) : NavKey
+
+@Serializable
+object UploadProgress : NavKey

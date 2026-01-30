@@ -36,8 +36,6 @@ internal fun FileBrowserTopBar(
     displayConfig: UiDisplayConfig,
     onDisplayConfigChange: (UiDisplayConfig) -> Unit,
     onFavoriteClick: () -> Unit,
-    onUploadFileClick: () -> Unit,
-    onUploadFolderClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
@@ -118,63 +116,34 @@ internal fun FileBrowserTopBar(
                 sortConfig = sortConfig,
                 onSortConfigChange = onSortConfigChange,
             )
-
-            var showMoreMenu by remember { mutableStateOf(false) }
-            IconButton(onClick = { showMoreMenu = true }) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_more_vert),
-                    contentDescription = "その他",
-                )
-            }
-
-            MoreMenuDropDown(
-                expanded = showMoreMenu,
-                onDismissRequest = { showMoreMenu = false },
-                onUploadFileClick = {
-                    showMoreMenu = false
-                    onUploadFileClick()
-                },
-                onUploadFolderClick = {
-                    showMoreMenu = false
-                    onUploadFolderClick()
-                },
-            )
         },
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MoreMenuDropDown(
-    expanded: Boolean,
-    onDismissRequest: () -> Unit,
-    onUploadFileClick: () -> Unit,
-    onUploadFolderClick: () -> Unit,
+internal fun FileBrowserSelectionTopBar(
+    selectedCount: Int,
+    onCancelSelection: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    DropdownMenu(
-        expanded = expanded,
-        onDismissRequest = onDismissRequest,
-    ) {
-        DropdownMenuItem(
-            text = { Text("ファイルをアップロード") },
-            onClick = onUploadFileClick,
-            leadingIcon = {
+    TopAppBar(
+        modifier = modifier,
+        colors = MyTopAppBarDefaults.topAppBarColors(),
+        title = {
+            Text(
+                text = selectedCount.toString(),
+            )
+        },
+        navigationIcon = {
+            IconButton(onClick = onCancelSelection) {
                 Icon(
-                    painter = painterResource(id = R.drawable.ic_upload_file),
-                    contentDescription = null,
+                    painter = painterResource(id = R.drawable.ic_close),
+                    contentDescription = stringResource(R.string.cancel_selection),
                 )
-            },
-        )
-        DropdownMenuItem(
-            text = { Text("フォルダをアップロード") },
-            onClick = onUploadFolderClick,
-            leadingIcon = {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_upload_file),
-                    contentDescription = null,
-                )
-            },
-        )
-    }
+            }
+        },
+    )
 }
 
 @Composable

@@ -7,13 +7,19 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.InputStream
+import java.io.RandomAccessFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import net.matsudamper.folderviewer.common.FileObjectId
 
 internal class LocalFileRepository(
     private val config: StorageConfiguration.Local,
-) : FileRepository {
-    override suspend fun getFiles(path: String): List<FileItem> = withContext(Dispatchers.IO) {
+) : RandomAccessFileRepository {
+    override suspend fun getFiles(id: FileObjectId): List<FileItem> = withContext(Dispatchers.IO) {
+        val path = when (id) {
+            is FileObjectId.Root -> ""
+            is FileObjectId.Item -> id.id
+        }
         val targetDir = buildAbsoluteFile(path)
 
         if (!targetDir.exists() || !targetDir.canRead()) {
@@ -28,32 +34,38 @@ internal class LocalFileRepository(
             }
 
             FileItem(
-                name = file.name,
-                path = relativePath,
+                displayPath = file.name,
+                id = FileObjectId.Item(relativePath),
                 isDirectory = file.isDirectory,
                 size = if (file.isDirectory) 0 else file.length(),
                 lastModified = file.lastModified(),
             )
         }?.sortedWith(
             compareBy<FileItem> { !it.isDirectory }
-                .thenBy { it.name.lowercase() },
+                .thenBy { it.displayPath.lowercase() },
         ).orEmpty()
     }
 
-    override suspend fun getFileContent(path: String): InputStream = withContext(Dispatchers.IO) {
-        val file = buildAbsoluteFile(path)
+    override suspend fun getFileContent(fileId: FileObjectId.Item): InputStream = withContext(Dispatchers.IO) {
+        val file = buildAbsoluteFile(fileId.id)
 
-        require(file.exists() && file.canRead()) { "File not found or cannot read: $path" }
+        require(file.exists() && file.canRead()) { "File not found or cannot read: ${fileId.id}" }
 
         FileInputStream(file)
     }
 
-    override suspend fun getThumbnail(path: String, thumbnailSize: Int): InputStream = withContext(Dispatchers.IO) {
+    override suspend fun getFileSize(fileId: FileObjectId.Item): Long = withContext(Dispatchers.IO) {
+        val file = buildAbsoluteFile(fileId.id)
+        require(file.exists() && file.canRead()) { "File not found or cannot read: ${fileId.id}" }
+        file.length()
+    }
+
+    override suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream = withContext(Dispatchers.IO) {
         try {
-            val file = buildAbsoluteFile(path)
+            val file = buildAbsoluteFile(fileId.id)
 
             if (!file.exists() || !file.canRead()) {
-                return@withContext getFileContent(path)
+                return@withContext getFileContent(fileId)
             }
 
             FileInputStream(file).use { stream ->
@@ -64,7 +76,7 @@ internal class LocalFileRepository(
                 val height = options.outHeight
 
                 if (width <= 0 || height <= 0) {
-                    return@withContext getFileContent(path)
+                    return@withContext getFileContent(fileId)
                 }
 
                 val decodeOptions = BitmapFactory.Options().apply {
@@ -73,7 +85,7 @@ internal class LocalFileRepository(
 
                 FileInputStream(file).use { decodeStream ->
                     val bitmap = BitmapFactory.decodeStream(decodeStream, null, decodeOptions)
-                        ?: return@withContext getFileContent(path)
+                        ?: return@withContext getFileContent(fileId)
 
                     val bos = ByteArrayOutputStream()
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 80, bos)
@@ -84,7 +96,7 @@ internal class LocalFileRepository(
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            getFileContent(path)
+            getFileContent(fileId)
         }
     }
 
@@ -108,14 +120,18 @@ internal class LocalFileRepository(
     }
 
     override suspend fun uploadFile(
-        destinationPath: String,
+        id: FileObjectId,
         fileName: String,
         inputStream: InputStream,
     ): Unit = withContext(Dispatchers.IO) {
-        val destinationDir = buildAbsoluteFile(destinationPath)
+        val path = when (id) {
+            is FileObjectId.Root -> ""
+            is FileObjectId.Item -> id.id
+        }
+        val destinationDir = buildAbsoluteFile(path)
 
         require(destinationDir.exists() && destinationDir.isDirectory && destinationDir.canWrite()) {
-            "Destination directory not found or cannot write: $destinationPath"
+            "Destination directory not found or cannot write: $path"
         }
 
         val destinationFile = File(destinationDir, fileName)
@@ -128,14 +144,18 @@ internal class LocalFileRepository(
     }
 
     override suspend fun uploadFolder(
-        destinationPath: String,
+        id: FileObjectId,
         folderName: String,
         files: List<FileToUpload>,
     ): Unit = withContext(Dispatchers.IO) {
-        val destinationDir = buildAbsoluteFile(destinationPath)
+        val path = when (id) {
+            is FileObjectId.Root -> ""
+            is FileObjectId.Item -> id.id
+        }
+        val destinationDir = buildAbsoluteFile(path)
 
         require(destinationDir.exists() && destinationDir.isDirectory && destinationDir.canWrite()) {
-            "Destination directory not found or cannot write: $destinationPath"
+            "Destination directory not found or cannot write: $path"
         }
 
         val folderDir = File(destinationDir, folderName)
@@ -151,6 +171,44 @@ internal class LocalFileRepository(
                     input.copyTo(output)
                 }
             }
+        }
+    }
+
+    override suspend fun getViewSourceUri(fileId: FileObjectId.Item): ViewSourceUri {
+        val file = buildAbsoluteFile(fileId.id)
+        return ViewSourceUri.LocalFile(file.absolutePath)
+    }
+
+    override suspend fun openRandomAccess(fileId: FileObjectId.Item): RandomAccessSource {
+        return withContext(Dispatchers.IO) {
+            val file = buildAbsoluteFile(fileId.id)
+            if (!file.exists() || !file.canRead()) {
+                throw IllegalStateException("File not found or cannot read: ${fileId.id}")
+            }
+
+            RandomAccessSourceImpl(
+                RandomAccessFile(file, "r"),
+            )
+        }
+    }
+
+    private class RandomAccessSourceImpl(
+        private val randomAccessFile: RandomAccessFile,
+    ) : RandomAccessSource {
+        override val size: Long = randomAccessFile.length()
+
+        override fun readAt(offset: Long, buffer: ByteArray, bufferOffset: Int, length: Int): Int {
+            return try {
+                randomAccessFile.seek(offset)
+                val bytesRead = randomAccessFile.read(buffer, bufferOffset, length)
+                bytesRead
+            } catch (_: Exception) {
+                -1
+            }
+        }
+
+        override fun close() {
+            randomAccessFile.close()
         }
     }
 

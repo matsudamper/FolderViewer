@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import net.matsudamper.folderviewer.common.StorageId
 import net.matsudamper.folderviewer.ui.util.plus
 
 @Composable
@@ -16,7 +17,7 @@ internal fun StorageList(
     storages: List<UiStorageConfiguration>,
     onStorageClick: (UiStorageConfiguration) -> Unit,
     onEditStorageClick: (UiStorageConfiguration) -> Unit,
-    onDeleteStorageClick: (String) -> Unit,
+    onDeleteStorageClick: (StorageId) -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {

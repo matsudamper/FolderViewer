@@ -1,6 +1,7 @@
 package net.matsudamper.folderviewer.ui.home
 
 import androidx.compose.runtime.Immutable
+import net.matsudamper.folderviewer.common.StorageId
 
 data class HomeUiState(
     val storages: List<UiStorageConfiguration>,
@@ -9,9 +10,10 @@ data class HomeUiState(
     @Immutable
     interface Callbacks {
         fun onNavigateToSettings()
+        fun onNavigateToUploadProgress()
         fun onAddStorageClick()
         fun onStorageClick(storage: UiStorageConfiguration)
         fun onEditStorageClick(storage: UiStorageConfiguration)
-        fun onDeleteStorageClick(id: String)
+        fun onDeleteStorageClick(id: StorageId)
     }
 }

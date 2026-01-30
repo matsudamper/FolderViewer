@@ -38,6 +38,14 @@ android {
     buildFeatures {
         compose = true
     }
+    packaging {
+        resources {
+            excludes += "META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/INDEX.LIST"
+            excludes += "META-INF/*.md"
+            excludes += "META-INF/*.properties"
+        }
+    }
 }
 
 kotlin {
@@ -47,6 +55,7 @@ kotlin {
 }
 
 dependencies {
+    implementation(project(":common"))
     implementation(project(":navigation"))
     implementation(project(":ui"))
     implementation(project(":repository"))
@@ -68,6 +77,8 @@ dependencies {
 
     implementation(libs.hiltAndroid)
     implementation(libs.hiltLifecycleViewmodelCompose)
+    implementation(libs.androidxWorkManagerRuntime)
+    implementation(libs.androidxWorkManagerHilt)
     ksp(libs.hiltCompiler)
     implementation(libs.kotlinxSerializationJson)
     implementation(libs.coilCompose)

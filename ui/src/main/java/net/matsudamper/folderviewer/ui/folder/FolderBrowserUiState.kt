@@ -8,7 +8,6 @@ data class FolderBrowserUiState(
     val isLoading: Boolean,
     val isRefreshing: Boolean,
     val visibleFavoriteButton: Boolean,
-    val currentPath: String,
     val title: String,
     val isFavorite: Boolean,
     val files: List<UiFileItem>,
@@ -24,7 +23,7 @@ data class FolderBrowserUiState(
 
         data class File(
             val name: String,
-            val path: String,
+            val key: String,
             val isDirectory: Boolean,
             val size: Long,
             val lastModified: Long,

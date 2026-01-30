@@ -31,4 +31,12 @@
     <string name="add_to_favorites">お気に入りに追加</string>
     <string name="storages">ストレージ</string>
     <string name="favorites">お気に入り</string>
+    <string name="cancel_selection">選択をキャンセル</string>
+    <string name="upload_progress">アップロード状況</string>
+    <string name="upload_state_enqueued">待機中</string>
+    <string name="upload_state_running">アップロード中</string>
+    <string name="upload_state_succeeded">完了</string>
+    <string name="upload_state_failed">失敗</string>
+    <string name="upload_state_cancelled">キャンセル</string>
+    <string name="no_uploads">アップロードはありません</string>
 </resources>

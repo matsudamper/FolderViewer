@@ -79,6 +79,7 @@ private fun StorageItemContent(
         val type = when (storage) {
             is UiStorageConfiguration.Smb -> "SMB: ${storage.ip}"
             is UiStorageConfiguration.Local -> "ローカル: ${storage.rootPath}"
+            is UiStorageConfiguration.SharePoint -> storage.objectId
         }
         Text(text = type, style = MaterialTheme.typography.bodyMedium)
     }
@@ -98,6 +99,17 @@ private fun StorageItemMenu(
     ) {
         when (storage) {
             is UiStorageConfiguration.Smb -> {
+                DropdownMenuItem(
+                    text = { Text("編集") },
+                    onClick = onEditClick,
+                )
+                DropdownMenuItem(
+                    text = { Text("削除") },
+                    onClick = onDeleteClick,
+                )
+            }
+
+            is UiStorageConfiguration.SharePoint -> {
                 DropdownMenuItem(
                     text = { Text("編集") },
                     onClick = onEditClick,

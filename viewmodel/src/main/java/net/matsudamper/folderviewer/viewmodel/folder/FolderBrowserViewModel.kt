@@ -22,6 +22,8 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import net.matsudamper.folderviewer.common.FileObjectId
+import net.matsudamper.folderviewer.common.StorageId
 import net.matsudamper.folderviewer.navigation.FolderBrowser
 import net.matsudamper.folderviewer.repository.FavoriteConfiguration
 import net.matsudamper.folderviewer.repository.FileItem
@@ -31,7 +33,7 @@ import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiEvent
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiState
-import net.matsudamper.folderviewer.viewmodel.FileSortComparator
+import net.matsudamper.folderviewer.viewmodel.util.FileSortComparator
 
 @HiltViewModel(assistedFactory = FolderBrowserViewModel.Companion.Factory::class)
 class FolderBrowserViewModel @AssistedInject constructor(
@@ -40,8 +42,6 @@ class FolderBrowserViewModel @AssistedInject constructor(
     application: Application,
     @Assisted private val arg: FolderBrowser,
 ) : AndroidViewModel(application) {
-    private val resources get() = getApplication<Application>().resources
-
     private val viewModelEventChannel = Channel<ViewModelEvent>(Channel.UNLIMITED)
     val viewModelEventFlow = viewModelEventChannel.receiveAsFlow()
 
@@ -51,9 +51,9 @@ class FolderBrowserViewModel @AssistedInject constructor(
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> =
         MutableStateFlow(
             ViewModelState(
-                currentPath = arg.path,
                 folder = ViewModelState.Folder(
-                    path = arg.path,
+                    fileObjectId = arg.fileId,
+                    displayPath = arg.displayPath,
                     files = listOf(),
                     folders = listOf(),
                 ),
@@ -101,19 +101,21 @@ class FolderBrowserViewModel @AssistedInject constructor(
             viewModelScope.launch {
                 val state = viewModelStateFlow.value
                 val favoriteId = state.favoriteId
+                val fileId = when (val id = arg.fileId) {
+                    is FileObjectId.Root -> return@launch
+                    is FileObjectId.Item -> id.id
+                }
                 if (favoriteId != null) {
                     storageRepository.removeFavorite(favoriteId)
                     uiChannelEvent.send(FolderBrowserUiEvent.ShowSnackbar("Removed from favorites"))
                 } else {
-                    val name = if (arg.path.isEmpty()) {
-                        state.storageName ?: "Storage"
-                    } else {
-                        arg.path.trim('/').split('/').lastOrNull() ?: arg.path
-                    }
+                    val displayPath = arg.displayPath.orEmpty()
+                    val name = displayPath.trim('/').split('/').lastOrNull() ?: displayPath
 
                     storageRepository.addFavorite(
                         storageId = arg.storageId,
-                        path = arg.path,
+                        fileId = fileId,
+                        displayPath = displayPath,
                         name = name,
                     )
                     uiChannelEvent.send(FolderBrowserUiEvent.ShowSnackbar("Added to favorites"))
@@ -125,7 +127,8 @@ class FolderBrowserViewModel @AssistedInject constructor(
     private val uiStateCreator = FolderBrowserUiStateCreator(
         callbacks = callbacks,
         viewModelScope = viewModelScope,
-        path = arg.path,
+        fileObjectId = arg.fileId,
+        displayPath = arg.displayPath,
         storageId = arg.storageId,
         viewModelEventChannel = viewModelEventChannel,
     )
@@ -153,9 +156,13 @@ class FolderBrowserViewModel @AssistedInject constructor(
             collectDisplayMode()
         }
         viewModelScope.launch {
+            val fileId = when (val id = arg.fileId) {
+                is FileObjectId.Root -> return@launch
+                is FileObjectId.Item -> id.id
+            }
             storageRepository.favorites
                 .map { favorites ->
-                    favorites.find { it.storageId == arg.storageId && it.path == arg.path }?.id
+                    favorites.find { it.storageId == arg.storageId && it.fileId.id == fileId }?.id
                 }
                 .collect { favoriteId ->
                     viewModelStateFlow.update { it.copy(favoriteId = favoriteId) }
@@ -252,7 +259,8 @@ class FolderBrowserViewModel @AssistedInject constructor(
             viewModelStateFlow.update {
                 it.copy(
                     folder = ViewModelState.Folder(
-                        path = arg.path,
+                        fileObjectId = arg.fileId,
+                        displayPath = arg.displayPath,
                         files = listOf(),
                         folders = listOf(),
                     ),
@@ -262,10 +270,15 @@ class FolderBrowserViewModel @AssistedInject constructor(
             }
             try {
                 val repository = getRepository()
-                fetchAllFilesRecursive(repository, arg.path)
+                fetchAllFilesRecursive(
+                    repository = repository,
+                    fileObjectId = arg.fileId,
+                    displayPath = arg.displayPath.orEmpty(),
+                )
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                e.printStackTrace()
                 uiChannelEvent.trySend(FolderBrowserUiEvent.ShowSnackbar(e.message ?: "Unknown error"))
             } finally {
                 viewModelStateFlow.update {
@@ -280,9 +293,10 @@ class FolderBrowserViewModel @AssistedInject constructor(
 
     private suspend fun fetchAllFilesRecursive(
         repository: FileRepository,
-        path: String,
+        fileObjectId: FileObjectId,
+        displayPath: String,
     ) {
-        val items = repository.getFiles(path)
+        val items = repository.getFiles(fileObjectId)
         val files = items.filter { !it.isDirectory }
         // フォルダは読み込み順番に影響するのでフォルダのみソートする。表示はUIState側でソートする
         val folders = items.filter { it.isDirectory }
@@ -291,7 +305,7 @@ class FolderBrowserViewModel @AssistedInject constructor(
                     config = viewModelStateFlow.value.folderSortConfig,
                     sizeProvider = { it.size },
                     lastModifiedProvider = { it.lastModified },
-                    nameProvider = { it.name },
+                    nameProvider = { it.displayPath },
                 ),
             )
         viewModelStateFlow.update { viewModelState ->
@@ -299,23 +313,29 @@ class FolderBrowserViewModel @AssistedInject constructor(
                 folder = mergeFolder(
                     original = viewModelState.folder,
                     addFolder = ViewModelState.Folder(
-                        path = path,
+                        fileObjectId = fileObjectId,
                         files = files,
-                        folders = folders.map {
+                        displayPath = displayPath,
+                        folders = folders.map { folder ->
                             ViewModelState.Folder(
-                                path = it.path,
+                                fileObjectId = folder.id,
+                                displayPath = "$displayPath/${folder.displayPath}",
                                 files = listOf(),
                                 folders = listOf(),
                             )
                         },
                     ),
-                    addPath = path,
+                    addDisplayPath = displayPath,
                 ),
             )
         }
 
         for (folder in folders) {
-            fetchAllFilesRecursive(repository, folder.path)
+            fetchAllFilesRecursive(
+                repository = repository,
+                fileObjectId = folder.id,
+                displayPath = "$displayPath/${folder.displayPath}",
+            )
         }
     }
 
@@ -323,37 +343,38 @@ class FolderBrowserViewModel @AssistedInject constructor(
         data object PopBackStack : ViewModelEvent
         data class NavigateToFileBrowser(
             val path: String,
-            val storageId: String,
+            val storageId: StorageId,
         ) : ViewModelEvent
 
         data class NavigateToImageViewer(
-            val path: String,
-            val storageId: String,
-            val allPaths: List<String>,
+            val fileId: FileObjectId.Item,
+            val storageId: StorageId,
+            val allPaths: List<FileObjectId.Item>,
         ) : ViewModelEvent
 
         data class NavigateToFolderBrowser(
-            val path: String,
-            val storageId: String,
+            val fileId: FileObjectId.Item,
+            val storageId: StorageId,
+            val displayPath: String?,
         ) : ViewModelEvent
     }
 
     private fun mergeFolder(
         original: ViewModelState.Folder,
         addFolder: ViewModelState.Folder,
-        addPath: String,
+        addDisplayPath: String,
     ): ViewModelState.Folder {
-        if (original.path == addPath) {
+        if (original.displayPath == addDisplayPath) {
             return addFolder
         }
-        val targetPath = Paths.get(addPath)
+        val targetPath = Paths.get(addDisplayPath)
         return original.copy(
             folders = original.folders.map { folder ->
-                if (targetPath.startsWith(Paths.get(folder.path))) {
+                if (targetPath.startsWith(Paths.get(folder.displayPath))) {
                     mergeFolder(
                         original = folder,
                         addFolder = addFolder,
-                        addPath = addPath,
+                        addDisplayPath = addDisplayPath,
                     )
                 } else {
                     folder
@@ -365,7 +386,6 @@ class FolderBrowserViewModel @AssistedInject constructor(
     data class ViewModelState(
         val isLoading: Boolean = false,
         val isRefreshing: Boolean = false,
-        val currentPath: String = "",
         val storageName: String? = null,
         val folder: Folder,
         val folderSortConfig: FolderBrowserUiState.FileSortConfig = FolderBrowserUiState.FileSortConfig(
@@ -384,7 +404,8 @@ class FolderBrowserViewModel @AssistedInject constructor(
         val favorites: List<FavoriteConfiguration> = emptyList(),
     ) {
         data class Folder(
-            val path: String,
+            val fileObjectId: FileObjectId,
+            val displayPath: String?,
             val files: List<FileItem>,
             val folders: List<Folder>,
         )

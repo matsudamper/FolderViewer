@@ -5,18 +5,21 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import net.matsudamper.folderviewer.coil.FileImageSource
+import net.matsudamper.folderviewer.common.FileObjectId
+import net.matsudamper.folderviewer.common.StorageId
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiState
-import net.matsudamper.folderviewer.viewmodel.FileSortComparator
-import net.matsudamper.folderviewer.viewmodel.FileUtil
 import net.matsudamper.folderviewer.viewmodel.folder.FolderBrowserViewModel.ViewModelEvent
+import net.matsudamper.folderviewer.viewmodel.util.FileSortComparator
+import net.matsudamper.folderviewer.viewmodel.util.FileUtil
 
 class FolderBrowserUiStateCreator(
     private val callbacks: FolderBrowserUiState.Callbacks,
     private val viewModelScope: CoroutineScope,
-    private val path: String?,
-    private val storageId: String,
+    private val fileObjectId: FileObjectId,
+    private val storageId: StorageId,
     private val viewModelEventChannel: Channel<ViewModelEvent>,
+    private val displayPath: String?,
 ) {
     fun create(
         viewModelState: FolderBrowserViewModel.ViewModelState,
@@ -29,8 +32,8 @@ class FolderBrowserUiStateCreator(
             )
         }
 
-        val allImagePaths = allFiles.filter { !it.isDirectory && FileUtil.isImage(it.name) }
-            .map { it.path }
+        val allImagePaths = allFiles.filter { !it.isDirectory && FileUtil.isImage(it.displayPath) }
+            .map { it.id }
 
         val uiItems = buildList {
             addUiItemsRecursive(
@@ -46,16 +49,13 @@ class FolderBrowserUiStateCreator(
             callbacks = callbacks,
             isLoading = viewModelState.isLoading,
             isRefreshing = viewModelState.isRefreshing,
-            currentPath = viewModelState.currentPath,
-            title = viewModelState.currentPath.ifEmpty {
-                viewModelState.storageName ?: viewModelState.currentPath
-            },
+            title = displayPath ?: viewModelState.storageName ?: "null",
             files = uiItems,
             folderSortConfig = viewModelState.folderSortConfig,
             fileSortConfig = viewModelState.fileSortConfig,
             displayConfig = viewModelState.displayConfig,
             isFavorite = viewModelState.favoriteId != null,
-            visibleFavoriteButton = viewModelState.currentPath.isNotEmpty(),
+            visibleFavoriteButton = fileObjectId !is FileObjectId.Root,
         )
     }
 
@@ -70,7 +70,7 @@ class FolderBrowserUiStateCreator(
                     config = fileSortConfig,
                     sizeProvider = { it.size },
                     lastModifiedProvider = { it.lastModified },
-                    nameProvider = { it.name },
+                    nameProvider = { it.displayPath },
                 ),
             ),
         )
@@ -79,7 +79,7 @@ class FolderBrowserUiStateCreator(
                 config = folderSortConfig,
                 sizeProvider = { 0L },
                 lastModifiedProvider = { 0L },
-                nameProvider = { File(it.path).name },
+                nameProvider = { File(it.displayPath.orEmpty()).name },
             ),
         ).forEach { childFolder ->
             addFoldersRecursive(
@@ -95,13 +95,14 @@ class FolderBrowserUiStateCreator(
         isRoot: Boolean,
         folderSortConfig: FolderBrowserUiState.FileSortConfig,
         fileSortConfig: FolderBrowserUiState.FileSortConfig,
-        allImagePaths: List<String>,
+        allImagePaths: List<FileObjectId.Item>,
     ) {
         if (!isRoot) {
-            val titleText = if (path.isNullOrEmpty()) {
-                folder.path
+            val folderPath = folder.displayPath
+            val titleText = if (folderPath.isNullOrEmpty()) {
+                folderPath ?: "null"
             } else {
-                folder.path.removePrefix(path).removePrefix(File.separator)
+                folderPath.removePrefix(displayPath.orEmpty()).removePrefix(File.separator)
             }
             add(FolderBrowserUiState.UiFileItem.Header(title = titleText))
         }
@@ -111,19 +112,19 @@ class FolderBrowserUiStateCreator(
                 config = fileSortConfig,
                 sizeProvider = { it.size },
                 lastModifiedProvider = { it.lastModified },
-                nameProvider = { it.name },
+                nameProvider = { it.displayPath },
             ),
         ).forEach { file ->
-            val isImage = FileUtil.isImage(file.name)
+            val isImage = FileUtil.isImage(file.displayPath)
             add(
                 FolderBrowserUiState.UiFileItem.File(
-                    name = file.name,
-                    path = file.path,
+                    name = file.displayPath,
+                    key = file.id.id,
                     isDirectory = file.isDirectory,
                     size = file.size,
                     lastModified = file.lastModified,
                     thumbnail = if (isImage) {
-                        FileImageSource.Thumbnail(storageId = storageId, path = file.path)
+                        FileImageSource.Thumbnail(storageId = storageId, fileId = file.id)
                     } else {
                         null
                     },
@@ -139,7 +140,7 @@ class FolderBrowserUiStateCreator(
                 config = folderSortConfig,
                 sizeProvider = { 0L },
                 lastModifiedProvider = { 0L },
-                nameProvider = { File(it.path).name },
+                nameProvider = { File(it.displayPath.orEmpty()).name },
             ),
         ).forEach { childFolder ->
             addUiItemsRecursive(
@@ -154,19 +155,23 @@ class FolderBrowserUiStateCreator(
 
     private inner class FileItemCallbacks(
         private val file: FileItem,
-        private val allImagePaths: List<String>,
+        private val allImagePaths: List<FileObjectId.Item>,
     ) : FolderBrowserUiState.UiFileItem.File.Callbacks {
         override fun onClick() {
             viewModelScope.launch {
-                val isImage = FileUtil.isImage(file.name)
+                val isImage = FileUtil.isImage(file.displayPath)
                 if (file.isDirectory) {
                     viewModelEventChannel.send(
-                        ViewModelEvent.NavigateToFolderBrowser(path = file.path, storageId = storageId),
+                        ViewModelEvent.NavigateToFolderBrowser(
+                            fileId = file.id,
+                            storageId = storageId,
+                            displayPath = file.displayPath,
+                        ),
                     )
                 } else if (isImage) {
                     viewModelEventChannel.send(
                         ViewModelEvent.NavigateToImageViewer(
-                            path = file.path,
+                            fileId = file.id,
                             storageId = storageId,
                             allPaths = allImagePaths,
                         ),

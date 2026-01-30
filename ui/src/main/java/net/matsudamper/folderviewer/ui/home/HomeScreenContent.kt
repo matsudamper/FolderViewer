@@ -5,21 +5,26 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import net.matsudamper.folderviewer.common.StorageId
 
 @Composable
 fun HomeScreenContent(
     storages: List<UiStorageConfiguration>,
     onNavigateToSettings: () -> Unit,
+    onNavigateToUploadProgress: () -> Unit,
     onAddStorageClick: () -> Unit,
     onStorageClick: (UiStorageConfiguration) -> Unit,
     onEditStorageClick: (UiStorageConfiguration) -> Unit,
-    onDeleteStorageClick: (String) -> Unit,
+    onDeleteStorageClick: (StorageId) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
         modifier = modifier,
         topBar = {
-            HomeTopBar(onNavigateToSettings = onNavigateToSettings)
+            HomeTopBar(
+                onNavigateToSettings = onNavigateToSettings,
+                onNavigateToUploadProgress = onNavigateToUploadProgress,
+            )
         },
         floatingActionButton = {
             HomeFab(onAddStorageClick = onAddStorageClick)
