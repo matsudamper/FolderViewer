@@ -81,6 +81,14 @@ class UploadProgressViewModel @Inject constructor(
                                 null -> UploadProgressUiState.UploadState.SUCCEEDED
                             }
 
+                            val currentBytes = workInfo?.progress?.getLong("CurrentBytes", 0L) ?: 0L
+                            val totalBytes = workInfo?.progress?.getLong("TotalBytes", 0L) ?: 0L
+                            val progress = if (totalBytes > 0) {
+                                currentBytes.toFloat() / totalBytes.toFloat()
+                            } else {
+                                null
+                            }
+
                             if (job.isFolder) {
                                 UploadProgressUiState.UploadItem.Folder(
                                     id = job.workerId,
@@ -88,6 +96,7 @@ class UploadProgressViewModel @Inject constructor(
                                     state = uploadState,
                                     canNavigate = true,
                                     fileCount = 0,
+                                    progress = progress,
                                 )
                             } else {
                                 UploadProgressUiState.UploadItem.File(
@@ -95,6 +104,7 @@ class UploadProgressViewModel @Inject constructor(
                                     name = job.name,
                                     state = uploadState,
                                     canNavigate = true,
+                                    progress = progress,
                                 )
                             }
                         },
