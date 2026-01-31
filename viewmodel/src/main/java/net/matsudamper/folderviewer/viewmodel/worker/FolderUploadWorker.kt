@@ -58,7 +58,8 @@ internal class FolderUploadWorker @AssistedInject constructor(
 
             val filesToUpload = getFilesToUpload(uriDataList)
             val totalSize = filesToUpload.fold<FileToUpload, Long?>(0L) { acc, file ->
-                if (acc != null && file.size != null) acc + file.size else null
+                val size = file.size
+                if (acc != null && size != null) acc + size else null
             }
 
             val progressFlow = MutableStateFlow(0L)
