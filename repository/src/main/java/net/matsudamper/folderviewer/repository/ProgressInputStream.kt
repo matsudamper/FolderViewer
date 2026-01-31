@@ -6,19 +6,18 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-class ProgressInputStream(
+internal class ProgressInputStream(
     private val inputStream: InputStream,
 ) : InputStream() {
-    private val _onRead = MutableStateFlow<Long>(0)
+    private val _onRead = MutableStateFlow(0L)
     val onRead: Flow<Long> = _onRead.asStateFlow()
 
-    private var totalBytesRead: Long = 0
-    private var markTotalBytesRead: Long = 0
+    private var markValue: Long = 0
 
     override fun read(): Int {
         val b = inputStream.read()
         if (b != -1) {
-            updateProgress(1)
+            _onRead.update { it + 1 }
         }
         return b
     }
@@ -26,7 +25,7 @@ class ProgressInputStream(
     override fun read(b: ByteArray): Int {
         val count = inputStream.read(b)
         if (count != -1) {
-            updateProgress(count.toLong())
+            _onRead.update { it + count }
         }
         return count
     }
@@ -34,14 +33,14 @@ class ProgressInputStream(
     override fun read(b: ByteArray, off: Int, len: Int): Int {
         val count = inputStream.read(b, off, len)
         if (count != -1) {
-            updateProgress(count.toLong())
+            _onRead.update { it + count }
         }
         return count
     }
 
     override fun skip(n: Long): Long {
         val count = inputStream.skip(n)
-        updateProgress(count)
+        _onRead.update { it + count }
         return count
     }
 
@@ -53,18 +52,12 @@ class ProgressInputStream(
 
     override fun mark(readlimit: Int) {
         inputStream.mark(readlimit)
-        markTotalBytesRead = totalBytesRead
+        markValue = _onRead.value
     }
 
     override fun reset() {
         inputStream.reset()
-        totalBytesRead = markTotalBytesRead
-        _onRead.value = totalBytesRead
-    }
-
-    private fun updateProgress(bytes: Long) {
-        totalBytesRead += bytes
-        _onRead.value = totalBytesRead
+        _onRead.value = markValue
     }
 
     override fun markSupported(): Boolean = inputStream.markSupported()
