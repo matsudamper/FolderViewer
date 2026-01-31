@@ -103,6 +103,7 @@ dependencies {
     implementation(libs.coilCompose)
     implementation(libs.jakartaInject)
     implementation(libs.androidxDocumentfile)
+    implementation(libs.tinkAndroid)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidxJunit)
     androidTestImplementation(libs.androidxEspressoCore)

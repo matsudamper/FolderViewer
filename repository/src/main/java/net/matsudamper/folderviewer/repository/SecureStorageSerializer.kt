@@ -7,13 +7,13 @@ import androidx.datastore.core.Serializer
 import androidx.datastore.dataStore
 import com.google.crypto.tink.Aead
 import com.google.crypto.tink.KeysetHandle
-import com.google.crypto.tink.aead.AeadConfig
 import com.google.crypto.tink.aead.AesGcmKeyManager
 import com.google.crypto.tink.integration.android.AndroidKeysetManager
 import com.google.protobuf.InvalidProtocolBufferException
 import net.matsudamper.folderviewer.repository.proto.SecureStorageProto
 import java.io.InputStream
 import java.io.OutputStream
+import java.security.GeneralSecurityException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -31,7 +31,6 @@ internal class SecureStorageSerializer(
     private val context: Context,
 ) : Serializer<SecureStorageProto> {
     private val aead: Aead by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-        AeadConfig.register()
         val keysetHandle: KeysetHandle = AndroidKeysetManager.Builder()
             .withSharedPref(context, MasterKeysetName, MasterKeyPreference)
             .withKeyTemplate(AesGcmKeyManager.aes256GcmTemplate())
@@ -51,10 +50,10 @@ internal class SecureStorageSerializer(
             }
             val decryptedBytes = aead.decrypt(encryptedBytes, null)
             SecureStorageProto.parseFrom(decryptedBytes)
+        } catch (exception: GeneralSecurityException) {
+            throw CorruptionException("Failed to decrypt secure storage. The encryption key may have been lost or corrupted.", exception)
         } catch (exception: InvalidProtocolBufferException) {
-            throw CorruptionException("Cannot read proto.", exception)
-        } catch (exception: Exception) {
-            throw CorruptionException("Unexpected error reading proto.", exception)
+            throw CorruptionException("Cannot parse decrypted proto.", exception)
         }
     }
 
