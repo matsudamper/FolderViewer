@@ -39,4 +39,17 @@
     <string name="upload_state_failed">失敗</string>
     <string name="upload_state_cancelled">キャンセル</string>
     <string name="no_uploads">アップロードはありません</string>
+    <string name="upload_error_detail_title">アップロードエラー詳細</string>
+    <string name="upload_error_detail_upload_failed">アップロードに失敗しました</string>
+    <string name="upload_error_detail_file_info">ファイル情報</string>
+    <string name="upload_error_detail_name">名前</string>
+    <string name="upload_error_detail_type">種類</string>
+    <string name="upload_error_detail_type_file">ファイル</string>
+    <string name="upload_error_detail_type_folder">フォルダ</string>
+    <string name="upload_error_detail_storage">ストレージ</string>
+    <string name="upload_error_detail_path">パス</string>
+    <string name="upload_error_detail_error_info">エラー情報</string>
+    <string name="upload_error_detail_error_message">エラーメッセージ</string>
+    <string name="upload_error_detail_error_cause">エラー原因</string>
+    <string name="upload_error_detail_no_error_info">エラー情報はありません</string>
 </resources>

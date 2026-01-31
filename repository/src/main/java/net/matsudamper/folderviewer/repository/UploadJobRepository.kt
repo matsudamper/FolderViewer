@@ -25,6 +25,8 @@ class UploadJobRepository @Inject internal constructor(
                         storageId = Json.decodeFromString<StorageId>(entity.storageId),
                         fileObjectId = Json.decodeFromString<FileObjectId>(entity.fileObjectId),
                         displayPath = entity.displayPath,
+                        errorMessage = entity.errorMessage,
+                        errorCause = entity.errorCause,
                     )
                 }.getOrNull()
             }
@@ -41,6 +43,8 @@ class UploadJobRepository @Inject internal constructor(
                 storageId = Json.decodeFromString<StorageId>(entity.storageId),
                 fileObjectId = Json.decodeFromString<FileObjectId>(entity.fileObjectId),
                 displayPath = entity.displayPath,
+                errorMessage = entity.errorMessage,
+                errorCause = entity.errorCause,
             )
         }.getOrNull()
     }
@@ -63,6 +67,16 @@ class UploadJobRepository @Inject internal constructor(
         uploadJobDao.delete(workerId)
     }
 
+    suspend fun updateError(workerId: String, errorMessage: String?, errorCause: String?) {
+        val entity = uploadJobDao.getJob(workerId) ?: return
+        uploadJobDao.insert(
+            entity.copy(
+                errorMessage = errorMessage,
+                errorCause = errorCause,
+            ),
+        )
+    }
+
     data class UploadJob(
         val workerId: String,
         val name: String,
@@ -70,5 +84,7 @@ class UploadJobRepository @Inject internal constructor(
         val storageId: StorageId,
         val fileObjectId: FileObjectId,
         val displayPath: String,
+        val errorMessage: String? = null,
+        val errorCause: String? = null,
     )
 }

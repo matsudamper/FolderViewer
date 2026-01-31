@@ -24,12 +24,14 @@ import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.common.StorageId
 import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
+import net.matsudamper.folderviewer.repository.UploadJobRepository
 
 @HiltWorker
 internal class FileUploadWorker @AssistedInject constructor(
     @Assisted private val context: Context,
     @Assisted params: WorkerParameters,
     private val storageRepository: StorageRepository,
+    private val uploadJobRepository: UploadJobRepository,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
@@ -90,6 +92,11 @@ internal class FileUploadWorker @AssistedInject constructor(
                 Result.success()
             } catch (e: Throwable) {
                 e.printStackTrace()
+                uploadJobRepository.updateError(
+                    workerId = id.toString(),
+                    errorMessage = e.message,
+                    errorCause = e.cause?.toString(),
+                )
                 Result.failure()
             }
         }

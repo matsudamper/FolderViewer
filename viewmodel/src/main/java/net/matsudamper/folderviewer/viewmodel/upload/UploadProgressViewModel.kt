@@ -47,13 +47,21 @@ class UploadProgressViewModel @Inject constructor(
                 val uuid = runCatching { UUID.fromString(item.id) }.getOrNull() ?: return@launch
                 val job = uploadJobRepository.getJob(uuid.toString()) ?: return@launch
 
-                viewModelEventChannel.send(
-                    ViewModelEvent.NavigateToFileBrowser(
-                        storageId = job.storageId,
-                        fileObjectId = job.fileObjectId,
-                        displayPath = job.displayPath,
-                    ),
-                )
+                if (item.state == UploadProgressUiState.UploadState.FAILED) {
+                    viewModelEventChannel.send(
+                        ViewModelEvent.NavigateToUploadErrorDetail(
+                            workerId = job.workerId,
+                        ),
+                    )
+                } else {
+                    viewModelEventChannel.send(
+                        ViewModelEvent.NavigateToFileBrowser(
+                            storageId = job.storageId,
+                            fileObjectId = job.fileObjectId,
+                            displayPath = job.displayPath,
+                        ),
+                    )
+                }
             }
         }
     }
@@ -149,6 +157,9 @@ class UploadProgressViewModel @Inject constructor(
             val storageId: StorageId,
             val fileObjectId: FileObjectId,
             val displayPath: String,
+        ) : ViewModelEvent
+        data class NavigateToUploadErrorDetail(
+            val workerId: String,
         ) : ViewModelEvent
     }
 
