@@ -28,7 +28,7 @@ android {
             create("ci") {
                 val keystoreFile = System.getenv("DEBUG_KEYSTORE_FILE")
                 requireNotNull(keystoreFile) { "DEBUG_KEYSTORE_FILE environment variable is required in CI" }
-                storeFile = file(keystoreFile)
+                storeFile = rootProject.file(keystoreFile)
                 storePassword = "android"
                 keyAlias = "androiddebugkey"
                 keyPassword = "android"
