@@ -120,6 +120,7 @@ private fun AppContent(
         HorizontalPager(
             modifier = Modifier.fillMaxSize(),
             state = pagerState,
+            beyondViewportPageCount = 1,
         ) {
             val navigationState = rememberNavigationState(
                 startRoute = Home,
