@@ -30,7 +30,7 @@ internal val Context.secureDataStore: DataStore<SecureStorageProto> by dataStore
 internal class SecureStorageSerializer(
     private val context: Context,
 ) : Serializer<SecureStorageProto> {
-    private val aead: Aead by lazy {
+    private val aead: Aead by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         AeadConfig.register()
         val keysetHandle: KeysetHandle = AndroidKeysetManager.Builder()
             .withSharedPref(context, MasterKeysetName, MasterKeyPreference)

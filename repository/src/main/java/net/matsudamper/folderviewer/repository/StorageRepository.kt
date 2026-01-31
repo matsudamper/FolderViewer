@@ -10,6 +10,7 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import com.google.protobuf.InvalidProtocolBufferException
@@ -38,13 +39,10 @@ class StorageRepository @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) {
 
-    fun getStorageList(): Flow<List<StorageConfiguration>> = context.dataStore.data
-        .map { proto ->
-            val secureData = context.secureDataStore.data.first()
+    val storageList: Flow<List<StorageConfiguration>> = context.dataStore.data
+        .combine(context.secureDataStore.data) { proto, secureData ->
             proto.listList.mapNotNull { it.toDomain(secureData) }
         }
-
-    val storageList: Flow<List<StorageConfiguration>> = getStorageList()
 
     val favorites: Flow<List<FavoriteConfiguration>> = context.dataStore.data
         .map { proto ->
