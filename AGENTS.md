@@ -53,7 +53,7 @@ UI操作をViewModelで受けるときはUiState内のCallbacksを経由して�
 # ビルドコマンド
 編集後のチェックコマンド
 ```shell
-./gradlew assembleDebug ktlintCheck detektMain detektTest
+./gradlew assembleDebug ktlintCheck detekt
 ```
 
 フォーマット用コマンド

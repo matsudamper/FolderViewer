@@ -33,7 +33,7 @@ jobs:
         run: echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > debug.keystore
 
       - name: Build with Gradle
-        run: ./gradlew assembleDebug ktlintCheck
+        run: ./gradlew assembleDebug ktlintCheck detekt
 
       - name: Upload APK
         uses: actions/upload-artifact@v6
