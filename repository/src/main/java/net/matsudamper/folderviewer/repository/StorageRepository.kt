@@ -1,14 +1,14 @@
 package net.matsudamper.folderviewer.repository
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.os.Environment
+import android.util.Base64
 import androidx.core.content.edit
 import androidx.datastore.core.CorruptionException
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.Serializer
 import androidx.datastore.dataStore
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.UUID
@@ -40,17 +40,35 @@ private val Context.dataStore: DataStore<StorageListProto> by dataStore(
 class StorageRepository @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) {
-    private val masterKey = MasterKey.Builder(context)
-        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-        .build()
+    private val cryptoHelper = CryptoHelper()
+    private val sharedPreferences = context.getSharedPreferences(SecurePrefFileName, Context.MODE_PRIVATE)
 
-    private val sharedPreferences = EncryptedSharedPreferences.create(
-        context,
-        SecurePrefFileName,
-        masterKey,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-    )
+    private fun getSecureString(key: String): String? {
+        val encryptedBase64 = sharedPreferences.getString(key, null) ?: return null
+        return try {
+            val encryptedBytes = Base64.decode(encryptedBase64, Base64.DEFAULT)
+            val decryptedBytes = cryptoHelper.decrypt(encryptedBytes)
+            String(decryptedBytes, Charsets.UTF_8)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    private fun putSecureString(key: String, value: String) {
+        val bytes = value.toByteArray(Charsets.UTF_8)
+        val encrypted = cryptoHelper.encrypt(bytes)
+        val base64 = Base64.encodeToString(encrypted, Base64.DEFAULT)
+        sharedPreferences.edit {
+            putString(key, base64)
+        }
+    }
+
+    private fun removeSecureString(key: String) {
+        sharedPreferences.edit {
+            remove(key)
+        }
+    }
 
     val storageList: Flow<List<StorageConfiguration>> = context.dataStore.data
         .map { proto ->
@@ -73,9 +91,7 @@ class StorageRepository @Inject constructor(
         )
 
         // パスワードを安全に保存する
-        sharedPreferences.edit {
-            putString(id.id, config.password)
-        }
+        putSecureString(id.id, config.password)
 
         // DataStoreを更新する
         context.dataStore.updateData { currentList ->
@@ -94,9 +110,7 @@ class StorageRepository @Inject constructor(
             password = config.password,
         )
 
-        sharedPreferences.edit {
-            putString(id.id, config.password)
-        }
+        putSecureString(id.id, config.password)
 
         context.dataStore.updateData { currentList ->
             val index = currentList.listList.indexOfFirst { it.id == id.id }
@@ -161,11 +175,9 @@ class StorageRepository @Inject constructor(
             clientSecret = config.clientSecret,
         )
 
-        sharedPreferences.edit {
-            putString("${id.id}_tenantId", config.tenantId)
-            putString("${id.id}_clientId", config.clientId)
-            putString("${id.id}_clientSecret", config.clientSecret)
-        }
+        putSecureString("${id.id}_tenantId", config.tenantId)
+        putSecureString("${id.id}_clientId", config.clientId)
+        putSecureString("${id.id}_clientSecret", config.clientSecret)
 
         context.dataStore.updateData { currentList ->
             currentList.toBuilder()
@@ -184,11 +196,9 @@ class StorageRepository @Inject constructor(
             clientSecret = config.clientSecret,
         )
 
-        sharedPreferences.edit {
-            putString("${id.id}_tenantId", config.tenantId)
-            putString("${id.id}_clientId", config.clientId)
-            putString("${id.id}_clientSecret", config.clientSecret)
-        }
+        putSecureString("${id.id}_tenantId", config.tenantId)
+        putSecureString("${id.id}_clientId", config.clientId)
+        putSecureString("${id.id}_clientSecret", config.clientSecret)
 
         context.dataStore.updateData { currentList ->
             val index = currentList.listList.indexOfFirst { it.id == id.id }
@@ -206,12 +216,11 @@ class StorageRepository @Inject constructor(
         context.dataStore.updateData { currentList ->
             val index = currentList.listList.indexOfFirst { it.id == id.id }
             if (index >= 0) {
-                sharedPreferences.edit {
-                    remove(id.id)
-                    remove("${id.id}_tenantId")
-                    remove("${id.id}_clientId")
-                    remove("${id.id}_clientSecret")
-                }
+                removeSecureString(id.id)
+                removeSecureString("${id.id}_tenantId")
+                removeSecureString("${id.id}_clientId")
+                removeSecureString("${id.id}_clientSecret")
+
                 currentList.toBuilder()
                     .removeList(index)
                     .build()
@@ -272,7 +281,7 @@ class StorageRepository @Inject constructor(
                     name = name,
                     ip = smb.ip,
                     username = smb.username,
-                    password = sharedPreferences.getString(id, null).orEmpty(),
+                    password = getSecureString(id).orEmpty(),
                 )
             }
 
@@ -289,9 +298,9 @@ class StorageRepository @Inject constructor(
                     id = StorageId(id),
                     name = name,
                     objectId = sharepoint.objectId,
-                    tenantId = sharedPreferences.getString("${id}_tenantId", null).orEmpty(),
-                    clientId = sharedPreferences.getString("${id}_clientId", null).orEmpty(),
-                    clientSecret = sharedPreferences.getString("${id}_clientSecret", null).orEmpty(),
+                    tenantId = getSecureString("${id}_tenantId").orEmpty(),
+                    clientId = getSecureString("${id}_clientId").orEmpty(),
+                    clientSecret = getSecureString("${id}_clientSecret").orEmpty(),
                 )
             }
 

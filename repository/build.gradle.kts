@@ -33,7 +33,6 @@ dependencies {
     implementation(libs.smbj)
     implementation(libs.smbjRpc)
     implementation(libs.androidxDatastore)
-    implementation(libs.androidxSecurityCrypto)
     implementation(libs.kotlinxSerializationJson)
     implementation(libs.protobufKotlinLite)
     implementation(libs.hiltAndroid)
