@@ -117,21 +117,33 @@ private fun UploadItemRow(
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
             )
-            Text(
-                text = when (item.state) {
-                    UploadProgressUiState.UploadState.ENQUEUED -> stringResource(R.string.upload_state_enqueued)
-                    UploadProgressUiState.UploadState.RUNNING -> stringResource(R.string.upload_state_running)
-                    UploadProgressUiState.UploadState.SUCCEEDED -> stringResource(R.string.upload_state_succeeded)
-                    UploadProgressUiState.UploadState.FAILED -> stringResource(R.string.upload_state_failed)
-                    UploadProgressUiState.UploadState.CANCELLED -> stringResource(R.string.upload_state_cancelled)
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = when (item.state) {
-                    UploadProgressUiState.UploadState.SUCCEEDED -> MaterialTheme.colorScheme.primary
-                    UploadProgressUiState.UploadState.FAILED -> MaterialTheme.colorScheme.error
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                },
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (item.progressText != null) {
+                    Text(
+                        text = item.progressText!!,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                Text(
+                    text = when (item.state) {
+                        UploadProgressUiState.UploadState.ENQUEUED -> stringResource(R.string.upload_state_enqueued)
+                        UploadProgressUiState.UploadState.RUNNING -> stringResource(R.string.upload_state_running)
+                        UploadProgressUiState.UploadState.SUCCEEDED -> stringResource(R.string.upload_state_succeeded)
+                        UploadProgressUiState.UploadState.FAILED -> stringResource(R.string.upload_state_failed)
+                        UploadProgressUiState.UploadState.CANCELLED -> stringResource(R.string.upload_state_cancelled)
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = when (item.state) {
+                        UploadProgressUiState.UploadState.SUCCEEDED -> MaterialTheme.colorScheme.primary
+                        UploadProgressUiState.UploadState.FAILED -> MaterialTheme.colorScheme.error
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+            }
         }
         when (item.state) {
             UploadProgressUiState.UploadState.RUNNING -> {
