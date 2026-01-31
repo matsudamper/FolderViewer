@@ -200,8 +200,7 @@ class StreamingContentProvider : ContentProvider() {
             }
         }
 
-        override fun onFsync() {
-        }
+        override fun onFsync() = Unit
     }
 
     companion object {
