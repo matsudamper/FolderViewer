@@ -3,6 +3,12 @@ syntax = "proto3";
 option java_package = "net.matsudamper.folderviewer.repository.proto";
 option java_multiple_files = true;
 
+// SecureStorageProtoは、機密情報を暗号化して保存するためのメッセージです。
+// credentialsマップには、以下のような機密情報が含まれます:
+// - SMBストレージのパスワード (key: storageId)
+// - SharePointストレージのテナントID (key: "{storageId}_tenantId")
+// - SharePointストレージのクライアントID (key: "{storageId}_clientId")
+// - SharePointストレージのクライアントシークレット (key: "{storageId}_clientSecret")
 message SecureStorageProto {
   map<string, string> credentials = 1;
 }

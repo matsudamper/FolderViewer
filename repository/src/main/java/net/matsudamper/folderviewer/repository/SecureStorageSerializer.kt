@@ -30,6 +30,9 @@ internal val Context.secureDataStore: DataStore<SecureStorageProto> by dataStore
 internal class SecureStorageSerializer(
     private val context: Context,
 ) : Serializer<SecureStorageProto> {
+    // Tink AEADプリミティブの遅延初期化
+    // SYNCHRONIZEDモードを使用して、複数のDataStore操作が同時に発生する場合でも
+    // スレッドセーフなアクセスを保証する
     private val aead: Aead by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         val keysetHandle: KeysetHandle = AndroidKeysetManager.Builder()
             .withSharedPref(context, MasterKeysetName, MasterKeyPreference)
@@ -51,7 +54,10 @@ internal class SecureStorageSerializer(
             val decryptedBytes = aead.decrypt(encryptedBytes, null)
             SecureStorageProto.parseFrom(decryptedBytes)
         } catch (exception: GeneralSecurityException) {
-            throw CorruptionException("Failed to decrypt secure storage. The encryption key may have been lost or corrupted.", exception)
+            throw CorruptionException(
+                "Failed to decrypt secure storage. This may be caused by corrupted data, invalid encryption key, or keystore issues.",
+                exception,
+            )
         } catch (exception: InvalidProtocolBufferException) {
             throw CorruptionException("Cannot parse decrypted proto.", exception)
         }
