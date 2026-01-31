@@ -2,6 +2,7 @@ package net.matsudamper.folderviewer
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -26,10 +27,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -117,22 +120,25 @@ private fun AppContent(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.BottomCenter,
     ) {
+        val holder = rememberSaveableStateHolder()
         HorizontalPager(
             modifier = Modifier.fillMaxSize(),
             state = pagerState,
-        ) {
-            val navigationState = rememberNavigationState(
-                startRoute = Home,
-                topLevelRoutes = setOf(Home),
-            )
-            val navigator = remember { Navigator(navigationState) }
-            val entryProvider = entryProvider(navigator)
+        ) { pageIndex ->
+            holder.SaveableStateProvider("Root_$pageIndex") {
+                val navigationState = rememberNavigationState(
+                    startRoute = Home,
+                    topLevelRoutes = setOf(Home),
+                )
+                val navigator = remember { Navigator(navigationState) }
+                val entryProvider = entryProvider(navigator)
 
-            NavDisplay(
-                modifier = Modifier.fillMaxSize(),
-                entries = navigationState.toEntries(entryProvider),
-                onBack = { navigator.goBack() },
-            )
+                NavDisplay(
+                    modifier = Modifier.fillMaxSize(),
+                    entries = navigationState.toEntries(entryProvider),
+                    onBack = { navigator.goBack() },
+                )
+            }
         }
 
         Row(
