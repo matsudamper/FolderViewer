@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
@@ -148,15 +149,18 @@ private fun UploadItemRow(
         when (item.state) {
             UploadProgressUiState.UploadState.RUNNING -> {
                 val progress = item.progress
+                val indicatorModifier = Modifier
+                    .padding(4.dp)
+                    .size(24.dp)
                 if (progress != null) {
                     CircularProgressIndicator(
+                        modifier = indicatorModifier,
                         progress = { progress },
-                        modifier = Modifier.padding(4.dp),
                         strokeWidth = 2.dp,
                     )
                 } else {
                     CircularProgressIndicator(
-                        modifier = Modifier.padding(4.dp),
+                        modifier = indicatorModifier,
                         strokeWidth = 2.dp,
                     )
                 }
