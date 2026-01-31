@@ -2,33 +2,37 @@ package net.matsudamper.folderviewer.repository
 
 import android.content.Context
 import android.os.Environment
-import androidx.core.content.edit
-import androidx.datastore.core.CorruptionException
 import androidx.datastore.core.DataStore
-import androidx.datastore.core.Serializer
 import androidx.datastore.dataStore
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
-import java.io.InputStream
-import java.io.OutputStream
+import java.io.File
 import java.util.UUID
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import com.google.protobuf.InvalidProtocolBufferException
+import kotlinx.coroutines.launch
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.common.StorageId
+import net.matsudamper.folderviewer.repository.proto.EncryptedCredentialsSerializer
 import net.matsudamper.folderviewer.repository.proto.FavoriteConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.LocalConfigurationProto
+import net.matsudamper.folderviewer.repository.proto.SecureCredentialsProto
 import net.matsudamper.folderviewer.repository.proto.SharePointConfigurationProto
+import net.matsudamper.folderviewer.repository.proto.SharePointCredentialProto
 import net.matsudamper.folderviewer.repository.proto.SmbConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.StorageConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.StorageListProto
+import net.matsudamper.folderviewer.repository.proto.StorageListSerializer
 
 private const val DataStorageFileName = "storage_list.pb"
+private const val CredentialsDataStoreFileName = "secure_credentials.pb"
 private const val SecurePrefFileName = "secure_storage_creds"
 
 private val Context.dataStore: DataStore<StorageListProto> by dataStore(
@@ -36,25 +40,24 @@ private val Context.dataStore: DataStore<StorageListProto> by dataStore(
     serializer = StorageListSerializer,
 )
 
+private val Context.credentialsDataStore: DataStore<SecureCredentialsProto> by dataStore(
+    fileName = CredentialsDataStoreFileName,
+    serializer = EncryptedCredentialsSerializer,
+)
+
 @Singleton
 class StorageRepository @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) {
-    private val masterKey = MasterKey.Builder(context)
-        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-        .build()
+    init {
+        CoroutineScope(Dispatchers.IO).launch {
+            migrateFromEncryptedSharedPreferences()
+        }
+    }
 
-    private val sharedPreferences = EncryptedSharedPreferences.create(
-        context,
-        SecurePrefFileName,
-        masterKey,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-    )
-
-    val storageList: Flow<List<StorageConfiguration>> = context.dataStore.data
-        .map { proto ->
-            proto.listList.mapNotNull { it.toDomain() }
+    val storageList: Flow<List<StorageConfiguration>> =
+        context.dataStore.data.combine(context.credentialsDataStore.data) { storageProto, credentialsProto ->
+            storageProto.listList.mapNotNull { it.toDomain(credentialsProto) }
         }
 
     val favorites: Flow<List<FavoriteConfiguration>> = context.dataStore.data
@@ -72,12 +75,12 @@ class StorageRepository @Inject constructor(
             password = config.password,
         )
 
-        // パスワードを安全に保存する
-        sharedPreferences.edit {
-            putString(id.id, config.password)
+        context.credentialsDataStore.updateData { current ->
+            current.toBuilder()
+                .putSmbPasswords(id.id, config.password)
+                .build()
         }
 
-        // DataStoreを更新する
         context.dataStore.updateData { currentList ->
             currentList.toBuilder()
                 .addList(smbConfig.toProto())
@@ -94,8 +97,10 @@ class StorageRepository @Inject constructor(
             password = config.password,
         )
 
-        sharedPreferences.edit {
-            putString(id.id, config.password)
+        context.credentialsDataStore.updateData { current ->
+            current.toBuilder()
+                .putSmbPasswords(id.id, config.password)
+                .build()
         }
 
         context.dataStore.updateData { currentList ->
@@ -112,7 +117,7 @@ class StorageRepository @Inject constructor(
 
     suspend fun detectLocalStorages() {
         val existingStorages = context.dataStore.data.first().listList
-            .mapNotNull { it.toDomain() as? StorageConfiguration.Local }
+            .mapNotNull { it.toDomain(SecureCredentialsProto.getDefaultInstance()) as? StorageConfiguration.Local }
             .map { it.rootPath }
             .toSet()
 
@@ -161,10 +166,17 @@ class StorageRepository @Inject constructor(
             clientSecret = config.clientSecret,
         )
 
-        sharedPreferences.edit {
-            putString("${id.id}_tenantId", config.tenantId)
-            putString("${id.id}_clientId", config.clientId)
-            putString("${id.id}_clientSecret", config.clientSecret)
+        context.credentialsDataStore.updateData { current ->
+            current.toBuilder()
+                .putSharePointCredentials(
+                    id.id,
+                    SharePointCredentialProto.newBuilder()
+                        .setTenantId(config.tenantId)
+                        .setClientId(config.clientId)
+                        .setClientSecret(config.clientSecret)
+                        .build(),
+                )
+                .build()
         }
 
         context.dataStore.updateData { currentList ->
@@ -184,10 +196,17 @@ class StorageRepository @Inject constructor(
             clientSecret = config.clientSecret,
         )
 
-        sharedPreferences.edit {
-            putString("${id.id}_tenantId", config.tenantId)
-            putString("${id.id}_clientId", config.clientId)
-            putString("${id.id}_clientSecret", config.clientSecret)
+        context.credentialsDataStore.updateData { current ->
+            current.toBuilder()
+                .putSharePointCredentials(
+                    id.id,
+                    SharePointCredentialProto.newBuilder()
+                        .setTenantId(config.tenantId)
+                        .setClientId(config.clientId)
+                        .setClientSecret(config.clientSecret)
+                        .build(),
+                )
+                .build()
         }
 
         context.dataStore.updateData { currentList ->
@@ -203,15 +222,16 @@ class StorageRepository @Inject constructor(
     }
 
     suspend fun deleteStorage(id: StorageId) {
+        context.credentialsDataStore.updateData { current ->
+            current.toBuilder()
+                .removeSmbPasswords(id.id)
+                .removeSharePointCredentials(id.id)
+                .build()
+        }
+
         context.dataStore.updateData { currentList ->
             val index = currentList.listList.indexOfFirst { it.id == id.id }
             if (index >= 0) {
-                sharedPreferences.edit {
-                    remove(id.id)
-                    remove("${id.id}_tenantId")
-                    remove("${id.id}_clientId")
-                    remove("${id.id}_clientSecret")
-                }
                 currentList.toBuilder()
                     .removeList(index)
                     .build()
@@ -254,9 +274,10 @@ class StorageRepository @Inject constructor(
 
     suspend fun getFileRepository(id: StorageId): FileRepository? {
         val proto = context.dataStore.data.first()
+        val credentials = context.credentialsDataStore.data.first()
         val configProto = proto.listList.find { it.id == id.id } ?: return null
 
-        return when (val config = configProto.toDomain()) {
+        return when (val config = configProto.toDomain(credentials)) {
             is StorageConfiguration.Smb -> SmbFileRepository(config)
             is StorageConfiguration.Local -> LocalFileRepository(config)
             is StorageConfiguration.SharePoint -> SharePointFileRepository(config)
@@ -264,7 +285,66 @@ class StorageRepository @Inject constructor(
         }
     }
 
-    private fun StorageConfigurationProto.toDomain(): StorageConfiguration? {
+    private suspend fun migrateFromEncryptedSharedPreferences() {
+        val prefsFile = File(context.applicationInfo.dataDir, "shared_prefs/$SecurePrefFileName.xml")
+        if (!prefsFile.exists()) return
+
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+
+        val sharedPreferences = EncryptedSharedPreferences.create(
+            context,
+            SecurePrefFileName,
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+        )
+
+        val storageConfigs = context.dataStore.data.first().listList
+
+        context.credentialsDataStore.updateData { current ->
+            val builder = current.toBuilder()
+            for (config in storageConfigs) {
+                when (config.configCase) {
+                    StorageConfigurationProto.ConfigCase.SMB -> {
+                        val password = sharedPreferences.getString(config.id, null).orEmpty()
+                        if (password.isNotEmpty()) {
+                            builder.putSmbPasswords(config.id, password)
+                        }
+                    }
+
+                    StorageConfigurationProto.ConfigCase.SHAREPOINT -> {
+                        val tenantId = sharedPreferences.getString("${config.id}_tenantId", null).orEmpty()
+                        val clientId = sharedPreferences.getString("${config.id}_clientId", null).orEmpty()
+                        val clientSecret = sharedPreferences.getString("${config.id}_clientSecret", null).orEmpty()
+                        if (tenantId.isNotEmpty() || clientId.isNotEmpty() || clientSecret.isNotEmpty()) {
+                            builder.putSharePointCredentials(
+                                config.id,
+                                SharePointCredentialProto.newBuilder()
+                                    .setTenantId(tenantId)
+                                    .setClientId(clientId)
+                                    .setClientSecret(clientSecret)
+                                    .build(),
+                            )
+                        }
+                    }
+
+                    StorageConfigurationProto.ConfigCase.LOCAL,
+                    StorageConfigurationProto.ConfigCase.CONFIG_NOT_SET,
+                    null,
+                    -> Unit
+                }
+            }
+            builder.build()
+        }
+
+        context.deleteSharedPreferences(SecurePrefFileName)
+    }
+
+    private fun StorageConfigurationProto.toDomain(
+        credentials: SecureCredentialsProto,
+    ): StorageConfiguration? {
         return when (configCase) {
             StorageConfigurationProto.ConfigCase.SMB -> {
                 StorageConfiguration.Smb(
@@ -272,7 +352,7 @@ class StorageRepository @Inject constructor(
                     name = name,
                     ip = smb.ip,
                     username = smb.username,
-                    password = sharedPreferences.getString(id, null).orEmpty(),
+                    password = credentials.smbPasswordsMap[id].orEmpty(),
                 )
             }
 
@@ -285,13 +365,14 @@ class StorageRepository @Inject constructor(
             }
 
             StorageConfigurationProto.ConfigCase.SHAREPOINT -> {
+                val credential = credentials.sharePointCredentialsMap[id]
                 StorageConfiguration.SharePoint(
                     id = StorageId(id),
                     name = name,
                     objectId = sharepoint.objectId,
-                    tenantId = sharedPreferences.getString("${id}_tenantId", null).orEmpty(),
-                    clientId = sharedPreferences.getString("${id}_clientId", null).orEmpty(),
-                    clientSecret = sharedPreferences.getString("${id}_clientSecret", null).orEmpty(),
+                    tenantId = credential?.tenantId.orEmpty(),
+                    clientId = credential?.clientId.orEmpty(),
+                    clientSecret = credential?.clientSecret.orEmpty(),
                 )
             }
 
@@ -373,23 +454,4 @@ class StorageRepository @Inject constructor(
         val clientId: String,
         val clientSecret: String,
     )
-}
-
-internal object StorageListSerializer : Serializer<StorageListProto> {
-    override val defaultValue: StorageListProto = StorageListProto.getDefaultInstance()
-
-    override suspend fun readFrom(input: InputStream): StorageListProto {
-        @Suppress("TooGenericExceptionCaught")
-        try {
-            return StorageListProto.parseFrom(input)
-        } catch (exception: InvalidProtocolBufferException) {
-            throw CorruptionException("Cannot read proto.", exception)
-        } catch (exception: Exception) {
-            throw CorruptionException("Unexpected error reading proto.", exception)
-        }
-    }
-
-    override suspend fun writeTo(t: StorageListProto, output: OutputStream) {
-        t.writeTo(output)
-    }
 }
