@@ -15,7 +15,6 @@ class FolderViewerApplication : Application(), Configuration.Provider {
     override fun onCreate() {
         super.onCreate()
         // Tinkの暗号化設定を初期化
-        // AeadConfig.register()は冪等性があり、複数回呼び出しても安全
         AeadConfig.register()
     }
 
