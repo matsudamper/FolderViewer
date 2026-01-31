@@ -126,7 +126,6 @@ internal class LocalFileRepository(
         id: FileObjectId,
         fileName: String,
         inputStream: InputStream,
-        fileSize: Long,
         onRead: FlowCollector<Long>,
     ): Unit = withContext(Dispatchers.IO) {
         val path = when (id) {
@@ -194,7 +193,7 @@ internal class LocalFileRepository(
                     }
                 }
                 job.cancel()
-                uploadedSize += fileToUpload.size
+                uploadedSize += fileToUpload.size ?: 0L
             }
         }
     }

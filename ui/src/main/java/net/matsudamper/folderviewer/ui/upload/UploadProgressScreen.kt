@@ -135,11 +135,19 @@ private fun UploadItemRow(
         }
         when (item.state) {
             UploadProgressUiState.UploadState.RUNNING -> {
-                CircularProgressIndicator(
-                    progress = { item.progress },
-                    modifier = Modifier.padding(4.dp),
-                    strokeWidth = 2.dp,
-                )
+                val progress = item.progress
+                if (progress != null) {
+                    CircularProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.padding(4.dp),
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    CircularProgressIndicator(
+                        modifier = Modifier.padding(4.dp),
+                        strokeWidth = 2.dp,
+                    )
+                }
             }
 
             UploadProgressUiState.UploadState.SUCCEEDED -> {

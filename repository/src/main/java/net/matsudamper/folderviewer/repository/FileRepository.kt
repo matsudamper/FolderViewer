@@ -11,14 +11,10 @@ interface FileRepository {
     suspend fun getFileSize(fileId: FileObjectId.Item): Long
     suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream?
 
-    /**
-     * @param fileSize (Bytes)
-     */
     suspend fun uploadFile(
         id: FileObjectId,
         fileName: String,
         inputStream: InputStream,
-        fileSize: Long,
         onRead: FlowCollector<Long>,
     )
 
@@ -69,7 +65,7 @@ sealed interface ViewSourceUri {
 data class FileToUpload(
     val relativePath: String,
     val inputStream: InputStream,
-    val size: Long,
+    val size: Long?,
 )
 
 /**

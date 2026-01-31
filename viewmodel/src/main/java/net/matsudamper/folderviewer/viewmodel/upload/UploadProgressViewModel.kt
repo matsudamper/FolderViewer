@@ -86,7 +86,7 @@ class UploadProgressViewModel @Inject constructor(
                             val progress = if (totalBytes > 0) {
                                 currentBytes.toFloat() / totalBytes.toFloat()
                             } else {
-                                0f
+                                null
                             }
 
                             if (job.isFolder) {

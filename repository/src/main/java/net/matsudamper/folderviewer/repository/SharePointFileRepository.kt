@@ -106,7 +106,6 @@ class SharePointFileRepository(
         id: FileObjectId,
         fileName: String,
         inputStream: InputStream,
-        fileSize: Long,
         onRead: FlowCollector<Long>,
     ) {
         withContext(Dispatchers.IO) {
@@ -212,7 +211,7 @@ class SharePointFileRepository(
                         .put(progressInputStream)
 
                     job.cancel()
-                    uploadedSize += fileToUpload.size
+                    uploadedSize += fileToUpload.size ?: 0L
                 }
             }
         }

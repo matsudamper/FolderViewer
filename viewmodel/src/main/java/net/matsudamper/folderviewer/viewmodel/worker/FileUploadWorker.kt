@@ -62,15 +62,15 @@ internal class FileUploadWorker @AssistedInject constructor(
                 val progressFlow = MutableStateFlow(0L)
                 val progressJob = launch {
                     progressFlow.collectLatest { uploadedBytes ->
-                        setProgress(
-                            androidx.work.Data.Builder()
-                                .putString(KEY_STORAGE_ID, storageIdString)
-                                .putString(KEY_FILE_OBJECT_ID, fileObjectIdString)
-                                .putString(KEY_FILE_NAME, fileName)
-                                .putLong("CurrentBytes", uploadedBytes)
-                                .putLong("TotalBytes", fileSize)
-                                .build(),
-                        )
+                        val builder = androidx.work.Data.Builder()
+                            .putString(KEY_STORAGE_ID, storageIdString)
+                            .putString(KEY_FILE_OBJECT_ID, fileObjectIdString)
+                            .putString(KEY_FILE_NAME, fileName)
+                            .putLong("CurrentBytes", uploadedBytes)
+                        if (fileSize != null) {
+                            builder.putLong("TotalBytes", fileSize)
+                        }
+                        setProgress(builder.build())
                     }
                 }
 
@@ -80,7 +80,6 @@ internal class FileUploadWorker @AssistedInject constructor(
                             id = fileObjectId,
                             fileName = fileName,
                             inputStream = inputStream,
-                            fileSize = fileSize,
                             onRead = progressFlow,
                         )
                     }
@@ -136,15 +135,15 @@ internal class FileUploadWorker @AssistedInject constructor(
         notificationManager.createNotificationChannel(channel)
     }
 
-    private fun getFileSize(uri: android.net.Uri): Long {
+    private fun getFileSize(uri: android.net.Uri): Long? {
         return context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
             val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
             if (cursor.moveToFirst() && !cursor.isNull(sizeIndex)) {
                 cursor.getLong(sizeIndex)
             } else {
-                0L
+                null
             }
-        } ?: 0L
+        }
     }
 
     companion object {

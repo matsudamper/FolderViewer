@@ -57,20 +57,22 @@ internal class FolderUploadWorker @AssistedInject constructor(
                 ?: return@withContext Result.failure()
 
             val filesToUpload = getFilesToUpload(uriDataList)
-            val totalSize = filesToUpload.sumOf { it.size }
+            val totalSize = filesToUpload.fold<FileToUpload, Long?>(0L) { acc, file ->
+                if (acc != null && file.size != null) acc + file.size else null
+            }
 
             val progressFlow = MutableStateFlow(0L)
             val progressJob = launch {
                 progressFlow.collectLatest { uploadedBytes ->
-                    setProgress(
-                        androidx.work.Data.Builder()
-                            .putString(KEY_STORAGE_ID, storageIdString)
-                            .putString(KEY_FILE_OBJECT_ID, fileObjectIdString)
-                            .putString(KEY_FOLDER_NAME, folderName)
-                            .putLong("CurrentBytes", uploadedBytes)
-                            .putLong("TotalBytes", totalSize)
-                            .build(),
-                    )
+                    val builder = androidx.work.Data.Builder()
+                        .putString(KEY_STORAGE_ID, storageIdString)
+                        .putString(KEY_FILE_OBJECT_ID, fileObjectIdString)
+                        .putString(KEY_FOLDER_NAME, folderName)
+                        .putLong("CurrentBytes", uploadedBytes)
+                    if (totalSize != null) {
+                        builder.putLong("TotalBytes", totalSize)
+                    }
+                    setProgress(builder.build())
                 }
             }
 
@@ -133,15 +135,15 @@ internal class FolderUploadWorker @AssistedInject constructor(
         notificationManager.createNotificationChannel(channel)
     }
 
-    private fun getFileSize(uri: android.net.Uri): Long {
+    private fun getFileSize(uri: android.net.Uri): Long? {
         return context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
             val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
             if (cursor.moveToFirst() && !cursor.isNull(sizeIndex)) {
                 cursor.getLong(sizeIndex)
             } else {
-                0L
+                null
             }
-        } ?: 0L
+        }
     }
 
     private fun getFilesToUpload(uriDataList: List<UriData>): List<FileToUpload> {
@@ -150,12 +152,15 @@ internal class FolderUploadWorker @AssistedInject constructor(
 
             val fileSize = getFileSize(uri)
 
-            context.contentResolver.openInputStream(uri)?.let { inputStream ->
+            val inputStream = context.contentResolver.openInputStream(uri)
+            if (inputStream != null) {
                 FileToUpload(
                     relativePath = uriData.relativePath,
                     inputStream = inputStream,
                     size = fileSize,
                 )
+            } else {
+                null
             }
         }
     }

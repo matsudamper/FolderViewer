@@ -329,7 +329,6 @@ class SmbFileRepository(
         id: FileObjectId,
         fileName: String,
         inputStream: InputStream,
-        fileSize: Long,
         onRead: FlowCollector<Long>,
     ) {
         val path = when (id) {
@@ -447,7 +446,7 @@ class SmbFileRepository(
                                 }
                             }
                         }
-                        uploadedSize += fileToUpload.size
+                        uploadedSize += fileToUpload.size ?: 0L
                     }
                 }
             }
