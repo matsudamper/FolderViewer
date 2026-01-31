@@ -168,7 +168,6 @@ private fun IndicatorItem(
     }
 }
 
-@Composable
 private fun entryProvider(navigator: Navigator): (NavKey) -> NavEntry<NavKey> {
     return entryProvider {
         homeEntry(navigator)
