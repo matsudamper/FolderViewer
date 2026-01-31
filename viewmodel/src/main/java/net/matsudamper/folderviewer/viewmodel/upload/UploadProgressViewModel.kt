@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import java.util.Locale
 import java.util.UUID
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -163,9 +164,9 @@ class UploadProgressViewModel @Inject constructor(
         val gb = mb * 1024
 
         return when {
-            bytes >= gb -> String.format("%.1fGB", bytes / gb)
-            bytes >= mb -> String.format("%.1fMB", bytes / mb)
-            else -> String.format("%.1fKB", bytes / kb)
+            bytes >= gb -> String.format(Locale.ROOT, "%.1fGB", bytes / gb)
+            bytes >= mb -> String.format(Locale.ROOT, "%.1fMB", bytes / mb)
+            else -> String.format(Locale.ROOT, "%.1fKB", bytes / kb)
         }
     }
 }
