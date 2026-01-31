@@ -65,6 +65,7 @@ import net.matsudamper.folderviewer.navigation.Settings
 import net.matsudamper.folderviewer.navigation.SharePointAdd
 import net.matsudamper.folderviewer.navigation.SmbAdd
 import net.matsudamper.folderviewer.navigation.StorageTypeSelection
+import net.matsudamper.folderviewer.navigation.UploadErrorDetail
 import net.matsudamper.folderviewer.navigation.UploadProgress
 import net.matsudamper.folderviewer.navigation.rememberNavigationState
 import net.matsudamper.folderviewer.navigation.toEntries
@@ -80,6 +81,7 @@ import net.matsudamper.folderviewer.ui.storage.SharePointAddScreen
 import net.matsudamper.folderviewer.ui.storage.SmbAddScreen
 import net.matsudamper.folderviewer.ui.storage.StorageTypeSelectionScreen
 import net.matsudamper.folderviewer.ui.theme.FolderViewerTheme
+import net.matsudamper.folderviewer.ui.upload.UploadErrorDetailScreen
 import net.matsudamper.folderviewer.ui.upload.UploadProgressScreen
 import net.matsudamper.folderviewer.viewmodel.browser.FileBrowserViewModel
 import net.matsudamper.folderviewer.viewmodel.browser.ImageViewerViewModel
@@ -90,6 +92,7 @@ import net.matsudamper.folderviewer.viewmodel.settings.SettingsViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.SharePointAddViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.SmbAddViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.StorageTypeSelectionViewModel
+import net.matsudamper.folderviewer.viewmodel.upload.UploadErrorDetailViewModel
 import net.matsudamper.folderviewer.viewmodel.upload.UploadProgressViewModel
 
 @AndroidEntryPoint
@@ -186,6 +189,7 @@ private fun entryProvider(navigator: Navigator): (NavKey) -> NavEntry<NavKey> {
         folderBrowserEntry(navigator)
         imageViewerEntry(navigator)
         uploadProgressEntry(navigator)
+        uploadErrorDetailEntry(navigator)
     }
 }
 
@@ -634,6 +638,14 @@ private fun EntryProviderScope<NavKey>.uploadProgressEntry(navigator: Navigator)
                             ),
                         )
                     }
+
+                    is UploadProgressViewModel.ViewModelEvent.NavigateToUploadErrorDetail -> {
+                        navigator.navigate(
+                            UploadErrorDetail(
+                                workerId = event.workerId,
+                            ),
+                        )
+                    }
                 }
             }
         }
@@ -641,5 +653,31 @@ private fun EntryProviderScope<NavKey>.uploadProgressEntry(navigator: Navigator)
         UploadProgressScreen(
             uiState = uiState,
         )
+    }
+}
+
+private fun EntryProviderScope<NavKey>.uploadErrorDetailEntry(
+    navigator: Navigator,
+) {
+    entry<UploadErrorDetail> { key ->
+        val viewModel: UploadErrorDetailViewModel = hiltViewModel()
+        val uiState by viewModel.uiState.collectAsState()
+
+        LaunchedEffect(key.workerId) {
+            viewModel.init(key.workerId)
+        }
+
+        LaunchedEffect(viewModel.viewModelEventFlow) {
+            viewModel.viewModelEventFlow.collect { event ->
+                when (event) {
+                    UploadErrorDetailViewModel.ViewModelEvent.NavigateBack -> {
+                        navigator.goBack()
+                    }
+                }
+            }
+        }
+
+        val uiStateValue = uiState ?: return@entry
+        UploadErrorDetailScreen(uiState = uiStateValue)
     }
 }

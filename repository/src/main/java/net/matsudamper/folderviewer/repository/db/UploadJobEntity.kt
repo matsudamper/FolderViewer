@@ -13,4 +13,6 @@ internal data class UploadJobEntity(
     val fileObjectId: String,
     val displayPath: String,
     val createdAt: Long,
+    val errorMessage: String? = null,
+    val errorCause: String? = null,
 )
