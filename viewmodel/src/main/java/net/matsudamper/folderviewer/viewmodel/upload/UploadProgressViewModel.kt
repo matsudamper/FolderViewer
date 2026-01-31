@@ -89,6 +89,12 @@ class UploadProgressViewModel @Inject constructor(
                                 null
                             }
 
+                            val progressText = if (uploadState == UploadProgressUiState.UploadState.RUNNING) {
+                                "${formatFileSize(currentBytes)}/${formatFileSize(totalBytes)}"
+                            } else {
+                                null
+                            }
+
                             if (job.isFolder) {
                                 UploadProgressUiState.UploadItem.Folder(
                                     id = job.workerId,
@@ -97,6 +103,7 @@ class UploadProgressViewModel @Inject constructor(
                                     canNavigate = true,
                                     fileCount = 0,
                                     progress = progress,
+                                    progressText = progressText,
                                 )
                             } else {
                                 UploadProgressUiState.UploadItem.File(
@@ -105,6 +112,7 @@ class UploadProgressViewModel @Inject constructor(
                                     state = uploadState,
                                     canNavigate = true,
                                     progress = progress,
+                                    progressText = progressText,
                                 )
                             }
                         },
@@ -148,4 +156,16 @@ class UploadProgressViewModel @Inject constructor(
         val jobs: List<UploadJobRepository.UploadJob> = emptyList(),
         val workInfoMap: Map<String, WorkInfo> = emptyMap(),
     )
+
+    private fun formatFileSize(bytes: Long): String {
+        val kb = 1024.0
+        val mb = kb * 1024
+        val gb = mb * 1024
+
+        return when {
+            bytes >= gb -> String.format("%.1fGB", bytes / gb)
+            bytes >= mb -> String.format("%.1fMB", bytes / mb)
+            else -> String.format("%.1fKB", bytes / kb)
+        }
+    }
 }

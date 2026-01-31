@@ -18,6 +18,7 @@ data class UploadProgressUiState(
         val state: UploadState
         val canNavigate: Boolean
         val progress: Float?
+        val progressText: String?
 
         data class File(
             override val id: String,
@@ -25,6 +26,7 @@ data class UploadProgressUiState(
             override val state: UploadState,
             override val canNavigate: Boolean,
             override val progress: Float?,
+            override val progressText: String?,
         ) : UploadItem
 
         data class Folder(
@@ -34,6 +36,7 @@ data class UploadProgressUiState(
             override val canNavigate: Boolean,
             val fileCount: Int,
             override val progress: Float?,
+            override val progressText: String?,
         ) : UploadItem
     }
 
