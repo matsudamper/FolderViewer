@@ -2,13 +2,10 @@ package net.matsudamper.folderviewer.repository
 
 import android.content.Context
 import android.os.Environment
-import androidx.core.content.edit
 import androidx.datastore.core.CorruptionException
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.Serializer
 import androidx.datastore.dataStore
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.UUID
@@ -23,13 +20,13 @@ import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.common.StorageId
 import net.matsudamper.folderviewer.repository.proto.FavoriteConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.LocalConfigurationProto
+import net.matsudamper.folderviewer.repository.proto.SecureStorageProto
 import net.matsudamper.folderviewer.repository.proto.SharePointConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.SmbConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.StorageConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.StorageListProto
 
 private const val DataStorageFileName = "storage_list.pb"
-private const val SecurePrefFileName = "secure_storage_creds"
 
 private val Context.dataStore: DataStore<StorageListProto> by dataStore(
     fileName = DataStorageFileName,
@@ -40,22 +37,14 @@ private val Context.dataStore: DataStore<StorageListProto> by dataStore(
 class StorageRepository @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) {
-    private val masterKey = MasterKey.Builder(context)
-        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-        .build()
 
-    private val sharedPreferences = EncryptedSharedPreferences.create(
-        context,
-        SecurePrefFileName,
-        masterKey,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-    )
-
-    val storageList: Flow<List<StorageConfiguration>> = context.dataStore.data
+    fun getStorageList(): Flow<List<StorageConfiguration>> = context.dataStore.data
         .map { proto ->
-            proto.listList.mapNotNull { it.toDomain() }
+            val secureData = context.secureDataStore.data.first()
+            proto.listList.mapNotNull { it.toDomain(secureData) }
         }
+
+    val storageList: Flow<List<StorageConfiguration>> = getStorageList()
 
     val favorites: Flow<List<FavoriteConfiguration>> = context.dataStore.data
         .map { proto ->
@@ -73,8 +62,10 @@ class StorageRepository @Inject constructor(
         )
 
         // パスワードを安全に保存する
-        sharedPreferences.edit {
-            putString(id.id, config.password)
+        context.secureDataStore.updateData { currentSecure ->
+            currentSecure.toBuilder()
+                .putCredentials(id.id, config.password)
+                .build()
         }
 
         // DataStoreを更新する
@@ -94,8 +85,10 @@ class StorageRepository @Inject constructor(
             password = config.password,
         )
 
-        sharedPreferences.edit {
-            putString(id.id, config.password)
+        context.secureDataStore.updateData { currentSecure ->
+            currentSecure.toBuilder()
+                .putCredentials(id.id, config.password)
+                .build()
         }
 
         context.dataStore.updateData { currentList ->
@@ -161,10 +154,12 @@ class StorageRepository @Inject constructor(
             clientSecret = config.clientSecret,
         )
 
-        sharedPreferences.edit {
-            putString("${id.id}_tenantId", config.tenantId)
-            putString("${id.id}_clientId", config.clientId)
-            putString("${id.id}_clientSecret", config.clientSecret)
+        context.secureDataStore.updateData { currentSecure ->
+            currentSecure.toBuilder()
+                .putCredentials("${id.id}_tenantId", config.tenantId)
+                .putCredentials("${id.id}_clientId", config.clientId)
+                .putCredentials("${id.id}_clientSecret", config.clientSecret)
+                .build()
         }
 
         context.dataStore.updateData { currentList ->
@@ -184,10 +179,12 @@ class StorageRepository @Inject constructor(
             clientSecret = config.clientSecret,
         )
 
-        sharedPreferences.edit {
-            putString("${id.id}_tenantId", config.tenantId)
-            putString("${id.id}_clientId", config.clientId)
-            putString("${id.id}_clientSecret", config.clientSecret)
+        context.secureDataStore.updateData { currentSecure ->
+            currentSecure.toBuilder()
+                .putCredentials("${id.id}_tenantId", config.tenantId)
+                .putCredentials("${id.id}_clientId", config.clientId)
+                .putCredentials("${id.id}_clientSecret", config.clientSecret)
+                .build()
         }
 
         context.dataStore.updateData { currentList ->
@@ -206,11 +203,13 @@ class StorageRepository @Inject constructor(
         context.dataStore.updateData { currentList ->
             val index = currentList.listList.indexOfFirst { it.id == id.id }
             if (index >= 0) {
-                sharedPreferences.edit {
-                    remove(id.id)
-                    remove("${id.id}_tenantId")
-                    remove("${id.id}_clientId")
-                    remove("${id.id}_clientSecret")
+                context.secureDataStore.updateData { currentSecure ->
+                    currentSecure.toBuilder()
+                        .removeCredentials(id.id)
+                        .removeCredentials("${id.id}_tenantId")
+                        .removeCredentials("${id.id}_clientId")
+                        .removeCredentials("${id.id}_clientSecret")
+                        .build()
                 }
                 currentList.toBuilder()
                     .removeList(index)
@@ -254,9 +253,10 @@ class StorageRepository @Inject constructor(
 
     suspend fun getFileRepository(id: StorageId): FileRepository? {
         val proto = context.dataStore.data.first()
+        val secureData = context.secureDataStore.data.first()
         val configProto = proto.listList.find { it.id == id.id } ?: return null
 
-        return when (val config = configProto.toDomain()) {
+        return when (val config = configProto.toDomain(secureData)) {
             is StorageConfiguration.Smb -> SmbFileRepository(config)
             is StorageConfiguration.Local -> LocalFileRepository(config)
             is StorageConfiguration.SharePoint -> SharePointFileRepository(config)
@@ -264,7 +264,7 @@ class StorageRepository @Inject constructor(
         }
     }
 
-    private fun StorageConfigurationProto.toDomain(): StorageConfiguration? {
+    private fun StorageConfigurationProto.toDomain(secureData: SecureStorageProto): StorageConfiguration? {
         return when (configCase) {
             StorageConfigurationProto.ConfigCase.SMB -> {
                 StorageConfiguration.Smb(
@@ -272,7 +272,7 @@ class StorageRepository @Inject constructor(
                     name = name,
                     ip = smb.ip,
                     username = smb.username,
-                    password = sharedPreferences.getString(id, null).orEmpty(),
+                    password = secureData.credentialsMap[id].orEmpty(),
                 )
             }
 
@@ -289,9 +289,9 @@ class StorageRepository @Inject constructor(
                     id = StorageId(id),
                     name = name,
                     objectId = sharepoint.objectId,
-                    tenantId = sharedPreferences.getString("${id}_tenantId", null).orEmpty(),
-                    clientId = sharedPreferences.getString("${id}_clientId", null).orEmpty(),
-                    clientSecret = sharedPreferences.getString("${id}_clientSecret", null).orEmpty(),
+                    tenantId = secureData.credentialsMap["${id}_tenantId"].orEmpty(),
+                    clientId = secureData.credentialsMap["${id}_clientId"].orEmpty(),
+                    clientSecret = secureData.credentialsMap["${id}_clientSecret"].orEmpty(),
                 )
             }
 

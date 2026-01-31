@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+option java_package = "net.matsudamper.folderviewer.repository.proto";
+option java_multiple_files = true;
+
+message SecureStorageProto {
+  map<string, string> credentials = 1;
+}

@@ -21,7 +21,7 @@ detektCompose = "0.5.6"
 smbj = "0.14.0"
 rapid7Dcerpc = "0.12.13"
 datastore = "1.2.0"
-securityCrypto = "1.1.0-alpha06"
+tink = "1.19.0"
 androidxDocumentfile = "1.1.0"
 protobuf = "4.33.5"
 protobufPlugin = "0.9.6"
@@ -68,7 +68,7 @@ detektCompose = { group = "io.nlopez.compose.rules", name = "detekt", version.re
 smbj = { group = "com.hierynomus", name = "smbj", version.ref = "smbj" }
 smbjRpc = { group = "com.rapid7.client", name = "dcerpc", version.ref = "rapid7Dcerpc" }
 androidxDatastore = { group = "androidx.datastore", name = "datastore", version.ref = "datastore" }
-androidxSecurityCrypto = { group = "androidx.security", name = "security-crypto", version.ref = "securityCrypto" }
+tinkAndroid = { group = "com.google.crypto.tink", name = "tink-android", version.ref = "tink" }
 androidxDocumentfile = { group = "androidx.documentfile", name = "documentfile", version.ref = "androidxDocumentfile" }
 protobufKotlinLite = { group = "com.google.protobuf", name = "protobuf-kotlin-lite", version.ref = "protobuf" }
 protobufProtoc = { group = "com.google.protobuf", name = "protoc", version.ref = "protobuf" }
