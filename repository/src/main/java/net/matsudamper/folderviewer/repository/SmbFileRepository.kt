@@ -366,13 +366,14 @@ class SmbFileRepository(
                         file.outputStream.use { outputStream ->
                             coroutineScope {
                                 val progressInputStream = ProgressInputStream(inputStream)
-                                launch {
+                                val job = launch {
                                     progressInputStream.onRead.collect(onRead)
                                 }
 
                                 progressInputStream.use { input ->
                                     input.copyTo(outputStream)
                                 }
+                                job.cancel()
                             }
                         }
                     }

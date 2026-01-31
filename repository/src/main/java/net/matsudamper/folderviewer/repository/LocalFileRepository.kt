@@ -142,7 +142,7 @@ internal class LocalFileRepository(
 
         coroutineScope {
             val progressInputStream = ProgressInputStream(inputStream)
-            launch {
+            val job = launch {
                 progressInputStream.onRead.collect(onRead)
             }
 
@@ -151,6 +151,7 @@ internal class LocalFileRepository(
                     input.copyTo(output)
                 }
             }
+            job.cancel()
         }
     }
 

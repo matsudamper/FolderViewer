@@ -133,7 +133,7 @@ class SharePointFileRepository(
 
             coroutineScope {
                 val progressInputStream = ProgressInputStream(inputStream)
-                launch {
+                val job = launch {
                     progressInputStream.onRead.collect(onRead)
                 }
 
@@ -141,6 +141,8 @@ class SharePointFileRepository(
                     .items().byDriveItemId(itemId)
                     .content()
                     .put(progressInputStream)
+
+                job.cancel()
             }
         }
     }
