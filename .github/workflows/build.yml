@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      DEBUG_KEYSTORE_FILE: debug.keystore
 
     steps:
       - name: Checkout code
@@ -25,5 +27,16 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
 
+      - name: Decode debug keystore
+        env:
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
+        run: echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > debug.keystore
+
       - name: Build with Gradle
         run: ./gradlew assembleDebug ktlintCheck
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v6
+        with:
+          name: debug-apk
+          path: app/build/outputs/apk/debug/*.apk

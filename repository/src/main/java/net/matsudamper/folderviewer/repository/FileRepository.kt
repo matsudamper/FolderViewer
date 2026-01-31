@@ -2,6 +2,7 @@ package net.matsudamper.folderviewer.repository
 
 import java.io.Closeable
 import java.io.InputStream
+import kotlinx.coroutines.flow.FlowCollector
 import net.matsudamper.folderviewer.common.FileObjectId
 
 interface FileRepository {
@@ -9,8 +10,21 @@ interface FileRepository {
     suspend fun getFileContent(fileId: FileObjectId.Item): InputStream
     suspend fun getFileSize(fileId: FileObjectId.Item): Long
     suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream?
-    suspend fun uploadFile(id: FileObjectId, fileName: String, inputStream: InputStream)
-    suspend fun uploadFolder(id: FileObjectId, folderName: String, files: List<FileToUpload>)
+
+    suspend fun uploadFile(
+        id: FileObjectId,
+        fileName: String,
+        inputStream: InputStream,
+        onRead: FlowCollector<Long>,
+    )
+
+    suspend fun uploadFolder(
+        id: FileObjectId,
+        folderName: String,
+        files: List<FileToUpload>,
+        onRead: FlowCollector<Long>,
+    )
+
     suspend fun getViewSourceUri(fileId: FileObjectId.Item): ViewSourceUri
 }
 
@@ -19,6 +33,9 @@ interface RandomAccessFileRepository : FileRepository {
 }
 
 interface RandomAccessSource : Closeable {
+    /**
+     * (Bytes)
+     */
     val size: Long
     fun readAt(offset: Long, buffer: ByteArray, bufferOffset: Int, length: Int): Int
 }
@@ -42,11 +59,18 @@ sealed interface ViewSourceUri {
     data class StreamProvider(val fileId: FileObjectId.Item) : ViewSourceUri
 }
 
+/**
+ * @property size (Bytes)
+ */
 data class FileToUpload(
     val relativePath: String,
     val inputStream: InputStream,
+    val size: Long?,
 )
 
+/**
+ * @property size (Bytes)
+ */
 data class FileItem(
     val id: FileObjectId.Item,
     val displayPath: String,

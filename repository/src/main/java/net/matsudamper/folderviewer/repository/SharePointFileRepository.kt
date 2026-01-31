@@ -6,6 +6,9 @@ import java.net.URL
 import java.time.OffsetDateTime
 import kotlin.collections.map
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.azure.identity.ClientSecretCredentialBuilder
 import com.microsoft.graph.models.DriveItem
@@ -103,12 +106,10 @@ class SharePointFileRepository(
         id: FileObjectId,
         fileName: String,
         inputStream: InputStream,
+        onRead: FlowCollector<Long>,
     ) {
         withContext(Dispatchers.IO) {
             val driveId = getDriveId()
-
-            val bytes = inputStream.readBytes()
-            val byteStream = ByteArrayInputStream(bytes)
 
             val driveItem = DriveItem().also { item ->
                 item.name = fileName
@@ -129,10 +130,20 @@ class SharePointFileRepository(
                 .post(driveItem) ?: throw IllegalStateException("Failed to create item")
 
             val itemId = newItem.id ?: throw IllegalStateException("Item ID is null")
-            graphServiceClient.drives().byDriveId(driveId)
-                .items().byDriveItemId(itemId)
-                .content()
-                .put(byteStream)
+
+            coroutineScope {
+                val progressInputStream = ProgressInputStream(inputStream)
+                val job = launch {
+                    progressInputStream.onRead.collect(onRead)
+                }
+
+                graphServiceClient.drives().byDriveId(driveId)
+                    .items().byDriveItemId(itemId)
+                    .content()
+                    .put(progressInputStream)
+
+                job.cancel()
+            }
         }
     }
 
@@ -140,6 +151,7 @@ class SharePointFileRepository(
         id: FileObjectId,
         folderName: String,
         files: List<FileToUpload>,
+        onRead: FlowCollector<Long>,
     ) {
         withContext(Dispatchers.IO) {
             val driveId = getDriveId()
@@ -164,34 +176,45 @@ class SharePointFileRepository(
 
             val folderId = createdFolder.id ?: throw IllegalStateException("Folder ID is null")
 
-            files.forEach { fileToUpload ->
-                val pathParts = fileToUpload.relativePath.split("/")
-                val fileName = pathParts.last()
-                val directories = pathParts.dropLast(1)
+            coroutineScope {
+                var uploadedSize = 0L
+                files.forEach { fileToUpload ->
+                    val pathParts = fileToUpload.relativePath.split("/")
+                    val fileName = pathParts.last()
+                    val directories = pathParts.dropLast(1)
 
-                var currentParentId = folderId
-                directories.forEach { dirName ->
-                    currentParentId = createOrGetFolder(driveId, currentParentId, dirName)
+                    var currentParentId = folderId
+                    directories.forEach { dirName ->
+                        currentParentId = createOrGetFolder(driveId, currentParentId, dirName)
+                    }
+
+                    val fileItem = DriveItem().also { item ->
+                        item.name = fileName
+                        item.file = File()
+                    }
+
+                    val newItem = graphServiceClient.drives().byDriveId(driveId)
+                        .items().byDriveItemId(currentParentId)
+                        .children()
+                        .post(fileItem) ?: throw IllegalStateException("Failed to create item")
+
+                    val itemId = newItem.id ?: throw IllegalStateException("Item ID is null")
+
+                    val progressInputStream = ProgressInputStream(fileToUpload.inputStream)
+                    val job = launch {
+                        progressInputStream.onRead.collect { fileReadSize ->
+                            onRead.emit(uploadedSize + fileReadSize)
+                        }
+                    }
+
+                    graphServiceClient.drives().byDriveId(driveId)
+                        .items().byDriveItemId(itemId)
+                        .content()
+                        .put(progressInputStream)
+
+                    job.cancel()
+                    uploadedSize += fileToUpload.size ?: 0L
                 }
-
-                val bytes = fileToUpload.inputStream.readBytes()
-                val byteStream = ByteArrayInputStream(bytes)
-
-                val fileItem = DriveItem().also { item ->
-                    item.name = fileName
-                    item.file = File()
-                }
-
-                val newItem = graphServiceClient.drives().byDriveId(driveId)
-                    .items().byDriveItemId(currentParentId)
-                    .children()
-                    .post(fileItem) ?: throw IllegalStateException("Failed to create item")
-
-                val itemId = newItem.id ?: throw IllegalStateException("Item ID is null")
-                graphServiceClient.drives().byDriveId(driveId)
-                    .items().byDriveItemId(itemId)
-                    .content()
-                    .put(byteStream)
             }
         }
     }

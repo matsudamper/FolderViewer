@@ -23,7 +23,7 @@ Androidのファイルビューアです。
 アイコンが必要な場合は https://fonts.google.com/icons からダウンロードする。アイコンライブラリの使用は禁止。
 
 # コーディングルール
-コメントやコミットメッセージはすべて日本語で記述する。
+コメントやコミットメッセージ、PRはすべて日本語で記述する。
 
 Composeの記述は以下のルールに従う。
 https://github.com/androidx/androidx/blob/androidx-main/compose/docs/compose-api-guidelines.md
@@ -36,6 +36,8 @@ private/internalをできる限り使用し、最小限のアクセスに絞る�
 
 # Agent固有のルール
 指示されていない部分は差分が少なくなるようにする。
+
+ユーザーからの質問に対して、コードの実行や変更を行わずに回答のみを行うように振る舞うこと。
 
 ## Gemini
 以下のエラーが最初に発生するので、回避して。

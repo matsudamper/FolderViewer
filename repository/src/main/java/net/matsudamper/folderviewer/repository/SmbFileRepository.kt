@@ -8,6 +8,9 @@ import java.io.IOException
 import java.io.InputStream
 import java.util.EnumSet
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.hierynomus.msdtyp.AccessMask
 import com.hierynomus.msfscc.FileAttributes
@@ -326,6 +329,7 @@ class SmbFileRepository(
         id: FileObjectId,
         fileName: String,
         inputStream: InputStream,
+        onRead: FlowCollector<Long>,
     ) {
         val path = when (id) {
             is FileObjectId.Root -> return
@@ -360,7 +364,17 @@ class SmbFileRepository(
                         null,
                     ).use { file ->
                         file.outputStream.use { outputStream ->
-                            inputStream.copyTo(outputStream)
+                            coroutineScope {
+                                val progressInputStream = ProgressInputStream(inputStream)
+                                val job = launch {
+                                    progressInputStream.onRead.collect(onRead)
+                                }
+
+                                progressInputStream.use { input ->
+                                    input.copyTo(outputStream)
+                                }
+                                job.cancel()
+                            }
                         }
                     }
                 }
@@ -372,6 +386,7 @@ class SmbFileRepository(
         id: FileObjectId,
         folderName: String,
         files: List<FileToUpload>,
+        onRead: FlowCollector<Long>,
     ) {
         val path = when (id) {
             is FileObjectId.Root -> return
@@ -399,6 +414,7 @@ class SmbFileRepository(
 
                     diskShare.mkdir(basePath)
 
+                    var uploadedSize = 0L
                     files.forEach { fileToUpload ->
                         val fullPath = "$basePath\\${fileToUpload.relativePath.replace("/", "\\")}"
 
@@ -416,9 +432,22 @@ class SmbFileRepository(
                             null,
                         ).use { file ->
                             file.outputStream.use { outputStream ->
-                                fileToUpload.inputStream.copyTo(outputStream)
+                                coroutineScope {
+                                    val progressInputStream = ProgressInputStream(fileToUpload.inputStream)
+                                    val job = launch {
+                                        progressInputStream.onRead.collect { fileReadSize ->
+                                            onRead.emit(uploadedSize + fileReadSize)
+                                        }
+                                    }
+
+                                    progressInputStream.use { input ->
+                                        input.copyTo(outputStream)
+                                    }
+                                    job.cancel()
+                                }
                             }
                         }
+                        uploadedSize += fileToUpload.size ?: 0L
                     }
                 }
             }
