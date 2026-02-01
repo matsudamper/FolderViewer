@@ -78,7 +78,7 @@ internal class FolderUploadWorker @AssistedInject constructor(
                         .putString(KEY_STORAGE_ID, storageIdString)
                         .putString(KEY_FILE_OBJECT_ID, fileObjectIdString)
                         .putString(KEY_FOLDER_NAME, folderName)
-                        .putLong("CurrentBytes", uploadedBytes)
+                        .putLong(KEY_CURRENT_BYTES, uploadedBytes)
                         .putString(KEY_FILE_NAMES, fileNamesJson)
                         .putString(KEY_FILE_SIZES, fileSizesJson)
                     if (totalSize != null) {
@@ -199,5 +199,6 @@ internal class FolderUploadWorker @AssistedInject constructor(
         const val KEY_URI_DATA_LIST = "uri_data_list"
         const val KEY_FILE_NAMES = "file_names"
         const val KEY_FILE_SIZES = "file_sizes"
+        const val KEY_CURRENT_BYTES = "current_bytes"
     }
 }

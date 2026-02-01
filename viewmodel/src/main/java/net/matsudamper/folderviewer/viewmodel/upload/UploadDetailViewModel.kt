@@ -146,7 +146,7 @@ class UploadDetailViewModel @Inject internal constructor(
             Json.decodeFromString<List<Long?>>(fileSizesJson)
         }.getOrNull() ?: return null
 
-        val currentBytes = workInfo.progress.getLong("CurrentBytes", 0L)
+        val currentBytes = workInfo.progress.getLong(FolderUploadWorker.KEY_CURRENT_BYTES, 0L)
 
         var cumulativeSize = 0L
         var currentFileIndex = 0
@@ -183,7 +183,7 @@ class UploadDetailViewModel @Inject internal constructor(
             progressText = progressText,
             progress = progress,
         )
-    }
+        }
 
     private fun extractProgressText(
         workInfo: WorkInfo?,
