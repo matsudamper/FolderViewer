@@ -151,7 +151,7 @@ class SharePointFileRepository(
         id: FileObjectId,
         folderName: String,
         files: List<FileToUpload>,
-        onRead: FlowCollector<Long>,
+        onRead: FlowCollector<UploadProgress>,
     ) {
         withContext(Dispatchers.IO) {
             val driveId = getDriveId()
@@ -178,6 +178,7 @@ class SharePointFileRepository(
 
             coroutineScope {
                 var uploadedSize = 0L
+                var completedFiles = 0
                 files.forEach { fileToUpload ->
                     val pathParts = fileToUpload.relativePath.split("/")
                     val fileName = pathParts.last()
@@ -203,7 +204,7 @@ class SharePointFileRepository(
                     val progressInputStream = ProgressInputStream(fileToUpload.inputStream)
                     val job = launch {
                         progressInputStream.onRead.collect { fileReadSize ->
-                            onRead.emit(uploadedSize + fileReadSize)
+                            onRead.emit(UploadProgress(uploadedSize + fileReadSize, completedFiles))
                         }
                     }
 
@@ -214,6 +215,7 @@ class SharePointFileRepository(
 
                     job.cancel()
                     uploadedSize += fileToUpload.size ?: 0L
+                    completedFiles++
                 }
             }
         }

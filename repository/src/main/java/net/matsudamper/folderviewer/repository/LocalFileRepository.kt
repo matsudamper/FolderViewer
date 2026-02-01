@@ -159,7 +159,7 @@ internal class LocalFileRepository(
         id: FileObjectId,
         folderName: String,
         files: List<FileToUpload>,
-        onRead: FlowCollector<Long>,
+        onRead: FlowCollector<UploadProgress>,
     ): Unit = withContext(Dispatchers.IO) {
         val path = when (id) {
             is FileObjectId.Root -> ""
@@ -176,6 +176,7 @@ internal class LocalFileRepository(
 
         coroutineScope {
             var uploadedSize = 0L
+            var completedFiles = 0
             files.forEach { fileToUpload ->
                 val targetFile = File(folderDir, fileToUpload.relativePath.replace("/", File.separator))
 
@@ -184,7 +185,7 @@ internal class LocalFileRepository(
                 val progressInputStream = ProgressInputStream(fileToUpload.inputStream)
                 val job = launch {
                     progressInputStream.onRead.collect { fileReadSize ->
-                        onRead.emit(uploadedSize + fileReadSize)
+                        onRead.emit(UploadProgress(uploadedSize + fileReadSize, completedFiles))
                     }
                 }
 
@@ -195,6 +196,7 @@ internal class LocalFileRepository(
                 }
                 job.cancel()
                 uploadedSize += fileToUpload.size ?: 0L
+                completedFiles++
             }
         }
     }

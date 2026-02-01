@@ -386,7 +386,7 @@ class SmbFileRepository(
         id: FileObjectId,
         folderName: String,
         files: List<FileToUpload>,
-        onRead: FlowCollector<Long>,
+        onRead: FlowCollector<UploadProgress>,
     ) {
         val path = when (id) {
             is FileObjectId.Root -> return
@@ -415,6 +415,7 @@ class SmbFileRepository(
                     diskShare.mkdir(basePath)
 
                     var uploadedSize = 0L
+                    var completedFiles = 0
                     files.forEach { fileToUpload ->
                         val fullPath = "$basePath\\${fileToUpload.relativePath.replace("/", "\\")}"
 
@@ -436,7 +437,7 @@ class SmbFileRepository(
                                     val progressInputStream = ProgressInputStream(fileToUpload.inputStream)
                                     val job = launch {
                                         progressInputStream.onRead.collect { fileReadSize ->
-                                            onRead.emit(uploadedSize + fileReadSize)
+                                            onRead.emit(UploadProgress(uploadedSize + fileReadSize, completedFiles))
                                         }
                                     }
 
@@ -448,6 +449,7 @@ class SmbFileRepository(
                             }
                         }
                         uploadedSize += fileToUpload.size ?: 0L
+                        completedFiles++
                     }
                 }
             }

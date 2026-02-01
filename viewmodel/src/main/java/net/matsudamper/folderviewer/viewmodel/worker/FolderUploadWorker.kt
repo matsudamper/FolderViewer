@@ -26,6 +26,7 @@ import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.FileToUpload
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.UploadJobRepository
+import net.matsudamper.folderviewer.repository.UploadProgress
 
 @HiltWorker
 internal class FolderUploadWorker @AssistedInject constructor(
@@ -71,14 +72,15 @@ internal class FolderUploadWorker @AssistedInject constructor(
                 filesToUpload.map { it.size },
             )
 
-            val progressFlow = MutableStateFlow(0L)
+            val progressFlow = MutableStateFlow(UploadProgress(0L, 0))
             val progressJob = launch {
-                progressFlow.collectLatest { uploadedBytes ->
+                progressFlow.collectLatest { progress ->
                     val builder = androidx.work.Data.Builder()
                         .putString(KEY_STORAGE_ID, storageIdString)
                         .putString(KEY_FILE_OBJECT_ID, fileObjectIdString)
                         .putString(KEY_FOLDER_NAME, folderName)
-                        .putLong(KEY_CURRENT_BYTES, uploadedBytes)
+                        .putLong(KEY_CURRENT_BYTES, progress.uploadedBytes)
+                        .putInt(KEY_COMPLETED_FILES, progress.completedFiles)
                         .putString(KEY_FILE_NAMES, fileNamesJson)
                         .putString(KEY_FILE_SIZES, fileSizesJson)
                     if (totalSize != null) {
@@ -200,5 +202,6 @@ internal class FolderUploadWorker @AssistedInject constructor(
         const val KEY_FILE_NAMES = "file_names"
         const val KEY_FILE_SIZES = "file_sizes"
         const val KEY_CURRENT_BYTES = "current_bytes"
+        const val KEY_COMPLETED_FILES = "completed_files"
     }
 }

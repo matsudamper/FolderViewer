@@ -22,7 +22,7 @@ interface FileRepository {
         id: FileObjectId,
         folderName: String,
         files: List<FileToUpload>,
-        onRead: FlowCollector<Long>,
+        onRead: FlowCollector<UploadProgress>,
     )
 
     suspend fun getViewSourceUri(fileId: FileObjectId.Item): ViewSourceUri
@@ -63,6 +63,15 @@ sealed interface ViewSourceUri {
      */
     data class StreamProvider(val fileId: FileObjectId.Item) : ViewSourceUri
 }
+
+/**
+ * @property uploadedBytes アップロード済みバイト数
+ * @property completedFiles アップロード完了ファイル数
+ */
+data class UploadProgress(
+    val uploadedBytes: Long,
+    val completedFiles: Int,
+)
 
 /**
  * @property size (Bytes)

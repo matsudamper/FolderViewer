@@ -149,23 +149,12 @@ class UploadDetailViewModel @Inject internal constructor(
         }.getOrNull() ?: return null
 
         val currentBytes = workInfo.progress.getLong(FolderUploadWorker.KEY_CURRENT_BYTES, 0L)
+        val completedFiles = workInfo.progress.getInt(FolderUploadWorker.KEY_COMPLETED_FILES, 0)
 
-        var cumulativeSize = 0L
-        var currentFileIndex = 0
-        for (i in fileSizes.indices) {
-            val size = fileSizes[i] ?: 0L
-            if (currentBytes < cumulativeSize + size) {
-                currentFileIndex = i
-                break
-            }
-            cumulativeSize += size
-            if (i == fileSizes.lastIndex) {
-                currentFileIndex = i
-            }
-        }
+        val cumulativeSize = fileSizes.take(completedFiles).sumOf { it ?: 0L }
 
-        val currentFileName = fileNames.getOrNull(currentFileIndex) ?: return null
-        val currentFileSize = fileSizes.getOrNull(currentFileIndex)
+        val currentFileName = fileNames.getOrNull(completedFiles) ?: return null
+        val currentFileSize = fileSizes.getOrNull(completedFiles)
         val currentFileUploadedBytes = currentBytes - cumulativeSize
 
         val progress = if (currentFileSize != null && currentFileSize > 0L) {
@@ -192,7 +181,7 @@ class UploadDetailViewModel @Inject internal constructor(
         uploadStatus: UploadDetailUiState.UploadStatus,
     ): String? {
         if (uploadStatus != UploadDetailUiState.UploadStatus.UPLOADING) return null
-        val currentBytes = workInfo?.progress?.getLong("CurrentBytes", 0L) ?: return null
+        val currentBytes = workInfo?.progress?.getLong(FolderUploadWorker.KEY_CURRENT_BYTES, 0L) ?: return null
         val totalBytes = workInfo.progress.getLong("TotalBytes", 0L)
         if (totalBytes <= 0L) return null
         return "${formatFileSize(currentBytes)}/${formatFileSize(totalBytes)}"
