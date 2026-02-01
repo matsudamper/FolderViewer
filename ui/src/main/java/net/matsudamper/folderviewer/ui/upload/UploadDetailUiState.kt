@@ -11,6 +11,7 @@ data class UploadDetailUiState(
     val errorMessage: String?,
     val errorCause: String?,
     val progressText: String?,
+    val progress: Float?,
     val currentUploadFile: CurrentUploadFile?,
     val callbacks: Callbacks,
 ) {

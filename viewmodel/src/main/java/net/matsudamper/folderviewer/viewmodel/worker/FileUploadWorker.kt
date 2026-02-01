@@ -25,6 +25,7 @@ import net.matsudamper.folderviewer.common.StorageId
 import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.UploadJobRepository
+import net.matsudamper.folderviewer.viewmodel.worker.FolderUploadWorker.Companion.KEY_CURRENT_BYTES
 
 @HiltWorker
 internal class FileUploadWorker @AssistedInject constructor(
@@ -68,7 +69,7 @@ internal class FileUploadWorker @AssistedInject constructor(
                             .putString(KEY_STORAGE_ID, storageIdString)
                             .putString(KEY_FILE_OBJECT_ID, fileObjectIdString)
                             .putString(KEY_FILE_NAME, fileName)
-                            .putLong("CurrentBytes", uploadedBytes)
+                            .putLong(KEY_CURRENT_BYTES, uploadedBytes)
                         if (fileSize != null) {
                             builder.putLong("TotalBytes", fileSize)
                         }

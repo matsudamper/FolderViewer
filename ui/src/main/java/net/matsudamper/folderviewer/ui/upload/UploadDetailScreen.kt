@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -75,16 +76,26 @@ fun UploadDetailScreen(uiState: UploadDetailUiState) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(24.dp),
-                                    strokeWidth = 3.dp,
-                                    color = MaterialTheme.colorScheme.secondary,
-                                )
+                                if (uiState.progress == null) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        strokeWidth = 3.dp,
+                                        color = MaterialTheme.colorScheme.secondary,
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                }
                                 Text(
                                     text = stringResource(R.string.upload_detail_uploading),
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    modifier = Modifier.padding(start = 8.dp),
+                                    modifier = Modifier,
+                                )
+                            }
+                            if (uiState.progress != null) {
+                                LinearProgressIndicator(
+                                    progress = { uiState.progress },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = MaterialTheme.colorScheme.secondary,
                                 )
                             }
                             if (uiState.progressText != null) {
@@ -297,6 +308,7 @@ private fun UploadDetailScreenUploadingPreview() {
             errorMessage = null,
             errorCause = null,
             progressText = null,
+            progress = null,
             currentUploadFile = null,
             callbacks = previewCallbacks,
         ),
@@ -316,6 +328,7 @@ private fun UploadDetailScreenFolderUploadingPreview() {
             errorMessage = null,
             errorCause = null,
             progressText = "50.0MB/200.0MB",
+            progress = 0.25f,
             currentUploadFile = UploadDetailUiState.CurrentUploadFile(
                 name = "photo2.jpg",
                 progressText = "25.0MB/75.0MB",
@@ -339,6 +352,7 @@ private fun UploadDetailScreenErrorPreview() {
             errorMessage = "Connection timed out",
             errorCause = "java.net.SocketTimeoutException: connect timed out",
             progressText = null,
+            progress = null,
             currentUploadFile = null,
             callbacks = previewCallbacks,
         ),
@@ -358,6 +372,7 @@ private fun UploadDetailScreenSuccessPreview() {
             errorMessage = null,
             errorCause = null,
             progressText = null,
+            progress = null,
             currentUploadFile = null,
             callbacks = previewCallbacks,
         ),

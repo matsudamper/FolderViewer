@@ -94,6 +94,7 @@ class UploadDetailViewModel @Inject internal constructor(
 
                     val currentUploadFile = extractCurrentUploadFile(workInfo, uploadStatus)
                     val progressText = extractProgressText(workInfo, uploadStatus)
+                    val progress = extractProgress(workInfo, uploadStatus)
 
                     _uiState.value = UploadDetailUiState(
                         name = job.name,
@@ -104,6 +105,7 @@ class UploadDetailViewModel @Inject internal constructor(
                         errorMessage = job.errorMessage,
                         errorCause = job.errorCause,
                         progressText = progressText,
+                        progress = progress,
                         currentUploadFile = currentUploadFile,
                         callbacks = callbacks,
                     )
@@ -123,6 +125,7 @@ class UploadDetailViewModel @Inject internal constructor(
                     errorMessage = job.errorMessage,
                     errorCause = job.errorCause,
                     progressText = null,
+                    progress = null,
                     currentUploadFile = null,
                     callbacks = callbacks,
                 )
@@ -185,6 +188,17 @@ class UploadDetailViewModel @Inject internal constructor(
         val totalBytes = workInfo.progress.getLong("TotalBytes", 0L)
         if (totalBytes <= 0L) return null
         return "${formatFileSize(currentBytes)}/${formatFileSize(totalBytes)}"
+    }
+
+    private fun extractProgress(
+        workInfo: WorkInfo?,
+        uploadStatus: UploadDetailUiState.UploadStatus,
+    ): Float? {
+        if (uploadStatus != UploadDetailUiState.UploadStatus.UPLOADING) return null
+        val currentBytes = workInfo?.progress?.getLong(FolderUploadWorker.KEY_CURRENT_BYTES, 0L) ?: return null
+        val totalBytes = workInfo.progress.getLong("TotalBytes", 0L)
+        if (totalBytes <= 0L) return null
+        return (currentBytes.toFloat() / totalBytes.toFloat()).coerceIn(0f, 1f)
     }
 
     private fun formatFileSize(bytes: Long): String {
