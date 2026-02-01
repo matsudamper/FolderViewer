@@ -169,14 +169,14 @@ class FileBrowserViewModel @AssistedInject constructor(
                     val repository = getRepository()
                     repository.createDirectory(fileObjectId, directoryName)
                     fetchFilesInternal()
-                    uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("Created directory: $directoryName"))
+                    uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("${directoryName}を作成しました"))
                 }.onFailure { e ->
                     when (e) {
                         is CancellationException -> throw e
 
                         else -> {
                             e.printStackTrace()
-                            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("Failed to create directory"))
+                            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ディレクトリの作成に失敗しました"))
                         }
                     }
                 }

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -52,7 +53,6 @@ internal fun FileBrowserScreenContent(
     val callbacks = uiState.callbacks
     val containerColor = MaterialTheme.colorScheme.background
     var fabExpanded by remember { mutableStateOf(false) }
-    var createDirectoryInput by remember { mutableStateOf("") }
     Scaffold(
         modifier = modifier,
         containerColor = containerColor,
@@ -149,29 +149,25 @@ internal fun FileBrowserScreenContent(
     }
 
     if (showCreateDirectoryDialog) {
+        var createDirectoryInput by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = {
                 onCreateDirectoryDialogDismiss()
-                createDirectoryInput = ""
             },
             title = { Text("ディレクトリを作成") },
             text = {
-                Column {
-                    Text("ディレクトリ名を入力してください")
-                    TextField(
-                        value = createDirectoryInput,
-                        onValueChange = { createDirectoryInput = it },
-                        label = { Text("ディレクトリ名") },
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
+                TextField(
+                    value = createDirectoryInput,
+                    onValueChange = { createDirectoryInput = it },
+                    label = { Text("ディレクトリ名") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
             },
             confirmButton = {
                 TextButton(
                     onClick = {
                         if (createDirectoryInput.isNotBlank()) {
                             onConfirmCreateDirectory(createDirectoryInput)
-                            createDirectoryInput = ""
                         }
                     },
                     enabled = createDirectoryInput.isNotBlank(),
@@ -183,7 +179,6 @@ internal fun FileBrowserScreenContent(
                 TextButton(
                     onClick = {
                         onCreateDirectoryDialogDismiss()
-                        createDirectoryInput = ""
                     },
                 ) {
                     Text("キャンセル")
