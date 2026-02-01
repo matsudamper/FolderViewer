@@ -4,37 +4,28 @@ import android.content.Context
 import android.os.Environment
 import androidx.datastore.core.DataStore
 import androidx.datastore.dataStore
-import java.util.UUID
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
+import java.util.UUID
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.common.StorageId
-import net.matsudamper.folderviewer.repository.proto.EncryptedCredentialsSerializer
 import net.matsudamper.folderviewer.repository.proto.FavoriteConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.LocalConfigurationProto
-import net.matsudamper.folderviewer.repository.proto.SecureCredentialsProto
 import net.matsudamper.folderviewer.repository.proto.SharePointConfigurationProto
-import net.matsudamper.folderviewer.repository.proto.SharePointCredentialProto
 import net.matsudamper.folderviewer.repository.proto.SmbConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.StorageConfigurationProto
 import net.matsudamper.folderviewer.repository.proto.StorageListProto
 import net.matsudamper.folderviewer.repository.proto.StorageListSerializer
 
 private const val DataStorageFileName = "storage_list.pb"
-private const val CredentialsDataStoreFileName = "secure_credentials.pb"
+
 private val Context.dataStore: DataStore<StorageListProto> by dataStore(
     fileName = DataStorageFileName,
     serializer = StorageListSerializer,
-)
-
-private val Context.credentialsDataStore: DataStore<SecureCredentialsProto> by dataStore(
-    fileName = CredentialsDataStoreFileName,
-    serializer = EncryptedCredentialsSerializer,
 )
 
 @Singleton
@@ -42,8 +33,8 @@ class StorageRepository @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) {
     val storageList: Flow<List<StorageConfiguration>> =
-        context.dataStore.data.combine(context.credentialsDataStore.data) { storageProto, credentialsProto ->
-            storageProto.listList.mapNotNull { it.toDomain(credentialsProto) }
+        context.dataStore.data.map { storageProto ->
+            storageProto.listList.mapNotNull { it.toDomain() }
         }
 
     val favorites: Flow<List<FavoriteConfiguration>> = context.dataStore.data
@@ -61,12 +52,6 @@ class StorageRepository @Inject constructor(
             password = config.password,
         )
 
-        context.credentialsDataStore.updateData { current ->
-            current.toBuilder()
-                .putSmbPasswords(id.id, config.password)
-                .build()
-        }
-
         context.dataStore.updateData { currentList ->
             currentList.toBuilder()
                 .addList(smbConfig.toProto())
@@ -83,12 +68,6 @@ class StorageRepository @Inject constructor(
             password = config.password,
         )
 
-        context.credentialsDataStore.updateData { current ->
-            current.toBuilder()
-                .putSmbPasswords(id.id, config.password)
-                .build()
-        }
-
         context.dataStore.updateData { currentList ->
             val index = currentList.listList.indexOfFirst { it.id == id.id }
             if (index >= 0) {
@@ -103,7 +82,7 @@ class StorageRepository @Inject constructor(
 
     suspend fun detectLocalStorages() {
         val existingStorages = context.dataStore.data.first().listList
-            .mapNotNull { it.toDomain(SecureCredentialsProto.getDefaultInstance()) as? StorageConfiguration.Local }
+            .mapNotNull { it.toDomain() as? StorageConfiguration.Local }
             .map { it.rootPath }
             .toSet()
 
@@ -152,19 +131,6 @@ class StorageRepository @Inject constructor(
             clientSecret = config.clientSecret,
         )
 
-        context.credentialsDataStore.updateData { current ->
-            current.toBuilder()
-                .putSharePointCredentials(
-                    id.id,
-                    SharePointCredentialProto.newBuilder()
-                        .setTenantId(config.tenantId)
-                        .setClientId(config.clientId)
-                        .setClientSecret(config.clientSecret)
-                        .build(),
-                )
-                .build()
-        }
-
         context.dataStore.updateData { currentList ->
             currentList.toBuilder()
                 .addList(sharePointConfig.toProto())
@@ -182,19 +148,6 @@ class StorageRepository @Inject constructor(
             clientSecret = config.clientSecret,
         )
 
-        context.credentialsDataStore.updateData { current ->
-            current.toBuilder()
-                .putSharePointCredentials(
-                    id.id,
-                    SharePointCredentialProto.newBuilder()
-                        .setTenantId(config.tenantId)
-                        .setClientId(config.clientId)
-                        .setClientSecret(config.clientSecret)
-                        .build(),
-                )
-                .build()
-        }
-
         context.dataStore.updateData { currentList ->
             val index = currentList.listList.indexOfFirst { it.id == id.id }
             if (index >= 0) {
@@ -208,13 +161,6 @@ class StorageRepository @Inject constructor(
     }
 
     suspend fun deleteStorage(id: StorageId) {
-        context.credentialsDataStore.updateData { current ->
-            current.toBuilder()
-                .removeSmbPasswords(id.id)
-                .removeSharePointCredentials(id.id)
-                .build()
-        }
-
         context.dataStore.updateData { currentList ->
             val index = currentList.listList.indexOfFirst { it.id == id.id }
             if (index >= 0) {
@@ -260,10 +206,9 @@ class StorageRepository @Inject constructor(
 
     suspend fun getFileRepository(id: StorageId): FileRepository? {
         val proto = context.dataStore.data.first()
-        val credentials = context.credentialsDataStore.data.first()
         val configProto = proto.listList.find { it.id == id.id } ?: return null
 
-        return when (val config = configProto.toDomain(credentials)) {
+        return when (val config = configProto.toDomain()) {
             is StorageConfiguration.Smb -> SmbFileRepository(config)
             is StorageConfiguration.Local -> LocalFileRepository(config)
             is StorageConfiguration.SharePoint -> SharePointFileRepository(config)
@@ -271,9 +216,7 @@ class StorageRepository @Inject constructor(
         }
     }
 
-    private fun StorageConfigurationProto.toDomain(
-        credentials: SecureCredentialsProto,
-    ): StorageConfiguration? {
+    private fun StorageConfigurationProto.toDomain(): StorageConfiguration? {
         return when (configCase) {
             StorageConfigurationProto.ConfigCase.SMB -> {
                 StorageConfiguration.Smb(
@@ -281,7 +224,7 @@ class StorageRepository @Inject constructor(
                     name = name,
                     ip = smb.ip,
                     username = smb.username,
-                    password = credentials.smbPasswordsMap[id].orEmpty(),
+                    password = smb.password,
                 )
             }
 
@@ -294,14 +237,13 @@ class StorageRepository @Inject constructor(
             }
 
             StorageConfigurationProto.ConfigCase.SHAREPOINT -> {
-                val credential = credentials.sharePointCredentialsMap[id]
                 StorageConfiguration.SharePoint(
                     id = StorageId(id),
                     name = name,
                     objectId = sharepoint.objectId,
-                    tenantId = credential?.tenantId.orEmpty(),
-                    clientId = credential?.clientId.orEmpty(),
-                    clientSecret = credential?.clientSecret.orEmpty(),
+                    tenantId = sharepoint.tenantId,
+                    clientId = sharepoint.clientId,
+                    clientSecret = sharepoint.clientSecret,
                 )
             }
 
@@ -317,6 +259,7 @@ class StorageRepository @Inject constructor(
                 SmbConfigurationProto.newBuilder()
                     .setIp(ip)
                     .setUsername(username)
+                    .setPassword(password)
                     .build(),
             )
             .build()
@@ -341,6 +284,9 @@ class StorageRepository @Inject constructor(
             .setSharepoint(
                 SharePointConfigurationProto.newBuilder()
                     .setObjectId(objectId)
+                    .setTenantId(tenantId)
+                    .setClientId(clientId)
+                    .setClientSecret(clientSecret)
                     .build(),
             )
             .build()

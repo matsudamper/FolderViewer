@@ -3,8 +3,8 @@ package net.matsudamper.folderviewer
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
-import javax.inject.Inject
 import dagger.hilt.android.HiltAndroidApp
+import jakarta.inject.Inject
 
 @HiltAndroidApp
 class FolderViewerApplication : Application(), Configuration.Provider {
