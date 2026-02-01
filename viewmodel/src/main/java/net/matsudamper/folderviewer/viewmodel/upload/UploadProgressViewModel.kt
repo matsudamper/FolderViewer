@@ -36,6 +36,8 @@ class UploadProgressViewModel @Inject constructor(
 
     private val viewModelStateFlow = MutableStateFlow(ViewModelState())
 
+    private val showClearConfirmDialog = MutableStateFlow(false)
+
     private val callbacks = object : UploadProgressUiState.Callbacks {
         override fun onBackClick() {
             viewModelScope.launch {
@@ -65,16 +67,37 @@ class UploadProgressViewModel @Inject constructor(
                 }
             }
         }
+
+        override fun onClearHistoryClick() {
+            showClearConfirmDialog.value = true
+        }
+
+        override fun onClearHistoryConfirm() {
+            showClearConfirmDialog.value = false
+            viewModelScope.launch {
+                uploadJobRepository.deleteAllJobs()
+            }
+        }
+
+        override fun onClearHistoryDismiss() {
+            showClearConfirmDialog.value = false
+        }
     }
 
     val uiState: StateFlow<UploadProgressUiState> = MutableStateFlow(
         UploadProgressUiState(
             uploadItems = emptyList(),
+            showClearConfirmDialog = false,
             callbacks = callbacks,
         ),
     ).also { mutableState ->
         viewModelScope.launch {
-            viewModelStateFlow.collectLatest { state ->
+            combine(
+                viewModelStateFlow,
+                showClearConfirmDialog,
+            ) { state, showDialog ->
+                state to showDialog
+            }.collectLatest { (state, showDialog) ->
                 mutableState.update {
                     UploadProgressUiState(
                         uploadItems = state.jobs.map { job ->
@@ -125,6 +148,7 @@ class UploadProgressViewModel @Inject constructor(
                                 )
                             }
                         },
+                        showClearConfirmDialog = showDialog,
                         callbacks = callbacks,
                     )
                 }

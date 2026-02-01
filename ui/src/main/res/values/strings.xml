@@ -52,4 +52,9 @@
     <string name="upload_error_detail_error_message">エラーメッセージ</string>
     <string name="upload_error_detail_error_cause">エラー原因</string>
     <string name="upload_error_detail_no_error_info">エラー情報はありません</string>
+    <string name="clear_upload_history">履歴をクリア</string>
+    <string name="clear_upload_history_confirm_title">アップロード履歴のクリア</string>
+    <string name="clear_upload_history_confirm_message">すべてのアップロード履歴を削除しますか？</string>
+    <string name="confirm">OK</string>
+    <string name="cancel">キャンセル</string>
 </resources>

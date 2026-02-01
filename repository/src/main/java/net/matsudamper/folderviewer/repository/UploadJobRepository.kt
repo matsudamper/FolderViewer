@@ -67,6 +67,10 @@ class UploadJobRepository @Inject internal constructor(
         uploadJobDao.delete(workerId)
     }
 
+    suspend fun deleteAllJobs() {
+        uploadJobDao.deleteAll()
+    }
+
     suspend fun updateError(workerId: String, errorMessage: String?, errorCause: String?) {
         val entity = uploadJobDao.getJob(workerId) ?: return
         uploadJobDao.insert(

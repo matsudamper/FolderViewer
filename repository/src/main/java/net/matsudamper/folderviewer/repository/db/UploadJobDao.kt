@@ -19,4 +19,7 @@ internal interface UploadJobDao {
 
     @Query("DELETE FROM upload_jobs WHERE workerId = :workerId")
     suspend fun delete(workerId: String)
+
+    @Query("DELETE FROM upload_jobs")
+    suspend fun deleteAll()
 }

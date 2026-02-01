@@ -4,12 +4,16 @@ import androidx.compose.runtime.Immutable
 
 data class UploadProgressUiState(
     val uploadItems: List<UploadItem>,
+    val showClearConfirmDialog: Boolean,
     val callbacks: Callbacks,
 ) {
     @Immutable
     interface Callbacks {
         fun onBackClick()
         fun onItemClick(item: UploadItem)
+        fun onClearHistoryClick()
+        fun onClearHistoryConfirm()
+        fun onClearHistoryDismiss()
     }
 
     sealed interface UploadItem {
