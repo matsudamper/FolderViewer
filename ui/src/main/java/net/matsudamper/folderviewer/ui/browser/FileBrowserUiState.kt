@@ -71,6 +71,8 @@ data class FileBrowserUiState(
         fun onFavoriteClick()
         fun onUploadFileClick()
         fun onUploadFolderClick()
+        fun onCreateDirectoryClick()
+        fun onConfirmCreateDirectory(directoryName: String)
         fun onCancelSelection()
     }
 }

@@ -26,6 +26,11 @@ interface FileRepository {
     )
 
     suspend fun getViewSourceUri(fileId: FileObjectId.Item): ViewSourceUri
+
+    suspend fun createDirectory(
+        id: FileObjectId,
+        directoryName: String,
+    )
 }
 
 interface RandomAccessFileRepository : FileRepository {

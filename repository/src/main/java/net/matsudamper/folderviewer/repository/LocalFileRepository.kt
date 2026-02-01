@@ -204,6 +204,27 @@ internal class LocalFileRepository(
         return ViewSourceUri.LocalFile(file.absolutePath)
     }
 
+    override suspend fun createDirectory(
+        id: FileObjectId,
+        directoryName: String,
+    ): Unit = withContext(Dispatchers.IO) {
+        val path = when (id) {
+            is FileObjectId.Root -> ""
+            is FileObjectId.Item -> id.id
+        }
+        val parentDir = buildAbsoluteFile(path)
+
+        require(parentDir.exists() && parentDir.isDirectory && parentDir.canWrite()) {
+            "Parent directory not found or cannot write: $path"
+        }
+
+        val newDir = File(parentDir, directoryName)
+        require(!newDir.exists()) { "Directory already exists: $directoryName" }
+
+        val created = newDir.mkdir()
+        require(created) { "Failed to create directory: $directoryName" }
+    }
+
     override suspend fun openRandomAccess(fileId: FileObjectId.Item): RandomAccessSource {
         return withContext(Dispatchers.IO) {
             val file = buildAbsoluteFile(fileId.id)
