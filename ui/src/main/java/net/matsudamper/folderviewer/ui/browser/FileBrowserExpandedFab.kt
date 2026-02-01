@@ -19,6 +19,7 @@ internal fun FileBrowserExpandedFab(
     onUploadFolderClick: () -> Unit,
     onUploadFileClick: () -> Unit,
     onFolderBrowserClick: () -> Unit,
+    onCreateDirectoryClick: () -> Unit,
     modifier: Modifier = Modifier,
     expandedChange: (Boolean) -> Unit,
 ) {
@@ -78,6 +79,23 @@ internal fun FileBrowserExpandedFab(
                 )
             }
         }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("ディレクトリを作成")
+            SmallFloatingActionButton(
+                onClick = {
+                    expandedChange(false)
+                    onCreateDirectoryClick()
+                },
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_folder_add),
+                    contentDescription = "ディレクトリを作成",
+                )
+            }
+        }
     }
 }
 
@@ -88,6 +106,7 @@ private fun PreviewFileBrowserExpandedFab() {
         onUploadFolderClick = {},
         onUploadFileClick = {},
         onFolderBrowserClick = {},
+        onCreateDirectoryClick = {},
         expandedChange = {},
     )
 }

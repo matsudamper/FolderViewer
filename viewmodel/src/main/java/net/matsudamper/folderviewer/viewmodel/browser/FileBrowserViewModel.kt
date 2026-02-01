@@ -157,6 +157,32 @@ class FileBrowserViewModel @AssistedInject constructor(
             }
         }
 
+        override fun onCreateDirectoryClick() {
+            viewModelScope.launch {
+                uiChannelEvent.send(FileBrowserUiEvent.ShowCreateDirectoryDialog)
+            }
+        }
+
+        override fun onConfirmCreateDirectory(directoryName: String) {
+            viewModelScope.launch {
+                runCatching {
+                    val repository = getRepository()
+                    repository.createDirectory(fileObjectId, directoryName)
+                    fetchFilesInternal()
+                    uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("Created directory: $directoryName"))
+                }.onFailure { e ->
+                    when (e) {
+                        is CancellationException -> throw e
+
+                        else -> {
+                            e.printStackTrace()
+                            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("Failed to create directory"))
+                        }
+                    }
+                }
+            }
+        }
+
         override fun onCancelSelection() {
             viewModelStateFlow.update { it.copy(selectedKeys = emptySet()) }
         }

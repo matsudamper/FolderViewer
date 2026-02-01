@@ -470,6 +470,39 @@ class SmbFileRepository(
         return ViewSourceUri.StreamProvider(fileId)
     }
 
+    override suspend fun createDirectory(
+        id: FileObjectId,
+        directoryName: String,
+    ) {
+        val path = when (id) {
+            is FileObjectId.Root -> return
+            is FileObjectId.Item -> id.id
+        }
+        withContext(Dispatchers.IO) {
+            client.connect(config.ip).use { connection ->
+                val session = connection.authenticate(
+                    AuthenticationContext(
+                        config.username,
+                        config.password.toCharArray(),
+                        null,
+                    ),
+                )
+
+                val parts = path.split("/", limit = PATH_SPLIT_LIMIT)
+                val shareName = parts[0]
+                val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+
+                val share = session.connectShare(shareName) as? DiskShare
+                    ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+
+                share.use { diskShare ->
+                    val fullPath = if (subPath.isEmpty()) directoryName else "$subPath\\$directoryName"
+                    diskShare.mkdir(fullPath)
+                }
+            }
+        }
+    }
+
     override suspend fun openRandomAccess(fileId: FileObjectId.Item): RandomAccessSource {
         return withContext(Dispatchers.IO) {
             val parts = fileId.id.split("/", limit = PATH_SPLIT_LIMIT)
