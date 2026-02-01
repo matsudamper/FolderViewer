@@ -7,11 +7,17 @@ data class UploadDetailUiState(
     val isFolder: Boolean,
     val displayPath: String,
     val storageName: String,
-    val hasError: Boolean,
+    val uploadStatus: UploadStatus,
     val errorMessage: String?,
     val errorCause: String?,
     val callbacks: Callbacks,
 ) {
+    enum class UploadStatus {
+        UPLOADING,
+        SUCCEEDED,
+        FAILED,
+    }
+
     @Immutable
     interface Callbacks {
         fun onBackClick()

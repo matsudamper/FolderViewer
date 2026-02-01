@@ -40,6 +40,7 @@
     <string name="upload_state_cancelled">キャンセル</string>
     <string name="no_uploads">アップロードはありません</string>
     <string name="upload_detail_title">アップロード詳細</string>
+    <string name="upload_detail_uploading">アップロード中</string>
     <string name="upload_detail_upload_succeeded">アップロードが完了しました</string>
     <string name="upload_detail_upload_failed">アップロードに失敗しました</string>
     <string name="upload_detail_file_info">ファイル情報</string>
