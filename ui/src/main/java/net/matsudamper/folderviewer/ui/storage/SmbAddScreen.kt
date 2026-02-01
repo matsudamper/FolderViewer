@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -55,6 +56,8 @@ internal fun PasswordTextField(
     onValueChange: (String) -> Unit,
     label: @Composable () -> Unit,
     modifier: Modifier = Modifier,
+    singleLine: Boolean = false,
+    imeAction: ImeAction = ImeAction.Default,
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
 
@@ -62,8 +65,9 @@ internal fun PasswordTextField(
         value = value,
         onValueChange = onValueChange,
         label = label,
+        singleLine = singleLine,
         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = imeAction),
         trailingIcon = {
             val image = if (passwordVisible) {
                 painterResource(id = R.drawable.ic_visibility)

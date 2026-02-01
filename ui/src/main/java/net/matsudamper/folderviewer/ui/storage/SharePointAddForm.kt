@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
@@ -17,6 +19,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -30,6 +35,11 @@ internal fun SharePointAddForm(
     var clientId by remember(uiState.clientId) { mutableStateOf(uiState.clientId) }
     var clientSecret by remember(uiState.clientSecret) { mutableStateOf(uiState.clientSecret) }
 
+    val objectIdFocusRequester = remember { FocusRequester() }
+    val tenantIdFocusRequester = remember { FocusRequester() }
+    val clientIdFocusRequester = remember { FocusRequester() }
+    val clientSecretFocusRequester = remember { FocusRequester() }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -40,6 +50,9 @@ internal fun SharePointAddForm(
             value = name,
             onValueChange = { name = it },
             label = { Text("Display Name") },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { objectIdFocusRequester.requestFocus() }),
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(modifier = Modifier.height(PaddingSmall))
@@ -47,28 +60,39 @@ internal fun SharePointAddForm(
             value = objectId,
             onValueChange = { objectId = it },
             label = { Text("User Object ID") },
-            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { tenantIdFocusRequester.requestFocus() }),
+            modifier = Modifier.fillMaxWidth().focusRequester(objectIdFocusRequester),
         )
         Spacer(modifier = Modifier.height(PaddingSmall))
         OutlinedTextField(
             value = tenantId,
             onValueChange = { tenantId = it },
             label = { Text("Tenant ID") },
-            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { clientIdFocusRequester.requestFocus() }),
+            modifier = Modifier.fillMaxWidth().focusRequester(tenantIdFocusRequester),
         )
         Spacer(modifier = Modifier.height(PaddingSmall))
         OutlinedTextField(
             value = clientId,
             onValueChange = { clientId = it },
             label = { Text("Client ID") },
-            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { clientSecretFocusRequester.requestFocus() }),
+            modifier = Modifier.fillMaxWidth().focusRequester(clientIdFocusRequester),
         )
         Spacer(modifier = Modifier.height(PaddingSmall))
         PasswordTextField(
             value = clientSecret,
             onValueChange = { clientSecret = it },
             label = { Text("Client Secret") },
-            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            imeAction = ImeAction.Done,
+            modifier = Modifier.fillMaxWidth().focusRequester(clientSecretFocusRequester),
         )
         Spacer(modifier = Modifier.height(SpacerLarge))
         Button(
