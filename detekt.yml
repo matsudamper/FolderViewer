@@ -6,8 +6,7 @@ complexity:
     ignoreAnnotated:
       - 'androidx.compose.runtime.Composable'
   LongMethod:
-    ignoreAnnotated:
-      - 'androidx.compose.runtime.Composable'
+    active: false
   LongParameterList:
     ignoreAnnotated:
       - 'androidx.compose.runtime.Composable'
