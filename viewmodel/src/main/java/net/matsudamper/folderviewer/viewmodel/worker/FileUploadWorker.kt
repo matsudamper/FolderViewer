@@ -43,15 +43,7 @@ internal class FileUploadWorker @AssistedInject constructor(
                 val uriString = inputData.getString(KEY_URI) ?: return@withContext Result.failure()
                 val fileName = inputData.getString(KEY_FILE_NAME) ?: return@withContext Result.failure()
 
-                setProgress(
-                    androidx.work.Data.Builder()
-                        .putString(KEY_STORAGE_ID, storageIdString)
-                        .putString(KEY_FILE_OBJECT_ID, fileObjectIdString)
-                        .putString(KEY_FILE_NAME, fileName)
-                        .build(),
-                )
-
-                setForeground(createForegroundInfo())
+                startProgress(storageIdString, fileObjectIdString, fileName)
 
                 val storageId = Json.decodeFromString<StorageId>(storageIdString)
                 val fileObjectId = Json.decodeFromString<FileObjectId>(fileObjectIdString)
@@ -64,15 +56,13 @@ internal class FileUploadWorker @AssistedInject constructor(
                 val progressFlow = MutableStateFlow(0L)
                 val progressJob = launch {
                     progressFlow.collectLatest { uploadedBytes ->
-                        val builder = androidx.work.Data.Builder()
-                            .putString(KEY_STORAGE_ID, storageIdString)
-                            .putString(KEY_FILE_OBJECT_ID, fileObjectIdString)
-                            .putString(KEY_FILE_NAME, fileName)
-                            .putLong("CurrentBytes", uploadedBytes)
-                        if (fileSize != null) {
-                            builder.putLong("TotalBytes", fileSize)
-                        }
-                        setProgress(builder.build())
+                        updateProgress(
+                            storageIdString = storageIdString,
+                            fileObjectIdString = fileObjectIdString,
+                            fileName = fileName,
+                            uploadedBytes = uploadedBytes,
+                            fileSize = fileSize,
+                        )
                     }
                 }
 
@@ -100,6 +90,40 @@ internal class FileUploadWorker @AssistedInject constructor(
                 Result.failure()
             }
         }
+    }
+
+    private suspend fun startProgress(
+        storageIdString: String,
+        fileObjectIdString: String,
+        fileName: String,
+    ) {
+        setProgress(
+            androidx.work.Data.Builder()
+                .putString(KEY_STORAGE_ID, storageIdString)
+                .putString(KEY_FILE_OBJECT_ID, fileObjectIdString)
+                .putString(KEY_FILE_NAME, fileName)
+                .build(),
+        )
+
+        setForeground(createForegroundInfo())
+    }
+
+    private suspend fun updateProgress(
+        storageIdString: String,
+        fileObjectIdString: String,
+        fileName: String,
+        uploadedBytes: Long,
+        fileSize: Long?,
+    ) {
+        val builder = androidx.work.Data.Builder()
+            .putString(KEY_STORAGE_ID, storageIdString)
+            .putString(KEY_FILE_OBJECT_ID, fileObjectIdString)
+            .putString(KEY_FILE_NAME, fileName)
+            .putLong("CurrentBytes", uploadedBytes)
+        if (fileSize != null) {
+            builder.putLong("TotalBytes", fileSize)
+        }
+        setProgress(builder.build())
     }
     override suspend fun getForegroundInfo(): ForegroundInfo {
         return createForegroundInfo()

@@ -174,9 +174,9 @@ class UploadProgressViewModel @Inject constructor(
         val gb = mb * 1024
 
         return when {
-            bytes >= gb -> String.format("%.1fGB", bytes / gb)
-            bytes >= mb -> String.format("%.1fMB", bytes / mb)
-            else -> String.format("%.1fKB", bytes / kb)
+            bytes >= gb -> String.format(java.util.Locale.US, "%.1fGB", bytes / gb)
+            bytes >= mb -> String.format(java.util.Locale.US, "%.1fMB", bytes / mb)
+            else -> String.format(java.util.Locale.US, "%.1fKB", bytes / kb)
         }
     }
 }
