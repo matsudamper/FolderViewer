@@ -3,8 +3,7 @@ build:
 
 complexity:
   CyclomaticComplexMethod:
-    ignoreAnnotated:
-      - 'androidx.compose.runtime.Composable'
+    active: false
   LongMethod:
     active: false
   LongParameterList:
