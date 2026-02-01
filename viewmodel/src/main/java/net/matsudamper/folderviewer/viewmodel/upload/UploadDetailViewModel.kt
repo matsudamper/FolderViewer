@@ -1,12 +1,17 @@
 package net.matsudamper.folderviewer.viewmodel.upload
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import javax.inject.Inject
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import java.util.UUID
 import dagger.hilt.android.lifecycle.HiltViewModel
+import jakarta.inject.Inject
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
@@ -18,9 +23,10 @@ import net.matsudamper.folderviewer.ui.upload.UploadDetailUiState
 
 @HiltViewModel
 class UploadDetailViewModel @Inject internal constructor(
+    application: Application,
     private val uploadJobRepository: UploadJobRepository,
     private val storageRepository: StorageRepository,
-) : ViewModel() {
+) : AndroidViewModel(application) {
     private var storageId: StorageId? = null
     private var fileObjectId: FileObjectId? = null
     private var displayPath: String? = null
@@ -64,18 +70,51 @@ class UploadDetailViewModel @Inject internal constructor(
 
             val storageName = storageRepository.storageList.first().find { it.id == job.storageId }?.name ?: ""
 
-            val hasError = job.errorMessage != null || job.errorCause != null
+            val workManager = WorkManager.getInstance(getApplication())
+            val uuid = runCatching { UUID.fromString(workerId) }.getOrNull()
 
-            _uiState.value = UploadDetailUiState(
-                name = job.name,
-                isFolder = job.isFolder,
-                displayPath = job.displayPath,
-                storageName = storageName,
-                hasError = hasError,
-                errorMessage = job.errorMessage,
-                errorCause = job.errorCause,
-                callbacks = callbacks,
-            )
+            if (uuid != null) {
+                workManager.getWorkInfoByIdFlow(uuid).collectLatest { workInfo ->
+                    val uploadStatus = when (workInfo?.state) {
+                        WorkInfo.State.ENQUEUED,
+                        WorkInfo.State.RUNNING,
+                        WorkInfo.State.BLOCKED,
+                        -> UploadDetailUiState.UploadStatus.UPLOADING
+                        WorkInfo.State.SUCCEEDED -> UploadDetailUiState.UploadStatus.SUCCEEDED
+                        WorkInfo.State.FAILED,
+                        WorkInfo.State.CANCELLED,
+                        -> UploadDetailUiState.UploadStatus.FAILED
+                        null -> UploadDetailUiState.UploadStatus.SUCCEEDED
+                    }
+
+                    _uiState.value = UploadDetailUiState(
+                        name = job.name,
+                        isFolder = job.isFolder,
+                        displayPath = job.displayPath,
+                        storageName = storageName,
+                        uploadStatus = uploadStatus,
+                        errorMessage = job.errorMessage,
+                        errorCause = job.errorCause,
+                        callbacks = callbacks,
+                    )
+                }
+            } else {
+                val hasError = job.errorMessage != null || job.errorCause != null
+                _uiState.value = UploadDetailUiState(
+                    name = job.name,
+                    isFolder = job.isFolder,
+                    displayPath = job.displayPath,
+                    storageName = storageName,
+                    uploadStatus = if (hasError) {
+                        UploadDetailUiState.UploadStatus.FAILED
+                    } else {
+                        UploadDetailUiState.UploadStatus.SUCCEEDED
+                    },
+                    errorMessage = job.errorMessage,
+                    errorCause = job.errorCause,
+                    callbacks = callbacks,
+                )
+            }
         }
     }
 

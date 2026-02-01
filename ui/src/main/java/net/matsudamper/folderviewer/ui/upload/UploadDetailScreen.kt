@@ -8,11 +8,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -21,6 +23,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -56,53 +59,84 @@ fun UploadDetailScreen(uiState: UploadDetailUiState) {
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            if (uiState.hasError) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                    ),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
+            when (uiState.uploadStatus) {
+                UploadDetailUiState.UploadStatus.UPLOADING -> {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        ),
                     ) {
-                        Row {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_close),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error,
-                            )
-                            Text(
-                                text = stringResource(R.string.upload_detail_upload_failed),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.padding(start = 8.dp),
-                            )
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    strokeWidth = 3.dp,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                )
+                                Text(
+                                    text = stringResource(R.string.upload_detail_uploading),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.padding(start = 8.dp),
+                                )
+                            }
                         }
                     }
                 }
-            } else {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    ),
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
+                UploadDetailUiState.UploadStatus.SUCCEEDED -> {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        ),
                     ) {
-                        Row {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_check),
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                            Text(
-                                text = stringResource(R.string.upload_detail_upload_succeeded),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.padding(start = 8.dp),
-                            )
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                        ) {
+                            Row {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_check),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                                Text(
+                                    text = stringResource(R.string.upload_detail_upload_succeeded),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.padding(start = 8.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+                UploadDetailUiState.UploadStatus.FAILED -> {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                        ),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                        ) {
+                            Row {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_close),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                )
+                                Text(
+                                    text = stringResource(R.string.upload_detail_upload_failed),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.padding(start = 8.dp),
+                                )
+                            }
                         }
                     }
                 }
@@ -133,7 +167,7 @@ fun UploadDetailScreen(uiState: UploadDetailUiState) {
                 )
             }
 
-            if (uiState.hasError) {
+            if (uiState.uploadStatus == UploadDetailUiState.UploadStatus.FAILED) {
                 InfoCard(
                     title = stringResource(R.string.upload_detail_error_info),
                 ) {
@@ -218,6 +252,23 @@ private val previewCallbacks = object : UploadDetailUiState.Callbacks {
 
 @Preview(showBackground = true)
 @Composable
+private fun UploadDetailScreenUploadingPreview() {
+    UploadDetailScreen(
+        uiState = UploadDetailUiState(
+            name = "test_file.txt",
+            isFolder = false,
+            displayPath = "/storage/smb/documents",
+            storageName = "NAS",
+            uploadStatus = UploadDetailUiState.UploadStatus.UPLOADING,
+            errorMessage = null,
+            errorCause = null,
+            callbacks = previewCallbacks,
+        ),
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
 private fun UploadDetailScreenErrorPreview() {
     UploadDetailScreen(
         uiState = UploadDetailUiState(
@@ -225,7 +276,7 @@ private fun UploadDetailScreenErrorPreview() {
             isFolder = false,
             displayPath = "/storage/smb/documents",
             storageName = "NAS",
-            hasError = true,
+            uploadStatus = UploadDetailUiState.UploadStatus.FAILED,
             errorMessage = "Connection timed out",
             errorCause = "java.net.SocketTimeoutException: connect timed out",
             callbacks = previewCallbacks,
@@ -242,7 +293,7 @@ private fun UploadDetailScreenSuccessPreview() {
             isFolder = true,
             displayPath = "/storage/smb/backup",
             storageName = "SharePoint",
-            hasError = false,
+            uploadStatus = UploadDetailUiState.UploadStatus.SUCCEEDED,
             errorMessage = null,
             errorCause = null,
             callbacks = previewCallbacks,
