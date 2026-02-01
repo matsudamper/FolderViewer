@@ -4,17 +4,11 @@ import android.content.Context
 import android.os.Environment
 import androidx.datastore.core.DataStore
 import androidx.datastore.dataStore
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
-import java.io.File
 import java.util.UUID
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
@@ -33,8 +27,6 @@ import net.matsudamper.folderviewer.repository.proto.StorageListSerializer
 
 private const val DataStorageFileName = "storage_list.pb"
 private const val CredentialsDataStoreFileName = "secure_credentials.pb"
-private const val SecurePrefFileName = "secure_storage_creds"
-
 private val Context.dataStore: DataStore<StorageListProto> by dataStore(
     fileName = DataStorageFileName,
     serializer = StorageListSerializer,
@@ -49,12 +41,6 @@ private val Context.credentialsDataStore: DataStore<SecureCredentialsProto> by d
 class StorageRepository @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) {
-    init {
-        CoroutineScope(Dispatchers.IO).launch {
-            migrateFromEncryptedSharedPreferences()
-        }
-    }
-
     val storageList: Flow<List<StorageConfiguration>> =
         context.dataStore.data.combine(context.credentialsDataStore.data) { storageProto, credentialsProto ->
             storageProto.listList.mapNotNull { it.toDomain(credentialsProto) }
@@ -283,63 +269,6 @@ class StorageRepository @Inject constructor(
             is StorageConfiguration.SharePoint -> SharePointFileRepository(config)
             null -> null
         }
-    }
-
-    private suspend fun migrateFromEncryptedSharedPreferences() {
-        val prefsFile = File(context.applicationInfo.dataDir, "shared_prefs/$SecurePrefFileName.xml")
-        if (!prefsFile.exists()) return
-
-        val masterKey = MasterKey.Builder(context)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
-
-        val sharedPreferences = EncryptedSharedPreferences.create(
-            context,
-            SecurePrefFileName,
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-        )
-
-        val storageConfigs = context.dataStore.data.first().listList
-
-        context.credentialsDataStore.updateData { current ->
-            val builder = current.toBuilder()
-            for (config in storageConfigs) {
-                when (config.configCase) {
-                    StorageConfigurationProto.ConfigCase.SMB -> {
-                        val password = sharedPreferences.getString(config.id, null).orEmpty()
-                        if (password.isNotEmpty()) {
-                            builder.putSmbPasswords(config.id, password)
-                        }
-                    }
-
-                    StorageConfigurationProto.ConfigCase.SHAREPOINT -> {
-                        val tenantId = sharedPreferences.getString("${config.id}_tenantId", null).orEmpty()
-                        val clientId = sharedPreferences.getString("${config.id}_clientId", null).orEmpty()
-                        val clientSecret = sharedPreferences.getString("${config.id}_clientSecret", null).orEmpty()
-                        if (tenantId.isNotEmpty() || clientId.isNotEmpty() || clientSecret.isNotEmpty()) {
-                            builder.putSharePointCredentials(
-                                config.id,
-                                SharePointCredentialProto.newBuilder()
-                                    .setTenantId(tenantId)
-                                    .setClientId(clientId)
-                                    .setClientSecret(clientSecret)
-                                    .build(),
-                            )
-                        }
-                    }
-
-                    StorageConfigurationProto.ConfigCase.LOCAL,
-                    StorageConfigurationProto.ConfigCase.CONFIG_NOT_SET,
-                    null,
-                    -> Unit
-                }
-            }
-            builder.build()
-        }
-
-        context.deleteSharedPreferences(SecurePrefFileName)
     }
 
     private fun StorageConfigurationProto.toDomain(
