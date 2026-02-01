@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import java.util.Locale
 import java.util.UUID
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
@@ -15,11 +16,13 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.common.StorageId
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.UploadJobRepository
 import net.matsudamper.folderviewer.ui.upload.UploadDetailUiState
+import net.matsudamper.folderviewer.viewmodel.worker.FolderUploadWorker
 
 @HiltViewModel
 class UploadDetailViewModel @Inject internal constructor(
@@ -87,6 +90,9 @@ class UploadDetailViewModel @Inject internal constructor(
                         null -> UploadDetailUiState.UploadStatus.SUCCEEDED
                     }
 
+                    val uploadFiles = extractUploadFiles(workInfo)
+                    val progressText = extractProgressText(workInfo, uploadStatus)
+
                     _uiState.value = UploadDetailUiState(
                         name = job.name,
                         isFolder = job.isFolder,
@@ -95,6 +101,8 @@ class UploadDetailViewModel @Inject internal constructor(
                         uploadStatus = uploadStatus,
                         errorMessage = job.errorMessage,
                         errorCause = job.errorCause,
+                        progressText = progressText,
+                        uploadFiles = uploadFiles,
                         callbacks = callbacks,
                     )
                 }
@@ -112,9 +120,55 @@ class UploadDetailViewModel @Inject internal constructor(
                     },
                     errorMessage = job.errorMessage,
                     errorCause = job.errorCause,
+                    progressText = null,
+                    uploadFiles = emptyList(),
                     callbacks = callbacks,
                 )
             }
+        }
+    }
+
+    private fun extractUploadFiles(workInfo: WorkInfo?): List<UploadDetailUiState.UploadFile> {
+        val fileNamesJson = workInfo?.progress?.getString(FolderUploadWorker.KEY_FILE_NAMES)
+            ?: return emptyList()
+        val fileSizesJson = workInfo.progress.getString(FolderUploadWorker.KEY_FILE_SIZES)
+            ?: return emptyList()
+
+        val fileNames = runCatching {
+            Json.decodeFromString<List<String>>(fileNamesJson)
+        }.getOrNull() ?: return emptyList()
+        val fileSizes = runCatching {
+            Json.decodeFromString<List<Long?>>(fileSizesJson)
+        }.getOrNull() ?: return emptyList()
+
+        return fileNames.zip(fileSizes) { name, size ->
+            UploadDetailUiState.UploadFile(
+                name = name,
+                formattedSize = size?.let { formatFileSize(it) },
+            )
+        }
+    }
+
+    private fun extractProgressText(
+        workInfo: WorkInfo?,
+        uploadStatus: UploadDetailUiState.UploadStatus,
+    ): String? {
+        if (uploadStatus != UploadDetailUiState.UploadStatus.UPLOADING) return null
+        val currentBytes = workInfo?.progress?.getLong("CurrentBytes", 0L) ?: return null
+        val totalBytes = workInfo.progress.getLong("TotalBytes", 0L)
+        if (totalBytes <= 0L) return null
+        return "${formatFileSize(currentBytes)}/${formatFileSize(totalBytes)}"
+    }
+
+    private fun formatFileSize(bytes: Long): String {
+        val kb = 1024.0
+        val mb = kb * 1024
+        val gb = mb * 1024
+
+        return when {
+            bytes >= gb -> String.format(Locale.ROOT, "%.1fGB", bytes / gb)
+            bytes >= mb -> String.format(Locale.ROOT, "%.1fMB", bytes / mb)
+            else -> String.format(Locale.ROOT, "%.1fKB", bytes / kb)
         }
     }
 

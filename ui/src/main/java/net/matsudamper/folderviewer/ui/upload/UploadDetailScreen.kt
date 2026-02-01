@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -69,6 +70,7 @@ fun UploadDetailScreen(uiState: UploadDetailUiState) {
                     ) {
                         Column(
                             modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -83,6 +85,13 @@ fun UploadDetailScreen(uiState: UploadDetailUiState) {
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                                     modifier = Modifier.padding(start = 8.dp),
+                                )
+                            }
+                            if (uiState.progressText != null) {
+                                Text(
+                                    text = "${stringResource(R.string.upload_detail_overall_progress)}: ${uiState.progressText}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
                                 )
                             }
                         }
@@ -165,6 +174,40 @@ fun UploadDetailScreen(uiState: UploadDetailUiState) {
                     label = stringResource(R.string.upload_detail_path),
                     value = uiState.displayPath,
                 )
+            }
+
+            if (uiState.uploadFiles.isNotEmpty()) {
+                InfoCard(
+                    title = stringResource(R.string.upload_detail_upload_files),
+                ) {
+                    uiState.uploadFiles.forEachIndexed { index, file ->
+                        if (index > 0) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(vertical = 4.dp),
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = file.name,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.weight(1f),
+                            )
+                            if (file.formattedSize != null) {
+                                Text(
+                                    text = file.formattedSize,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(start = 8.dp),
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             if (uiState.uploadStatus == UploadDetailUiState.UploadStatus.FAILED) {
@@ -262,6 +305,31 @@ private fun UploadDetailScreenUploadingPreview() {
             uploadStatus = UploadDetailUiState.UploadStatus.UPLOADING,
             errorMessage = null,
             errorCause = null,
+            progressText = null,
+            uploadFiles = emptyList(),
+            callbacks = previewCallbacks,
+        ),
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun UploadDetailScreenFolderUploadingPreview() {
+    UploadDetailScreen(
+        uiState = UploadDetailUiState(
+            name = "photos",
+            isFolder = true,
+            displayPath = "/storage/smb/backup",
+            storageName = "NAS",
+            uploadStatus = UploadDetailUiState.UploadStatus.UPLOADING,
+            errorMessage = null,
+            errorCause = null,
+            progressText = "50.0MB/200.0MB",
+            uploadFiles = listOf(
+                UploadDetailUiState.UploadFile(name = "photo1.jpg", formattedSize = "50.0MB"),
+                UploadDetailUiState.UploadFile(name = "photo2.jpg", formattedSize = "75.0MB"),
+                UploadDetailUiState.UploadFile(name = "photo3.jpg", formattedSize = "75.0MB"),
+            ),
             callbacks = previewCallbacks,
         ),
     )
@@ -279,6 +347,8 @@ private fun UploadDetailScreenErrorPreview() {
             uploadStatus = UploadDetailUiState.UploadStatus.FAILED,
             errorMessage = "Connection timed out",
             errorCause = "java.net.SocketTimeoutException: connect timed out",
+            progressText = null,
+            uploadFiles = emptyList(),
             callbacks = previewCallbacks,
         ),
     )
@@ -296,6 +366,8 @@ private fun UploadDetailScreenSuccessPreview() {
             uploadStatus = UploadDetailUiState.UploadStatus.SUCCEEDED,
             errorMessage = null,
             errorCause = null,
+            progressText = null,
+            uploadFiles = emptyList(),
             callbacks = previewCallbacks,
         ),
     )

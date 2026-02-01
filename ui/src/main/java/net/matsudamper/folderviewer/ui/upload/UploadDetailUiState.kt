@@ -10,6 +10,8 @@ data class UploadDetailUiState(
     val uploadStatus: UploadStatus,
     val errorMessage: String?,
     val errorCause: String?,
+    val progressText: String?,
+    val uploadFiles: List<UploadFile>,
     val callbacks: Callbacks,
 ) {
     enum class UploadStatus {
@@ -17,6 +19,12 @@ data class UploadDetailUiState(
         SUCCEEDED,
         FAILED,
     }
+
+    @Immutable
+    data class UploadFile(
+        val name: String,
+        val formattedSize: String?,
+    )
 
     @Immutable
     interface Callbacks {

@@ -64,6 +64,13 @@ internal class FolderUploadWorker @AssistedInject constructor(
                 if (acc != null && size != null) acc + size else null
             }
 
+            val fileNamesJson = Json.encodeToString(
+                uriDataList.map { it.relativePath },
+            )
+            val fileSizesJson = Json.encodeToString(
+                filesToUpload.map { it.size },
+            )
+
             val progressFlow = MutableStateFlow(0L)
             val progressJob = launch {
                 progressFlow.collectLatest { uploadedBytes ->
@@ -72,6 +79,8 @@ internal class FolderUploadWorker @AssistedInject constructor(
                         .putString(KEY_FILE_OBJECT_ID, fileObjectIdString)
                         .putString(KEY_FOLDER_NAME, folderName)
                         .putLong("CurrentBytes", uploadedBytes)
+                        .putString(KEY_FILE_NAMES, fileNamesJson)
+                        .putString(KEY_FILE_SIZES, fileSizesJson)
                     if (totalSize != null) {
                         builder.putLong("TotalBytes", totalSize)
                     }
@@ -188,5 +197,7 @@ internal class FolderUploadWorker @AssistedInject constructor(
         const val KEY_FILE_OBJECT_ID = "file_object_id"
         const val KEY_FOLDER_NAME = "folder_name"
         const val KEY_URI_DATA_LIST = "uri_data_list"
+        const val KEY_FILE_NAMES = "file_names"
+        const val KEY_FILE_SIZES = "file_sizes"
     }
 }
