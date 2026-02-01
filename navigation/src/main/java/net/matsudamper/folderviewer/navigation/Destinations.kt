@@ -36,4 +36,4 @@ data class ImageViewer(val storageId: StorageId, val fileId: FileObjectId.Item, 
 object UploadProgress : NavKey
 
 @Serializable
-data class UploadErrorDetail(val workerId: String) : NavKey
+data class UploadDetail(val workerId: String) : NavKey

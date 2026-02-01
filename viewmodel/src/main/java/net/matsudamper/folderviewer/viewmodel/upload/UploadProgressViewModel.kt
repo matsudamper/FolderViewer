@@ -19,8 +19,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
-import net.matsudamper.folderviewer.common.FileObjectId
-import net.matsudamper.folderviewer.common.StorageId
 import net.matsudamper.folderviewer.repository.UploadJobRepository
 import net.matsudamper.folderviewer.ui.upload.UploadProgressUiState
 import net.matsudamper.folderviewer.viewmodel.worker.FileUploadWorker
@@ -50,21 +48,11 @@ class UploadProgressViewModel @Inject constructor(
                 val uuid = runCatching { UUID.fromString(item.id) }.getOrNull() ?: return@launch
                 val job = uploadJobRepository.getJob(uuid.toString()) ?: return@launch
 
-                if (item.state == UploadProgressUiState.UploadState.FAILED) {
-                    viewModelEventChannel.send(
-                        ViewModelEvent.NavigateToUploadErrorDetail(
-                            workerId = job.workerId,
-                        ),
-                    )
-                } else {
-                    viewModelEventChannel.send(
-                        ViewModelEvent.NavigateToFileBrowser(
-                            storageId = job.storageId,
-                            fileObjectId = job.fileObjectId,
-                            displayPath = job.displayPath,
-                        ),
-                    )
-                }
+                viewModelEventChannel.send(
+                    ViewModelEvent.NavigateToUploadDetail(
+                        workerId = job.workerId,
+                    ),
+                )
             }
         }
 
@@ -187,12 +175,7 @@ class UploadProgressViewModel @Inject constructor(
 
     sealed interface ViewModelEvent {
         data object NavigateBack : ViewModelEvent
-        data class NavigateToFileBrowser(
-            val storageId: StorageId,
-            val fileObjectId: FileObjectId,
-            val displayPath: String,
-        ) : ViewModelEvent
-        data class NavigateToUploadErrorDetail(
+        data class NavigateToUploadDetail(
             val workerId: String,
         ) : ViewModelEvent
     }
