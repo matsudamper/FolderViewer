@@ -90,7 +90,7 @@ class UploadDetailViewModel @Inject internal constructor(
                         null -> UploadDetailUiState.UploadStatus.SUCCEEDED
                     }
 
-                    val uploadFiles = extractUploadFiles(workInfo)
+                    val currentUploadFile = extractCurrentUploadFile(workInfo, uploadStatus)
                     val progressText = extractProgressText(workInfo, uploadStatus)
 
                     _uiState.value = UploadDetailUiState(
@@ -102,7 +102,7 @@ class UploadDetailViewModel @Inject internal constructor(
                         errorMessage = job.errorMessage,
                         errorCause = job.errorCause,
                         progressText = progressText,
-                        uploadFiles = uploadFiles,
+                        currentUploadFile = currentUploadFile,
                         callbacks = callbacks,
                     )
                 }
@@ -121,32 +121,68 @@ class UploadDetailViewModel @Inject internal constructor(
                     errorMessage = job.errorMessage,
                     errorCause = job.errorCause,
                     progressText = null,
-                    uploadFiles = emptyList(),
+                    currentUploadFile = null,
                     callbacks = callbacks,
                 )
             }
         }
     }
 
-    private fun extractUploadFiles(workInfo: WorkInfo?): List<UploadDetailUiState.UploadFile> {
+    private fun extractCurrentUploadFile(
+        workInfo: WorkInfo?,
+        uploadStatus: UploadDetailUiState.UploadStatus,
+    ): UploadDetailUiState.CurrentUploadFile? {
+        if (uploadStatus != UploadDetailUiState.UploadStatus.UPLOADING) return null
+
         val fileNamesJson = workInfo?.progress?.getString(FolderUploadWorker.KEY_FILE_NAMES)
-            ?: return emptyList()
+            ?: return null
         val fileSizesJson = workInfo.progress.getString(FolderUploadWorker.KEY_FILE_SIZES)
-            ?: return emptyList()
+            ?: return null
 
         val fileNames = runCatching {
             Json.decodeFromString<List<String>>(fileNamesJson)
-        }.getOrNull() ?: return emptyList()
+        }.getOrNull() ?: return null
         val fileSizes = runCatching {
             Json.decodeFromString<List<Long?>>(fileSizesJson)
-        }.getOrNull() ?: return emptyList()
+        }.getOrNull() ?: return null
 
-        return fileNames.zip(fileSizes) { name, size ->
-            UploadDetailUiState.UploadFile(
-                name = name,
-                formattedSize = size?.let { formatFileSize(it) },
-            )
+        val currentBytes = workInfo.progress.getLong("CurrentBytes", 0L)
+
+        var cumulativeSize = 0L
+        var currentFileIndex = 0
+        for (i in fileSizes.indices) {
+            val size = fileSizes[i] ?: 0L
+            if (currentBytes < cumulativeSize + size) {
+                currentFileIndex = i
+                break
+            }
+            cumulativeSize += size
+            if (i == fileSizes.lastIndex) {
+                currentFileIndex = i
+            }
         }
+
+        val currentFileName = fileNames.getOrNull(currentFileIndex) ?: return null
+        val currentFileSize = fileSizes.getOrNull(currentFileIndex)
+        val currentFileUploadedBytes = currentBytes - cumulativeSize
+
+        val progress = if (currentFileSize != null && currentFileSize > 0L) {
+            (currentFileUploadedBytes.toFloat() / currentFileSize.toFloat()).coerceIn(0f, 1f)
+        } else {
+            null
+        }
+
+        val progressText = if (currentFileSize != null && currentFileSize > 0L) {
+            "${formatFileSize(currentFileUploadedBytes)}/${formatFileSize(currentFileSize)}"
+        } else {
+            null
+        }
+
+        return UploadDetailUiState.CurrentUploadFile(
+            name = currentFileName,
+            progressText = progressText,
+            progress = progress,
+        )
     }
 
     private fun extractProgressText(
