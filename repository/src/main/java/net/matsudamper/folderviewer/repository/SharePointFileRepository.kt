@@ -249,4 +249,20 @@ class SharePointFileRepository(
                 ?: throw IllegalStateException("Download URL not available")
             ViewSourceUri.RemoteUrl(downloadUrl)
         }
+
+    override suspend fun createDirectory(
+        id: FileObjectId,
+        directoryName: String,
+    ) {
+        withContext(Dispatchers.IO) {
+            val driveId = getDriveId()
+
+            val parentId = when (id) {
+                is FileObjectId.Root -> return@withContext
+                is FileObjectId.Item -> id.id
+            }
+
+            createOrGetFolder(driveId, parentId, directoryName)
+        }
+    }
 }
