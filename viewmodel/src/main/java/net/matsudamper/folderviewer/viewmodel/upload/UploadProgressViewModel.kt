@@ -75,7 +75,16 @@ class UploadProgressViewModel @Inject constructor(
         override fun onClearHistoryConfirm() {
             showClearConfirmDialog.value = false
             viewModelScope.launch {
-                uploadJobRepository.deleteAllJobs()
+                val state = viewModelStateFlow.value
+                state.jobs.forEach { job ->
+                    val workInfo = state.workInfoMap[job.workerId]
+                    val isActive = workInfo?.state == WorkInfo.State.RUNNING ||
+                        workInfo?.state == WorkInfo.State.ENQUEUED ||
+                        workInfo?.state == WorkInfo.State.BLOCKED
+                    if (!isActive) {
+                        uploadJobRepository.deleteJob(job.workerId)
+                    }
+                }
             }
         }
 
