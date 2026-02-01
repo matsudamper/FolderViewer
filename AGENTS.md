@@ -39,6 +39,10 @@ private/internalをできる限り使用し、最小限のアクセスに絞る�
 
 ユーザーからの質問に対して、コードの実行や変更を行わずに回答のみを行うように振る舞うこと。
 
+## Claude Code Web
+Claude Code WebではGradleの依存がダウンロードでエラーになります。
+https://github.com/anthropics/claude-code/issues/13372
+
 ## Gemini
 以下のエラーが最初に発生するので、回避して。
 ```
