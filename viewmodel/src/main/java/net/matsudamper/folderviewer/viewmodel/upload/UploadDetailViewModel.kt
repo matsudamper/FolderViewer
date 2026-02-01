@@ -82,11 +82,13 @@ class UploadDetailViewModel @Inject internal constructor(
                         WorkInfo.State.ENQUEUED,
                         WorkInfo.State.RUNNING,
                         WorkInfo.State.BLOCKED,
-                        -> UploadDetailUiState.UploadStatus.UPLOADING
+                            -> UploadDetailUiState.UploadStatus.UPLOADING
+
                         WorkInfo.State.SUCCEEDED -> UploadDetailUiState.UploadStatus.SUCCEEDED
                         WorkInfo.State.FAILED,
                         WorkInfo.State.CANCELLED,
-                        -> UploadDetailUiState.UploadStatus.FAILED
+                            -> UploadDetailUiState.UploadStatus.FAILED
+
                         null -> UploadDetailUiState.UploadStatus.SUCCEEDED
                     }
 
@@ -183,7 +185,7 @@ class UploadDetailViewModel @Inject internal constructor(
             progressText = progressText,
             progress = progress,
         )
-        }
+    }
 
     private fun extractProgressText(
         workInfo: WorkInfo?,
