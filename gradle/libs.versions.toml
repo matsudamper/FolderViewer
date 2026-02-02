@@ -10,7 +10,9 @@ junitVersion = "1.3.0"
 espressoCore = "3.7.0"
 lifecycleRuntimeKtx = "2.10.0"
 activityCompose = "1.12.3"
-composeBom = "2026.01.01"
+composeUi = "1.10.2"
+composeMaterial3 = "1.4.0"
+composeFoundation = "1.10.2"
 navigation3 = "1.0.0"
 kotlinxSerialization = "1.10.0"
 ktor = "3.4.0"
@@ -42,15 +44,14 @@ androidxLifecycleViewmodelCompose = { group = "androidx.lifecycle", name = "life
 androidxLifecycleViewmodelKtx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycleRuntimeKtx" }
 androidxLifecycleViewmodelNavigation3 = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-navigation3", version.ref = "lifecycleRuntimeKtx" }
 androidxActivityCompose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
-androidxComposeBom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
-androidxComposeUi = { group = "androidx.compose.ui", name = "ui" }
-androidxComposeUiGraphics = { group = "androidx.compose.ui", name = "ui-graphics" }
-androidxComposeUiTooling = { group = "androidx.compose.ui", name = "ui-tooling" }
-androidxComposeUiToolingPreview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
-androidxComposeUiTestManifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
-androidxComposeUiTestJunit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
-androidxComposeMaterial3 = { group = "androidx.compose.material3", name = "material3" }
-androidxComposeFoundation = { group = "androidx.compose.foundation", name = "foundation" }
+androidxComposeUi = { group = "androidx.compose.ui", name = "ui", version.ref = "composeUi" }
+androidxComposeUiGraphics = { group = "androidx.compose.ui", name = "ui-graphics", version.ref = "composeUi" }
+androidxComposeUiTooling = { group = "androidx.compose.ui", name = "ui-tooling", version.ref = "composeUi" }
+androidxComposeUiToolingPreview = { group = "androidx.compose.ui", name = "ui-tooling-preview", version.ref = "composeUi" }
+androidxComposeUiTestManifest = { group = "androidx.compose.ui", name = "ui-test-manifest", version.ref = "composeUi" }
+androidxComposeUiTestJunit4 = { group = "androidx.compose.ui", name = "ui-test-junit4", version.ref = "composeUi" }
+androidxComposeMaterial3 = { group = "androidx.compose.material3", name = "material3", version.ref = "composeMaterial3" }
+androidxComposeFoundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "composeFoundation" }
 androidxNavigation3Runtime = { group = "androidx.navigation3", name = "navigation3-runtime", version.ref = "navigation3" }
 androidxNavigation3Ui = { group = "androidx.navigation3", name = "navigation3-ui", version.ref = "navigation3" }
 hiltAndroid = { group = "com.google.dagger", name = "hilt-android", version.ref = "daggerHilt" }
