@@ -163,6 +163,7 @@ fun UploadDetailScreen(uiState: UploadDetailUiState) {
             }
 
             InfoCard(
+                modifier  = Modifier.fillMaxWidth(),
                 title = stringResource(R.string.upload_detail_file_info),
             ) {
                 InfoRow(
@@ -189,9 +190,11 @@ fun UploadDetailScreen(uiState: UploadDetailUiState) {
 
             if (uiState.currentUploadFile != null) {
                 InfoCard(
+                    modifier  = Modifier.fillMaxWidth(),
                     title = stringResource(R.string.upload_detail_current_file),
                 ) {
                     Text(
+                        modifier  = Modifier.fillMaxWidth(),
                         text = uiState.currentUploadFile.name,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -204,6 +207,7 @@ fun UploadDetailScreen(uiState: UploadDetailUiState) {
                     }
                     if (uiState.currentUploadFile.progressText != null) {
                         Text(
+                            modifier  = Modifier.fillMaxWidth(),
                             text = uiState.currentUploadFile.progressText,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -230,6 +234,7 @@ fun UploadDetailScreen(uiState: UploadDetailUiState) {
                     }
                     if (uiState.errorMessage == null && uiState.errorCause == null) {
                         Text(
+                            modifier  = Modifier.fillMaxWidth(),
                             text = stringResource(R.string.upload_detail_no_error_info),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -251,10 +256,11 @@ fun UploadDetailScreen(uiState: UploadDetailUiState) {
 @Composable
 private fun InfoCard(
     title: String,
+    modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -262,6 +268,7 @@ private fun InfoCard(
         ) {
             Text(
                 text = title,
+                modifier  = Modifier.fillMaxWidth(),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -274,15 +281,20 @@ private fun InfoCard(
 private fun InfoRow(
     label: String,
     value: String,
+    modifier: Modifier = Modifier,
 ) {
-    Column {
+    Column(
+        modifier = modifier,
+    ) {
         Text(
+            modifier  = Modifier.fillMaxWidth(),
             text = label,
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
+            modifier  = Modifier.fillMaxWidth(),
             text = value,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
