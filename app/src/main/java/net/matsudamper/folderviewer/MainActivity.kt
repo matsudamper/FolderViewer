@@ -8,7 +8,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -30,9 +34,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,6 +55,8 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import java.io.File
+import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import coil.Coil
 import coil.ImageLoader
@@ -144,15 +152,27 @@ private fun AppContent(
             }
         }
 
-        Row(
-            modifier = Modifier
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
-                .padding(bottom = 8.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.background.copy(0.4f)),
+        var visible by remember { mutableStateOf(false) }
+        LaunchedEffect(pagerState.currentPage, pagerState.isScrollInProgress) {
+            visible = true
+            delay(1.seconds)
+            visible = false
+        }
+        AnimatedVisibility(
+            visible = visible,
+            enter = EnterTransition.None,
+            exit = fadeOut(tween(durationMillis = 500)),
         ) {
-            IndicatorItem(isActive = pagerState.currentPage == 0)
-            IndicatorItem(isActive = pagerState.currentPage == 1)
+            Row(
+                modifier = Modifier
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
+                    .padding(bottom = 8.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.background.copy(0.4f)),
+            ) {
+                IndicatorItem(isActive = pagerState.currentPage == 0)
+                IndicatorItem(isActive = pagerState.currentPage == 1)
+            }
         }
     }
 }
