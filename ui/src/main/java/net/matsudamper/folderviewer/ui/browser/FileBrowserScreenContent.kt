@@ -96,7 +96,7 @@ internal fun FileBrowserScreenContent(
                     }
                     IconButton(onClick = { callbacks.onUploadFolderClick() }) {
                         Icon(
-                            painter = painterResource(R.drawable.ic_upload_file),
+                            painter = painterResource(R.drawable.ic_drive_folder_upload),
                             contentDescription = "フォルダをアップロード",
                         )
                     }
