@@ -43,10 +43,10 @@ import net.matsudamper.folderviewer.ui.R
 internal fun FileBrowserScreenContent(
     uiState: FileBrowserUiState,
     snackbarHostState: SnackbarHostState,
+    modifier: Modifier = Modifier,
     showCreateDirectoryDialog: Boolean = false,
     onCreateDirectoryDialogDismiss: () -> Unit = {},
     onConfirmCreateDirectory: (String) -> Unit = {},
-    modifier: Modifier = Modifier,
 ) {
     BackHandler(enabled = uiState.isSelectionMode) {
         uiState.callbacks.onCancelSelection()
