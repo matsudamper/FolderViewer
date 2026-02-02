@@ -133,8 +133,8 @@ private fun AppContent(
                     startRoute = Home,
                     topLevelRoutes = setOf(Home),
                 )
-                val navigator = remember { Navigator(navigationState) }
-                val entryProvider = entryProvider(navigator)
+                val navigator = remember(navigationState) { Navigator(navigationState) }
+                val entryProvider = remember(navigator) { entryProvider(navigator) }
 
                 NavDisplay(
                     modifier = Modifier.fillMaxSize(),
