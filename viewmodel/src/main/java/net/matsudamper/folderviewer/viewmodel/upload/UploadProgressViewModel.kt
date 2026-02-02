@@ -22,6 +22,7 @@ import jakarta.inject.Inject
 import net.matsudamper.folderviewer.repository.UploadJobRepository
 import net.matsudamper.folderviewer.ui.upload.UploadProgressUiState
 import net.matsudamper.folderviewer.viewmodel.worker.FileUploadWorker
+import net.matsudamper.folderviewer.viewmodel.worker.FolderUploadWorker
 
 @HiltViewModel
 class UploadProgressViewModel @Inject constructor(
@@ -110,7 +111,7 @@ class UploadProgressViewModel @Inject constructor(
                                 null -> UploadProgressUiState.UploadState.SUCCEEDED
                             }
 
-                            val currentBytes = workInfo?.progress?.getLong("CurrentBytes", 0L) ?: 0L
+                            val currentBytes = workInfo?.progress?.getLong(FolderUploadWorker.KEY_CURRENT_BYTES, 0L) ?: 0L
                             val totalBytes = workInfo?.progress?.getLong("TotalBytes", 0L) ?: 0L
                             val progress = if (totalBytes > 0) {
                                 currentBytes.toFloat() / totalBytes.toFloat()
