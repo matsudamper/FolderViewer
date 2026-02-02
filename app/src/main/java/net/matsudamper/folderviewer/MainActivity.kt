@@ -210,7 +210,7 @@ private fun EntryProviderScope<NavKey>.homeEntry(navigator: Navigator) {
                     }
 
                     is HomeViewModel.ViewModelEvent.NavigateToFileBrowser -> {
-                        navigator.navigate(FileBrowser(storageId = event.storageId, displayPath = null, fileId = FileObjectId.Root))
+                        navigator.navigate(FileBrowser(displayPath = null, fileId = FileObjectId.Root(storageId = event.storageId)))
                     }
 
                     is HomeViewModel.ViewModelEvent.NavigateToSmbAdd -> {
@@ -411,17 +411,16 @@ private fun FileBrowserEventHandler(
                 is FileBrowserViewModel.ViewModelEvent.PopBackStack -> navigator.goBack()
 
                 is FileBrowserViewModel.ViewModelEvent.NavigateToFileBrowser -> {
-                    navigator.navigate(FileBrowser(storageId = event.storageId, displayPath = event.displayPath, fileId = event.id))
+                    navigator.navigate(FileBrowser(displayPath = event.displayPath, fileId = event.id))
                 }
 
                 is FileBrowserViewModel.ViewModelEvent.NavigateToImageViewer -> {
-                    navigator.navigate(ImageViewer(storageId = event.storageId, fileId = event.id, allPaths = event.allPaths))
+                    navigator.navigate(ImageViewer(fileId = event.id, allPaths = event.allPaths))
                 }
 
                 is FileBrowserViewModel.ViewModelEvent.NavigateToFolderBrowser -> {
                     navigator.navigate(
                         FolderBrowser(
-                            storageId = event.storageId,
                             displayPath = event.displayPath,
                             fileId = event.id,
                         ),
@@ -448,7 +447,6 @@ private fun FileBrowserEventHandler(
 
                         is ViewSourceUri.StreamProvider -> {
                             StreamingContentProvider.buildUri(
-                                storageId = event.storageId,
                                 fileId = externalUri.fileId,
                                 fileName = event.fileName,
                             )
@@ -555,9 +553,8 @@ private fun EntryProviderScope<NavKey>.folderBrowserEntry(navigator: Navigator) 
                     is FolderBrowserViewModel.ViewModelEvent.NavigateToFileBrowser -> {
                         navigator.navigate(
                             FileBrowser(
-                                storageId = event.storageId,
                                 displayPath = event.path,
-                                fileId = FileObjectId.Item(event.path),
+                                fileId = event.fileId,
                             ),
                         )
                     }
@@ -565,7 +562,6 @@ private fun EntryProviderScope<NavKey>.folderBrowserEntry(navigator: Navigator) 
                     is FolderBrowserViewModel.ViewModelEvent.NavigateToImageViewer -> {
                         navigator.navigate(
                             ImageViewer(
-                                storageId = event.storageId,
                                 fileId = event.fileId,
                                 allPaths = event.allPaths,
                             ),
@@ -575,7 +571,6 @@ private fun EntryProviderScope<NavKey>.folderBrowserEntry(navigator: Navigator) 
                     is FolderBrowserViewModel.ViewModelEvent.NavigateToFolderBrowser -> {
                         navigator.navigate(
                             FolderBrowser(
-                                storageId = event.storageId,
                                 fileId = event.fileId,
                                 displayPath = event.displayPath,
                             ),
@@ -667,7 +662,6 @@ private fun EntryProviderScope<NavKey>.uploadDetailEntry(
                     is UploadDetailViewModel.ViewModelEvent.NavigateToDirectory -> {
                         navigator.navigate(
                             FileBrowser(
-                                storageId = event.storageId,
                                 displayPath = event.displayPath.ifEmpty { null },
                                 fileId = event.fileObjectId,
                             ),

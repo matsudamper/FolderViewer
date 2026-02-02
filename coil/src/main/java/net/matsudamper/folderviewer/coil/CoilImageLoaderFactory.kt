@@ -37,7 +37,7 @@ object CoilImageLoaderFactory {
 private class FileImageSourceKeyer : Keyer<FileImageSource> {
     override fun key(data: FileImageSource, options: Options): String? {
         return when (data) {
-            is FileImageSource.Thumbnail -> "thumbnail:${data.storageId.id}:${data.fileId.id}"
+            is FileImageSource.Thumbnail -> "thumbnail:${data.fileId.storageId.id}:${data.fileId.id}"
             is FileImageSource.Original -> null
         }
     }
@@ -61,10 +61,8 @@ private class FileRepositoryImageFetcher(
     private val storageRepository: StorageRepository,
 ) : Fetcher {
     override suspend fun fetch(): FetchResult {
-        val storageId = fileImageSource.storageId
-
-        val fileRepository = storageRepository.getFileRepository(storageId)
-            ?: throw IllegalStateException("Storage not found: $storageId")
+        val fileRepository = storageRepository.getFileRepository(fileImageSource.fileId.storageId)
+            ?: throw IllegalStateException("Storage not found: ${fileImageSource.fileId.storageId}")
 
         val inputStream = when (fileImageSource) {
             is FileImageSource.Thumbnail -> {

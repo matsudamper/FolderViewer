@@ -283,7 +283,7 @@ class SmbFileRepository(
                 .map {
                     FileItem(
                         displayPath = it.netName,
-                        id = FileObjectId.Item(it.netName),
+                        id = FileObjectId.Item(storageId = config.id, id = it.netName),
                         isDirectory = true,
                         size = 0,
                         lastModified = 0,
@@ -317,7 +317,7 @@ class SmbFileRepository(
                 val displaySubPath = if (subPath.isEmpty()) "" else "${subPath.replace("\\", "/")}/"
                 FileItem(
                     displayPath = info.fileName,
-                    id = FileObjectId.Item("$shareName/$displaySubPath${info.fileName}"),
+                    id = FileObjectId.Item(storageId = config.id, id = "$shareName/$displaySubPath${info.fileName}"),
                     isDirectory = isDirectory,
                     size = info.endOfFile,
                     lastModified = info.changeTime.toEpochMillis(),

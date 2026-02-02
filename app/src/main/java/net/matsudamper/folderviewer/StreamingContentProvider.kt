@@ -61,7 +61,7 @@ class StreamingContentProvider : ContentProvider() {
         val fileName = pathSegments[2]
         val storageId = StorageId(pathSegments[0])
         val encodedFileId = pathSegments[1]
-        val fileId = FileObjectId.Item(URLDecoder.decode(encodedFileId, "UTF-8"))
+        val fileId = FileObjectId.Item(storageId = storageId, id = URLDecoder.decode(encodedFileId, "UTF-8"))
 
         val cols = projection ?: arrayOf(
             OpenableColumns.DISPLAY_NAME,
@@ -142,7 +142,7 @@ class StreamingContentProvider : ContentProvider() {
 
         val storageId = StorageId(pathSegments[0])
         val encodedFileId = pathSegments[1]
-        val fileId = FileObjectId.Item(URLDecoder.decode(encodedFileId, "UTF-8"))
+        val fileId = FileObjectId.Item(storageId = storageId, id = URLDecoder.decode(encodedFileId, "UTF-8"))
 
         val source = runBlocking {
             val repository = storageRepository.getFileRepository(storageId)
@@ -206,12 +206,12 @@ class StreamingContentProvider : ContentProvider() {
     companion object {
         private const val AUTHORITY = "net.matsudamper.folderviewer.streaming"
 
-        fun buildUri(storageId: StorageId, fileId: FileObjectId.Item, fileName: String): Uri {
+        fun buildUri(fileId: FileObjectId.Item, fileName: String): Uri {
             val encodedFileId = URLEncoder.encode(fileId.id, "UTF-8")
             val uri = Uri.Builder()
                 .scheme("content")
                 .authority(AUTHORITY)
-                .appendPath(storageId.id)
+                .appendPath(fileId.storageId.id)
                 .appendPath(encodedFileId)
                 .appendPath(fileName)
                 .build()

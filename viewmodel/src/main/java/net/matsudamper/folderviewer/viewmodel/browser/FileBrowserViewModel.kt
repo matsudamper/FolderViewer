@@ -24,7 +24,6 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.common.FileObjectId
-import net.matsudamper.folderviewer.common.StorageId
 import net.matsudamper.folderviewer.navigation.FileBrowser
 import net.matsudamper.folderviewer.repository.FavoriteConfiguration
 import net.matsudamper.folderviewer.repository.FileItem
@@ -106,7 +105,6 @@ class FileBrowserViewModel @AssistedInject constructor(
                 viewModelEventChannel.send(
                     ViewModelEvent.NavigateToFolderBrowser(
                         id = fileObjectId,
-                        storageId = arg.storageId,
                         displayPath = arg.displayPath,
                     ),
                 )
@@ -114,9 +112,9 @@ class FileBrowserViewModel @AssistedInject constructor(
         }
 
         override fun onFavoriteClick() {
-            val fileId = when (fileObjectId) {
-                is FileObjectId.Root -> ""
-                is FileObjectId.Item -> fileObjectId.id
+            val itemId = when (fileObjectId) {
+                is FileObjectId.Root -> return
+                is FileObjectId.Item -> fileObjectId
             }
             viewModelScope.launch {
                 val state = viewModelStateFlow.value
@@ -135,8 +133,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                     }
 
                     storageRepository.addFavorite(
-                        storageId = arg.storageId,
-                        fileId = fileId,
+                        fileId = itemId,
                         displayPath = displayPath,
                         name = name,
                     )
@@ -202,7 +199,6 @@ class FileBrowserViewModel @AssistedInject constructor(
                     lastModified = fileItem.lastModified,
                     thumbnail = if (isImage) {
                         FileImageSource.Thumbnail(
-                            storageId = arg.storageId,
                             fileId = fileItem.id,
                         )
                     } else {
@@ -222,7 +218,6 @@ class FileBrowserViewModel @AssistedInject constructor(
                     lastModified = 0,
                     thumbnail = if (FileUtil.isImage(favorite.displayPath)) {
                         FileImageSource.Thumbnail(
-                            storageId = arg.storageId,
                             fileId = favorite.fileId,
                         )
                     } else {
@@ -282,18 +277,17 @@ class FileBrowserViewModel @AssistedInject constructor(
             }
             storageRepository.favorites
                 .map { favorites ->
-                    favorites.find { it.storageId == arg.storageId && it.fileId.id == fileId }?.id
+                    favorites.find { it.fileId.storageId == fileObjectId.storageId && it.fileId.id == fileId }?.id
                 }
                 .collectLatest { favoriteId ->
                     viewModelStateFlow.update { it.copy(favoriteId = favoriteId) }
                 }
         }
-        // Rootの時だけお気に入りを表示する
         if (arg.displayPath == null) {
             viewModelScope.launch {
                 storageRepository.favorites
                     .map { favorites ->
-                        favorites.filter { it.storageId == arg.storageId }
+                        favorites.filter { it.fileId.storageId == fileObjectId.storageId }
                     }
                     .collectLatest { favorites ->
                         viewModelStateFlow.update { it.copy(favorites = favorites) }
@@ -337,7 +331,7 @@ class FileBrowserViewModel @AssistedInject constructor(
 
     private fun loadStorageName() {
         viewModelScope.launch {
-            val storage = storageRepository.storageList.first().find { it.id == arg.storageId }
+            val storage = storageRepository.storageList.first().find { it.id == fileObjectId.storageId }
             if (storage != null) {
                 viewModelStateFlow.update { it.copy(storageName = storage.name) }
             }
@@ -360,7 +354,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         val current = fileRepository
         if (current != null) return current
 
-        val newRepo = storageRepository.getFileRepository(arg.storageId)
+        val newRepo = storageRepository.getFileRepository(fileObjectId.storageId)
             ?: throw IllegalStateException("Storage not found")
         fileRepository = newRepo
         return newRepo
@@ -408,20 +402,17 @@ class FileBrowserViewModel @AssistedInject constructor(
         data object PopBackStack : ViewModelEvent
         data class NavigateToFileBrowser(
             val displayPath: String,
-            val storageId: StorageId,
             val id: FileObjectId.Item,
         ) : ViewModelEvent
 
         data class NavigateToImageViewer(
             val id: FileObjectId.Item,
-            val storageId: StorageId,
             val allPaths: List<FileObjectId.Item>,
         ) : ViewModelEvent
 
         data class NavigateToFolderBrowser(
             val id: FileObjectId,
             val displayPath: String?,
-            val storageId: StorageId,
         ) : ViewModelEvent
 
         data object LaunchFilePicker : ViewModelEvent
@@ -429,7 +420,6 @@ class FileBrowserViewModel @AssistedInject constructor(
 
         data class OpenWithExternalPlayer(
             val viewSourceUri: ViewSourceUri,
-            val storageId: StorageId,
             val fileId: FileObjectId.Item,
             val fileName: String,
             val mimeType: String?,
@@ -438,7 +428,6 @@ class FileBrowserViewModel @AssistedInject constructor(
 
     suspend fun handleFileUpload(uri: android.net.Uri, fileName: String) {
         val inputData = Data.Builder()
-            .putString(FileUploadWorker.KEY_STORAGE_ID, Json.encodeToString(arg.storageId))
             .putString(FileUploadWorker.KEY_FILE_OBJECT_ID, Json.encodeToString(fileObjectId))
             .putString(FileUploadWorker.KEY_URI, uri.toString())
             .putString(FileUploadWorker.KEY_FILE_NAME, fileName)
@@ -454,7 +443,6 @@ class FileBrowserViewModel @AssistedInject constructor(
                 workerId = workRequest.id.toString(),
                 name = fileName,
                 isFolder = false,
-                storageId = arg.storageId,
                 fileObjectId = fileObjectId,
                 displayPath = arg.displayPath.orEmpty(),
             ),
@@ -515,7 +503,6 @@ class FileBrowserViewModel @AssistedInject constructor(
         }
 
         val inputData = Data.Builder()
-            .putString(FolderUploadWorker.KEY_STORAGE_ID, Json.encodeToString(arg.storageId))
             .putString(FolderUploadWorker.KEY_FILE_OBJECT_ID, Json.encodeToString(fileObjectId))
             .putString(FolderUploadWorker.KEY_FOLDER_NAME, folderName)
             .putString(FolderUploadWorker.KEY_URI_DATA_LIST, Json.encodeToString(uriDataList))
@@ -531,7 +518,6 @@ class FileBrowserViewModel @AssistedInject constructor(
                 workerId = uploadWorkRequest.id.toString(),
                 name = folderName,
                 isFolder = true,
-                storageId = arg.storageId,
                 fileObjectId = fileObjectId,
                 displayPath = arg.displayPath.orEmpty(),
             ),
@@ -581,7 +567,6 @@ class FileBrowserViewModel @AssistedInject constructor(
                     viewModelEventChannel.send(
                         ViewModelEvent.NavigateToFileBrowser(
                             displayPath = "$displayName/${fileItem.displayPath}",
-                            storageId = arg.storageId,
                             id = fileItem.id,
                         ),
                     )
@@ -596,7 +581,6 @@ class FileBrowserViewModel @AssistedInject constructor(
                             viewModelEventChannel.send(
                                 ViewModelEvent.NavigateToImageViewer(
                                     id = fileItem.id,
-                                    storageId = arg.storageId,
                                     allPaths = sortedFiles.filter { FileUtil.isImage(it.displayPath) }.map { it.id },
                                 ),
                             )
@@ -640,7 +624,6 @@ class FileBrowserViewModel @AssistedInject constructor(
             viewModelEventChannel.send(
                 ViewModelEvent.OpenWithExternalPlayer(
                     viewSourceUri = externalPlayerUri,
-                    storageId = arg.storageId,
                     fileId = fileItem.id,
                     fileName = fileItem.displayPath,
                     mimeType = mimeType,
@@ -666,7 +649,6 @@ class FileBrowserViewModel @AssistedInject constructor(
                 viewModelEventChannel.send(
                     ViewModelEvent.NavigateToFileBrowser(
                         displayPath = favorite.displayPath,
-                        storageId = arg.storageId,
                         id = favorite.fileId,
                     ),
                 )

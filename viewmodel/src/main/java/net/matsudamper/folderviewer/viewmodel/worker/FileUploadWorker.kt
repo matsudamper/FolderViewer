@@ -21,8 +21,6 @@ import kotlinx.serialization.json.Json
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import net.matsudamper.folderviewer.common.FileObjectId
-import net.matsudamper.folderviewer.common.StorageId
-import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.UploadJobRepository
 import net.matsudamper.folderviewer.viewmodel.worker.FolderUploadWorker.Companion.KEY_CURRENT_BYTES
@@ -39,14 +37,12 @@ internal class FileUploadWorker @AssistedInject constructor(
         Log.d("LOG", "doWork")
         return withContext(Dispatchers.IO) {
             try {
-                val storageIdString = inputData.getString(KEY_STORAGE_ID) ?: return@withContext Result.failure()
                 val fileObjectIdString = inputData.getString(KEY_FILE_OBJECT_ID) ?: return@withContext Result.failure()
                 val uriString = inputData.getString(KEY_URI) ?: return@withContext Result.failure()
                 val fileName = inputData.getString(KEY_FILE_NAME) ?: return@withContext Result.failure()
 
                 setProgress(
                     androidx.work.Data.Builder()
-                        .putString(KEY_STORAGE_ID, storageIdString)
                         .putString(KEY_FILE_OBJECT_ID, fileObjectIdString)
                         .putString(KEY_FILE_NAME, fileName)
                         .build(),
@@ -54,9 +50,8 @@ internal class FileUploadWorker @AssistedInject constructor(
 
                 setForeground(createForegroundInfo())
 
-                val storageId = Json.decodeFromString<StorageId>(storageIdString)
                 val fileObjectId = Json.decodeFromString<FileObjectId>(fileObjectIdString)
-                val repository = storageRepository.getFileRepository(storageId)
+                val repository = storageRepository.getFileRepository(fileObjectId.storageId)
                     ?: return@withContext Result.failure()
 
                 val uri = android.net.Uri.parse(uriString)
@@ -66,7 +61,6 @@ internal class FileUploadWorker @AssistedInject constructor(
                 val progressJob = launch {
                     progressFlow.collectLatest { uploadedBytes ->
                         val builder = androidx.work.Data.Builder()
-                            .putString(KEY_STORAGE_ID, storageIdString)
                             .putString(KEY_FILE_OBJECT_ID, fileObjectIdString)
                             .putString(KEY_FILE_NAME, fileName)
                             .putLong(KEY_CURRENT_BYTES, uploadedBytes)
@@ -160,7 +154,6 @@ internal class FileUploadWorker @AssistedInject constructor(
         private const val NOTIFICATION_ID = 1
 
         const val TAG_UPLOAD = "upload"
-        const val KEY_STORAGE_ID = "storage_id"
         const val KEY_FILE_OBJECT_ID = "file_object_id"
         const val KEY_URI = "uri"
         const val KEY_FILE_NAME = "file_name"

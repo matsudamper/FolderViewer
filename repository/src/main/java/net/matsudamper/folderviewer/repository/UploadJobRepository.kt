@@ -6,7 +6,6 @@ import kotlinx.serialization.json.Json
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
 import net.matsudamper.folderviewer.common.FileObjectId
-import net.matsudamper.folderviewer.common.StorageId
 import net.matsudamper.folderviewer.repository.db.UploadJobDao
 import net.matsudamper.folderviewer.repository.db.UploadJobEntity
 
@@ -22,7 +21,6 @@ class UploadJobRepository @Inject internal constructor(
                         workerId = entity.workerId,
                         name = entity.name,
                         isFolder = entity.isFolder,
-                        storageId = Json.decodeFromString<StorageId>(entity.storageId),
                         fileObjectId = Json.decodeFromString<FileObjectId>(entity.fileObjectId),
                         displayPath = entity.displayPath,
                         errorMessage = entity.errorMessage,
@@ -40,7 +38,6 @@ class UploadJobRepository @Inject internal constructor(
                 workerId = entity.workerId,
                 name = entity.name,
                 isFolder = entity.isFolder,
-                storageId = Json.decodeFromString<StorageId>(entity.storageId),
                 fileObjectId = Json.decodeFromString<FileObjectId>(entity.fileObjectId),
                 displayPath = entity.displayPath,
                 errorMessage = entity.errorMessage,
@@ -55,7 +52,7 @@ class UploadJobRepository @Inject internal constructor(
                 workerId = job.workerId,
                 name = job.name,
                 isFolder = job.isFolder,
-                storageId = Json.encodeToString(job.storageId),
+                storageId = Json.encodeToString(job.fileObjectId.storageId),
                 fileObjectId = Json.encodeToString(job.fileObjectId),
                 displayPath = job.displayPath,
                 createdAt = System.currentTimeMillis(),
@@ -81,7 +78,6 @@ class UploadJobRepository @Inject internal constructor(
         val workerId: String,
         val name: String,
         val isFolder: Boolean,
-        val storageId: StorageId,
         val fileObjectId: FileObjectId,
         val displayPath: String,
         val errorMessage: String? = null,
