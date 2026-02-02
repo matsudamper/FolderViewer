@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import net.matsudamper.folderviewer.ui.R
 
@@ -186,4 +187,75 @@ internal fun FileBrowserScreenContent(
             },
         )
     }
+}
+
+@Composable
+@Preview
+private fun Preview() {
+    FileBrowserScreenContent(
+        uiState = FileBrowserUiState(
+            visibleFolderBrowserButton = true,
+            visibleFavoriteButton = true,
+            isRefreshing = false,
+            title = "サンプルフォルダ",
+            isFavorite = false,
+            sortConfig = FileBrowserUiState.FileSortConfig(
+                key = FileBrowserUiState.FileSortKey.Name,
+                isAscending = true,
+            ),
+            displayConfig = UiDisplayConfig(
+                displayMode = UiDisplayConfig.DisplayMode.List,
+                displaySize = UiDisplayConfig.DisplaySize.Medium,
+            ),
+            isSelectionMode = false,
+            selectedCount = 0,
+            callbacks = object : FileBrowserUiState.Callbacks {
+                override fun onRefresh() = Unit
+                override fun onBack() = Unit
+                override fun onSortConfigChanged(config: FileBrowserUiState.FileSortConfig) = Unit
+                override fun onDisplayModeChanged(config: UiDisplayConfig) = Unit
+                override fun onFolderBrowserClick() = Unit
+                override fun onFavoriteClick() = Unit
+                override fun onUploadFileClick() = Unit
+                override fun onUploadFolderClick() = Unit
+                override fun onCreateDirectoryClick() = Unit
+                override fun onConfirmCreateDirectory(directoryName: String) = Unit
+                override fun onCancelSelection() = Unit
+            },
+            contentState = FileBrowserUiState.ContentState.Content(
+                files = listOf(
+                    FileBrowserUiState.UiFileItem.File(
+                        name = "ドキュメント",
+                        key = "doc1",
+                        isDirectory = true,
+                        size = 0,
+                        lastModified = System.currentTimeMillis(),
+                        thumbnail = null,
+                        isSelected = false,
+                        callbacks = object : FileBrowserUiState.UiFileItem.File.Callbacks {
+                            override fun onClick() = Unit
+                            override fun onLongClick() = Unit
+                            override fun onCheckedChange(checked: Boolean) = Unit
+                        },
+                    ),
+                    FileBrowserUiState.UiFileItem.File(
+                        name = "sample.txt",
+                        key = "file1",
+                        isDirectory = false,
+                        size = 1024,
+                        lastModified = System.currentTimeMillis(),
+                        thumbnail = null,
+                        isSelected = false,
+                        callbacks = object : FileBrowserUiState.UiFileItem.File.Callbacks {
+                            override fun onClick() = Unit
+                            override fun onLongClick() = Unit
+                            override fun onCheckedChange(checked: Boolean) = Unit
+                        },
+                    ),
+                ),
+                favorites = emptyList(),
+            ),
+        ),
+        snackbarHostState = SnackbarHostState(),
+    )
 }
