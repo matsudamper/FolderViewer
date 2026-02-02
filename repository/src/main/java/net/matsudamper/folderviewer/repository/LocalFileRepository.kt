@@ -126,6 +126,7 @@ internal class LocalFileRepository(
         id: FileObjectId,
         fileName: String,
         inputStream: InputStream,
+        size: Long,
         onRead: FlowCollector<Long>,
     ): Unit = withContext(Dispatchers.IO) {
         val path = when (id) {

@@ -15,6 +15,7 @@ interface FileRepository {
         id: FileObjectId,
         fileName: String,
         inputStream: InputStream,
+        size: Long,
         onRead: FlowCollector<Long>,
     )
 
