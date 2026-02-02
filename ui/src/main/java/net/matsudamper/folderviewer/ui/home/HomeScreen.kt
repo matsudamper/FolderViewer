@@ -1,7 +1,9 @@
 package net.matsudamper.folderviewer.ui.home
 
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingToolbarDefaults
+import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -53,16 +55,25 @@ internal fun HomeTopBar(
     )
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
-internal fun HomeFab(
+internal fun HomeFloatingToolbar(
     onAddStorageClick: () -> Unit,
 ) {
-    FloatingActionButton(onClick = onAddStorageClick) {
-        Icon(
-            painter = painterResource(id = R.drawable.ic_add),
-            contentDescription = "Add Storage",
-        )
-    }
+    HorizontalFloatingToolbar(
+        expanded = true,
+        floatingActionButton = {
+            FloatingToolbarDefaults.VibrantFloatingActionButton(
+                onClick = onAddStorageClick,
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_add),
+                    contentDescription = "Add Storage",
+                )
+            }
+        },
+        content = {},
+    )
 }
 
 internal val PaddingNormal: androidx.compose.ui.unit.Dp = 16.dp

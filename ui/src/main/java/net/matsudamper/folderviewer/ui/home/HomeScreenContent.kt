@@ -27,7 +27,7 @@ fun HomeScreenContent(
             )
         },
         floatingActionButton = {
-            HomeFab(onAddStorageClick = onAddStorageClick)
+            HomeFloatingToolbar(onAddStorageClick = onAddStorageClick)
         },
     ) { innerPadding ->
         StorageList(
