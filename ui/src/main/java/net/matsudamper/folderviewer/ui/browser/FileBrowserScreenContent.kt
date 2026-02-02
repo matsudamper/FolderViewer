@@ -1,23 +1,15 @@
 package net.matsudamper.folderviewer.ui.browser
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingToolbarDefaults
+import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -30,15 +22,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import net.matsudamper.folderviewer.ui.R
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 internal fun FileBrowserScreenContent(
     uiState: FileBrowserUiState,
@@ -53,7 +42,7 @@ internal fun FileBrowserScreenContent(
     }
     val callbacks = uiState.callbacks
     val containerColor = MaterialTheme.colorScheme.background
-    var fabExpanded by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(false) }
     Scaffold(
         modifier = modifier,
         containerColor = containerColor,
@@ -80,48 +69,41 @@ internal fun FileBrowserScreenContent(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             if (uiState.visibleFolderBrowserButton) {
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                HorizontalFloatingToolbar(
+                    expanded = expanded,
+                    floatingActionButton = {
+                        FloatingToolbarDefaults.VibrantFloatingActionButton(
+                            onClick = { expanded = !expanded },
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_add),
+                                contentDescription = "メニュー",
+                            )
+                        }
+                    },
                 ) {
-                    val animationDuration = 150
-                    AnimatedVisibility(
-                        visible = fabExpanded,
-                        enter = fadeIn(animationSpec = tween(animationDuration))
-                            .plus(
-                                expandVertically(
-                                    expandFrom = Alignment.Bottom,
-                                    animationSpec = tween(animationDuration),
-                                ),
-                            ),
-                        exit = fadeOut(animationSpec = tween(animationDuration))
-                            .plus(
-                                shrinkVertically(
-                                    shrinkTowards = Alignment.Bottom,
-                                    animationSpec = tween(animationDuration),
-                                ),
-                            ),
-                    ) {
-                        FileBrowserExpandedFab(
-                            onUploadFolderClick = { callbacks.onUploadFolderClick() },
-                            onUploadFileClick = { callbacks.onUploadFileClick() },
-                            onFolderBrowserClick = { callbacks.onFolderBrowserClick() },
-                            onCreateDirectoryClick = { callbacks.onCreateDirectoryClick() },
-                            expandedChange = { fabExpanded = it },
+                    IconButton(onClick = { callbacks.onFolderBrowserClick() }) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_folder_eye),
+                            contentDescription = "フォルダビューアを開く",
                         )
                     }
-                    val rotation by animateFloatAsState(
-                        targetValue = if (fabExpanded) 45f else 0f,
-                        animationSpec = tween(150),
-                        label = "fab_rotation",
-                    )
-                    FloatingActionButton(
-                        onClick = { fabExpanded = !fabExpanded },
-                    ) {
+                    IconButton(onClick = { callbacks.onUploadFileClick() }) {
                         Icon(
-                            painter = painterResource(R.drawable.ic_add),
-                            contentDescription = "メニュー",
-                            modifier = Modifier.rotate(rotation),
+                            painter = painterResource(R.drawable.ic_upload_file),
+                            contentDescription = "ファイルをアップロード",
+                        )
+                    }
+                    IconButton(onClick = { callbacks.onUploadFolderClick() }) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_upload_file),
+                            contentDescription = "フォルダをアップロード",
+                        )
+                    }
+                    IconButton(onClick = { callbacks.onCreateDirectoryClick() }) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_folder_add),
+                            contentDescription = "ディレクトリを作成",
                         )
                     }
                 }
@@ -135,18 +117,6 @@ internal fun FileBrowserScreenContent(
             onRefresh = callbacks::onRefresh,
             contentPadding = innerPadding,
         )
-        if (fabExpanded) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(if (fabExpanded) containerColor.copy(alpha = 0.9f) else Color.Unspecified)
-                    .clickable(
-                        interactionSource = null,
-                        indication = null,
-                        onClick = { fabExpanded = false },
-                    ),
-            )
-        }
     }
 
     if (showCreateDirectoryDialog) {
