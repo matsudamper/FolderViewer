@@ -21,8 +21,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.DisplayMode
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -66,6 +67,7 @@ import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
 import net.matsudamper.folderviewer.ui.util.formatBytes
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun FolderBrowserScreen(
     uiState: FolderBrowserUiState,
@@ -121,7 +123,7 @@ fun FolderBrowserScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
                 ) {
-                    CircularProgressIndicator()
+                    CircularWavyProgressIndicator()
                 }
             } else {
                 FolderBrowserContent(

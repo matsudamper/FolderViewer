@@ -15,10 +15,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -33,7 +34,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import net.matsudamper.folderviewer.ui.R
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun UploadDetailScreen(uiState: UploadDetailUiState) {
     Scaffold(
@@ -77,9 +78,8 @@ fun UploadDetailScreen(uiState: UploadDetailUiState) {
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 if (uiState.progress == null) {
-                                    CircularProgressIndicator(
+                                    CircularWavyProgressIndicator(
                                         modifier = Modifier.size(24.dp),
-                                        strokeWidth = 3.dp,
                                         color = MaterialTheme.colorScheme.secondary,
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
@@ -92,7 +92,7 @@ fun UploadDetailScreen(uiState: UploadDetailUiState) {
                                 )
                             }
                             if (uiState.progress != null) {
-                                LinearProgressIndicator(
+                                LinearWavyProgressIndicator(
                                     progress = { uiState.progress },
                                     modifier = Modifier.fillMaxWidth(),
                                     color = MaterialTheme.colorScheme.secondary,
@@ -200,7 +200,7 @@ fun UploadDetailScreen(uiState: UploadDetailUiState) {
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     if (uiState.currentUploadFile.progress != null) {
-                        LinearProgressIndicator(
+                        LinearWavyProgressIndicator(
                             progress = { uiState.currentUploadFile.progress },
                             modifier = Modifier.fillMaxWidth(),
                         )

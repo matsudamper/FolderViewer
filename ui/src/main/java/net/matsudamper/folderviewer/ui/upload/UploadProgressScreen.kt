@@ -13,8 +13,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -96,6 +97,7 @@ public fun UploadProgressScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun UploadItemRow(
     item: UploadProgressUiState.UploadItem,
@@ -169,15 +171,13 @@ private fun UploadItemRow(
                     .padding(4.dp)
                     .size(24.dp)
                 if (progress != null) {
-                    CircularProgressIndicator(
+                    CircularWavyProgressIndicator(
                         modifier = indicatorModifier,
                         progress = { progress },
-                        strokeWidth = 2.dp,
                     )
                 } else {
-                    CircularProgressIndicator(
+                    CircularWavyProgressIndicator(
                         modifier = indicatorModifier,
-                        strokeWidth = 2.dp,
                     )
                 }
             }
