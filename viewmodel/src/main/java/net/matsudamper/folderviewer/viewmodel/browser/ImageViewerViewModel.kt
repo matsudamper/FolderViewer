@@ -39,7 +39,6 @@ class ImageViewerViewModel @AssistedInject constructor(
                     ImageViewerUiState.ImageItem(
                         title = fileId.id.substringAfterLast('/').substringAfterLast('\\'),
                         imageSource = FileImageSource.Original(
-                            storageId = args.storageId,
                             fileId = fileId,
                         ),
                     )

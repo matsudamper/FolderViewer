@@ -24,13 +24,13 @@ data class SmbAdd(val storageId: StorageId? = null) : NavKey
 data class SharePointAdd(val storageId: StorageId? = null) : NavKey
 
 @Serializable
-data class FileBrowser(val storageId: StorageId, val displayPath: String?, val fileId: FileObjectId) : NavKey
+data class FileBrowser(val displayPath: String?, val fileId: FileObjectId) : NavKey
 
 @Serializable
-data class FolderBrowser(val storageId: StorageId, val displayPath: String?, val fileId: FileObjectId) : NavKey
+data class FolderBrowser(val displayPath: String?, val fileId: FileObjectId) : NavKey
 
 @Serializable
-data class ImageViewer(val storageId: StorageId, val fileId: FileObjectId.Item, val allPaths: List<FileObjectId.Item>) : NavKey
+data class ImageViewer(val fileId: FileObjectId.Item, val allPaths: List<FileObjectId.Item>) : NavKey
 
 @Serializable
 object UploadProgress : NavKey

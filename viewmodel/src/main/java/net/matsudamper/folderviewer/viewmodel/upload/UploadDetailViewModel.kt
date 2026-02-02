@@ -18,7 +18,6 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import net.matsudamper.folderviewer.common.FileObjectId
-import net.matsudamper.folderviewer.common.StorageId
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.UploadJobRepository
 import net.matsudamper.folderviewer.ui.upload.UploadDetailUiState
@@ -30,7 +29,6 @@ class UploadDetailViewModel @Inject internal constructor(
     private val uploadJobRepository: UploadJobRepository,
     private val storageRepository: StorageRepository,
 ) : AndroidViewModel(application) {
-    private var storageId: StorageId? = null
     private var fileObjectId: FileObjectId? = null
     private var displayPath: String? = null
 
@@ -43,12 +41,10 @@ class UploadDetailViewModel @Inject internal constructor(
 
         override fun onNavigateToDirectoryClick() {
             viewModelScope.launch {
-                val sid = storageId ?: return@launch
                 val fid = fileObjectId ?: return@launch
                 val dp = displayPath ?: return@launch
                 viewModelEventChannel.send(
                     ViewModelEvent.NavigateToDirectory(
-                        storageId = sid,
                         fileObjectId = fid,
                         displayPath = dp,
                     ),
@@ -67,11 +63,10 @@ class UploadDetailViewModel @Inject internal constructor(
         viewModelScope.launch {
             val job = uploadJobRepository.getJob(workerId) ?: return@launch
 
-            storageId = job.storageId
             fileObjectId = job.fileObjectId
             displayPath = job.displayPath
 
-            val storageName = storageRepository.storageList.first().find { it.id == job.storageId }?.name ?: ""
+            val storageName = storageRepository.storageList.first().find { it.id == job.fileObjectId.storageId }?.name ?: ""
 
             val workManager = WorkManager.getInstance(getApplication())
             val uuid = runCatching { UUID.fromString(workerId) }.getOrNull()
@@ -216,7 +211,6 @@ class UploadDetailViewModel @Inject internal constructor(
     sealed interface ViewModelEvent {
         data object NavigateBack : ViewModelEvent
         data class NavigateToDirectory(
-            val storageId: StorageId,
             val fileObjectId: FileObjectId,
             val displayPath: String,
         ) : ViewModelEvent

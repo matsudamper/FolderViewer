@@ -6,7 +6,6 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.common.FileObjectId
-import net.matsudamper.folderviewer.common.StorageId
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiState
 import net.matsudamper.folderviewer.viewmodel.folder.FolderBrowserViewModel.ViewModelEvent
@@ -17,7 +16,6 @@ class FolderBrowserUiStateCreator(
     private val callbacks: FolderBrowserUiState.Callbacks,
     private val viewModelScope: CoroutineScope,
     private val fileObjectId: FileObjectId,
-    private val storageId: StorageId,
     private val viewModelEventChannel: Channel<ViewModelEvent>,
     private val displayPath: String?,
 ) {
@@ -124,7 +122,7 @@ class FolderBrowserUiStateCreator(
                     size = file.size,
                     lastModified = file.lastModified,
                     thumbnail = if (isImage) {
-                        FileImageSource.Thumbnail(storageId = storageId, fileId = file.id)
+                        FileImageSource.Thumbnail(fileId = file.id)
                     } else {
                         null
                     },
@@ -164,7 +162,6 @@ class FolderBrowserUiStateCreator(
                     viewModelEventChannel.send(
                         ViewModelEvent.NavigateToFolderBrowser(
                             fileId = file.id,
-                            storageId = storageId,
                             displayPath = file.displayPath,
                         ),
                     )
@@ -172,7 +169,6 @@ class FolderBrowserUiStateCreator(
                     viewModelEventChannel.send(
                         ViewModelEvent.NavigateToImageViewer(
                             fileId = file.id,
-                            storageId = storageId,
                             allPaths = allImagePaths,
                         ),
                     )

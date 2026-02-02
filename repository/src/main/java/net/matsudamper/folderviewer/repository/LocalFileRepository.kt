@@ -38,7 +38,7 @@ internal class LocalFileRepository(
 
             FileItem(
                 displayPath = file.name,
-                id = FileObjectId.Item(relativePath),
+                id = FileObjectId.Item(storageId = config.id, id = relativePath),
                 isDirectory = file.isDirectory,
                 size = if (file.isDirectory) 0 else file.length(),
                 lastModified = file.lastModified(),

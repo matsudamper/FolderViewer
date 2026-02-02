@@ -55,7 +55,7 @@ class SharePointFileRepository(
 
                 FileItem(
                     displayPath = itemName,
-                    id = FileObjectId.Item(item.id),
+                    id = FileObjectId.Item(storageId = config.id, id = item.id),
                     isDirectory = item.folder != null,
                     size = item.size ?: 0L,
                     lastModified = item.lastModifiedDateTime?.let { OffsetDateTime.parse(it).toInstant().toEpochMilli() } ?: 0L,

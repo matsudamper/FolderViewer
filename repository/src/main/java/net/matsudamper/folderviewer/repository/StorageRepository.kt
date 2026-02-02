@@ -173,14 +173,13 @@ class StorageRepository @Inject constructor(
         }
     }
 
-    suspend fun addFavorite(storageId: StorageId, fileId: String, displayPath: String, name: String) {
+    suspend fun addFavorite(fileId: FileObjectId.Item, displayPath: String, name: String) {
         val id = UUID.randomUUID().toString()
         val config = FavoriteConfiguration(
             id = id,
             name = name,
-            storageId = storageId,
-            path = fileId,
-            fileId = FileObjectId.Item(fileId),
+            path = fileId.id,
+            fileId = fileId,
             displayPath = displayPath,
         )
 
@@ -297,9 +296,8 @@ class StorageRepository @Inject constructor(
         return FavoriteConfiguration(
             id = id,
             name = name,
-            storageId = StorageId(storageId),
             path = fileIdString,
-            fileId = FileObjectId.Item(fileIdString),
+            fileId = FileObjectId.Item(storageId = StorageId(storageId), id = fileIdString),
             displayPath = if (displayPath.isNotEmpty()) displayPath else path,
         )
     }
@@ -308,7 +306,7 @@ class StorageRepository @Inject constructor(
         return FavoriteConfigurationProto.newBuilder()
             .setId(id)
             .setName(name)
-            .setStorageId(storageId.id)
+            .setStorageId(fileId.storageId.id)
             .setPath(path)
             .setFileId(fileId.id)
             .setDisplayPath(displayPath)

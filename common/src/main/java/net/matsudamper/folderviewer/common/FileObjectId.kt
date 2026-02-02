@@ -4,9 +4,11 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 sealed interface FileObjectId {
-    @Serializable
-    data object Root : FileObjectId
+    val storageId: StorageId
 
     @Serializable
-    data class Item(val id: String) : FileObjectId
+    data class Root(override val storageId: StorageId) : FileObjectId
+
+    @Serializable
+    data class Item(override val storageId: StorageId, val id: String) : FileObjectId
 }
