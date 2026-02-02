@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DisplayMode
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -53,6 +54,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.Flow
 import coil.compose.AsyncImagePainter
@@ -563,7 +565,7 @@ private fun FileIcon(
                 when (painter.state) {
                     is AsyncImagePainter.State.Loading,
                     is AsyncImagePainter.State.Error,
-                    -> {
+                        -> {
                         Icon(
                             painter = painterResource(R.drawable.ic_file),
                             contentDescription = null,
@@ -587,4 +589,83 @@ private fun FileIcon(
             )
         }
     }
+}
+
+private val previewFiles = buildList {
+    for (headerIndex in 0 until 2) {
+        add(
+            FolderBrowserUiState.UiFileItem.Header(
+                title = "フォルダ: $headerIndex",
+            ),
+        )
+        for (itemIndex in 0 until 5) {
+            add(
+                FolderBrowserUiState.UiFileItem.File(
+                    name = "Pictures: $itemIndex",
+                    key = "pictures_$headerIndex: $itemIndex",
+                    isDirectory = true,
+                    size = 0,
+                    lastModified = System.currentTimeMillis(),
+                    thumbnail = null,
+                    callbacks = object : FolderBrowserUiState.UiFileItem.File.Callbacks {
+                        override fun onClick() = Unit
+                    },
+                ),
+            )
+        }
+    }
+}
+private val previewCallbacks = object : FolderBrowserUiState.Callbacks {
+    override fun onRefresh() = Unit
+    override fun onBack() = Unit
+    override fun onFolderSortConfigChanged(config: FolderBrowserUiState.FileSortConfig) = Unit
+    override fun onFileSortConfigChanged(config: FolderBrowserUiState.FileSortConfig) = Unit
+    override fun onDisplayModeChanged(config: UiDisplayConfig) = Unit
+    override fun onFavoriteClick() = Unit
+}
+
+@Composable
+@Preview
+private fun PreviewList() {
+    PreviewBase(
+        displayMode = UiDisplayConfig.DisplayMode.List,
+    )
+}
+
+@Composable
+@Preview
+private fun PreviewGrid() {
+    PreviewBase(
+        displayMode = UiDisplayConfig.DisplayMode.Grid,
+    )
+}
+
+@Composable
+private fun PreviewBase(
+    displayMode: UiDisplayConfig.DisplayMode,
+) {
+    FolderBrowserScreen(
+        uiState = FolderBrowserUiState(
+            isLoading = false,
+            isRefreshing = false,
+            visibleFavoriteButton = true,
+            title = "/storage/emulated/0/Documents",
+            isFavorite = false,
+            files = previewFiles,
+            folderSortConfig = FolderBrowserUiState.FileSortConfig(
+                key = FolderBrowserUiState.FileSortKey.Name,
+                isAscending = true,
+            ),
+            fileSortConfig = FolderBrowserUiState.FileSortConfig(
+                key = FolderBrowserUiState.FileSortKey.Name,
+                isAscending = true,
+            ),
+            displayConfig = UiDisplayConfig(
+                displayMode = displayMode,
+                displaySize = UiDisplayConfig.DisplaySize.Medium,
+            ),
+            callbacks = previewCallbacks,
+        ),
+        uiEvent = kotlinx.coroutines.flow.emptyFlow(),
+    )
 }
