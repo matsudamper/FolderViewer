@@ -12,8 +12,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -92,6 +93,7 @@ fun ImageViewerScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ImageContent(
     imageItem: ImageViewerUiState.ImageItem,
@@ -133,7 +135,7 @@ private fun ImageContent(
 
         when (val state = imageState) {
             is AsyncImagePainter.State.Loading -> {
-                CircularProgressIndicator()
+                CircularWavyProgressIndicator()
             }
 
             is AsyncImagePainter.State.Error -> {
