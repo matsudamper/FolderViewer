@@ -262,6 +262,6 @@ class SharePointFileRepository(
     }
 
     private companion object {
-        private const val UPLOAD_CHUNK_SIZE = 5 * 1024 * 1024
+        private const val UPLOAD_CHUNK_SIZE = 5L * 1024 * 1024
     }
 }
