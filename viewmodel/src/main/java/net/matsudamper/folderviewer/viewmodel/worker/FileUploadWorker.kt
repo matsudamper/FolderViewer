@@ -83,6 +83,7 @@ internal class FileUploadWorker @AssistedInject constructor(
                             id = fileObjectId,
                             fileName = fileName,
                             inputStream = inputStream,
+                            size = requireNotNull(fileSize) { "File size is required" },
                             onRead = progressFlow,
                         )
                     }

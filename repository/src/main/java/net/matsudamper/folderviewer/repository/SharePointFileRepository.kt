@@ -11,8 +11,9 @@ import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.azure.identity.ClientSecretCredentialBuilder
+import com.microsoft.graph.core.tasks.LargeFileUploadTask
+import com.microsoft.graph.drives.item.items.item.createuploadsession.CreateUploadSessionPostRequestBody
 import com.microsoft.graph.models.DriveItem
-import com.microsoft.graph.models.File
 import com.microsoft.graph.serviceclient.GraphServiceClient
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.dao.graphapi.GraphApiClient
@@ -106,30 +107,15 @@ class SharePointFileRepository(
         id: FileObjectId,
         fileName: String,
         inputStream: InputStream,
+        size: Long,
         onRead: FlowCollector<Long>,
     ) {
         withContext(Dispatchers.IO) {
             val driveId = getDriveId()
-
-            val driveItem = DriveItem().also { item ->
-                item.name = fileName
-                item.file = File()
+            val parentId = when (id) {
+                is FileObjectId.Root -> return@withContext
+                is FileObjectId.Item -> id.id
             }
-
-            val newItem = graphServiceClient.drives().byDriveId(driveId)
-                .items()
-                .byDriveItemId(
-                    when (id) {
-                        // TODO rootへのアップロードを対応
-                        is FileObjectId.Root -> return@withContext
-
-                        is FileObjectId.Item -> id.id
-                    },
-                )
-                .children()
-                .post(driveItem) ?: throw IllegalStateException("Failed to create item")
-
-            val itemId = newItem.id ?: throw IllegalStateException("Item ID is null")
 
             coroutineScope {
                 val progressInputStream = ProgressInputStream(inputStream)
@@ -137,10 +123,7 @@ class SharePointFileRepository(
                     progressInputStream.onRead.collect(onRead)
                 }
 
-                graphServiceClient.drives().byDriveId(driveId)
-                    .items().byDriveItemId(itemId)
-                    .content()
-                    .put(progressInputStream)
+                uploadWithSession(driveId, parentId, fileName, progressInputStream, size)
 
                 job.cancel()
             }
@@ -165,9 +148,7 @@ class SharePointFileRepository(
                 .items()
                 .byDriveItemId(
                     when (id) {
-                        // TODO rootへのアップロードを対応
                         is FileObjectId.Root -> return@withContext
-
                         is FileObjectId.Item -> id.id
                     },
                 )
@@ -189,17 +170,7 @@ class SharePointFileRepository(
                         currentParentId = createOrGetFolder(driveId, currentParentId, dirName)
                     }
 
-                    val fileItem = DriveItem().also { item ->
-                        item.name = fileName
-                        item.file = File()
-                    }
-
-                    val newItem = graphServiceClient.drives().byDriveId(driveId)
-                        .items().byDriveItemId(currentParentId)
-                        .children()
-                        .post(fileItem) ?: throw IllegalStateException("Failed to create item")
-
-                    val itemId = newItem.id ?: throw IllegalStateException("Item ID is null")
+                    val fileSize = requireNotNull(fileToUpload.size) { "File size is required" }
 
                     val progressInputStream = ProgressInputStream(fileToUpload.inputStream)
                     val job = launch {
@@ -208,10 +179,7 @@ class SharePointFileRepository(
                         }
                     }
 
-                    graphServiceClient.drives().byDriveId(driveId)
-                        .items().byDriveItemId(itemId)
-                        .content()
-                        .put(progressInputStream)
+                    uploadWithSession(driveId, currentParentId, fileName, progressInputStream, fileSize)
 
                     job.cancel()
                     uploadedSize += fileToUpload.size ?: 0L
@@ -219,6 +187,31 @@ class SharePointFileRepository(
                 }
             }
         }
+    }
+
+    private fun uploadWithSession(
+        driveId: String,
+        parentId: String,
+        fileName: String,
+        inputStream: InputStream,
+        fileSize: Long,
+    ) {
+        val uploadSession = graphServiceClient.drives().byDriveId(driveId)
+            .items().byDriveItemId("$parentId:/$fileName:")
+            .createUploadSession()
+            .post(CreateUploadSessionPostRequestBody())
+            ?: throw IllegalStateException("Failed to create upload session")
+
+        val maxSliceSize = UPLOAD_CHUNK_SIZE
+        val task = LargeFileUploadTask<DriveItem>(
+            graphServiceClient.requestAdapter,
+            uploadSession,
+            inputStream,
+            fileSize,
+            maxSliceSize,
+            DriveItem::createFromDiscriminatorValue,
+        )
+        task.upload()
     }
 
     private fun createOrGetFolder(driveId: String, parentId: String, folderName: String): String {
@@ -266,5 +259,9 @@ class SharePointFileRepository(
 
             createOrGetFolder(driveId, parentId, directoryName)
         }
+    }
+
+    private companion object {
+        private const val UPLOAD_CHUNK_SIZE = 5 * 1024 * 1024
     }
 }
