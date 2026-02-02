@@ -149,7 +149,7 @@ private fun AppContent(
                 .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
                 .padding(bottom = 8.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.background.copy(0.2f)),
+                .background(MaterialTheme.colorScheme.background.copy(0.4f)),
         ) {
             IndicatorItem(isActive = pagerState.currentPage == 0)
             IndicatorItem(isActive = pagerState.currentPage == 1)
