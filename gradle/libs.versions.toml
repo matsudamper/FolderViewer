@@ -43,14 +43,14 @@ androidxLifecycleViewmodelKtx = { group = "androidx.lifecycle", name = "lifecycl
 androidxLifecycleViewmodelNavigation3 = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-navigation3", version.ref = "lifecycleRuntimeKtx" }
 androidxActivityCompose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidxComposeBom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
-androidxComposeUi = { group = "androidx.compose.ui", name = "ui" }
-androidxComposeUiGraphics = { group = "androidx.compose.ui", name = "ui-graphics" }
-androidxComposeUiTooling = { group = "androidx.compose.ui", name = "ui-tooling" }
-androidxComposeUiToolingPreview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
-androidxComposeUiTestManifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
-androidxComposeUiTestJunit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
-androidxComposeMaterial3 = { group = "androidx.compose.material3", name = "material3" }
-androidxComposeFoundation = { group = "androidx.compose.foundation", name = "foundation" }
+androidxComposeUi = { group = "androidx.compose.ui", name = "ui", version.ref = "composeBom" }
+androidxComposeUiGraphics = { group = "androidx.compose.ui", name = "ui-graphics", version.ref = "composeBom" }
+androidxComposeUiTooling = { group = "androidx.compose.ui", name = "ui-tooling", version.ref = "composeBom" }
+androidxComposeUiToolingPreview = { group = "androidx.compose.ui", name = "ui-tooling-preview", version.ref = "composeBom" }
+androidxComposeUiTestManifest = { group = "androidx.compose.ui", name = "ui-test-manifest", version.ref = "composeBom" }
+androidxComposeUiTestJunit4 = { group = "androidx.compose.ui", name = "ui-test-junit4", version.ref = "composeBom" }
+androidxComposeMaterial3 = { group = "androidx.compose.material3", name = "material3", version.ref = "composeBom" }
+androidxComposeFoundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "composeBom" }
 androidxNavigation3Runtime = { group = "androidx.navigation3", name = "navigation3-runtime", version.ref = "navigation3" }
 androidxNavigation3Ui = { group = "androidx.navigation3", name = "navigation3-ui", version.ref = "navigation3" }
 hiltAndroid = { group = "com.google.dagger", name = "hilt-android", version.ref = "daggerHilt" }
