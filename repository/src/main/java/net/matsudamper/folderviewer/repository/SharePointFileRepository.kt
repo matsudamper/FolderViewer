@@ -182,7 +182,7 @@ class SharePointFileRepository(
                     uploadWithSession(driveId, currentParentId, fileName, progressInputStream, fileSize)
 
                     job.cancel()
-                    uploadedSize += fileToUpload.size ?: 0L
+                    uploadedSize += fileToUpload.size
                     completedFiles++
                 }
             }
