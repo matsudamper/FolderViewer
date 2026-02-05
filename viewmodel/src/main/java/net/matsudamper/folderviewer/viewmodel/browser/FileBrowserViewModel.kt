@@ -250,7 +250,8 @@ class FileBrowserViewModel @AssistedInject constructor(
                     visibleFavoriteButton = arg.displayPath != null,
                     sortConfig = viewModelState.sortConfig,
                     displayConfig = viewModelState.displayConfig,
-                    visibleFolderBrowserButton = arg.displayPath != null,
+                    visibleFolderBrowserButton = arg.displayPath != null ||
+                        (fileObjectId is FileObjectId.Root && viewModelState.rootWritable),
                     isSelectionMode = isSelectionMode,
                     selectedCount = viewModelState.selectedKeys.size,
                     contentState = contentState,
@@ -264,6 +265,10 @@ class FileBrowserViewModel @AssistedInject constructor(
     init {
         loadFiles()
         loadStorageName()
+        viewModelScope.launch {
+            val rootWritable = storageRepository.isRootWritable(fileObjectId.storageId)
+            viewModelStateFlow.update { it.copy(rootWritable = rootWritable) }
+        }
         viewModelScope.launch {
             loadSortConfig()
         }
@@ -687,6 +692,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         val favorites: List<FavoriteConfiguration> = emptyList(),
         val hasError: Boolean = false,
         val selectedKeys: Set<FileObjectId.Item> = emptySet(),
+        val rootWritable: Boolean = false,
     )
 
     companion object {
