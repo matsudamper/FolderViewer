@@ -203,9 +203,10 @@ class StorageRepository @Inject constructor(
         }
     }
 
-    suspend fun isRootWritable(storageId: StorageId): Boolean {
+    suspend fun isRootWritable(fileObjectId: FileObjectId): Boolean {
+        if (fileObjectId is FileObjectId.Item) return true
         val proto = context.dataStore.data.first()
-        val configProto = proto.listList.find { it.id == storageId.id } ?: return false
+        val configProto = proto.listList.find { it.id == fileObjectId.storageId.id } ?: return false
         return when (configProto.toDomain()) {
             is StorageConfiguration.Smb -> false
             is StorageConfiguration.Local -> true
