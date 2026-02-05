@@ -209,7 +209,7 @@ class StorageRepository @Inject constructor(
         return when (configProto.toDomain()) {
             is StorageConfiguration.Smb -> false
             is StorageConfiguration.Local -> true
-            is StorageConfiguration.SharePoint -> false
+            is StorageConfiguration.SharePoint -> true
             null -> false
         }
     }
