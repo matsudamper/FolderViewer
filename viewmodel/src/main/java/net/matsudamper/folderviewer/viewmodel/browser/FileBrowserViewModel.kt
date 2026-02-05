@@ -183,6 +183,14 @@ class FileBrowserViewModel @AssistedInject constructor(
         override fun onCancelSelection() {
             viewModelStateFlow.update { it.copy(selectedKeys = emptySet()) }
         }
+
+        override fun onCopyClick() {
+            // TODO コピーを実装する
+        }
+
+        override fun onCutClick() {
+            // TODO 切り取りを実装する
+        }
     }
 
     val uiState: Flow<FileBrowserUiState> = channelFlow {

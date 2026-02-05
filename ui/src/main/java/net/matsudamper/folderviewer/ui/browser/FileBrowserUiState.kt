@@ -74,5 +74,7 @@ data class FileBrowserUiState(
         fun onCreateDirectoryClick()
         fun onConfirmCreateDirectory(directoryName: String)
         fun onCancelSelection()
+        fun onCopyClick()
+        fun onCutClick()
     }
 }
