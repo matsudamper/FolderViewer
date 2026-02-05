@@ -25,16 +25,20 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import net.matsudamper.folderviewer.ui.R
+import net.matsudamper.folderviewer.ui.util.plus
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -52,6 +56,7 @@ internal fun FileBrowserScreenContent(
     val callbacks = uiState.callbacks
     val containerColor = MaterialTheme.colorScheme.background
     var expanded by remember { mutableStateOf(false) }
+    var fabHeight by remember { mutableIntStateOf(0) }
     Scaffold(
         modifier = modifier,
         containerColor = containerColor,
@@ -80,6 +85,7 @@ internal fun FileBrowserScreenContent(
         floatingActionButton = {
             if (uiState.visibleFolderBrowserButton) {
                 HorizontalFloatingToolbar(
+                    modifier = Modifier.onSizeChanged { fabHeight = it.height },
                     floatingActionButtonPosition = FloatingToolbarHorizontalFabPosition.End,
                     expanded = true,
                     contentPadding = PaddingValues(0.dp),
@@ -117,12 +123,19 @@ internal fun FileBrowserScreenContent(
             }
         },
     ) { innerPadding ->
+        val contentPadding = if (uiState.visibleFolderBrowserButton && fabHeight > 0) {
+            innerPadding.plus(
+                PaddingValues(bottom = with(LocalDensity.current) { fabHeight.toDp() } + 16.dp),
+            )
+        } else {
+            innerPadding
+        }
         FileBrowserBody(
             modifier = Modifier
                 .fillMaxSize(),
             uiState = uiState,
             onRefresh = callbacks::onRefresh,
-            contentPadding = innerPadding,
+            contentPadding = contentPadding,
         )
     }
 
