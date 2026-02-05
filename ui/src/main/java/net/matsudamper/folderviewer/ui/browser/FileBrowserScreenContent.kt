@@ -2,15 +2,11 @@ package net.matsudamper.folderviewer.ui.browser
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FabPosition
@@ -85,42 +81,29 @@ internal fun FileBrowserScreenContent(
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        bottomBar = {
-            if (uiState.isSelectionMode) {
-                BottomAppBar {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                    ) {
-                        TextButton(onClick = callbacks::onCopyClick) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_content_copy),
-                                contentDescription = null,
-                            )
-                            Text(
-                                text = "コピー",
-                                modifier = Modifier.padding(start = 8.dp),
-                            )
-                        }
-                        TextButton(onClick = callbacks::onCutClick) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_content_cut),
-                                contentDescription = null,
-                            )
-                            Text(
-                                text = "切り取り",
-                                modifier = Modifier.padding(start = 8.dp),
-                            )
-                        }
-                    }
-                }
-            }
-        },
         floatingActionButtonPosition = FabPosition.Center,
         floatingActionButton = {
-            if (!uiState.isSelectionMode && uiState.visibleFolderBrowserButton) {
+            if (uiState.isSelectionMode) {
+                HorizontalFloatingToolbar(
+                    modifier = Modifier.onSizeChanged { fabHeight = it.height },
+                    expanded = true,
+                    contentPadding = PaddingValues(0.dp),
+                    colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors(),
+                ) {
+                    IconButton(onClick = { callbacks.onCopyClick() }) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_content_copy),
+                            contentDescription = "コピー",
+                        )
+                    }
+                    IconButton(onClick = { callbacks.onCutClick() }) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_content_cut),
+                            contentDescription = "切り取り",
+                        )
+                    }
+                }
+            } else if (uiState.visibleFolderBrowserButton) {
                 HorizontalFloatingToolbar(
                     modifier = Modifier.onSizeChanged { fabHeight = it.height },
                     floatingActionButtonPosition = FloatingToolbarHorizontalFabPosition.End,
@@ -160,7 +143,7 @@ internal fun FileBrowserScreenContent(
             }
         },
     ) { innerPadding ->
-        val contentPadding = if (!uiState.isSelectionMode && uiState.visibleFolderBrowserButton && fabHeight > 0) {
+        val contentPadding = if ((uiState.isSelectionMode || uiState.visibleFolderBrowserButton) && fabHeight > 0) {
             innerPadding.plus(
                 PaddingValues(bottom = with(LocalDensity.current) { fabHeight.toDp() } + 16.dp),
             )
