@@ -87,12 +87,14 @@ internal fun FileBrowserScreenContent(
         floatingActionButtonPosition = FabPosition.Center,
         floatingActionButton = {
             if (uiState.isSelectionMode) {
+                val vibrantColors = FloatingToolbarDefaults.vibrantFloatingToolbarColors()
                 Row(
                     modifier = Modifier.onSizeChanged { fabHeight = it.height },
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     ExtendedFloatingActionButton(
                         onClick = { callbacks.onCopyClick() },
+                        colors = vibrantColors.fabColors,
                         icon = {
                             Icon(
                                 painter = painterResource(R.drawable.ic_content_copy),
@@ -103,6 +105,7 @@ internal fun FileBrowserScreenContent(
                     )
                     ExtendedFloatingActionButton(
                         onClick = { callbacks.onCutClick() },
+                        colors = vibrantColors.fabColors,
                         icon = {
                             Icon(
                                 painter = painterResource(R.drawable.ic_content_cut),
