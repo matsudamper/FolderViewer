@@ -2,7 +2,6 @@ package net.matsudamper.folderviewer.ui.browser
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,7 +12,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingToolbarDefaults
-import androidx.compose.material3.FloatingToolbarExitDirection
 import androidx.compose.material3.FloatingToolbarHorizontalFabPosition
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
@@ -31,9 +29,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -47,6 +43,7 @@ import net.matsudamper.folderviewer.ui.util.plus
 internal fun FileBrowserScreenContent(
     uiState: FileBrowserUiState,
     snackbarHostState: SnackbarHostState,
+    showPasteFooter: Boolean,
     modifier: Modifier = Modifier,
     showCreateDirectoryDialog: Boolean = false,
     onCreateDirectoryDialogDismiss: () -> Unit = {},
@@ -57,7 +54,6 @@ internal fun FileBrowserScreenContent(
     }
     val callbacks = uiState.callbacks
     val containerColor = MaterialTheme.colorScheme.background
-    var expanded by remember { mutableStateOf(false) }
     var fabHeight by remember { mutableIntStateOf(0) }
     Scaffold(
         modifier = modifier,
@@ -109,6 +105,17 @@ internal fun FileBrowserScreenContent(
                         Text("切り取り")
                     }
                 }
+            } else if (showPasteFooter) {
+                HorizontalFloatingToolbar(
+                    modifier = Modifier.onSizeChanged { fabHeight = it.height },
+                    expanded = true,
+                    contentPadding = PaddingValues(0.dp),
+                    colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors(),
+                ) {
+                    TextButton(onClick = { callbacks.onPasteClick() }) {
+                        Text("貼り付け")
+                    }
+                }
             } else if (uiState.visibleFolderBrowserButton) {
                 HorizontalFloatingToolbar(
                     modifier = Modifier.onSizeChanged { fabHeight = it.height },
@@ -149,7 +156,9 @@ internal fun FileBrowserScreenContent(
             }
         },
     ) { innerPadding ->
-        val contentPadding = if ((uiState.isSelectionMode || uiState.visibleFolderBrowserButton) && fabHeight > 0) {
+        val showFloatingFooter = uiState.isSelectionMode || showPasteFooter || uiState.visibleFolderBrowserButton
+        val hasFabHeight = fabHeight > 0
+        val contentPadding = if (showFloatingFooter && hasFabHeight) {
             innerPadding.plus(
                 PaddingValues(bottom = with(LocalDensity.current) { fabHeight.toDp() } + 16.dp),
             )
@@ -239,6 +248,7 @@ private fun Preview() {
                 override fun onCancelSelection() = Unit
                 override fun onCopyClick() = Unit
                 override fun onCutClick() = Unit
+                override fun onPasteClick() = Unit
             },
             contentState = FileBrowserUiState.ContentState.Content(
                 files = listOf(
@@ -274,6 +284,7 @@ private fun Preview() {
                 favorites = emptyList(),
             ),
         ),
+        showPasteFooter = false,
         snackbarHostState = SnackbarHostState(),
     )
 }

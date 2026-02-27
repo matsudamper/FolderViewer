@@ -1,6 +1,7 @@
 package net.matsudamper.folderviewer.viewmodel.browser
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.Data
@@ -35,6 +36,7 @@ import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
+import net.matsudamper.folderviewer.ui.browser.ActionMode
 import net.matsudamper.folderviewer.viewmodel.util.FileUtil
 import net.matsudamper.folderviewer.viewmodel.worker.FileUploadWorker
 import net.matsudamper.folderviewer.viewmodel.worker.FolderUploadWorker
@@ -185,11 +187,19 @@ class FileBrowserViewModel @AssistedInject constructor(
         }
 
         override fun onCopyClick() {
-            // TODO コピーを実装する
+            viewModelScope.launch {
+                viewModelEventChannel.send(ViewModelEvent.SetActionMode(ActionMode.Copy))
+            }
         }
 
         override fun onCutClick() {
-            // TODO 切り取りを実装する
+            viewModelScope.launch {
+                viewModelEventChannel.send(ViewModelEvent.SetActionMode(ActionMode.Cut))
+            }
+        }
+
+        override fun onPasteClick() {
+            Log.d("FileBrowserViewModel", "貼り付けが押されました")
         }
     }
 
@@ -437,6 +447,9 @@ class FileBrowserViewModel @AssistedInject constructor(
 
         data object LaunchFilePicker : ViewModelEvent
         data object LaunchFolderPicker : ViewModelEvent
+        data class SetActionMode(
+            val actionMode: ActionMode,
+        ) : ViewModelEvent
 
         data class OpenWithExternalPlayer(
             val viewSourceUri: ViewSourceUri,
