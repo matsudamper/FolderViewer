@@ -2,7 +2,6 @@ package net.matsudamper.folderviewer
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -31,7 +30,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -91,6 +89,8 @@ import net.matsudamper.folderviewer.ui.storage.StorageTypeSelectionScreen
 import net.matsudamper.folderviewer.ui.theme.FolderViewerTheme
 import net.matsudamper.folderviewer.ui.upload.UploadDetailScreen
 import net.matsudamper.folderviewer.ui.upload.UploadProgressScreen
+import net.matsudamper.folderviewer.ui.browser.ActionMode
+import net.matsudamper.folderviewer.state.GlobalActionStateStore
 import net.matsudamper.folderviewer.viewmodel.browser.FileBrowserViewModel
 import net.matsudamper.folderviewer.viewmodel.browser.ImageViewerViewModel
 import net.matsudamper.folderviewer.viewmodel.folder.FolderBrowserViewModel
@@ -102,6 +102,7 @@ import net.matsudamper.folderviewer.viewmodel.storage.SmbAddViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.StorageTypeSelectionViewModel
 import net.matsudamper.folderviewer.viewmodel.upload.UploadDetailViewModel
 import net.matsudamper.folderviewer.viewmodel.upload.UploadProgressViewModel
+import org.koin.core.context.GlobalContext
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -142,7 +143,12 @@ private fun AppContent(
                     topLevelRoutes = setOf(Home),
                 )
                 val navigator = remember(navigationState) { Navigator(navigationState) }
-                val entryProvider = remember(navigator) { entryProvider(navigator) }
+                val entryProvider = remember(navigator, pageIndex) {
+                    entryProvider(
+                        navigator = navigator,
+                        viewerPageIndex = pageIndex,
+                    )
+                }
 
                 NavDisplay(
                     modifier = Modifier.fillMaxSize(),
@@ -197,7 +203,10 @@ private fun IndicatorItem(
     }
 }
 
-private fun entryProvider(navigator: Navigator): (NavKey) -> NavEntry<NavKey> {
+private fun entryProvider(
+    navigator: Navigator,
+    viewerPageIndex: Int,
+): (NavKey) -> NavEntry<NavKey> {
     return entryProvider {
         homeEntry(navigator)
         settingsEntry(navigator)
@@ -205,7 +214,10 @@ private fun entryProvider(navigator: Navigator): (NavKey) -> NavEntry<NavKey> {
         permissionRequestEntry(navigator)
         smbAddEntry(navigator)
         sharePointAddEntry(navigator)
-        fileBrowserEntry(navigator)
+        fileBrowserEntry(
+            navigator = navigator,
+            viewerPageIndex = viewerPageIndex,
+        )
         folderBrowserEntry(navigator)
         imageViewerEntry(navigator)
         uploadProgressEntry(navigator)
@@ -423,7 +435,9 @@ private fun FileBrowserEventHandler(
     navigator: Navigator,
     filePickerLauncher: androidx.activity.compose.ManagedActivityResultLauncher<String, android.net.Uri?>,
     folderPickerLauncher: androidx.activity.compose.ManagedActivityResultLauncher<android.net.Uri?, android.net.Uri?>,
+    viewerPageIndex: Int,
 ) {
+    val globalActionStateStore = remember { GlobalContext.get().get<GlobalActionStateStore>() }
     val context = LocalContext.current
     LaunchedEffect(viewModel.viewModelEventFlow) {
         viewModel.viewModelEventFlow.collect { event ->
@@ -450,6 +464,17 @@ private fun FileBrowserEventHandler(
                 is FileBrowserViewModel.ViewModelEvent.LaunchFilePicker -> filePickerLauncher.launch("*/*")
 
                 is FileBrowserViewModel.ViewModelEvent.LaunchFolderPicker -> folderPickerLauncher.launch(null)
+
+                is FileBrowserViewModel.ViewModelEvent.SetActionMode -> {
+                    if (event.actionMode == ActionMode.None) {
+                        globalActionStateStore.clearActionMode()
+                    } else {
+                        globalActionStateStore.setActionMode(
+                            actionMode = event.actionMode,
+                            sourceViewerPageIndex = viewerPageIndex,
+                        )
+                    }
+                }
 
                 is FileBrowserViewModel.ViewModelEvent.OpenWithExternalPlayer -> {
                     val uri = when (val externalUri = event.viewSourceUri) {
@@ -500,21 +525,28 @@ private fun requestNotificationPermissionIfNeeded(
     }
 }
 
-private fun EntryProviderScope<NavKey>.fileBrowserEntry(navigator: Navigator) {
+private fun EntryProviderScope<NavKey>.fileBrowserEntry(
+    navigator: Navigator,
+    viewerPageIndex: Int,
+) {
     entry<FileBrowser> { key ->
         val viewModel: FileBrowserViewModel = hiltViewModel<FileBrowserViewModel, FileBrowserViewModel.Companion.Factory>(
             creationCallback = { factory: FileBrowserViewModel.Companion.Factory ->
                 factory.create(arguments = key)
             },
         )
+        val globalActionStateStore = remember { GlobalContext.get().get<GlobalActionStateStore>() }
+        val globalActionState by globalActionStateStore.state.collectAsStateWithLifecycle()
         val uiState = viewModel.uiState.collectAsStateWithLifecycle(initialValue = null)
         val uiStateValue = uiState.value ?: return@entry
+        val showPasteFooter = globalActionState.actionMode != ActionMode.None &&
+            globalActionState.sourceViewerPageIndex != viewerPageIndex
         val scope = rememberCoroutineScope()
         val context = LocalContext.current
 
         val notificationPermissionLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestPermission(),
-        ) { isGranted ->
+        ) { _ ->
         }
 
         val filePickerLauncher = rememberLauncherForActivityResult(
@@ -544,11 +576,18 @@ private fun EntryProviderScope<NavKey>.fileBrowserEntry(navigator: Navigator) {
             }
         }
 
-        FileBrowserEventHandler(viewModel, navigator, filePickerLauncher, folderPickerLauncher)
+        FileBrowserEventHandler(
+            viewModel = viewModel,
+            navigator = navigator,
+            filePickerLauncher = filePickerLauncher,
+            folderPickerLauncher = folderPickerLauncher,
+            viewerPageIndex = viewerPageIndex,
+        )
 
         FileBrowserScreen(
             uiState = uiStateValue,
             uiEvent = viewModel.uiEvent,
+            showPasteFooter = showPasteFooter,
         )
     }
 }

@@ -104,6 +104,7 @@ dependencies {
     ksp(libs.hiltCompiler)
     implementation(libs.kotlinxSerializationJson)
     implementation(libs.coilCompose)
+    implementation(libs.koinAndroid)
     implementation(libs.jakartaInject)
     implementation(libs.androidxDocumentfile)
     testImplementation(libs.junit)

@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.Flow
 fun FileBrowserScreen(
     uiState: FileBrowserUiState,
     uiEvent: Flow<FileBrowserUiEvent>,
+    showPasteFooter: Boolean,
     modifier: Modifier = Modifier,
 ) {
     BackHandler(enabled = true) {
@@ -39,6 +40,7 @@ fun FileBrowserScreen(
     Box(modifier = modifier) {
         FileBrowserScreenContent(
             uiState = uiState,
+            showPasteFooter = showPasteFooter,
             snackbarHostState = snackbarHostState,
             showCreateDirectoryDialog = showCreateDirectoryDialog.value,
             onCreateDirectoryDialogDismiss = { showCreateDirectoryDialog.value = false },
