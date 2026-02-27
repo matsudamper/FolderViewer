@@ -181,7 +181,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         }
 
         override fun onCancelSelection() {
-            viewModelStateFlow.update { it.copy(selectedKeys = emptySet()) }
+            viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
         }
 
         override fun onCopyClick() {
@@ -196,7 +196,15 @@ class FileBrowserViewModel @AssistedInject constructor(
     val uiState: Flow<FileBrowserUiState> = channelFlow {
         viewModelStateFlow.collectLatest { viewModelState ->
             val sortedFiles = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig))
-            val isSelectionMode = viewModelState.selectedKeys.isNotEmpty()
+            val isSelectionMode = when (viewModelState.selectedState) {
+                is ViewModelState.SelectionState.NonSelected -> false
+                is ViewModelState.SelectionState.Selected -> true
+            }
+            val selectedItems = when (viewModelState.selectedState) {
+                is ViewModelState.SelectionState.NonSelected -> setOf()
+                is ViewModelState.SelectionState.Selected -> viewModelState.selectedState.items
+            }
+
             val uiItems = sortedFiles.map { fileItem ->
                 val isImage = FileUtil.isImage(fileItem.displayPath)
                 FileBrowserUiState.UiFileItem.File(
@@ -212,7 +220,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                     } else {
                         null
                     },
-                    isSelected = viewModelState.selectedKeys.contains(fileItem.id),
+                    isSelected = selectedItems.contains(fileItem.id),
                     callbacks = FileItemCallbacks(fileItem, sortedFiles, isSelectionMode),
                 )
             }
@@ -260,7 +268,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                     displayConfig = viewModelState.displayConfig,
                     visibleFolderBrowserButton = viewModelState.rootWritable,
                     isSelectionMode = isSelectionMode,
-                    selectedCount = viewModelState.selectedKeys.size,
+                    selectedCount = selectedItems.size,
                     contentState = contentState,
                 ),
             )
@@ -619,10 +627,18 @@ class FileBrowserViewModel @AssistedInject constructor(
         }
 
         override fun onCheckedChange(checked: Boolean) {
-            if (checked) {
-                viewModelStateFlow.update { it.copy(selectedKeys = it.selectedKeys + fileItem.id) }
-            } else {
-                viewModelStateFlow.update { it.copy(selectedKeys = it.selectedKeys - fileItem.id) }
+            viewModelStateFlow.update {
+                val selectedState = it.selectedState as? ViewModelState.SelectionState.Selected ?: return
+
+                it.copy(
+                    selectedState = ViewModelState.SelectionState.Selected(
+                        items = if (checked) {
+                            selectedState.items + fileItem.id
+                        } else {
+                            selectedState.items - fileItem.id
+                        },
+                    ),
+                )
             }
         }
     }
@@ -673,12 +689,21 @@ class FileBrowserViewModel @AssistedInject constructor(
 
     private fun toggleSelection(fileId: FileObjectId.Item) {
         viewModelStateFlow.update {
-            val newKeys = if (it.selectedKeys.contains(fileId)) {
-                it.selectedKeys - fileId
-            } else {
-                it.selectedKeys + fileId
+            val selected = when (it.selectedState) {
+                is ViewModelState.SelectionState.NonSelected -> setOf()
+                is ViewModelState.SelectionState.Selected -> it.selectedState.items
             }
-            it.copy(selectedKeys = newKeys)
+
+            it.copy(
+                selectedState = ViewModelState.SelectionState.Selected(
+                    if (selected.contains(fileId)) {
+                        selected - fileId
+                    } else {
+                        selected + fileId
+
+                    },
+                ),
+            )
         }
     }
 
@@ -698,9 +723,16 @@ class FileBrowserViewModel @AssistedInject constructor(
         val favoriteId: String? = null,
         val favorites: List<FavoriteConfiguration> = emptyList(),
         val hasError: Boolean = false,
-        val selectedKeys: Set<FileObjectId.Item> = emptySet(),
+        val selectedState: SelectionState = SelectionState.NonSelected,
         val rootWritable: Boolean = false,
-    )
+    ) {
+        sealed interface SelectionState {
+            data object NonSelected : SelectionState
+            data class Selected(
+                val items: Set<FileObjectId.Item>,
+            ) : SelectionState
+        }
+    }
 
     companion object {
         @AssistedFactory
