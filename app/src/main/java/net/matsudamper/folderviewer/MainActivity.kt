@@ -48,7 +48,12 @@ import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
@@ -137,6 +142,7 @@ private fun AppContent(
             state = pagerState,
         ) { pageIndex ->
             holder.SaveableStateProvider("Root_$pageIndex") {
+                val pageViewModelStoreOwner = rememberPageViewModelStoreOwner(pageIndex = pageIndex)
                 val navigationState = rememberNavigationState(
                     startRoute = Home,
                     topLevelRoutes = setOf(Home),
@@ -146,7 +152,10 @@ private fun AppContent(
 
                 NavDisplay(
                     modifier = Modifier.fillMaxSize(),
-                    entries = navigationState.toEntries(entryProvider),
+                    entries = navigationState.toEntries(
+                        entryProvider = entryProvider,
+                        viewModelStoreOwner = pageViewModelStoreOwner,
+                    ),
                     onBack = { navigator.goBack() },
                 )
             }
@@ -194,6 +203,35 @@ private fun IndicatorItem(
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.primary),
         )
+    }
+}
+
+@Composable
+private fun rememberPageViewModelStoreOwner(
+    pageIndex: Int,
+): ViewModelStoreOwner {
+    val rootViewModelStoreOwner = checkNotNull(LocalViewModelStoreOwner.current)
+    val hostViewModel = viewModel<PageViewModelStoreHostViewModel>(
+        viewModelStoreOwner = rootViewModelStoreOwner,
+    )
+    val pageId = "page_$pageIndex"
+    return remember(hostViewModel, pageId) {
+        object : ViewModelStoreOwner {
+            override val viewModelStore: ViewModelStore = hostViewModel.getViewModelStore(pageId)
+        }
+    }
+}
+
+internal class PageViewModelStoreHostViewModel : ViewModel() {
+    private val stores = mutableMapOf<String, ViewModelStore>()
+
+    fun getViewModelStore(pageId: String): ViewModelStore {
+        return stores.getOrPut(pageId) { ViewModelStore() }
+    }
+
+    override fun onCleared() {
+        stores.values.forEach { it.clear() }
+        stores.clear()
     }
 }
 
