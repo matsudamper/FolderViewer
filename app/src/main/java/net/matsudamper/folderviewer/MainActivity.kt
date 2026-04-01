@@ -66,6 +66,7 @@ import kotlinx.coroutines.launch
 import coil.Coil
 import coil.ImageLoader
 import dagger.hilt.android.AndroidEntryPoint
+import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.navigation.FileBrowser
@@ -222,7 +223,8 @@ private fun rememberPageViewModelStoreOwner(
     }
 }
 
-internal class PageViewModelStoreHostViewModel : ViewModel() {
+@HiltViewModel
+internal class PageViewModelStoreHostViewModel @Inject constructor() : ViewModel() {
     private val stores = mutableMapOf<String, ViewModelStore>()
 
     fun getViewModelStore(pageId: String): ViewModelStore {
