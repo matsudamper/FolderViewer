@@ -182,7 +182,7 @@ private fun FileBrowserContent(
                             file = item,
                             displaySize = displayConfig.displaySize,
                             textOverflow = TextOverflow.StartEllipsis,
-                            isSelectionMode = isSelectionMode,
+                            isSelectionMode = false,
                         )
                     }
                 }
@@ -227,7 +227,7 @@ private fun FileBrowserContent(
                             file = item,
                             displaySize = displayConfig.displaySize,
                             textOverflow = TextOverflow.StartEllipsis,
-                            isSelectionMode = isSelectionMode,
+                            isSelectionMode = false,
                         )
                     }
                 }

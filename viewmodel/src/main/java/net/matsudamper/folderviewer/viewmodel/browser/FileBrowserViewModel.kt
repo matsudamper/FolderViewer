@@ -686,6 +686,7 @@ class FileBrowserViewModel @AssistedInject constructor(
     }
 
     private fun toggleSelection(fileId: FileObjectId.Item) {
+        if (!viewModelStateFlow.value.rootWritable) return
         viewModelStateFlow.update {
             val selected = when (it.selectedState) {
                 is ViewModelState.SelectionState.NonSelected -> setOf()
