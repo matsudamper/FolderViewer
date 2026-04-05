@@ -10,8 +10,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -29,6 +29,7 @@ import net.matsudamper.folderviewer.repository.FavoriteConfiguration
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.PreferencesRepository
+import net.matsudamper.folderviewer.repository.SelectionModeRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.UploadJobRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
@@ -44,6 +45,7 @@ class FileBrowserViewModel @AssistedInject constructor(
     private val storageRepository: StorageRepository,
     private val preferencesRepository: PreferencesRepository,
     private val uploadJobRepository: UploadJobRepository,
+    private val selectionModeRepository: SelectionModeRepository,
     application: Application,
     @Assisted private val arg: FileBrowser,
 ) : AndroidViewModel(application) {
@@ -182,6 +184,7 @@ class FileBrowserViewModel @AssistedInject constructor(
 
         override fun onCancelSelection() {
             viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
+            selectionModeRepository.setSelectionMode(false)
         }
 
         override fun onCopyClick() {
@@ -193,86 +196,81 @@ class FileBrowserViewModel @AssistedInject constructor(
         }
     }
 
-    val uiState: Flow<FileBrowserUiState> = channelFlow {
-        viewModelStateFlow.collectLatest { viewModelState ->
-            val sortedFiles = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig))
-            val isSelectionMode = when (viewModelState.selectedState) {
-                is ViewModelState.SelectionState.NonSelected -> false
-                is ViewModelState.SelectionState.Selected -> true
-            }
-            val selectedItems = when (viewModelState.selectedState) {
-                is ViewModelState.SelectionState.NonSelected -> setOf()
-                is ViewModelState.SelectionState.Selected -> viewModelState.selectedState.items
-            }
+    val uiState: Flow<FileBrowserUiState> = combine(
+        viewModelStateFlow,
+        selectionModeRepository.isSelectionMode,
+    ) { viewModelState, isSelectionMode ->
+        val sortedFiles = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig))
+        val selectedItems = when (viewModelState.selectedState) {
+            is ViewModelState.SelectionState.NonSelected -> setOf()
+            is ViewModelState.SelectionState.Selected -> viewModelState.selectedState.items
+        }
 
-            val uiItems = sortedFiles.map { fileItem ->
-                val isImage = FileUtil.isImage(fileItem.displayPath)
-                FileBrowserUiState.UiFileItem.File(
-                    name = fileItem.displayPath,
-                    key = fileItem.id.id,
-                    isDirectory = fileItem.isDirectory,
-                    size = fileItem.size,
-                    lastModified = fileItem.lastModified,
-                    thumbnail = if (isImage) {
-                        FileImageSource.Thumbnail(
-                            fileId = fileItem.id,
-                        )
-                    } else {
-                        null
-                    },
-                    isSelected = selectedItems.contains(fileItem.id),
-                    callbacks = FileItemCallbacks(fileItem, sortedFiles, isSelectionMode),
-                )
-            }
-
-            val favoriteItems = viewModelState.favorites.map { favorite ->
-                FileBrowserUiState.UiFileItem.File(
-                    name = favorite.displayPath,
-                    key = favorite.fileId.id,
-                    isDirectory = true,
-                    size = 0,
-                    lastModified = 0,
-                    thumbnail = if (FileUtil.isImage(favorite.displayPath)) {
-                        FileImageSource.Thumbnail(
-                            fileId = favorite.fileId,
-                        )
-                    } else {
-                        null
-                    },
-                    isSelected = false,
-                    callbacks = FavoriteItemCallbacks(favorite),
-                )
-            }
-
-            val contentState = when {
-                viewModelState.isLoading && uiItems.isEmpty() -> FileBrowserUiState.ContentState.Loading
-
-                viewModelState.hasError && uiItems.isEmpty() -> FileBrowserUiState.ContentState.Error
-
-                uiItems.isEmpty() -> FileBrowserUiState.ContentState.Empty
-
-                else -> FileBrowserUiState.ContentState.Content(
-                    files = uiItems,
-                    favorites = favoriteItems,
-                )
-            }
-
-            trySend(
-                FileBrowserUiState(
-                    callbacks = callbacks,
-                    isRefreshing = viewModelState.isRefreshing,
-                    title = arg.displayPath ?: viewModelState.storageName ?: "null",
-                    isFavorite = viewModelState.favoriteId != null,
-                    visibleFavoriteButton = arg.displayPath != null,
-                    sortConfig = viewModelState.sortConfig,
-                    displayConfig = viewModelState.displayConfig,
-                    visibleFolderBrowserButton = viewModelState.rootWritable,
-                    isSelectionMode = isSelectionMode,
-                    selectedCount = selectedItems.size,
-                    contentState = contentState,
-                ),
+        val uiItems = sortedFiles.map { fileItem ->
+            val isImage = FileUtil.isImage(fileItem.displayPath)
+            FileBrowserUiState.UiFileItem.File(
+                name = fileItem.displayPath,
+                key = fileItem.id.id,
+                isDirectory = fileItem.isDirectory,
+                size = fileItem.size,
+                lastModified = fileItem.lastModified,
+                thumbnail = if (isImage) {
+                    FileImageSource.Thumbnail(
+                        fileId = fileItem.id,
+                    )
+                } else {
+                    null
+                },
+                isSelected = selectedItems.contains(fileItem.id),
+                callbacks = FileItemCallbacks(fileItem, sortedFiles, isSelectionMode),
             )
         }
+
+        val favoriteItems = viewModelState.favorites.map { favorite ->
+            FileBrowserUiState.UiFileItem.File(
+                name = favorite.displayPath,
+                key = favorite.fileId.id,
+                isDirectory = true,
+                size = 0,
+                lastModified = 0,
+                thumbnail = if (FileUtil.isImage(favorite.displayPath)) {
+                    FileImageSource.Thumbnail(
+                        fileId = favorite.fileId,
+                    )
+                } else {
+                    null
+                },
+                isSelected = false,
+                callbacks = FavoriteItemCallbacks(favorite),
+            )
+        }
+
+        val contentState = when {
+            viewModelState.isLoading && uiItems.isEmpty() -> FileBrowserUiState.ContentState.Loading
+
+            viewModelState.hasError && uiItems.isEmpty() -> FileBrowserUiState.ContentState.Error
+
+            uiItems.isEmpty() -> FileBrowserUiState.ContentState.Empty
+
+            else -> FileBrowserUiState.ContentState.Content(
+                files = uiItems,
+                favorites = favoriteItems,
+            )
+        }
+
+        FileBrowserUiState(
+            callbacks = callbacks,
+            isRefreshing = viewModelState.isRefreshing,
+            title = arg.displayPath ?: viewModelState.storageName ?: "null",
+            isFavorite = viewModelState.favoriteId != null,
+            visibleFavoriteButton = arg.displayPath != null,
+            sortConfig = viewModelState.sortConfig,
+            displayConfig = viewModelState.displayConfig,
+            visibleFolderBrowserButton = viewModelState.rootWritable,
+            isSelectionMode = isSelectionMode,
+            selectedCount = selectedItems.size,
+            contentState = contentState,
+        )
     }
 
     private var fileRepository: FileRepository? = null
@@ -705,6 +703,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                 ),
             )
         }
+        selectionModeRepository.setSelectionMode(true)
     }
 
     private data class ViewModelState(
