@@ -85,7 +85,24 @@ internal fun FileBrowserScreenContent(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButtonPosition = FabPosition.Center,
         floatingActionButton = {
-            if (uiState.isSelectionMode) {
+            if (uiState.isPasteMode) {
+                HorizontalFloatingToolbar(
+                    modifier = Modifier.onSizeChanged { fabHeight = it.height },
+                    expanded = true,
+                    contentPadding = PaddingValues(0.dp),
+                    colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors(),
+                ) {
+                    TextButton(onClick = { callbacks.onCancelPaste() }) {
+                        Text("キャンセル")
+                    }
+                    TextButton(
+                        onClick = { callbacks.onPasteClick() },
+                        enabled = uiState.visibleFolderBrowserButton,
+                    ) {
+                        Text("貼り付け")
+                    }
+                }
+            } else if (uiState.isSelectionMode) {
                 HorizontalFloatingToolbar(
                     modifier = Modifier.onSizeChanged { fabHeight = it.height },
                     expanded = true,
@@ -149,7 +166,7 @@ internal fun FileBrowserScreenContent(
             }
         },
     ) { innerPadding ->
-        val contentPadding = if ((uiState.isSelectionMode || uiState.visibleFolderBrowserButton) && fabHeight > 0) {
+        val contentPadding = if ((uiState.isPasteMode || uiState.isSelectionMode || uiState.visibleFolderBrowserButton) && fabHeight > 0) {
             innerPadding.plus(
                 PaddingValues(bottom = with(LocalDensity.current) { fabHeight.toDp() } + 16.dp),
             )
@@ -225,6 +242,7 @@ private fun Preview() {
             ),
             isSelectionMode = false,
             selectedCount = 0,
+            isPasteMode = false,
             callbacks = object : FileBrowserUiState.Callbacks {
                 override fun onRefresh() = Unit
                 override fun onBack() = Unit
@@ -239,6 +257,8 @@ private fun Preview() {
                 override fun onCancelSelection() = Unit
                 override fun onCopyClick() = Unit
                 override fun onCutClick() = Unit
+                override fun onPasteClick() = Unit
+                override fun onCancelPaste() = Unit
             },
             contentState = FileBrowserUiState.ContentState.Content(
                 files = listOf(

@@ -13,6 +13,7 @@ data class FileBrowserUiState(
     val displayConfig: UiDisplayConfig,
     val isSelectionMode: Boolean,
     val selectedCount: Int,
+    val isPasteMode: Boolean,
     val callbacks: Callbacks,
     val contentState: ContentState,
 ) {
@@ -76,5 +77,7 @@ data class FileBrowserUiState(
         fun onCancelSelection()
         fun onCopyClick()
         fun onCutClick()
+        fun onPasteClick()
+        fun onCancelPaste()
     }
 }

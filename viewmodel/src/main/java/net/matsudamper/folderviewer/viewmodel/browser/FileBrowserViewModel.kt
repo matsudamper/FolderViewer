@@ -29,6 +29,7 @@ import net.matsudamper.folderviewer.repository.FavoriteConfiguration
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.PreferencesRepository
+import net.matsudamper.folderviewer.repository.ClipboardRepository
 import net.matsudamper.folderviewer.repository.SelectionModeRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.UploadJobRepository
@@ -46,6 +47,7 @@ class FileBrowserViewModel @AssistedInject constructor(
     private val preferencesRepository: PreferencesRepository,
     private val uploadJobRepository: UploadJobRepository,
     private val selectionModeRepository: SelectionModeRepository,
+    private val clipboardRepository: ClipboardRepository,
     application: Application,
     @Assisted private val arg: FileBrowser,
 ) : AndroidViewModel(application) {
@@ -188,18 +190,39 @@ class FileBrowserViewModel @AssistedInject constructor(
         }
 
         override fun onCopyClick() {
-            // TODO コピーを実装する
+            val selectedItems = when (val s = viewModelStateFlow.value.selectedState) {
+                is ViewModelState.SelectionState.NonSelected -> return
+                is ViewModelState.SelectionState.Selected -> s.items
+            }
+            clipboardRepository.setClipboard(ClipboardRepository.ClipboardMode.Copy, selectedItems)
+            viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
+            selectionModeRepository.setSelectionMode(false)
         }
 
         override fun onCutClick() {
-            // TODO 切り取りを実装する
+            val selectedItems = when (val s = viewModelStateFlow.value.selectedState) {
+                is ViewModelState.SelectionState.NonSelected -> return
+                is ViewModelState.SelectionState.Selected -> s.items
+            }
+            clipboardRepository.setClipboard(ClipboardRepository.ClipboardMode.Cut, selectedItems)
+            viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
+            selectionModeRepository.setSelectionMode(false)
+        }
+
+        override fun onPasteClick() {
+            // TODO ペーストを実装する
+        }
+
+        override fun onCancelPaste() {
+            clipboardRepository.clearClipboard()
         }
     }
 
     val uiState: Flow<FileBrowserUiState> = combine(
         viewModelStateFlow,
         selectionModeRepository.isSelectionMode,
-    ) { viewModelState, isSelectionMode ->
+        clipboardRepository.clipboardState,
+    ) { viewModelState, isSelectionMode, clipboardState ->
         val sortedFiles = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig))
         val selectedItems = when (viewModelState.selectedState) {
             is ViewModelState.SelectionState.NonSelected -> setOf()
@@ -269,6 +292,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             visibleFolderBrowserButton = viewModelState.rootWritable,
             isSelectionMode = isSelectionMode,
             selectedCount = selectedItems.size,
+            isPasteMode = clipboardState != null,
             contentState = contentState,
         )
     }
