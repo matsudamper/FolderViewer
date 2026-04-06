@@ -239,10 +239,25 @@ internal class FilePasteWorker @AssistedInject constructor(
 
         for ((dirPath, storageId) in ancestorDirPaths) {
             val dirId = FileObjectId.Item(storageId = storageId, id = dirPath)
-            val children = runCatching { sourceRepo.getFiles(dirId) }.getOrNull() ?: continue
-            if (children.isEmpty()) {
-                runCatching { sourceRepo.deleteDirectory(dirId) }
+            deleteDirectoryIfEmpty(dirId, sourceRepo)
+        }
+    }
+
+    private suspend fun deleteDirectoryIfEmpty(
+        dirId: FileObjectId.Item,
+        sourceRepo: FileRepository,
+    ) {
+        val children = runCatching { sourceRepo.getFiles(dirId) }.getOrNull() ?: return
+
+        for (child in children) {
+            if (child.isDirectory) {
+                deleteDirectoryIfEmpty(child.id, sourceRepo)
             }
+        }
+
+        val remaining = runCatching { sourceRepo.getFiles(dirId) }.getOrNull() ?: return
+        if (remaining.isEmpty()) {
+            runCatching { sourceRepo.deleteDirectory(dirId) }
         }
     }
 
