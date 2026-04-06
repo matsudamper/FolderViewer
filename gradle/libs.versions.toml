@@ -31,7 +31,7 @@ zoomable = "2.11.0"
 jakartaInject = "2.0.1"
 microsoftGraph = "6.61.0"
 azureIdentity = "1.18.2"
-workManager = "2.11.1"
+workManager = "2.11.2"
 room = "2.8.4"
 
 [libraries]
