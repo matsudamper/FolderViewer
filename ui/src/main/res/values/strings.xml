@@ -38,6 +38,9 @@
     <string name="upload_state_succeeded">完了</string>
     <string name="upload_state_failed">失敗</string>
     <string name="upload_state_cancelled">キャンセル</string>
+    <string name="upload_state_paused">一時停止中</string>
+    <string name="paste_pause">一時停止</string>
+    <string name="paste_resume">再開</string>
     <string name="no_uploads">アップロードはありません</string>
     <string name="upload_detail_title">アップロード詳細</string>
     <string name="upload_detail_uploading">アップロード中</string>
