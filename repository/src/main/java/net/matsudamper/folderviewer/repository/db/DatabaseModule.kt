@@ -26,4 +26,14 @@ internal object DatabaseModule {
     fun provideUploadJobDao(database: AppDatabase): UploadJobDao {
         return database.uploadJobDao()
     }
+
+    @Provides
+    fun providePasteJobDao(database: AppDatabase): PasteJobDao {
+        return database.pasteJobDao()
+    }
+
+    @Provides
+    fun providePasteFileDao(database: AppDatabase): PasteFileDao {
+        return database.pasteFileDao()
+    }
 }
