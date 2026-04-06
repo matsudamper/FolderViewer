@@ -461,8 +461,11 @@ private fun EntryProviderScope<NavKey>.sharePointAddEntry(navigator: Navigator) 
 private fun FileBrowserEventHandler(
     viewModel: FileBrowserViewModel,
     navigator: Navigator,
+    scope: kotlinx.coroutines.CoroutineScope,
     filePickerLauncher: androidx.activity.compose.ManagedActivityResultLauncher<String, android.net.Uri?>,
     folderPickerLauncher: androidx.activity.compose.ManagedActivityResultLauncher<android.net.Uri?, android.net.Uri?>,
+    pasteNotificationPermissionLauncher: androidx.activity.compose.ManagedActivityResultLauncher<String, Boolean>,
+    pendingPasteClipboardState: androidx.compose.runtime.MutableState<net.matsudamper.folderviewer.repository.ClipboardRepository.ClipboardState?>,
 ) {
     val context = LocalContext.current
     LaunchedEffect(viewModel.viewModelEventFlow) {
@@ -490,6 +493,20 @@ private fun FileBrowserEventHandler(
                 is FileBrowserViewModel.ViewModelEvent.LaunchFilePicker -> filePickerLauncher.launch("*/*")
 
                 is FileBrowserViewModel.ViewModelEvent.LaunchFolderPicker -> folderPickerLauncher.launch(null)
+
+                is FileBrowserViewModel.ViewModelEvent.RequestNotificationPermissionForPaste -> {
+                    pendingPasteClipboardState.value = event.clipboardState
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+                        androidx.core.content.ContextCompat.checkSelfPermission(
+                            context,
+                            android.Manifest.permission.POST_NOTIFICATIONS,
+                        ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                    ) {
+                        pasteNotificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        scope.launch { viewModel.handlePaste(event.clipboardState) }
+                    }
+                }
 
                 is FileBrowserViewModel.ViewModelEvent.OpenWithExternalPlayer -> {
                     val uri = when (val externalUri = event.viewSourceUri) {
@@ -584,7 +601,27 @@ private fun EntryProviderScope<NavKey>.fileBrowserEntry(navigator: Navigator) {
             }
         }
 
-        FileBrowserEventHandler(viewModel, navigator, filePickerLauncher, folderPickerLauncher)
+        val pendingPasteClipboardState = remember {
+            androidx.compose.runtime.mutableStateOf<net.matsudamper.folderviewer.repository.ClipboardRepository.ClipboardState?>(null)
+        }
+
+        val pasteNotificationPermissionLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission(),
+        ) { _ ->
+            val clipboardState = pendingPasteClipboardState.value ?: return@rememberLauncherForActivityResult
+            pendingPasteClipboardState.value = null
+            scope.launch { viewModel.handlePaste(clipboardState) }
+        }
+
+        FileBrowserEventHandler(
+            viewModel = viewModel,
+            navigator = navigator,
+            scope = scope,
+            filePickerLauncher = filePickerLauncher,
+            folderPickerLauncher = folderPickerLauncher,
+            pasteNotificationPermissionLauncher = pasteNotificationPermissionLauncher,
+            pendingPasteClipboardState = pendingPasteClipboardState,
+        )
 
         FileBrowserScreen(
             uiState = uiStateValue,
