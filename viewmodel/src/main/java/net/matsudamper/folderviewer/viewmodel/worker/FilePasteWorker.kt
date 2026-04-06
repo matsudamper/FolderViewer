@@ -139,6 +139,10 @@ internal class FilePasteWorker @AssistedInject constructor(
                 updateNotification(notificationId, completedFiles, job.totalFiles, null)
             }
 
+            if (job.mode == ClipboardRepository.ClipboardMode.Cut) {
+                deleteEmptySourceDirectories(files, sourceRepo)
+            }
+
             pasteJobRepository.updateStatus(jobId, PasteJobRepository.PasteJobStatus.COMPLETED)
             Result.success()
         } catch (e: Throwable) {
@@ -216,6 +220,30 @@ internal class FilePasteWorker @AssistedInject constructor(
             .build()
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(notificationId, notification)
+    }
+
+    private suspend fun deleteEmptySourceDirectories(
+        files: List<PasteJobRepository.PasteFile>,
+        sourceRepo: FileRepository,
+    ) {
+        val ancestorDirPaths = buildList {
+            val seen = mutableSetOf<String>()
+            for (file in files) {
+                var dir = file.sourceFileId.id.substringBeforeLast("/", "")
+                while (dir.isNotEmpty() && seen.add(dir)) {
+                    add(Pair(dir, file.sourceFileId.storageId))
+                    dir = dir.substringBeforeLast("/", "")
+                }
+            }
+        }.sortedByDescending { it.first.count { c -> c == '/' } }
+
+        for ((dirPath, storageId) in ancestorDirPaths) {
+            val dirId = FileObjectId.Item(storageId = storageId, id = dirPath)
+            val children = runCatching { sourceRepo.getFiles(dirId) }.getOrNull() ?: continue
+            if (children.isEmpty()) {
+                runCatching { sourceRepo.deleteDirectory(dirId) }
+            }
+        }
     }
 
     private suspend fun ensureDirectory(

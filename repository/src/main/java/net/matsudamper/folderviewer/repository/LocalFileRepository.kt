@@ -80,6 +80,12 @@ internal class LocalFileRepository(
         require(file.delete()) { "Failed to delete file: ${fileId.id}" }
     }
 
+    override suspend fun deleteDirectory(dirId: FileObjectId.Item): Unit = withContext(Dispatchers.IO) {
+        val dir = buildAbsoluteFile(dirId.id)
+        require(dir.exists() && dir.isDirectory) { "Directory not found: ${dirId.id}" }
+        require(dir.delete()) { "Failed to delete directory: ${dirId.id}" }
+    }
+
     override suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream = withContext(Dispatchers.IO) {
         try {
             val file = buildAbsoluteFile(fileId.id)

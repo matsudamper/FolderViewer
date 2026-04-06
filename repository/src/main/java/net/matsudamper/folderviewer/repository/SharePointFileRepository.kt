@@ -102,6 +102,13 @@ class SharePointFileRepository(
             .delete()
     }
 
+    override suspend fun deleteDirectory(dirId: FileObjectId.Item): Unit = withContext(Dispatchers.IO) {
+        val driveId = getDriveId()
+        graphServiceClient.drives().byDriveId(driveId)
+            .items().byDriveItemId(dirId.id)
+            .delete()
+    }
+
     override suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream? {
         return withContext(Dispatchers.IO) {
             val driveId = getDriveId()
