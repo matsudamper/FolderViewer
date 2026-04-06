@@ -63,6 +63,23 @@ internal class LocalFileRepository(
         file.length()
     }
 
+    override suspend fun getFileInfo(fileId: FileObjectId.Item): FileItem = withContext(Dispatchers.IO) {
+        val file = buildAbsoluteFile(fileId.id)
+        FileItem(
+            id = fileId,
+            displayPath = file.name,
+            isDirectory = file.isDirectory,
+            size = file.length(),
+            lastModified = file.lastModified(),
+        )
+    }
+
+    override suspend fun deleteFile(fileId: FileObjectId.Item): Unit = withContext(Dispatchers.IO) {
+        val file = buildAbsoluteFile(fileId.id)
+        require(file.exists()) { "File not found: ${fileId.id}" }
+        require(file.delete()) { "Failed to delete file: ${fileId.id}" }
+    }
+
     override suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream = withContext(Dispatchers.IO) {
         try {
             val file = buildAbsoluteFile(fileId.id)
@@ -147,10 +164,8 @@ internal class LocalFileRepository(
                 progressInputStream.onRead.collect(onRead)
             }
 
-            progressInputStream.use { input ->
-                destinationFile.outputStream().use { output ->
-                    input.copyTo(output)
-                }
+            destinationFile.outputStream().use { output ->
+                progressInputStream.copyTo(output)
             }
             job.cancel()
         }
@@ -210,7 +225,7 @@ internal class LocalFileRepository(
     override suspend fun createDirectory(
         id: FileObjectId,
         directoryName: String,
-    ): Unit = withContext(Dispatchers.IO) {
+    ): FileObjectId.Item = withContext(Dispatchers.IO) {
         val path = when (id) {
             is FileObjectId.Root -> ""
             is FileObjectId.Item -> id.id
@@ -222,10 +237,13 @@ internal class LocalFileRepository(
         }
 
         val newDir = File(parentDir, directoryName)
-        require(!newDir.exists()) { "Directory already exists: $directoryName" }
+        if (!newDir.exists()) {
+            val created = newDir.mkdir()
+            require(created) { "Failed to create directory: $directoryName" }
+        }
 
-        val created = newDir.mkdir()
-        require(created) { "Failed to create directory: $directoryName" }
+        val relativePath = if (path.isEmpty()) directoryName else "$path/$directoryName"
+        FileObjectId.Item(config.id, relativePath)
     }
 
     override suspend fun openRandomAccess(fileId: FileObjectId.Item): RandomAccessSource {

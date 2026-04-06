@@ -84,6 +84,24 @@ class SharePointFileRepository(
         item.size ?: 0L
     }
 
+    override suspend fun getFileInfo(fileId: FileObjectId.Item): FileItem = withContext(Dispatchers.IO) {
+        val item = graphApiClient.getDriveItem(fileId.id)
+        FileItem(
+            id = fileId,
+            displayPath = item.name,
+            isDirectory = item.folder != null,
+            size = item.size ?: 0L,
+            lastModified = item.lastModifiedDateTime?.let { OffsetDateTime.parse(it).toInstant().toEpochMilli() } ?: 0L,
+        )
+    }
+
+    override suspend fun deleteFile(fileId: FileObjectId.Item): Unit = withContext(Dispatchers.IO) {
+        val driveId = getDriveId()
+        graphServiceClient.drives().byDriveId(driveId)
+            .items().byDriveItemId(fileId.id)
+            .delete()
+    }
+
     override suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream? {
         return withContext(Dispatchers.IO) {
             val driveId = getDriveId()
@@ -248,16 +266,15 @@ class SharePointFileRepository(
     override suspend fun createDirectory(
         id: FileObjectId,
         directoryName: String,
-    ) {
-        withContext(Dispatchers.IO) {
+    ): FileObjectId.Item {
+        return withContext(Dispatchers.IO) {
             val driveId = getDriveId()
-
             val parentId = when (id) {
-                is FileObjectId.Root -> return@withContext
+                is FileObjectId.Root -> throw UnsupportedOperationException("Cannot create directory in root")
                 is FileObjectId.Item -> id.id
             }
-
-            createOrGetFolder(driveId, parentId, directoryName)
+            val folderId = createOrGetFolder(driveId, parentId, directoryName)
+            FileObjectId.Item(config.id, folderId)
         }
     }
 

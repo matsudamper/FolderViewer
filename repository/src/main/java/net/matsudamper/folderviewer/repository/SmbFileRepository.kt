@@ -93,6 +93,61 @@ class SmbFileRepository(
         }
     }
 
+    override suspend fun getFileInfo(fileId: FileObjectId.Item): FileItem = withContext(Dispatchers.IO) {
+        val fileName = fileId.id.substringAfterLast("/")
+        val parts = fileId.id.split("/", limit = PATH_SPLIT_LIMIT)
+        val shareName = parts[0]
+        val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+
+        client.connect(config.ip).use { connection ->
+            val session = connection.authenticate(
+                AuthenticationContext(config.username, config.password.toCharArray(), null),
+            )
+            val share = session.connectShare(shareName) as? DiskShare
+                ?: throw IllegalArgumentException("Share not found: $shareName")
+            share.use { diskShare ->
+                val isDirectory = diskShare.folderExists(subPath)
+                val size = if (isDirectory) {
+                    0L
+                } else {
+                    diskShare.openFile(
+                        subPath,
+                        EnumSet.of(AccessMask.GENERIC_READ),
+                        null,
+                        SMB2ShareAccess.ALL,
+                        SMB2CreateDisposition.FILE_OPEN,
+                        null,
+                    ).use { it.fileInformation.standardInformation.endOfFile }
+                }
+                FileItem(
+                    id = fileId,
+                    displayPath = fileName,
+                    isDirectory = isDirectory,
+                    size = size,
+                    lastModified = 0L,
+                )
+            }
+        }
+    }
+
+    override suspend fun deleteFile(fileId: FileObjectId.Item): Unit = withContext(Dispatchers.IO) {
+        client.connect(config.ip).use { connection ->
+            val session = connection.authenticate(
+                AuthenticationContext(
+                    config.username,
+                    config.password.toCharArray(),
+                    null,
+                ),
+            )
+            val parts = fileId.id.split("/", limit = PATH_SPLIT_LIMIT)
+            val shareName = parts[0]
+            val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+            val share = session.connectShare(shareName) as? DiskShare
+                ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+            share.use { it.rm(subPath) }
+        }
+    }
+
     override suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream = withContext(Dispatchers.IO) {
         val connection = client.connect(config.ip)
         try {
@@ -371,9 +426,7 @@ class SmbFileRepository(
                                     progressInputStream.onRead.collect(onRead)
                                 }
 
-                                progressInputStream.use { input ->
-                                    input.copyTo(outputStream)
-                                }
+                                progressInputStream.copyTo(outputStream)
                                 job.cancel()
                             }
                         }
@@ -476,12 +529,12 @@ class SmbFileRepository(
     override suspend fun createDirectory(
         id: FileObjectId,
         directoryName: String,
-    ) {
+    ): FileObjectId.Item {
         val path = when (id) {
-            is FileObjectId.Root -> return
+            is FileObjectId.Root -> throw UnsupportedOperationException("Cannot create directory in root")
             is FileObjectId.Item -> id.id
         }
-        withContext(Dispatchers.IO) {
+        return withContext(Dispatchers.IO) {
             client.connect(config.ip).use { connection ->
                 val session = connection.authenticate(
                     AuthenticationContext(
@@ -500,9 +553,10 @@ class SmbFileRepository(
 
                 share.use { diskShare ->
                     val fullPath = if (subPath.isEmpty()) directoryName else "$subPath\\$directoryName"
-                    diskShare.mkdir(fullPath)
+                    runCatching { diskShare.mkdir(fullPath) }
                 }
             }
+            FileObjectId.Item(config.id, "$path/$directoryName")
         }
     }
 
