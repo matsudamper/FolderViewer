@@ -55,6 +55,7 @@ class PasteJobRepository @Inject internal constructor(
                     fileName = file.fileName,
                     fileSize = file.fileSize,
                     destinationRelativePath = file.destinationRelativePath,
+                    isDirectory = file.isDirectory,
                 )
             },
         )
@@ -73,6 +74,7 @@ class PasteJobRepository @Inject internal constructor(
                     completed = entity.completed,
                     deleted = entity.deleted,
                     destinationRelativePath = entity.destinationRelativePath,
+                    isDirectory = entity.isDirectory,
                 )
             }.getOrNull()
         }
@@ -176,5 +178,6 @@ class PasteJobRepository @Inject internal constructor(
         val completed: Boolean = false,
         val deleted: Boolean = false,
         val destinationRelativePath: String = "",
+        val isDirectory: Boolean = false,
     )
 }

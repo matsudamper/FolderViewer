@@ -27,4 +27,5 @@ internal data class PasteFileEntity(
     val completed: Boolean = false,
     val deleted: Boolean = false,
     val destinationRelativePath: String = "",
+    val isDirectory: Boolean = false,
 )

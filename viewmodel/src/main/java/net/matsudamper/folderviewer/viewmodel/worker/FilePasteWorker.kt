@@ -96,22 +96,36 @@ internal class FilePasteWorker @AssistedInject constructor(
                 }
 
                 try {
-                    val destDirId = ensureDirectory(
-                        path = file.destinationRelativePath,
-                        destRepo = destRepo,
-                        rootId = job.destinationFileObjectId,
-                        cache = directoryCache,
-                    )
-                    sourceRepo.getFileContent(file.sourceFileId).use { inputStream ->
-                        destRepo.uploadFile(
-                            id = destDirId,
-                            fileName = file.fileName,
-                            inputStream = inputStream,
-                            size = file.fileSize,
-                            onRead = progressFlow,
+                    if (file.isDirectory) {
+                        val destPath = if (file.destinationRelativePath.isEmpty()) {
+                            file.fileName
+                        } else {
+                            "${file.destinationRelativePath}/${file.fileName}"
+                        }
+                        ensureDirectory(
+                            path = destPath,
+                            destRepo = destRepo,
+                            rootId = job.destinationFileObjectId,
+                            cache = directoryCache,
                         )
+                    } else {
+                        val destDirId = ensureDirectory(
+                            path = file.destinationRelativePath,
+                            destRepo = destRepo,
+                            rootId = job.destinationFileObjectId,
+                            cache = directoryCache,
+                        )
+                        sourceRepo.getFileContent(file.sourceFileId).use { inputStream ->
+                            destRepo.uploadFile(
+                                id = destDirId,
+                                fileName = file.fileName,
+                                inputStream = inputStream,
+                                size = file.fileSize,
+                                onRead = progressFlow,
+                            )
+                        }
+                        // TODO: ベリファイ（uploadFileの戻り値変更後にファイルサイズ検証を追加）
                     }
-                    // TODO: ベリファイ（uploadFileの戻り値変更後にファイルサイズ検証を追加）
                 } finally {
                     progressJob.cancel()
                 }
@@ -119,7 +133,11 @@ internal class FilePasteWorker @AssistedInject constructor(
                 pasteJobRepository.markFileCompleted(file.id)
 
                 if (job.mode == ClipboardRepository.ClipboardMode.Cut && !file.deleted) {
-                    sourceRepo.deleteFile(file.sourceFileId)
+                    if (file.isDirectory) {
+                        sourceRepo.deleteDirectory(file.sourceFileId)
+                    } else {
+                        sourceRepo.deleteFile(file.sourceFileId)
+                    }
                     pasteJobRepository.markFileDeleted(file.id)
                 }
 
