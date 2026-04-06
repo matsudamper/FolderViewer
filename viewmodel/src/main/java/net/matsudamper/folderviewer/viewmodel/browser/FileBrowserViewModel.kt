@@ -28,6 +28,7 @@ import net.matsudamper.folderviewer.navigation.FileBrowser
 import net.matsudamper.folderviewer.repository.FavoriteConfiguration
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
+import net.matsudamper.folderviewer.repository.PasteJobRepository
 import net.matsudamper.folderviewer.repository.PreferencesRepository
 import net.matsudamper.folderviewer.repository.ClipboardRepository
 import net.matsudamper.folderviewer.repository.SelectionModeRepository
@@ -38,6 +39,7 @@ import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 import net.matsudamper.folderviewer.viewmodel.util.FileUtil
+import net.matsudamper.folderviewer.viewmodel.worker.FilePasteWorker
 import net.matsudamper.folderviewer.viewmodel.worker.FileUploadWorker
 import net.matsudamper.folderviewer.viewmodel.worker.FolderUploadWorker
 
@@ -46,6 +48,7 @@ class FileBrowserViewModel @AssistedInject constructor(
     private val storageRepository: StorageRepository,
     private val preferencesRepository: PreferencesRepository,
     private val uploadJobRepository: UploadJobRepository,
+    private val pasteJobRepository: PasteJobRepository,
     private val selectionModeRepository: SelectionModeRepository,
     private val clipboardRepository: ClipboardRepository,
     application: Application,
@@ -190,27 +193,36 @@ class FileBrowserViewModel @AssistedInject constructor(
         }
 
         override fun onCopyClick() {
-            val selectedItems = when (val s = viewModelStateFlow.value.selectedState) {
+            val selectedIds = when (val s = viewModelStateFlow.value.selectedState) {
                 is ViewModelState.SelectionState.NonSelected -> return
                 is ViewModelState.SelectionState.Selected -> s.items
             }
-            clipboardRepository.setClipboard(ClipboardRepository.ClipboardMode.Copy, selectedItems)
+            val rawFiles = viewModelStateFlow.value.rawFiles
+            val selectedFileItems = selectedIds.mapNotNull { id -> rawFiles.find { it.id == id } }.toSet()
+            clipboardRepository.setClipboard(ClipboardRepository.ClipboardMode.Copy, selectedFileItems)
             viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
             selectionModeRepository.setSelectionMode(false)
         }
 
         override fun onCutClick() {
-            val selectedItems = when (val s = viewModelStateFlow.value.selectedState) {
+            val selectedIds = when (val s = viewModelStateFlow.value.selectedState) {
                 is ViewModelState.SelectionState.NonSelected -> return
                 is ViewModelState.SelectionState.Selected -> s.items
             }
-            clipboardRepository.setClipboard(ClipboardRepository.ClipboardMode.Cut, selectedItems)
+            val rawFiles = viewModelStateFlow.value.rawFiles
+            val selectedFileItems = selectedIds.mapNotNull { id -> rawFiles.find { it.id == id } }.toSet()
+            clipboardRepository.setClipboard(ClipboardRepository.ClipboardMode.Cut, selectedFileItems)
             viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
             selectionModeRepository.setSelectionMode(false)
         }
 
         override fun onPasteClick() {
-            // TODO ペーストを実装する
+            val clipboard = clipboardRepository.clipboardState.value ?: return
+            viewModelScope.launch {
+                viewModelEventChannel.send(
+                    ViewModelEvent.RequestNotificationPermissionForPaste(clipboard),
+                )
+            }
         }
 
         override fun onCancelPaste() {
@@ -460,6 +472,10 @@ class FileBrowserViewModel @AssistedInject constructor(
         data object LaunchFilePicker : ViewModelEvent
         data object LaunchFolderPicker : ViewModelEvent
 
+        data class RequestNotificationPermissionForPaste(
+            val clipboardState: ClipboardRepository.ClipboardState,
+        ) : ViewModelEvent
+
         data class OpenWithExternalPlayer(
             val viewSourceUri: ViewSourceUri,
             val fileId: FileObjectId.Item,
@@ -492,6 +508,89 @@ class FileBrowserViewModel @AssistedInject constructor(
 
         WorkManager.getInstance(getApplication()).enqueue(workRequest)
         uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ファイルのアップロードを開始しました"))
+    }
+
+    suspend fun handlePaste(clipboardState: ClipboardRepository.ClipboardState) {
+        runCatching {
+            val sourceRepo = storageRepository.getFileRepository(
+                clipboardState.items.first().id.storageId,
+            ) ?: run {
+                uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ストレージが見つかりませんでした"))
+                return
+            }
+
+            val files = clipboardState.items.flatMap { fileItem ->
+                collectPasteFiles(sourceRepo, fileItem, "")
+            }
+
+            val totalBytes = files.sumOf { it.fileSize }
+
+            val workRequest = OneTimeWorkRequestBuilder<FilePasteWorker>()
+                .addTag(FilePasteWorker.TAG_PASTE)
+                .build()
+
+            val jobId = pasteJobRepository.saveJob(
+                job = PasteJobRepository.PasteJob(
+                    workerId = workRequest.id.toString(),
+                    mode = clipboardState.mode,
+                    destinationFileObjectId = fileObjectId,
+                    destinationDisplayPath = arg.displayPath.orEmpty(),
+                    totalFiles = files.size,
+                    totalBytes = totalBytes,
+                    status = PasteJobRepository.PasteJobStatus.RUNNING,
+                ),
+                files = files,
+            )
+
+            val inputData = androidx.work.Data.Builder()
+                .putLong(FilePasteWorker.KEY_PASTE_JOB_ID, jobId)
+                .build()
+
+            val workRequestWithData = OneTimeWorkRequestBuilder<FilePasteWorker>()
+                .setInputData(inputData)
+                .addTag(FilePasteWorker.TAG_PASTE)
+                .build()
+
+            pasteJobRepository.updateStatus(jobId, PasteJobRepository.PasteJobStatus.RUNNING, workerId = workRequestWithData.id.toString())
+
+            WorkManager.getInstance(getApplication()).enqueue(workRequestWithData)
+
+            clipboardRepository.clearClipboard()
+            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ペーストを開始しました"))
+        }.onFailure { e ->
+            when (e) {
+                is CancellationException -> throw e
+                else -> {
+                    e.printStackTrace()
+                    uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar("ペースト開始失敗: ${e.message}"))
+                }
+            }
+        }
+    }
+
+    private suspend fun collectPasteFiles(
+        repo: FileRepository,
+        item: FileItem,
+        destinationRelativePath: String,
+    ): List<PasteJobRepository.PasteFile> {
+        return if (item.isDirectory) {
+            val dirPath = if (destinationRelativePath.isEmpty()) {
+                item.displayPath
+            } else {
+                "$destinationRelativePath/${item.displayPath}"
+            }
+            repo.getFiles(item.id).flatMap { child -> collectPasteFiles(repo, child, dirPath) }
+        } else {
+            listOf(
+                PasteJobRepository.PasteFile(
+                    jobId = 0,
+                    sourceFileId = item.id,
+                    fileName = item.displayPath,
+                    fileSize = item.size,
+                    destinationRelativePath = destinationRelativePath,
+                ),
+            )
+        }
     }
 
     suspend fun handleFolderUpload(folderUri: android.net.Uri) {
