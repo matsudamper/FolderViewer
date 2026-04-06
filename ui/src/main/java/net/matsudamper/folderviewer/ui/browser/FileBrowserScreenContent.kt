@@ -166,7 +166,8 @@ internal fun FileBrowserScreenContent(
             }
         },
     ) { innerPadding ->
-        val contentPadding = if ((uiState.isPasteMode || uiState.isSelectionMode || uiState.visibleFolderBrowserButton) && fabHeight > 0) {
+        val showFab = uiState.isPasteMode || uiState.isSelectionMode || uiState.visibleFolderBrowserButton
+        val contentPadding = if (showFab && fabHeight > 0) {
             innerPadding.plus(
                 PaddingValues(bottom = with(LocalDensity.current) { fabHeight.toDp() } + 16.dp),
             )
