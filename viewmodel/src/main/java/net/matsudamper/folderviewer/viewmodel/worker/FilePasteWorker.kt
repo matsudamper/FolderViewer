@@ -247,7 +247,14 @@ internal class FilePasteWorker @AssistedInject constructor(
         val ancestorDirPaths = buildList {
             val seen = mutableSetOf<String>()
             for (file in files) {
-                var dir = file.sourceFileId.id.substringBeforeLast("/", "")
+                // isDirectory=true はディレクトリ自身を起点にする
+                // isDirectory=false はファイルの親ディレクトリを起点にする
+                val startPath = if (file.isDirectory) {
+                    file.sourceFileId.id
+                } else {
+                    file.sourceFileId.id.substringBeforeLast("/", "")
+                }
+                var dir = startPath
                 while (dir.isNotEmpty() && seen.add(dir)) {
                     add(Pair(dir, file.sourceFileId.storageId))
                     dir = dir.substringBeforeLast("/", "")
@@ -257,25 +264,10 @@ internal class FilePasteWorker @AssistedInject constructor(
 
         for ((dirPath, storageId) in ancestorDirPaths) {
             val dirId = FileObjectId.Item(storageId = storageId, id = dirPath)
-            deleteDirectoryIfEmpty(dirId, sourceRepo)
-        }
-    }
-
-    private suspend fun deleteDirectoryIfEmpty(
-        dirId: FileObjectId.Item,
-        sourceRepo: FileRepository,
-    ) {
-        val children = runCatching { sourceRepo.getFiles(dirId) }.getOrNull() ?: return
-
-        for (child in children) {
-            if (child.isDirectory) {
-                deleteDirectoryIfEmpty(child.id, sourceRepo)
+            val children = runCatching { sourceRepo.getFiles(dirId) }.getOrNull() ?: continue
+            if (children.isEmpty()) {
+                runCatching { sourceRepo.deleteDirectory(dirId) }
             }
-        }
-
-        val remaining = runCatching { sourceRepo.getFiles(dirId) }.getOrNull() ?: return
-        if (remaining.isEmpty()) {
-            runCatching { sourceRepo.deleteDirectory(dirId) }
         }
     }
 
