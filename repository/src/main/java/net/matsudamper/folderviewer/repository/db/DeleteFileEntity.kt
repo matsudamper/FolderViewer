@@ -6,7 +6,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(
-    tableName = "paste_files",
+    tableName = "delete_files",
     foreignKeys = [
         ForeignKey(
             entity = OperationEntity::class,
@@ -17,20 +17,15 @@ import androidx.room.PrimaryKey
     ],
     indices = [Index("operationId")],
 )
-internal data class PasteFileEntity(
+internal data class DeleteFileEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val operationId: Long,
     val sourceFileId: String,
     val fileName: String,
     val fileSize: Long,
+    val isDirectory: Boolean,
+    val parentRelativePath: String = "",
     val completed: Boolean = false,
-    val deleted: Boolean = false,
-    val destinationRelativePath: String = "",
-    val isDirectory: Boolean = false,
-    val isDuplicate: Boolean = false,
-    val destinationFileId: String? = null,
-    val destinationFileSize: Long = 0,
-    val resolution: String? = null,
     val errorMessage: String? = null,
 )

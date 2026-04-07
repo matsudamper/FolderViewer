@@ -10,6 +10,7 @@ data class PasteDetailUiState(
     val errorCause: String?,
     val duplicateFiles: List<DuplicateFileItem>,
     val completedFiles: List<CompletedFileItem>,
+    val failedFiles: List<FailedFileItem> = emptyList(),
     val canApply: Boolean,
     val callbacks: Callbacks,
 ) {
@@ -44,6 +45,12 @@ data class PasteDetailUiState(
         val fileName: String,
         val path: String,
         val sizeText: String,
+    )
+
+    data class FailedFileItem(
+        val fileName: String,
+        val path: String,
+        val errorMessage: String,
     )
 
     @Immutable

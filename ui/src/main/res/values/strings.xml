@@ -76,4 +76,14 @@
     <string name="paste_detail_apply_resolutions">適用</string>
     <string name="paste_detail_no_duplicates">重複ファイルはありません</string>
     <string name="paste_detail_failed">失敗しました</string>
+    <string name="paste_detail_failed_files_section">失敗ファイル</string>
+    <string name="delete_detail_title">削除詳細</string>
+    <string name="delete_detail_failed">削除に失敗しました</string>
+    <string name="delete_detail_info">削除情報</string>
+    <string name="delete_detail_total_files">合計ファイル数</string>
+    <string name="delete_detail_completed_files">削除済みファイル数</string>
+    <string name="delete_detail_failed_files">失敗ファイル数</string>
+    <string name="delete_detail_failed_section">失敗ファイル</string>
+    <string name="delete_detail_completed_section">削除済みファイル</string>
+    <string name="delete_state_running">削除中</string>
 </resources>

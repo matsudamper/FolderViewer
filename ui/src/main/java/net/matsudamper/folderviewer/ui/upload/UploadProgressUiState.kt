@@ -60,6 +60,19 @@ data class UploadProgressUiState(
             val isResumable: Boolean,
             val pasteCallbacks: PasteCallbacks,
         ) : UploadItem
+
+        data class Delete(
+            override val id: String,
+            override val name: String,
+            override val state: UploadState,
+            override val canNavigate: Boolean,
+            val totalFiles: Int,
+            val completedFiles: Int,
+            val failedFiles: Int,
+            val currentFileName: String?,
+            override val progress: Float?,
+            override val progressText: String?,
+        ) : UploadItem
     }
 
     @Immutable

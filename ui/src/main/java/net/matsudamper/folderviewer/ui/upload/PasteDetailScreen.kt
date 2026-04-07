@@ -151,6 +151,21 @@ public fun PasteDetailScreen(
                 }
             }
 
+            if (uiState.failedFiles.isNotEmpty()) {
+                item {
+                    SectionHeader(
+                        text = stringResource(R.string.paste_detail_failed_files_section) +
+                            " (${uiState.failedFiles.size})",
+                    )
+                }
+                items(
+                    items = uiState.failedFiles,
+                    key = { it.path },
+                ) { item ->
+                    PasteFailedFileRow(item = item)
+                }
+            }
+
             item {
                 SectionHeader(
                     text = stringResource(R.string.paste_detail_duplicate_files_section) +
@@ -190,6 +205,42 @@ public fun PasteDetailScreen(
             ) { item ->
                 CompletedFileRow(item = item)
             }
+        }
+    }
+}
+
+@Composable
+private fun PasteFailedFileRow(
+    item: PasteDetailUiState.FailedFileItem,
+    modifier: Modifier = Modifier,
+) {
+    androidx.compose.material3.Card(
+        modifier = modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = item.fileName,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                maxLines = 1,
+            )
+            Text(
+                text = item.path,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                maxLines = 1,
+            )
+            Text(
+                text = item.errorMessage,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
         }
     }
 }

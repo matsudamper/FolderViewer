@@ -40,3 +40,6 @@ data class UploadDetail(val workerId: String) : NavKey
 
 @Serializable
 data class PasteDetail(val jobId: Long) : NavKey
+
+@Serializable
+data class DeleteDetail(val operationId: Long) : NavKey

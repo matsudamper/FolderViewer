@@ -90,11 +90,12 @@ internal class FilePasteWorker @AssistedInject constructor(
                 if (job.mode == ClipboardRepository.ClipboardMode.Cut && !dir.deleted) {
                     try {
                         sourceRepo.deleteDirectory(dir.sourceFileId)
+                        pasteJobRepository.markFileDeleted(dir.id)
                     } catch (e: Throwable) {
                         if (e is CancellationException) throw e
                         e.printStackTrace()
+                        pasteJobRepository.markFileFailed(dir.id, e.message ?: e.toString())
                     }
-                    pasteJobRepository.markFileDeleted(dir.id)
                 }
             }
 
@@ -160,8 +161,14 @@ internal class FilePasteWorker @AssistedInject constructor(
                 pasteJobRepository.markFileCompleted(file.id)
 
                 if (job.mode == ClipboardRepository.ClipboardMode.Cut && !file.deleted) {
-                    sourceRepo.deleteFile(file.sourceFileId)
-                    pasteJobRepository.markFileDeleted(file.id)
+                    try {
+                        sourceRepo.deleteFile(file.sourceFileId)
+                        pasteJobRepository.markFileDeleted(file.id)
+                    } catch (e: Throwable) {
+                        if (e is CancellationException) throw e
+                        e.printStackTrace()
+                        pasteJobRepository.markFileFailed(file.id, e.message ?: e.toString())
+                    }
                 }
 
                 completedFiles++

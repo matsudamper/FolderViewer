@@ -25,6 +25,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.navigation.FileBrowser
+import net.matsudamper.folderviewer.repository.DeleteJobRepository
 import net.matsudamper.folderviewer.repository.FavoriteConfiguration
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
@@ -34,6 +35,7 @@ import net.matsudamper.folderviewer.repository.ClipboardRepository
 import net.matsudamper.folderviewer.repository.SelectionModeRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.UploadJobRepository
+import net.matsudamper.folderviewer.viewmodel.worker.FileDeleteWorker
 import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
@@ -49,6 +51,7 @@ class FileBrowserViewModel @AssistedInject constructor(
     private val preferencesRepository: PreferencesRepository,
     private val uploadJobRepository: UploadJobRepository,
     private val pasteJobRepository: PasteJobRepository,
+    private val deleteJobRepository: DeleteJobRepository,
     private val selectionModeRepository: SelectionModeRepository,
     private val clipboardRepository: ClipboardRepository,
     application: Application,
@@ -237,24 +240,9 @@ class FileBrowserViewModel @AssistedInject constructor(
             viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
             selectionModeRepository.setSelectionMode(false)
             viewModelScope.launch {
-                runCatching {
-                    val repository = getRepository()
-                    for (item in selectedFileItems) {
-                        deleteRecursively(repository, item)
-                    }
-                    fetchFilesInternal()
-                    uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("${selectedFileItems.size}件を削除しました"))
-                }.onFailure { e ->
-                    when (e) {
-                        is CancellationException -> throw e
-
-                        else -> {
-                            e.printStackTrace()
-                            fetchFilesInternal()
-                            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("削除に失敗しました: ${e.message}"))
-                        }
-                    }
-                }
+                viewModelEventChannel.send(
+                    ViewModelEvent.RequestNotificationPermissionForDelete(selectedFileItems),
+                )
             }
         }
 
@@ -518,6 +506,10 @@ class FileBrowserViewModel @AssistedInject constructor(
             val clipboardState: ClipboardRepository.ClipboardState,
         ) : ViewModelEvent
 
+        data class RequestNotificationPermissionForDelete(
+            val items: List<FileItem>,
+        ) : ViewModelEvent
+
         data class OpenWithExternalPlayer(
             val viewSourceUri: ViewSourceUri,
             val fileId: FileObjectId.Item,
@@ -610,18 +602,66 @@ class FileBrowserViewModel @AssistedInject constructor(
         }
     }
 
-    private suspend fun deleteRecursively(
-        repository: FileRepository,
-        item: FileItem,
-    ) {
-        if (item.isDirectory) {
-            val children = repository.getFiles(item.id)
-            for (child in children) {
-                deleteRecursively(repository, child)
+    suspend fun handleDelete(items: List<FileItem>) {
+        runCatching {
+            val repository = getRepository()
+            val files = items.flatMap { collectDeleteFiles(repository, it, "") }
+            val jobName = "${items.size}件を削除"
+            val operationId = deleteJobRepository.saveJob(name = jobName, files = files)
+
+            val inputData = androidx.work.Data.Builder()
+                .putLong(FileDeleteWorker.KEY_DELETE_OPERATION_ID, operationId)
+                .build()
+
+            val workRequest = OneTimeWorkRequestBuilder<FileDeleteWorker>()
+                .setInputData(inputData)
+                .addTag(FileDeleteWorker.TAG_DELETE)
+                .build()
+
+            deleteJobRepository.updateStatus(operationId, net.matsudamper.folderviewer.repository.OperationRepository.OperationStatus.RUNNING, workRequest.id.toString())
+
+            WorkManager.getInstance(getApplication()).enqueue(workRequest)
+
+            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("削除を開始しました"))
+        }.onFailure { e ->
+            when (e) {
+                is CancellationException -> throw e
+                else -> {
+                    e.printStackTrace()
+                    uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar("削除開始失敗: ${e.message}"))
+                }
             }
-            repository.deleteDirectory(item.id)
+        }
+    }
+
+    private suspend fun collectDeleteFiles(
+        repo: FileRepository,
+        item: FileItem,
+        parentRelativePath: String,
+    ): List<DeleteJobRepository.DeleteFile> {
+        return if (item.isDirectory) {
+            val children = repo.getFiles(item.id)
+            val dirPath = if (parentRelativePath.isEmpty()) item.displayPath else "$parentRelativePath/${item.displayPath}"
+            val childFiles = children.flatMap { child -> collectDeleteFiles(repo, child, dirPath) }
+            childFiles + DeleteJobRepository.DeleteFile(
+                operationId = 0,
+                sourceFileId = item.id,
+                fileName = item.displayPath,
+                fileSize = 0,
+                isDirectory = true,
+                parentRelativePath = parentRelativePath,
+            )
         } else {
-            repository.deleteFile(item.id)
+            listOf(
+                DeleteJobRepository.DeleteFile(
+                    operationId = 0,
+                    sourceFileId = item.id,
+                    fileName = item.displayPath,
+                    fileSize = item.size,
+                    isDirectory = false,
+                    parentRelativePath = parentRelativePath,
+                ),
+            )
         }
     }
 

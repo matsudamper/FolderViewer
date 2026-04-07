@@ -38,7 +38,8 @@ class PasteDetailViewModel @Inject constructor(
                 pasteJobRepository.observeJob(jobId),
                 pasteJobRepository.observeDuplicateFiles(jobId),
                 pasteJobRepository.observeCompletedFiles(jobId),
-            ) { job, duplicates, completed ->
+                pasteJobRepository.observeFailedFiles(jobId),
+            ) { job, duplicates, completed, failedFiles ->
                 if (job == null) return@combine null
 
                 val modeText = when (job.mode) {
@@ -124,6 +125,19 @@ class PasteDetailViewModel @Inject constructor(
                     }
                 }
 
+                val failedItems = failedFiles.map { file ->
+                    val path = if (file.destinationRelativePath.isEmpty()) {
+                        "${job.destinationDisplayPath}/${file.fileName}"
+                    } else {
+                        "${job.destinationDisplayPath}/${file.destinationRelativePath}/${file.fileName}"
+                    }
+                    PasteDetailUiState.FailedFileItem(
+                        fileName = file.fileName,
+                        path = path,
+                        errorMessage = file.errorMessage ?: "",
+                    )
+                }
+
                 PasteDetailUiState(
                     jobName = "${job.totalFiles}ファイルを${modeText}",
                     statusText = statusText,
@@ -132,6 +146,7 @@ class PasteDetailViewModel @Inject constructor(
                     errorCause = job.errorCause,
                     duplicateFiles = duplicateItems,
                     completedFiles = completedItems,
+                    failedFiles = failedItems,
                     canApply = canApply,
                     callbacks = callbacks,
                 )

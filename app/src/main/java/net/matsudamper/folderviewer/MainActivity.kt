@@ -79,6 +79,7 @@ import net.matsudamper.folderviewer.navigation.Settings
 import net.matsudamper.folderviewer.navigation.SharePointAdd
 import net.matsudamper.folderviewer.navigation.SmbAdd
 import net.matsudamper.folderviewer.navigation.StorageTypeSelection
+import net.matsudamper.folderviewer.navigation.DeleteDetail
 import net.matsudamper.folderviewer.navigation.PasteDetail
 import net.matsudamper.folderviewer.navigation.UploadDetail
 import net.matsudamper.folderviewer.navigation.UploadProgress
@@ -96,6 +97,7 @@ import net.matsudamper.folderviewer.ui.storage.SharePointAddScreen
 import net.matsudamper.folderviewer.ui.storage.SmbAddScreen
 import net.matsudamper.folderviewer.ui.storage.StorageTypeSelectionScreen
 import net.matsudamper.folderviewer.ui.theme.FolderViewerTheme
+import net.matsudamper.folderviewer.ui.upload.DeleteDetailScreen
 import net.matsudamper.folderviewer.ui.upload.PasteDetailScreen
 import net.matsudamper.folderviewer.ui.upload.UploadDetailScreen
 import net.matsudamper.folderviewer.ui.upload.UploadProgressScreen
@@ -108,6 +110,7 @@ import net.matsudamper.folderviewer.viewmodel.settings.SettingsViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.SharePointAddViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.SmbAddViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.StorageTypeSelectionViewModel
+import net.matsudamper.folderviewer.viewmodel.upload.DeleteDetailViewModel
 import net.matsudamper.folderviewer.viewmodel.upload.PasteDetailViewModel
 import net.matsudamper.folderviewer.viewmodel.upload.UploadDetailViewModel
 import net.matsudamper.folderviewer.viewmodel.upload.UploadProgressViewModel
@@ -254,6 +257,7 @@ private fun entryProvider(navigator: Navigator): (NavKey) -> NavEntry<NavKey> {
         uploadProgressEntry(navigator)
         uploadDetailEntry(navigator)
         pasteDetailEntry(navigator)
+        deleteDetailEntry(navigator)
     }
 }
 
@@ -470,6 +474,8 @@ private fun FileBrowserEventHandler(
     folderPickerLauncher: androidx.activity.compose.ManagedActivityResultLauncher<android.net.Uri?, android.net.Uri?>,
     pasteNotificationPermissionLauncher: androidx.activity.compose.ManagedActivityResultLauncher<String, Boolean>,
     pendingPasteClipboardState: androidx.compose.runtime.MutableState<net.matsudamper.folderviewer.repository.ClipboardRepository.ClipboardState?>,
+    deleteNotificationPermissionLauncher: androidx.activity.compose.ManagedActivityResultLauncher<String, Boolean>,
+    pendingDeleteItems: androidx.compose.runtime.MutableState<List<net.matsudamper.folderviewer.repository.FileItem>?>,
 ) {
     val context = LocalContext.current
     LaunchedEffect(viewModel.viewModelEventFlow) {
@@ -509,6 +515,22 @@ private fun FileBrowserEventHandler(
                         pasteNotificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
                     } else {
                         scope.launch { viewModel.handlePaste(event.clipboardState) }
+                    }
+                }
+
+                is FileBrowserViewModel.ViewModelEvent.RequestNotificationPermissionForDelete -> {
+                    pendingDeleteItems.value = event.items
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+                        androidx.core.content.ContextCompat.checkSelfPermission(
+                            context,
+                            android.Manifest.permission.POST_NOTIFICATIONS,
+                        ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                    ) {
+                        deleteNotificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        val items = event.items
+                        pendingDeleteItems.value = null
+                        scope.launch { viewModel.handleDelete(items) }
                     }
                 }
 
@@ -617,6 +639,18 @@ private fun EntryProviderScope<NavKey>.fileBrowserEntry(navigator: Navigator) {
             scope.launch { viewModel.handlePaste(clipboardState) }
         }
 
+        val pendingDeleteItems = remember {
+            androidx.compose.runtime.mutableStateOf<List<net.matsudamper.folderviewer.repository.FileItem>?>(null)
+        }
+
+        val deleteNotificationPermissionLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission(),
+        ) { _ ->
+            val items = pendingDeleteItems.value ?: return@rememberLauncherForActivityResult
+            pendingDeleteItems.value = null
+            scope.launch { viewModel.handleDelete(items) }
+        }
+
         FileBrowserEventHandler(
             viewModel = viewModel,
             navigator = navigator,
@@ -625,6 +659,8 @@ private fun EntryProviderScope<NavKey>.fileBrowserEntry(navigator: Navigator) {
             folderPickerLauncher = folderPickerLauncher,
             pasteNotificationPermissionLauncher = pasteNotificationPermissionLauncher,
             pendingPasteClipboardState = pendingPasteClipboardState,
+            deleteNotificationPermissionLauncher = deleteNotificationPermissionLauncher,
+            pendingDeleteItems = pendingDeleteItems,
         )
 
         FileBrowserScreen(
@@ -738,6 +774,12 @@ private fun EntryProviderScope<NavKey>.uploadProgressEntry(navigator: Navigator)
                             PasteDetail(jobId = event.jobId),
                         )
                     }
+
+                    is UploadProgressViewModel.ViewModelEvent.NavigateToDeleteDetail -> {
+                        navigator.navigate(
+                            DeleteDetail(operationId = event.opId),
+                        )
+                    }
                 }
             }
         }
@@ -804,5 +846,29 @@ private fun EntryProviderScope<NavKey>.pasteDetailEntry(navigator: Navigator) {
 
         val uiStateValue = uiState ?: return@entry
         PasteDetailScreen(uiState = uiStateValue)
+    }
+}
+
+private fun EntryProviderScope<NavKey>.deleteDetailEntry(navigator: Navigator) {
+    entry<DeleteDetail> { key ->
+        val viewModel: DeleteDetailViewModel = hiltViewModel()
+        val uiState by viewModel.uiState.collectAsState()
+
+        LaunchedEffect(key.operationId) {
+            viewModel.init(key.operationId)
+        }
+
+        LaunchedEffect(viewModel.viewModelEventFlow) {
+            viewModel.viewModelEventFlow.collect { event ->
+                when (event) {
+                    DeleteDetailViewModel.ViewModelEvent.NavigateBack -> {
+                        navigator.goBack()
+                    }
+                }
+            }
+        }
+
+        val uiStateValue = uiState ?: return@entry
+        DeleteDetailScreen(uiState = uiStateValue)
     }
 }

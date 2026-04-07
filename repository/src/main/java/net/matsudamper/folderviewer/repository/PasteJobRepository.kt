@@ -6,57 +6,69 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import net.matsudamper.folderviewer.common.FileObjectId
+import net.matsudamper.folderviewer.repository.db.OperationDao
+import net.matsudamper.folderviewer.repository.db.OperationEntity
 import net.matsudamper.folderviewer.repository.db.PasteFileDao
 import net.matsudamper.folderviewer.repository.db.PasteFileEntity
-import net.matsudamper.folderviewer.repository.db.PasteJobDao
-import net.matsudamper.folderviewer.repository.db.PasteJobEntity
+import net.matsudamper.folderviewer.repository.db.PasteOperationDao
+import net.matsudamper.folderviewer.repository.db.PasteOperationEntity
 
 @Singleton
 class PasteJobRepository @Inject internal constructor(
-    private val pasteJobDao: PasteJobDao,
+    private val operationDao: OperationDao,
+    private val pasteOperationDao: PasteOperationDao,
     private val pasteFileDao: PasteFileDao,
 ) {
     fun getAllJobs(): Flow<List<PasteJob>> {
-        return pasteJobDao.getAllJobs().map { entities ->
-            entities.mapNotNull { entity ->
-                runCatching { entity.toDomain() }.getOrNull()
-            }
+        return operationDao.observeAll(limit = 500).map { entities ->
+            entities
+                .filter { it.type == OperationRepository.OperationType.PASTE.name }
+                .mapNotNull { entity ->
+                    runCatching { entity.toPasteJob() }.getOrNull()
+                }
         }
     }
 
     fun observeJob(id: Long): Flow<PasteJob?> {
-        return pasteJobDao.observeJobById(id).map { entity ->
-            entity?.let { runCatching { it.toDomain() }.getOrNull() }
+        return operationDao.observeById(id).map { entity ->
+            entity?.let { runCatching { it.toPasteJob() }.getOrNull() }
         }
     }
 
     suspend fun getJobById(id: Long): PasteJob? {
-        val entity = pasteJobDao.getJobById(id) ?: return null
-        return runCatching { entity.toDomain() }.getOrNull()
+        val entity = operationDao.getById(id) ?: return null
+        return runCatching { entity.toPasteJob() }.getOrNull()
     }
 
     suspend fun getJobByWorkerId(workerId: String): PasteJob? {
-        val entity = pasteJobDao.getJobByWorkerId(workerId) ?: return null
-        return runCatching { entity.toDomain() }.getOrNull()
+        val entity = operationDao.getByWorkerId(workerId) ?: return null
+        return runCatching { entity.toPasteJob() }.getOrNull()
     }
 
     suspend fun saveJob(job: PasteJob, files: List<PasteFile>): Long {
-        val jobId = pasteJobDao.insert(
-            PasteJobEntity(
+        val operationId = operationDao.insert(
+            OperationEntity(
+                type = OperationRepository.OperationType.PASTE.name,
                 workerId = job.workerId,
+                name = job.name,
+                status = job.status.name,
+                createdAt = System.currentTimeMillis(),
+                totalFiles = job.totalFiles,
+                totalBytes = job.totalBytes,
+            ),
+        )
+        pasteOperationDao.insert(
+            PasteOperationEntity(
+                operationId = operationId,
                 mode = job.mode.name,
                 destinationFileObjectId = Json.encodeToString(job.destinationFileObjectId),
                 destinationDisplayPath = job.destinationDisplayPath,
-                totalFiles = job.totalFiles,
-                totalBytes = job.totalBytes,
-                status = job.status.name,
-                createdAt = System.currentTimeMillis(),
             ),
         )
         pasteFileDao.insertAll(
             files.map { file ->
                 PasteFileEntity(
-                    jobId = jobId,
+                    operationId = operationId,
                     sourceFileId = Json.encodeToString(file.sourceFileId),
                     fileName = file.fileName,
                     fileSize = file.fileSize,
@@ -65,34 +77,41 @@ class PasteJobRepository @Inject internal constructor(
                 )
             },
         )
-        return jobId
+        return operationId
     }
 
     suspend fun getFiles(jobId: Long): List<PasteFile> {
-        return pasteFileDao.getFilesByJobId(jobId).mapNotNull { entity ->
+        return pasteFileDao.getFilesByOperationId(jobId).mapNotNull { entity ->
             runCatching { entity.toDomain() }.getOrNull()
         }
     }
 
     fun observeDuplicateFiles(jobId: Long): Flow<List<PasteFile>> {
-        return pasteFileDao.observeDuplicatesByJobId(jobId).map { entities ->
+        return pasteFileDao.observeDuplicatesByOperationId(jobId).map { entities ->
             entities.mapNotNull { runCatching { it.toDomain() }.getOrNull() }
         }
     }
 
     fun observeCompletedFiles(jobId: Long): Flow<List<PasteFile>> {
-        return pasteFileDao.observeCompletedNonDuplicatesByJobId(jobId).map { entities ->
+        return pasteFileDao.observeCompletedNonDuplicatesByOperationId(jobId).map { entities ->
+            entities.mapNotNull { runCatching { it.toDomain() }.getOrNull() }
+        }
+    }
+
+    fun observeFailedFiles(jobId: Long): Flow<List<PasteFile>> {
+        return pasteFileDao.observeFailedByOperationId(jobId).map { entities ->
             entities.mapNotNull { runCatching { it.toDomain() }.getOrNull() }
         }
     }
 
     suspend fun updateProgress(jobId: Long, progress: ProgressUpdate) {
-        pasteJobDao.updateCompletedProgress(
+        operationDao.updateCompletedProgress(
             id = jobId,
             completedFiles = progress.completedFiles,
             completedBytes = progress.completedBytes,
+            failedFiles = 0,
         )
-        pasteJobDao.updateCurrentFile(
+        operationDao.updateCurrentFile(
             id = jobId,
             currentFileName = progress.currentFileName,
             currentFileBytes = progress.currentFileBytes,
@@ -106,6 +125,10 @@ class PasteJobRepository @Inject internal constructor(
 
     suspend fun markFileDeleted(fileId: Long) {
         pasteFileDao.markDeleted(fileId)
+    }
+
+    suspend fun markFileFailed(fileId: Long, errorMessage: String?) {
+        pasteFileDao.markFailed(fileId, errorMessage)
     }
 
     suspend fun markFileDuplicate(fileId: Long, destinationFileId: FileObjectId.Item, destinationFileSize: Long) {
@@ -125,11 +148,11 @@ class PasteJobRepository @Inject internal constructor(
     }
 
     suspend fun updateStatus(jobId: Long, status: PasteJobStatus, workerId: String? = null) {
-        pasteJobDao.updateStatusAndWorkerId(id = jobId, status = status.name, workerId = workerId)
+        operationDao.updateStatusAndWorkerId(id = jobId, status = status.name, workerId = workerId)
     }
 
     suspend fun updateError(jobId: Long, errorMessage: String?, errorCause: String?) {
-        pasteJobDao.updateError(
+        operationDao.updateError(
             id = jobId,
             status = PasteJobStatus.FAILED.name,
             errorMessage = errorMessage,
@@ -138,24 +161,33 @@ class PasteJobRepository @Inject internal constructor(
     }
 
     suspend fun updateDuplicateCount(jobId: Long, count: Int) {
-        pasteJobDao.updateDuplicateCount(jobId, count)
+        operationDao.updateDuplicateCount(jobId, count)
     }
 
     suspend fun updateResolvedCount(jobId: Long, count: Int) {
-        pasteJobDao.updateResolvedCount(jobId, count)
+        operationDao.updateResolvedCount(jobId, count)
     }
 
     suspend fun deleteJob(jobId: Long) {
-        pasteJobDao.deleteById(jobId)
+        operationDao.deleteById(jobId)
     }
 
-    private fun PasteJobEntity.toDomain(): PasteJob {
+    private suspend fun OperationEntity.toPasteJob(): PasteJob {
+        val pasteDetail = pasteOperationDao.getByOperationId(id)
+            ?: error("PasteOperationEntity not found for operationId=$id")
+        val name = "${totalFiles}ファイルを${
+            when (pasteDetail.mode) {
+                "Copy" -> "コピー"
+                else -> "カット"
+            }
+        }"
         return PasteJob(
             id = id,
             workerId = workerId,
-            mode = ClipboardRepository.ClipboardMode.valueOf(mode),
-            destinationFileObjectId = Json.decodeFromString(destinationFileObjectId),
-            destinationDisplayPath = destinationDisplayPath,
+            name = name,
+            mode = ClipboardRepository.ClipboardMode.valueOf(pasteDetail.mode),
+            destinationFileObjectId = Json.decodeFromString(pasteDetail.destinationFileObjectId),
+            destinationDisplayPath = pasteDetail.destinationDisplayPath,
             totalFiles = totalFiles,
             totalBytes = totalBytes,
             status = PasteJobStatus.valueOf(status),
@@ -174,7 +206,7 @@ class PasteJobRepository @Inject internal constructor(
     private fun PasteFileEntity.toDomain(): PasteFile {
         return PasteFile(
             id = id,
-            jobId = jobId,
+            jobId = operationId,
             sourceFileId = Json.decodeFromString<FileObjectId.Item>(sourceFileId),
             fileName = fileName,
             fileSize = fileSize,
@@ -188,6 +220,7 @@ class PasteJobRepository @Inject internal constructor(
             },
             destinationFileSize = destinationFileSize,
             resolution = resolution?.let { runCatching { DuplicateResolution.valueOf(it) }.getOrNull() },
+            errorMessage = errorMessage,
         )
     }
 
@@ -202,6 +235,7 @@ class PasteJobRepository @Inject internal constructor(
     data class PasteJob(
         val id: Long = 0,
         val workerId: String?,
+        val name: String = "",
         val mode: ClipboardRepository.ClipboardMode,
         val destinationFileObjectId: FileObjectId,
         val destinationDisplayPath: String,
@@ -241,5 +275,6 @@ class PasteJobRepository @Inject internal constructor(
         val destinationFileId: FileObjectId.Item? = null,
         val destinationFileSize: Long = 0,
         val resolution: DuplicateResolution? = null,
+        val errorMessage: String? = null,
     )
 }
