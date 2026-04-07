@@ -5,11 +5,22 @@ import androidx.compose.runtime.Immutable
 data class PasteDetailUiState(
     val jobName: String,
     val statusText: String,
+    val status: Status,
+    val errorMessage: String?,
+    val errorCause: String?,
     val duplicateFiles: List<DuplicateFileItem>,
     val completedFiles: List<CompletedFileItem>,
     val canApply: Boolean,
     val callbacks: Callbacks,
 ) {
+    enum class Status {
+        RUNNING,
+        PAUSED,
+        COMPLETED,
+        FAILED,
+        WAITING_RESOLUTION,
+    }
+
     data class DuplicateFileItem(
         val fileId: Long,
         val fileName: String,

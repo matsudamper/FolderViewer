@@ -29,6 +29,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import net.matsudamper.folderviewer.ui.R
 import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
+import net.matsudamper.folderviewer.ui.upload.PasteDetailUiState.Status
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -92,6 +93,64 @@ public fun PasteDetailScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            if (uiState.status == Status.FAILED) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                        ),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_close),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                )
+                                Text(
+                                    text = stringResource(R.string.paste_detail_failed),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.padding(start = 8.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+                item {
+                    InfoCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        title = stringResource(R.string.upload_detail_error_info),
+                    ) {
+                        if (uiState.errorMessage != null) {
+                            InfoRow(
+                                label = stringResource(R.string.upload_detail_error_message),
+                                value = uiState.errorMessage,
+                            )
+                        }
+                        if (uiState.errorCause != null) {
+                            InfoRow(
+                                label = stringResource(R.string.upload_detail_error_cause),
+                                value = uiState.errorCause,
+                            )
+                        }
+                        if (uiState.errorMessage == null && uiState.errorCause == null) {
+                            Text(
+                                modifier = Modifier.fillMaxWidth(),
+                                text = stringResource(R.string.upload_detail_no_error_info),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+
             item {
                 SectionHeader(
                     text = stringResource(R.string.paste_detail_duplicate_files_section) +

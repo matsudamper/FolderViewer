@@ -54,6 +54,14 @@ class PasteDetailViewModel @Inject constructor(
                     PasteJobRepository.PasteJobStatus.WAITING_RESOLUTION -> "解決待ち"
                 }
 
+                val uiStatus = when (job.status) {
+                    PasteJobRepository.PasteJobStatus.RUNNING -> PasteDetailUiState.Status.RUNNING
+                    PasteJobRepository.PasteJobStatus.PAUSED -> PasteDetailUiState.Status.PAUSED
+                    PasteJobRepository.PasteJobStatus.COMPLETED -> PasteDetailUiState.Status.COMPLETED
+                    PasteJobRepository.PasteJobStatus.FAILED -> PasteDetailUiState.Status.FAILED
+                    PasteJobRepository.PasteJobStatus.WAITING_RESOLUTION -> PasteDetailUiState.Status.WAITING_RESOLUTION
+                }
+
                 val duplicateItems = duplicates.map { file ->
                     val sourcePath = "${file.sourceFileId.storageId}/${file.sourceFileId.id}"
                     val destinationPath = if (file.destinationRelativePath.isEmpty()) {
@@ -119,6 +127,9 @@ class PasteDetailViewModel @Inject constructor(
                 PasteDetailUiState(
                     jobName = "${job.totalFiles}ファイルを${modeText}",
                     statusText = statusText,
+                    status = uiStatus,
+                    errorMessage = job.errorMessage,
+                    errorCause = job.errorCause,
                     duplicateFiles = duplicateItems,
                     completedFiles = completedItems,
                     canApply = canApply,
