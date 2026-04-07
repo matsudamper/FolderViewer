@@ -148,7 +148,6 @@ class PasteDetailViewModel @Inject constructor(
 
             val inputData = Data.Builder()
                 .putLong(FilePasteWorker.KEY_PASTE_JOB_ID, jobId)
-                .putBoolean(FilePasteWorker.KEY_RESOLUTION_PASS, true)
                 .build()
 
             val workRequest = OneTimeWorkRequestBuilder<FilePasteWorker>()
