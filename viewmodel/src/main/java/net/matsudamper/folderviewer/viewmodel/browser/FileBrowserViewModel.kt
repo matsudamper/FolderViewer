@@ -216,6 +216,48 @@ class FileBrowserViewModel @AssistedInject constructor(
             selectionModeRepository.setSelectionMode(false)
         }
 
+        override fun onDeleteClick() {
+            val selectedIds = when (val s = viewModelStateFlow.value.selectedState) {
+                is ViewModelState.SelectionState.NonSelected -> return
+                is ViewModelState.SelectionState.Selected -> s.items
+            }
+            if (selectedIds.isEmpty()) return
+            viewModelScope.launch {
+                uiChannelEvent.send(FileBrowserUiEvent.ShowDeleteConfirmDialog(selectedIds.size))
+            }
+        }
+
+        override fun onConfirmDelete() {
+            val selectedIds = when (val s = viewModelStateFlow.value.selectedState) {
+                is ViewModelState.SelectionState.NonSelected -> return
+                is ViewModelState.SelectionState.Selected -> s.items
+            }
+            val rawFiles = viewModelStateFlow.value.rawFiles
+            val selectedFileItems = selectedIds.mapNotNull { id -> rawFiles.find { it.id == id } }
+            viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
+            selectionModeRepository.setSelectionMode(false)
+            viewModelScope.launch {
+                runCatching {
+                    val repository = getRepository()
+                    for (item in selectedFileItems) {
+                        deleteRecursively(repository, item)
+                    }
+                    fetchFilesInternal()
+                    uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("${selectedFileItems.size}件を削除しました"))
+                }.onFailure { e ->
+                    when (e) {
+                        is CancellationException -> throw e
+
+                        else -> {
+                            e.printStackTrace()
+                            fetchFilesInternal()
+                            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("削除に失敗しました: ${e.message}"))
+                        }
+                    }
+                }
+            }
+        }
+
         override fun onPasteClick() {
             val clipboard = clipboardRepository.clipboardState.value ?: return
             viewModelScope.launch {
@@ -565,6 +607,21 @@ class FileBrowserViewModel @AssistedInject constructor(
                     uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar("ペースト開始失敗: ${e.message}"))
                 }
             }
+        }
+    }
+
+    private suspend fun deleteRecursively(
+        repository: FileRepository,
+        item: FileItem,
+    ) {
+        if (item.isDirectory) {
+            val children = repository.getFiles(item.id)
+            for (child in children) {
+                deleteRecursively(repository, child)
+            }
+            repository.deleteDirectory(item.id)
+        } else {
+            repository.deleteFile(item.id)
         }
     }
 

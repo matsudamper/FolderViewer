@@ -22,6 +22,7 @@ fun FileBrowserScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     val showCreateDirectoryDialog = remember { mutableStateOf(false) }
+    val deleteConfirmCount = remember { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(uiEvent) {
         uiEvent.collect { event ->
@@ -31,6 +32,9 @@ fun FileBrowserScreen(
                 }
                 is FileBrowserUiEvent.ShowCreateDirectoryDialog -> {
                     showCreateDirectoryDialog.value = true
+                }
+                is FileBrowserUiEvent.ShowDeleteConfirmDialog -> {
+                    deleteConfirmCount.value = event.count
                 }
             }
         }
@@ -45,6 +49,12 @@ fun FileBrowserScreen(
             onConfirmCreateDirectory = { directoryName ->
                 uiState.callbacks.onConfirmCreateDirectory(directoryName)
                 showCreateDirectoryDialog.value = false
+            },
+            deleteConfirmCount = deleteConfirmCount.value,
+            onDeleteConfirmDialogDismiss = { deleteConfirmCount.value = null },
+            onConfirmDelete = {
+                uiState.callbacks.onConfirmDelete()
+                deleteConfirmCount.value = null
             },
         )
     }

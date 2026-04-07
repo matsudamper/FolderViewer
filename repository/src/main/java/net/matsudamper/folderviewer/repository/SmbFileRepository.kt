@@ -14,8 +14,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.hierynomus.msdtyp.AccessMask
 import com.hierynomus.msfscc.FileAttributes
+import com.hierynomus.msfscc.fileinformation.FileBasicInformation
+import com.hierynomus.mserref.NtStatus
 import com.hierynomus.mssmb2.SMB2CreateDisposition
 import com.hierynomus.mssmb2.SMB2ShareAccess
+import com.hierynomus.mssmb2.SMBApiException
 import com.hierynomus.smbj.SMBClient
 import com.hierynomus.smbj.auth.AuthenticationContext
 import com.hierynomus.smbj.session.Session
@@ -144,7 +147,18 @@ class SmbFileRepository(
             val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
             val share = session.connectShare(shareName) as? DiskShare
                 ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
-            share.use { it.rm(subPath) }
+            share.use { diskShare ->
+                try {
+                    diskShare.rm(subPath)
+                } catch (e: SMBApiException) {
+                    if (e.statusCode == NtStatus.STATUS_CANNOT_DELETE.value) {
+                        clearReadOnlyAttribute(diskShare, subPath)
+                        diskShare.rm(subPath)
+                    } else {
+                        throw e
+                    }
+                }
+            }
         }
     }
 
@@ -163,8 +177,34 @@ class SmbFileRepository(
             require(subPath.isNotEmpty()) { "Cannot delete share root: $shareName" }
             val share = session.connectShare(shareName) as? DiskShare
                 ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
-            share.use { it.rmdir(subPath, false) }
+            share.use { diskShare ->
+                try {
+                    diskShare.rmdir(subPath, false)
+                } catch (e: SMBApiException) {
+                    if (e.statusCode == NtStatus.STATUS_CANNOT_DELETE.value) {
+                        clearReadOnlyAttribute(diskShare, subPath)
+                        diskShare.rmdir(subPath, false)
+                    } else {
+                        throw e
+                    }
+                }
+            }
         }
+    }
+
+    /**
+     * 読み取り専用属性が付与されたファイル/ディレクトリは削除時に STATUS_CANNOT_DELETE を返すため、
+     * FILE_ATTRIBUTE_NORMAL を設定して属性をクリアする。
+     */
+    private fun clearReadOnlyAttribute(share: DiskShare, path: String) {
+        val basicInfo = FileBasicInformation(
+            FileBasicInformation.DONT_SET,
+            FileBasicInformation.DONT_SET,
+            FileBasicInformation.DONT_SET,
+            FileBasicInformation.DONT_SET,
+            FileAttributes.FILE_ATTRIBUTE_NORMAL.value,
+        )
+        share.setFileInformation(path, basicInfo)
     }
 
     override suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream = withContext(Dispatchers.IO) {
