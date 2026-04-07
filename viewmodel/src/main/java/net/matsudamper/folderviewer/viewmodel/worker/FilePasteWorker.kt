@@ -56,12 +56,53 @@ internal class FilePasteWorker @AssistedInject constructor(
             val destRepo = storageRepository.getFileRepository(job.destinationFileObjectId.storageId)
                 ?: return@withContext Result.failure()
 
-            var completedFiles = files.count { it.completed }
-            var completedBytes = files.filter { it.completed }.sumOf { it.fileSize }
-
             val directoryCache = mutableMapOf<String, FileObjectId>()
 
-            for (file in pendingFiles) {
+            // ディレクトリエントリを先に処理（ファイルとしてカウントしない）
+            val pendingDirectories = pendingFiles.filter { it.isDirectory }
+            val pendingFileEntries = pendingFiles.filter { !it.isDirectory }
+
+            for (dir in pendingDirectories) {
+                if (isStopped) {
+                    pasteJobRepository.updateStatus(jobId, PasteJobRepository.PasteJobStatus.PAUSED, workerId = null)
+                    return@withContext Result.success()
+                }
+
+                val destPath = if (dir.destinationRelativePath.isEmpty()) {
+                    dir.fileName
+                } else {
+                    "${dir.destinationRelativePath}/${dir.fileName}"
+                }
+                try {
+                    ensureDirectory(
+                        path = destPath,
+                        destRepo = destRepo,
+                        rootId = job.destinationFileObjectId,
+                        cache = directoryCache,
+                    )
+                } catch (e: Throwable) {
+                    if (e is CancellationException) throw e
+                    e.printStackTrace()
+                }
+
+                pasteJobRepository.markFileCompleted(dir.id)
+
+                if (job.mode == ClipboardRepository.ClipboardMode.Cut && !dir.deleted) {
+                    try {
+                        sourceRepo.deleteDirectory(dir.sourceFileId)
+                    } catch (e: Throwable) {
+                        if (e is CancellationException) throw e
+                        e.printStackTrace()
+                    }
+                    pasteJobRepository.markFileDeleted(dir.id)
+                }
+            }
+
+            // ファイルエントリを処理
+            var completedFiles = files.count { it.completed && !it.isDirectory }
+            var completedBytes = files.filter { it.completed && !it.isDirectory }.sumOf { it.fileSize }
+
+            for (file in pendingFileEntries) {
                 if (isStopped) {
                     pasteJobRepository.updateStatus(jobId, PasteJobRepository.PasteJobStatus.PAUSED, workerId = null)
                     return@withContext Result.success()
@@ -96,36 +137,22 @@ internal class FilePasteWorker @AssistedInject constructor(
                 }
 
                 try {
-                    if (file.isDirectory) {
-                        val destPath = if (file.destinationRelativePath.isEmpty()) {
-                            file.fileName
-                        } else {
-                            "${file.destinationRelativePath}/${file.fileName}"
-                        }
-                        ensureDirectory(
-                            path = destPath,
-                            destRepo = destRepo,
-                            rootId = job.destinationFileObjectId,
-                            cache = directoryCache,
+                    val destDirId = ensureDirectory(
+                        path = file.destinationRelativePath,
+                        destRepo = destRepo,
+                        rootId = job.destinationFileObjectId,
+                        cache = directoryCache,
+                    )
+                    sourceRepo.getFileContent(file.sourceFileId).use { inputStream ->
+                        destRepo.uploadFile(
+                            id = destDirId,
+                            fileName = file.fileName,
+                            inputStream = inputStream,
+                            size = file.fileSize,
+                            onRead = progressFlow,
                         )
-                    } else {
-                        val destDirId = ensureDirectory(
-                            path = file.destinationRelativePath,
-                            destRepo = destRepo,
-                            rootId = job.destinationFileObjectId,
-                            cache = directoryCache,
-                        )
-                        sourceRepo.getFileContent(file.sourceFileId).use { inputStream ->
-                            destRepo.uploadFile(
-                                id = destDirId,
-                                fileName = file.fileName,
-                                inputStream = inputStream,
-                                size = file.fileSize,
-                                onRead = progressFlow,
-                            )
-                        }
-                        // TODO: ベリファイ（uploadFileの戻り値変更後にファイルサイズ検証を追加）
                     }
+                    // TODO: ベリファイ（uploadFileの戻り値変更後にファイルサイズ検証を追加）
                 } finally {
                     progressJob.cancel()
                 }
@@ -133,11 +160,7 @@ internal class FilePasteWorker @AssistedInject constructor(
                 pasteJobRepository.markFileCompleted(file.id)
 
                 if (job.mode == ClipboardRepository.ClipboardMode.Cut && !file.deleted) {
-                    if (file.isDirectory) {
-                        sourceRepo.deleteDirectory(file.sourceFileId)
-                    } else {
-                        sourceRepo.deleteFile(file.sourceFileId)
-                    }
+                    sourceRepo.deleteFile(file.sourceFileId)
                     pasteJobRepository.markFileDeleted(file.id)
                 }
 
@@ -264,9 +287,12 @@ internal class FilePasteWorker @AssistedInject constructor(
 
         for ((dirPath, storageId) in ancestorDirPaths) {
             val dirId = FileObjectId.Item(storageId = storageId, id = dirPath)
-            val children = runCatching { sourceRepo.getFiles(dirId) }.getOrNull() ?: continue
+            val children = runCatching { sourceRepo.getFiles(dirId) }
+                .onFailure { it.printStackTrace() }
+                .getOrNull() ?: continue
             if (children.isEmpty()) {
                 runCatching { sourceRepo.deleteDirectory(dirId) }
+                    .onFailure { it.printStackTrace() }
             }
         }
     }

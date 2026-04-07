@@ -535,7 +535,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                     mode = clipboardState.mode,
                     destinationFileObjectId = fileObjectId,
                     destinationDisplayPath = arg.displayPath.orEmpty(),
-                    totalFiles = files.size,
+                    totalFiles = files.count { !it.isDirectory },
                     totalBytes = totalBytes,
                     status = PasteJobRepository.PasteJobStatus.RUNNING,
                 ),
