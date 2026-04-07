@@ -87,8 +87,9 @@ internal class FileDeleteWorker @AssistedInject constructor(
                         completedFiles++
                         completedBytes += file.fileSize
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Throwable) {
-                    if (e is CancellationException) throw e
                     deleteJobRepository.markFileFailed(file.id, e.message ?: e.toString())
                     failedFiles++
                 }
@@ -110,8 +111,9 @@ internal class FileDeleteWorker @AssistedInject constructor(
             }
             deleteJobRepository.updateStatus(operationId, finalStatus)
             Result.success()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Throwable) {
-            if (e is CancellationException) throw e
             e.printStackTrace()
             deleteJobRepository.updateError(
                 operationId = operationId,

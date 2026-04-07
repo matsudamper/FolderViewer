@@ -445,6 +445,7 @@ class SmbFileRepository(
         inputStream: InputStream,
         size: Long,
         onRead: FlowCollector<Long>,
+        overwrite: Boolean,
     ) {
         val path = when (id) {
             is FileObjectId.Root -> return
@@ -475,7 +476,7 @@ class SmbFileRepository(
                         EnumSet.of(AccessMask.GENERIC_WRITE),
                         null,
                         SMB2ShareAccess.ALL,
-                        SMB2CreateDisposition.FILE_OVERWRITE_IF,
+                        if (overwrite) SMB2CreateDisposition.FILE_OVERWRITE_IF else SMB2CreateDisposition.FILE_CREATE,
                         null,
                     ).use { file ->
                         file.outputStream.use { outputStream ->

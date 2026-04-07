@@ -102,10 +102,16 @@ class PasteDetailViewModel @Inject constructor(
                     } else {
                         "${job.destinationDisplayPath}/${file.destinationRelativePath}/${file.fileName}"
                     }
+                    val uiResolution = when (file.resolution) {
+                        PasteJobRepository.DuplicateResolution.KEEP_DESTINATION -> PasteDetailUiState.Resolution.KEEP_DESTINATION
+                        PasteJobRepository.DuplicateResolution.OVERWRITE_WITH_SOURCE -> PasteDetailUiState.Resolution.OVERWRITE_WITH_SOURCE
+                        else -> PasteDetailUiState.Resolution.NONE
+                    }
                     PasteDetailUiState.CompletedFileItem(
                         fileName = file.fileName,
                         path = path,
                         sizeText = formatFileSize(file.fileSize),
+                        resolution = uiResolution,
                     )
                 }
 
@@ -159,8 +165,6 @@ class PasteDetailViewModel @Inject constructor(
     private fun resolveFile(fileId: Long, resolution: PasteJobRepository.DuplicateResolution, jobId: Long) {
         viewModelScope.launch {
             pasteJobRepository.resolveFile(fileId, resolution)
-            val resolved = pasteJobRepository.observeJob(jobId)
-            // 解決済み数を更新
             val unresolvedCount = pasteJobRepository.countUnresolvedDuplicates(jobId)
             val job = pasteJobRepository.getJobById(jobId) ?: return@launch
             pasteJobRepository.updateResolvedCount(jobId, job.duplicateFiles - unresolvedCount)

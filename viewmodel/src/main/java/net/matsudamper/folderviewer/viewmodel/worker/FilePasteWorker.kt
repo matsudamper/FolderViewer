@@ -43,7 +43,9 @@ internal class FilePasteWorker @AssistedInject constructor(
             setForeground(createForegroundInfo(notificationId, 0, job.totalFiles, null))
 
             val files = pasteJobRepository.getFiles(jobId)
-            val pendingFiles = files.filter { !it.completed }
+            val pendingFiles = files.filter {
+                !it.completed && !(it.isDuplicate && it.resolution == null)
+            }
 
             if (pendingFiles.isEmpty()) {
                 pasteJobRepository.updateStatus(jobId, PasteJobRepository.PasteJobStatus.COMPLETED)
@@ -80,8 +82,9 @@ internal class FilePasteWorker @AssistedInject constructor(
                         rootId = job.destinationFileObjectId,
                         cache = directoryCache,
                     )
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Throwable) {
-                    if (e is CancellationException) throw e
                     e.printStackTrace()
                 }
 
@@ -91,8 +94,9 @@ internal class FilePasteWorker @AssistedInject constructor(
                     try {
                         sourceRepo.deleteDirectory(dir.sourceFileId)
                         pasteJobRepository.markFileDeleted(dir.id)
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (e: Throwable) {
-                        if (e is CancellationException) throw e
                         e.printStackTrace()
                         pasteJobRepository.markFileFailed(dir.id, e.message ?: e.toString())
                     }
@@ -109,82 +113,126 @@ internal class FilePasteWorker @AssistedInject constructor(
                     return@withContext Result.success()
                 }
 
-                pasteJobRepository.updateProgress(
-                    jobId = jobId,
-                    progress = PasteJobRepository.ProgressUpdate(
-                        completedFiles = completedFiles,
-                        completedBytes = completedBytes,
-                        currentFileName = file.fileName,
-                        currentFileBytes = 0L,
-                        currentFileTotalBytes = file.fileSize,
-                    ),
-                )
-                updateNotification(notificationId, completedFiles, job.totalFiles, file.fileName)
+                if (file.isDuplicate && file.resolution == PasteJobRepository.DuplicateResolution.KEEP_DESTINATION) {
+                    pasteJobRepository.markFileCompleted(file.id)
+                    if (job.mode == ClipboardRepository.ClipboardMode.Cut && !file.deleted) {
+                        try {
+                            sourceRepo.deleteFile(file.sourceFileId)
+                            pasteJobRepository.markFileDeleted(file.id)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Throwable) {
+                            pasteJobRepository.markFileFailed(file.id, e.message ?: e.toString())
+                        }
+                    }
+                    completedFiles++
+                    completedBytes += file.fileSize
+                } else if (!file.isDuplicate || file.resolution == PasteJobRepository.DuplicateResolution.OVERWRITE_WITH_SOURCE) {
+                    pasteJobRepository.updateProgress(
+                        jobId = jobId,
+                        progress = PasteJobRepository.ProgressUpdate(
+                            completedFiles = completedFiles,
+                            completedBytes = completedBytes,
+                            currentFileName = file.fileName,
+                            currentFileBytes = 0L,
+                            currentFileTotalBytes = file.fileSize,
+                        ),
+                    )
+                    updateNotification(notificationId, completedFiles, job.totalFiles, file.fileName)
 
-                val progressFlow = MutableStateFlow(0L)
-                val progressJob = launch {
-                    progressFlow.collectLatest { currentBytes ->
+                    val progressFlow = MutableStateFlow(0L)
+                    val progressJob = launch {
+                        progressFlow.collectLatest { currentBytes ->
+                            pasteJobRepository.updateProgress(
+                                jobId = jobId,
+                                progress = PasteJobRepository.ProgressUpdate(
+                                    completedFiles = completedFiles,
+                                    completedBytes = completedBytes,
+                                    currentFileName = file.fileName,
+                                    currentFileBytes = currentBytes,
+                                    currentFileTotalBytes = file.fileSize,
+                                ),
+                            )
+                        }
+                    }
+
+                    var detectedDuplicate = false
+                    try {
+                        val destDirId = ensureDirectory(
+                            path = file.destinationRelativePath,
+                            destRepo = destRepo,
+                            rootId = job.destinationFileObjectId,
+                            cache = directoryCache,
+                        )
+
+                        if (!file.isDuplicate) {
+                            val destFiles = destRepo.getFiles(destDirId)
+                            val existing = destFiles.find { !it.isDirectory && it.displayPath == file.fileName }
+                            if (existing != null) {
+                                pasteJobRepository.markFileDuplicate(
+                                    fileId = file.id,
+                                    destinationFileId = existing.id,
+                                    destinationFileSize = existing.size,
+                                )
+                                detectedDuplicate = true
+                            }
+                        }
+
+                        if (!detectedDuplicate) {
+                            sourceRepo.getFileContent(file.sourceFileId).use { inputStream ->
+                                destRepo.uploadFile(
+                                    id = destDirId,
+                                    fileName = file.fileName,
+                                    inputStream = inputStream,
+                                    size = file.fileSize,
+                                    onRead = progressFlow,
+                                    overwrite = file.isDuplicate &&
+                                        file.resolution == PasteJobRepository.DuplicateResolution.OVERWRITE_WITH_SOURCE,
+                                )
+                            }
+                        }
+                    } finally {
+                        progressJob.cancel()
+                    }
+
+                    if (!detectedDuplicate) {
+                        pasteJobRepository.markFileCompleted(file.id)
+
+                        if (job.mode == ClipboardRepository.ClipboardMode.Cut && !file.deleted) {
+                            try {
+                                sourceRepo.deleteFile(file.sourceFileId)
+                                pasteJobRepository.markFileDeleted(file.id)
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Throwable) {
+                                e.printStackTrace()
+                                pasteJobRepository.markFileFailed(file.id, e.message ?: e.toString())
+                            }
+                        }
+
+                        completedFiles++
+                        completedBytes += file.fileSize
+
                         pasteJobRepository.updateProgress(
                             jobId = jobId,
                             progress = PasteJobRepository.ProgressUpdate(
                                 completedFiles = completedFiles,
                                 completedBytes = completedBytes,
-                                currentFileName = file.fileName,
-                                currentFileBytes = currentBytes,
-                                currentFileTotalBytes = file.fileSize,
+                                currentFileName = null,
+                                currentFileBytes = 0L,
+                                currentFileTotalBytes = 0L,
                             ),
                         )
+                        updateNotification(notificationId, completedFiles, job.totalFiles, null)
                     }
                 }
+            }
 
-                try {
-                    val destDirId = ensureDirectory(
-                        path = file.destinationRelativePath,
-                        destRepo = destRepo,
-                        rootId = job.destinationFileObjectId,
-                        cache = directoryCache,
-                    )
-                    sourceRepo.getFileContent(file.sourceFileId).use { inputStream ->
-                        destRepo.uploadFile(
-                            id = destDirId,
-                            fileName = file.fileName,
-                            inputStream = inputStream,
-                            size = file.fileSize,
-                            onRead = progressFlow,
-                        )
-                    }
-                    // TODO: ベリファイ（uploadFileの戻り値変更後にファイルサイズ検証を追加）
-                } finally {
-                    progressJob.cancel()
-                }
-
-                pasteJobRepository.markFileCompleted(file.id)
-
-                if (job.mode == ClipboardRepository.ClipboardMode.Cut && !file.deleted) {
-                    try {
-                        sourceRepo.deleteFile(file.sourceFileId)
-                        pasteJobRepository.markFileDeleted(file.id)
-                    } catch (e: Throwable) {
-                        if (e is CancellationException) throw e
-                        e.printStackTrace()
-                        pasteJobRepository.markFileFailed(file.id, e.message ?: e.toString())
-                    }
-                }
-
-                completedFiles++
-                completedBytes += file.fileSize
-
-                pasteJobRepository.updateProgress(
-                    jobId = jobId,
-                    progress = PasteJobRepository.ProgressUpdate(
-                        completedFiles = completedFiles,
-                        completedBytes = completedBytes,
-                        currentFileName = null,
-                        currentFileBytes = 0L,
-                        currentFileTotalBytes = 0L,
-                    ),
-                )
-                updateNotification(notificationId, completedFiles, job.totalFiles, null)
+            val unresolvedCount = pasteJobRepository.countUnresolvedDuplicates(jobId)
+            if (unresolvedCount > 0) {
+                pasteJobRepository.updateDuplicateCount(jobId, unresolvedCount)
+                pasteJobRepository.updateStatus(jobId, PasteJobRepository.PasteJobStatus.WAITING_RESOLUTION, workerId = null)
+                return@withContext Result.success()
             }
 
             if (job.mode == ClipboardRepository.ClipboardMode.Cut) {
@@ -193,8 +241,9 @@ internal class FilePasteWorker @AssistedInject constructor(
 
             pasteJobRepository.updateStatus(jobId, PasteJobRepository.PasteJobStatus.COMPLETED)
             Result.success()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Throwable) {
-            if (e is CancellationException) throw e
             e.printStackTrace()
             pasteJobRepository.updateError(
                 jobId = jobId,

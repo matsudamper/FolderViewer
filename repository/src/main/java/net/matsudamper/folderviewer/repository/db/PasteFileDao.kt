@@ -32,12 +32,12 @@ internal interface PasteFileDao {
     suspend fun markFailed(fileId: Long, errorMessage: String?)
 
     @Query(
-        "SELECT * FROM paste_files WHERE operationId = :operationId AND isDuplicate = 1 ORDER BY id ASC",
+        "SELECT * FROM paste_files WHERE operationId = :operationId AND isDuplicate = 1 AND completed = 0 ORDER BY id ASC",
     )
     fun observeDuplicatesByOperationId(operationId: Long): Flow<List<PasteFileEntity>>
 
     @Query(
-        "SELECT * FROM paste_files WHERE operationId = :operationId AND completed = 1 AND isDuplicate = 0 ORDER BY id ASC",
+        "SELECT * FROM paste_files WHERE operationId = :operationId AND completed = 1 ORDER BY id ASC",
     )
     fun observeCompletedNonDuplicatesByOperationId(operationId: Long): Flow<List<PasteFileEntity>>
 

@@ -20,6 +20,7 @@ interface FileRepository {
         inputStream: InputStream,
         size: Long,
         onRead: FlowCollector<Long>,
+        overwrite: Boolean = false,
     )
 
     suspend fun uploadFolder(

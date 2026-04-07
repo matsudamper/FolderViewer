@@ -13,7 +13,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -155,7 +154,7 @@ public fun PasteDetailScreen(
                 item {
                     SectionHeader(
                         text = stringResource(R.string.paste_detail_failed_files_section) +
-                            " (${uiState.failedFiles.size})",
+                                " (${uiState.failedFiles.size})",
                     )
                 }
                 items(
@@ -169,7 +168,7 @@ public fun PasteDetailScreen(
             item {
                 SectionHeader(
                     text = stringResource(R.string.paste_detail_duplicate_files_section) +
-                        " (${uiState.duplicateFiles.size})",
+                            " (${uiState.duplicateFiles.size})",
                 )
             }
 
@@ -194,7 +193,7 @@ public fun PasteDetailScreen(
             item {
                 SectionHeader(
                     text = stringResource(R.string.paste_detail_completed_files_section) +
-                        " (${uiState.completedFiles.size})",
+                            " (${uiState.completedFiles.size})",
                     modifier = Modifier.padding(top = 8.dp),
                 )
             }
@@ -308,10 +307,15 @@ private fun DuplicateFileCard(
                 val isOverwriteSelected = item.resolution == PasteDetailUiState.Resolution.OVERWRITE_WITH_SOURCE
 
                 if (isKeepSelected) {
-                    FilledTonalButton(
+                    Button(
                         onClick = { item.onKeepDestination() },
                         modifier = Modifier.weight(1f),
                     ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_check),
+                            contentDescription = null,
+                            modifier = Modifier.padding(end = 4.dp),
+                        )
                         Text(stringResource(R.string.paste_detail_keep_destination))
                     }
                 } else {
@@ -324,10 +328,15 @@ private fun DuplicateFileCard(
                 }
 
                 if (isOverwriteSelected) {
-                    FilledTonalButton(
+                    Button(
                         onClick = { item.onOverwriteWithSource() },
                         modifier = Modifier.weight(1f),
                     ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_check),
+                            contentDescription = null,
+                            modifier = Modifier.padding(end = 4.dp),
+                        )
                         Text(stringResource(R.string.paste_detail_overwrite_with_source))
                     }
                 } else {
@@ -401,6 +410,18 @@ private fun CompletedFileRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
             )
+            val resolutionText = when (item.resolution) {
+                PasteDetailUiState.Resolution.KEEP_DESTINATION -> stringResource(R.string.paste_detail_resolution_keep)
+                PasteDetailUiState.Resolution.OVERWRITE_WITH_SOURCE -> stringResource(R.string.paste_detail_resolution_overwrite)
+                PasteDetailUiState.Resolution.NONE -> null
+            }
+            if (resolutionText != null) {
+                Text(
+                    text = resolutionText,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
         }
         Icon(
             painter = painterResource(id = R.drawable.ic_check),

@@ -1,6 +1,7 @@
 package net.matsudamper.folderviewer.repository
 
 import java.io.ByteArrayInputStream
+import java.io.File
 import java.io.InputStream
 import java.net.URL
 import java.time.OffsetDateTime
@@ -134,12 +135,23 @@ class SharePointFileRepository(
         inputStream: InputStream,
         size: Long,
         onRead: FlowCollector<Long>,
+        overwrite: Boolean,
     ) {
         withContext(Dispatchers.IO) {
             val driveId = getDriveId()
             val parentId = when (id) {
                 is FileObjectId.Root -> return@withContext
                 is FileObjectId.Item -> id.id
+            }
+
+            if (!overwrite) {
+                val existing = runCatching {
+                    graphServiceClient.drives().byDriveId(driveId)
+                        .items().byDriveItemId(parentId)
+                        .children().get()
+                        ?.value?.any { it.name == fileName }
+                }.getOrNull() ?: false
+                if (existing) throw FileAlreadyExistsException(File(fileName))
             }
 
             coroutineScope {

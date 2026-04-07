@@ -151,6 +151,7 @@ internal class LocalFileRepository(
         inputStream: InputStream,
         size: Long,
         onRead: FlowCollector<Long>,
+        overwrite: Boolean,
     ): Unit = withContext(Dispatchers.IO) {
         val path = when (id) {
             is FileObjectId.Root -> ""
@@ -163,6 +164,10 @@ internal class LocalFileRepository(
         }
 
         val destinationFile = File(destinationDir, fileName)
+
+        if (!overwrite && destinationFile.exists()) {
+            throw FileAlreadyExistsException(destinationFile)
+        }
 
         coroutineScope {
             val progressInputStream = ProgressInputStream(inputStream)

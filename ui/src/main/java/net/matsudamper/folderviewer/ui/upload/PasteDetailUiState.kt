@@ -37,6 +37,7 @@ data class PasteDetailUiState(
     )
 
     enum class Resolution {
+        NONE,
         KEEP_DESTINATION,
         OVERWRITE_WITH_SOURCE,
     }
@@ -45,6 +46,7 @@ data class PasteDetailUiState(
         val fileName: String,
         val path: String,
         val sizeText: String,
+        val resolution: Resolution,
     )
 
     data class FailedFileItem(
