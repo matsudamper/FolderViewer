@@ -38,4 +38,13 @@ internal interface PasteJobDao {
 
     @Query("DELETE FROM paste_jobs WHERE id = :id")
     suspend fun deleteById(id: Long)
+
+    @Query("UPDATE paste_jobs SET duplicateFiles = :duplicateFiles WHERE id = :id")
+    suspend fun updateDuplicateCount(id: Long, duplicateFiles: Int)
+
+    @Query("UPDATE paste_jobs SET resolvedFiles = :resolvedFiles WHERE id = :id")
+    suspend fun updateResolvedCount(id: Long, resolvedFiles: Int)
+
+    @Query("SELECT * FROM paste_jobs WHERE id = :id")
+    fun observeJobById(id: Long): Flow<PasteJobEntity?>
 }

@@ -65,4 +65,14 @@
     <string name="clear_upload_history_confirm_message">すべてのアップロード履歴を削除しますか？</string>
     <string name="confirm">OK</string>
     <string name="cancel">キャンセル</string>
+    <string name="upload_state_waiting_resolution">解決待ち</string>
+    <string name="paste_detail_title">ペースト詳細</string>
+    <string name="paste_detail_duplicate_files_section">重複ファイル</string>
+    <string name="paste_detail_completed_files_section">完了ファイル</string>
+    <string name="paste_detail_source_label">コピー元</string>
+    <string name="paste_detail_destination_label">コピー先</string>
+    <string name="paste_detail_keep_destination">既存を保持</string>
+    <string name="paste_detail_overwrite_with_source">上書き</string>
+    <string name="paste_detail_apply_resolutions">適用</string>
+    <string name="paste_detail_no_duplicates">重複ファイルはありません</string>
 </resources>

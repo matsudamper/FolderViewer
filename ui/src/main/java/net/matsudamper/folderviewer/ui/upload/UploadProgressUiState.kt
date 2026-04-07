@@ -51,6 +51,7 @@ data class UploadProgressUiState(
             val mode: String,
             val totalFiles: Int,
             val completedFiles: Int,
+            val duplicateFiles: Int,
             val currentFileName: String?,
             val currentFileProgress: Float?,
             override val progress: Float?,
@@ -74,5 +75,6 @@ data class UploadProgressUiState(
         FAILED,
         CANCELLED,
         PAUSED,
+        WAITING_RESOLUTION,
     }
 }

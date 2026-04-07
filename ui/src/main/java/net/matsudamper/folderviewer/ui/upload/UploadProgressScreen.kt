@@ -92,6 +92,7 @@ public fun UploadProgressScreen(
                         is UploadProgressUiState.UploadItem.Paste -> {
                             PasteItemRow(
                                 item = item,
+                                onClick = { uiState.callbacks.onItemClick(item) },
                             )
                         }
                         else -> {
@@ -166,6 +167,7 @@ private fun UploadItemRow(
                         UploadProgressUiState.UploadState.FAILED -> stringResource(R.string.upload_state_failed)
                         UploadProgressUiState.UploadState.CANCELLED -> stringResource(R.string.upload_state_cancelled)
                         UploadProgressUiState.UploadState.PAUSED -> stringResource(R.string.upload_state_paused)
+                        UploadProgressUiState.UploadState.WAITING_RESOLUTION -> stringResource(R.string.upload_state_waiting_resolution)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = when (item.state) {
@@ -219,11 +221,13 @@ private fun UploadItemRow(
 @Composable
 private fun PasteItemRow(
     item: UploadProgressUiState.UploadItem.Paste,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .then(if (item.canNavigate) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
@@ -264,11 +268,13 @@ private fun PasteItemRow(
                             UploadProgressUiState.UploadState.FAILED -> stringResource(R.string.upload_state_failed)
                             UploadProgressUiState.UploadState.CANCELLED -> stringResource(R.string.upload_state_cancelled)
                             UploadProgressUiState.UploadState.PAUSED -> stringResource(R.string.upload_state_paused)
+                            UploadProgressUiState.UploadState.WAITING_RESOLUTION -> stringResource(R.string.upload_state_waiting_resolution)
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = when (item.state) {
                             UploadProgressUiState.UploadState.SUCCEEDED -> MaterialTheme.colorScheme.primary
                             UploadProgressUiState.UploadState.FAILED -> MaterialTheme.colorScheme.error
+                            UploadProgressUiState.UploadState.WAITING_RESOLUTION -> MaterialTheme.colorScheme.tertiary
                             else -> MaterialTheme.colorScheme.onSurfaceVariant
                         },
                     )

@@ -24,6 +24,12 @@ class PasteJobRepository @Inject internal constructor(
         }
     }
 
+    fun observeJob(id: Long): Flow<PasteJob?> {
+        return pasteJobDao.observeJobById(id).map { entity ->
+            entity?.let { runCatching { it.toDomain() }.getOrNull() }
+        }
+    }
+
     suspend fun getJobById(id: Long): PasteJob? {
         val entity = pasteJobDao.getJobById(id) ?: return null
         return runCatching { entity.toDomain() }.getOrNull()
@@ -64,19 +70,19 @@ class PasteJobRepository @Inject internal constructor(
 
     suspend fun getFiles(jobId: Long): List<PasteFile> {
         return pasteFileDao.getFilesByJobId(jobId).mapNotNull { entity ->
-            runCatching {
-                PasteFile(
-                    id = entity.id,
-                    jobId = entity.jobId,
-                    sourceFileId = Json.decodeFromString<FileObjectId.Item>(entity.sourceFileId),
-                    fileName = entity.fileName,
-                    fileSize = entity.fileSize,
-                    completed = entity.completed,
-                    deleted = entity.deleted,
-                    destinationRelativePath = entity.destinationRelativePath,
-                    isDirectory = entity.isDirectory,
-                )
-            }.getOrNull()
+            runCatching { entity.toDomain() }.getOrNull()
+        }
+    }
+
+    fun observeDuplicateFiles(jobId: Long): Flow<List<PasteFile>> {
+        return pasteFileDao.observeDuplicatesByJobId(jobId).map { entities ->
+            entities.mapNotNull { runCatching { it.toDomain() }.getOrNull() }
+        }
+    }
+
+    fun observeCompletedFiles(jobId: Long): Flow<List<PasteFile>> {
+        return pasteFileDao.observeCompletedNonDuplicatesByJobId(jobId).map { entities ->
+            entities.mapNotNull { runCatching { it.toDomain() }.getOrNull() }
         }
     }
 
@@ -102,6 +108,22 @@ class PasteJobRepository @Inject internal constructor(
         pasteFileDao.markDeleted(fileId)
     }
 
+    suspend fun markFileDuplicate(fileId: Long, destinationFileId: FileObjectId.Item, destinationFileSize: Long) {
+        pasteFileDao.markDuplicate(
+            fileId = fileId,
+            destFileId = Json.encodeToString(destinationFileId),
+            destFileSize = destinationFileSize,
+        )
+    }
+
+    suspend fun resolveFile(fileId: Long, resolution: DuplicateResolution) {
+        pasteFileDao.updateResolution(fileId, resolution.name)
+    }
+
+    suspend fun countUnresolvedDuplicates(jobId: Long): Int {
+        return pasteFileDao.countUnresolvedDuplicates(jobId)
+    }
+
     suspend fun updateStatus(jobId: Long, status: PasteJobStatus, workerId: String? = null) {
         pasteJobDao.updateStatusAndWorkerId(id = jobId, status = status.name, workerId = workerId)
     }
@@ -113,6 +135,14 @@ class PasteJobRepository @Inject internal constructor(
             errorMessage = errorMessage,
             errorCause = errorCause,
         )
+    }
+
+    suspend fun updateDuplicateCount(jobId: Long, count: Int) {
+        pasteJobDao.updateDuplicateCount(jobId, count)
+    }
+
+    suspend fun updateResolvedCount(jobId: Long, count: Int) {
+        pasteJobDao.updateResolvedCount(jobId, count)
     }
 
     suspend fun deleteJob(jobId: Long) {
@@ -136,11 +166,37 @@ class PasteJobRepository @Inject internal constructor(
             completedBytes = completedBytes,
             errorMessage = errorMessage,
             errorCause = errorCause,
+            duplicateFiles = duplicateFiles,
+            resolvedFiles = resolvedFiles,
+        )
+    }
+
+    private fun PasteFileEntity.toDomain(): PasteFile {
+        return PasteFile(
+            id = id,
+            jobId = jobId,
+            sourceFileId = Json.decodeFromString<FileObjectId.Item>(sourceFileId),
+            fileName = fileName,
+            fileSize = fileSize,
+            completed = completed,
+            deleted = deleted,
+            destinationRelativePath = destinationRelativePath,
+            isDirectory = isDirectory,
+            isDuplicate = isDuplicate,
+            destinationFileId = destinationFileId?.let {
+                runCatching { Json.decodeFromString<FileObjectId.Item>(it) }.getOrNull()
+            },
+            destinationFileSize = destinationFileSize,
+            resolution = resolution?.let { runCatching { DuplicateResolution.valueOf(it) }.getOrNull() },
         )
     }
 
     enum class PasteJobStatus {
-        RUNNING, PAUSED, COMPLETED, FAILED
+        RUNNING, PAUSED, COMPLETED, FAILED, WAITING_RESOLUTION
+    }
+
+    enum class DuplicateResolution {
+        PENDING, KEEP_DESTINATION, OVERWRITE_WITH_SOURCE
     }
 
     data class PasteJob(
@@ -159,6 +215,8 @@ class PasteJobRepository @Inject internal constructor(
         val completedBytes: Long = 0,
         val errorMessage: String? = null,
         val errorCause: String? = null,
+        val duplicateFiles: Int = 0,
+        val resolvedFiles: Int = 0,
     )
 
     data class ProgressUpdate(
@@ -179,5 +237,9 @@ class PasteJobRepository @Inject internal constructor(
         val deleted: Boolean = false,
         val destinationRelativePath: String = "",
         val isDirectory: Boolean = false,
+        val isDuplicate: Boolean = false,
+        val destinationFileId: FileObjectId.Item? = null,
+        val destinationFileSize: Long = 0,
+        val resolution: DuplicateResolution? = null,
     )
 }

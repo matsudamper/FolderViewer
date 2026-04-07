@@ -28,4 +28,8 @@ internal data class PasteFileEntity(
     val deleted: Boolean = false,
     val destinationRelativePath: String = "",
     val isDirectory: Boolean = false,
+    val isDuplicate: Boolean = false,
+    val destinationFileId: String? = null,
+    val destinationFileSize: Long = 0,
+    val resolution: String? = null,
 )

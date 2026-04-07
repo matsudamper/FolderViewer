@@ -79,6 +79,7 @@ import net.matsudamper.folderviewer.navigation.Settings
 import net.matsudamper.folderviewer.navigation.SharePointAdd
 import net.matsudamper.folderviewer.navigation.SmbAdd
 import net.matsudamper.folderviewer.navigation.StorageTypeSelection
+import net.matsudamper.folderviewer.navigation.PasteDetail
 import net.matsudamper.folderviewer.navigation.UploadDetail
 import net.matsudamper.folderviewer.navigation.UploadProgress
 import net.matsudamper.folderviewer.navigation.rememberNavigationState
@@ -95,6 +96,7 @@ import net.matsudamper.folderviewer.ui.storage.SharePointAddScreen
 import net.matsudamper.folderviewer.ui.storage.SmbAddScreen
 import net.matsudamper.folderviewer.ui.storage.StorageTypeSelectionScreen
 import net.matsudamper.folderviewer.ui.theme.FolderViewerTheme
+import net.matsudamper.folderviewer.ui.upload.PasteDetailScreen
 import net.matsudamper.folderviewer.ui.upload.UploadDetailScreen
 import net.matsudamper.folderviewer.ui.upload.UploadProgressScreen
 import net.matsudamper.folderviewer.viewmodel.browser.FileBrowserViewModel
@@ -106,6 +108,7 @@ import net.matsudamper.folderviewer.viewmodel.settings.SettingsViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.SharePointAddViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.SmbAddViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.StorageTypeSelectionViewModel
+import net.matsudamper.folderviewer.viewmodel.upload.PasteDetailViewModel
 import net.matsudamper.folderviewer.viewmodel.upload.UploadDetailViewModel
 import net.matsudamper.folderviewer.viewmodel.upload.UploadProgressViewModel
 
@@ -250,6 +253,7 @@ private fun entryProvider(navigator: Navigator): (NavKey) -> NavEntry<NavKey> {
         imageViewerEntry(navigator)
         uploadProgressEntry(navigator)
         uploadDetailEntry(navigator)
+        pasteDetailEntry(navigator)
     }
 }
 
@@ -728,6 +732,12 @@ private fun EntryProviderScope<NavKey>.uploadProgressEntry(navigator: Navigator)
                             ),
                         )
                     }
+
+                    is UploadProgressViewModel.ViewModelEvent.NavigateToPasteDetail -> {
+                        navigator.navigate(
+                            PasteDetail(jobId = event.jobId),
+                        )
+                    }
                 }
             }
         }
@@ -770,5 +780,29 @@ private fun EntryProviderScope<NavKey>.uploadDetailEntry(
 
         val uiStateValue = uiState ?: return@entry
         UploadDetailScreen(uiState = uiStateValue)
+    }
+}
+
+private fun EntryProviderScope<NavKey>.pasteDetailEntry(navigator: Navigator) {
+    entry<PasteDetail> { key ->
+        val viewModel: PasteDetailViewModel = hiltViewModel()
+        val uiState by viewModel.uiState.collectAsState()
+
+        LaunchedEffect(key.jobId) {
+            viewModel.init(key.jobId)
+        }
+
+        LaunchedEffect(viewModel.viewModelEventFlow) {
+            viewModel.viewModelEventFlow.collect { event ->
+                when (event) {
+                    PasteDetailViewModel.ViewModelEvent.NavigateBack -> {
+                        navigator.goBack()
+                    }
+                }
+            }
+        }
+
+        val uiStateValue = uiState ?: return@entry
+        PasteDetailScreen(uiState = uiStateValue)
     }
 }

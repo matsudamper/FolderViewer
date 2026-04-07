@@ -22,4 +22,6 @@ internal data class PasteJobEntity(
     val createdAt: Long,
     val errorMessage: String? = null,
     val errorCause: String? = null,
+    val duplicateFiles: Int = 0,
+    val resolvedFiles: Int = 0,
 )

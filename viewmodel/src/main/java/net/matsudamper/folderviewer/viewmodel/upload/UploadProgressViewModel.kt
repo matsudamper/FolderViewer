@@ -50,7 +50,13 @@ class UploadProgressViewModel @Inject constructor(
         }
 
         override fun onItemClick(item: UploadProgressUiState.UploadItem) {
-            if (item is UploadProgressUiState.UploadItem.Paste) return
+            if (item is UploadProgressUiState.UploadItem.Paste) {
+                viewModelScope.launch {
+                    val jobId = item.id.toLongOrNull() ?: return@launch
+                    viewModelEventChannel.send(ViewModelEvent.NavigateToPasteDetail(jobId))
+                }
+                return
+            }
             viewModelScope.launch {
                 val uuid = runCatching { UUID.fromString(item.id) }.getOrNull() ?: return@launch
                 val job = uploadJobRepository.getJob(uuid.toString()) ?: return@launch
@@ -81,7 +87,8 @@ class UploadProgressViewModel @Inject constructor(
                     }
                 }
                 state.pasteJobs.forEach { job ->
-                    val isActive = job.status == PasteJobRepository.PasteJobStatus.RUNNING
+                    val isActive = job.status == PasteJobRepository.PasteJobStatus.RUNNING ||
+                        job.status == PasteJobRepository.PasteJobStatus.WAITING_RESOLUTION
                     if (!isActive) {
                         pasteJobRepository.deleteJob(job.id)
                     }
@@ -164,6 +171,7 @@ class UploadProgressViewModel @Inject constructor(
                             PasteJobRepository.PasteJobStatus.PAUSED -> UploadProgressUiState.UploadState.PAUSED
                             PasteJobRepository.PasteJobStatus.COMPLETED -> UploadProgressUiState.UploadState.SUCCEEDED
                             PasteJobRepository.PasteJobStatus.FAILED -> UploadProgressUiState.UploadState.FAILED
+                            PasteJobRepository.PasteJobStatus.WAITING_RESOLUTION -> UploadProgressUiState.UploadState.WAITING_RESOLUTION
                         }
 
                         val overallProgress = if (job.totalBytes > 0) {
@@ -181,7 +189,10 @@ class UploadProgressViewModel @Inject constructor(
                         val progressText = if (pasteState == UploadProgressUiState.UploadState.RUNNING) {
                             val completed = formatFileSize(job.completedBytes + job.currentFileBytes)
                             val total = formatFileSize(job.totalBytes)
-                            "${job.completedFiles}/${job.totalFiles}ファイル ($completed/$total)"
+                            val duplicateText = if (job.duplicateFiles > 0) " (重複${job.duplicateFiles}件)" else ""
+                            "${job.completedFiles}/${job.totalFiles}ファイル ($completed/$total)$duplicateText"
+                        } else if (pasteState == UploadProgressUiState.UploadState.WAITING_RESOLUTION && job.duplicateFiles > 0) {
+                            "重複${job.duplicateFiles}件"
                         } else {
                             null
                         }
@@ -205,10 +216,11 @@ class UploadProgressViewModel @Inject constructor(
                             id = job.id.toString(),
                             name = "${job.totalFiles}ファイルを${modeText}",
                             state = pasteState,
-                            canNavigate = false,
+                            canNavigate = true,
                             mode = modeText,
                             totalFiles = job.totalFiles,
                             completedFiles = job.completedFiles,
+                            duplicateFiles = job.duplicateFiles,
                             currentFileName = job.currentFileName,
                             currentFileProgress = currentFileProgress,
                             progress = overallProgress,
@@ -284,6 +296,9 @@ class UploadProgressViewModel @Inject constructor(
         data object NavigateBack : ViewModelEvent
         data class NavigateToUploadDetail(
             val workerId: String,
+        ) : ViewModelEvent
+        data class NavigateToPasteDetail(
+            val jobId: Long,
         ) : ViewModelEvent
     }
 

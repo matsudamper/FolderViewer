@@ -37,3 +37,6 @@ object UploadProgress : NavKey
 
 @Serializable
 data class UploadDetail(val workerId: String) : NavKey
+
+@Serializable
+data class PasteDetail(val jobId: Long) : NavKey
