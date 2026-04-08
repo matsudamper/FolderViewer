@@ -104,10 +104,10 @@ class SharePointFileRepository(
     }
 
     override suspend fun deleteDirectory(dirId: FileObjectId.Item): Unit = withContext(Dispatchers.IO) {
-        val driveId = getDriveId()
-        graphServiceClient.drives().byDriveId(driveId)
-            .items().byDriveItemId(dirId.id)
-            .delete()
+        val item = graphApiClient.getDriveItem(dirId.id)
+        require(item.folder?.childCount == 0) { "ディレクトリが空ではありません: ${dirId.id}" }
+        val eTag = requireNotNull(item.eTag) { "eTagが取得できません: ${dirId.id}" }
+        graphApiClient.deleteDriveItem(dirId.id, eTag)
     }
 
     override suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream? {
