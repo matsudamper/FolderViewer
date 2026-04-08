@@ -77,6 +77,7 @@ class SmbFileRepository(
             val parts = fileId.id.split("/", limit = PATH_SPLIT_LIMIT)
             val shareName = parts[0]
             val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+            require(subPath.isNotEmpty()) { "Cannot get size of share root: $shareName" }
 
             val share = session.connectShare(shareName) as? DiskShare
                 ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
@@ -101,6 +102,7 @@ class SmbFileRepository(
         val parts = fileId.id.split("/", limit = PATH_SPLIT_LIMIT)
         val shareName = parts[0]
         val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+        require(subPath.isNotEmpty()) { "Cannot get info of share root: $shareName" }
 
         client.connect(config.ip).use { connection ->
             val session = connection.authenticate(
@@ -150,6 +152,7 @@ class SmbFileRepository(
             val parts = fileId.id.split("/", limit = PATH_SPLIT_LIMIT)
             val shareName = parts[0]
             val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+            require(subPath.isNotEmpty()) { "Cannot delete share root: $shareName" }
             val share = session.connectShare(shareName) as? DiskShare
                 ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
             share.use { diskShare ->
