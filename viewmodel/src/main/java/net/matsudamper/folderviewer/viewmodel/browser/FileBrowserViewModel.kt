@@ -677,20 +677,16 @@ class FileBrowserViewModel @AssistedInject constructor(
                 "$destinationRelativePath/${item.displayPath}"
             }
             val children = repo.getFiles(item.id)
-            if (children.isEmpty()) {
-                listOf(
-                    PasteJobRepository.PasteFile(
-                        jobId = 0,
-                        sourceFileId = item.id,
-                        fileName = item.displayPath,
-                        fileSize = 0,
-                        destinationRelativePath = destinationRelativePath,
-                        isDirectory = true,
-                    ),
-                )
-            } else {
-                children.flatMap { child -> collectPasteFiles(repo, child, dirPath) }
-            }
+            listOf(
+                PasteJobRepository.PasteFile(
+                    jobId = 0,
+                    sourceFileId = item.id,
+                    fileName = item.displayPath,
+                    fileSize = 0,
+                    destinationRelativePath = destinationRelativePath,
+                    isDirectory = true,
+                ),
+            ) + children.flatMap { child -> collectPasteFiles(repo, child, dirPath) }
         } else {
             listOf(
                 PasteJobRepository.PasteFile(

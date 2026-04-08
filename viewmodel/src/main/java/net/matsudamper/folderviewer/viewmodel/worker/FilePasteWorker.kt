@@ -60,7 +60,6 @@ internal class FilePasteWorker @AssistedInject constructor(
 
             val directoryCache = mutableMapOf<String, FileObjectId>()
 
-            // ディレクトリエントリを先に処理（ファイルとしてカウントしない）
             val pendingDirectories = pendingFiles.filter { it.isDirectory }
             val pendingFileEntries = pendingFiles.filter { !it.isDirectory }
 
@@ -89,21 +88,8 @@ internal class FilePasteWorker @AssistedInject constructor(
                 }
 
                 pasteJobRepository.markFileCompleted(dir.id)
-
-                if (job.mode == ClipboardRepository.ClipboardMode.Cut && !dir.deleted) {
-                    try {
-                        sourceRepo.deleteDirectory(dir.sourceFileId)
-                        pasteJobRepository.markFileDeleted(dir.id)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Throwable) {
-                        e.printStackTrace()
-                        pasteJobRepository.markFileFailed(dir.id, e.message ?: e.toString())
-                    }
-                }
             }
 
-            // ファイルエントリを処理
             var completedFiles = files.count { it.completed && !it.isDirectory }
             var completedBytes = files.filter { it.completed && !it.isDirectory }.sumOf { it.fileSize }
 
@@ -236,7 +222,7 @@ internal class FilePasteWorker @AssistedInject constructor(
             }
 
             if (job.mode == ClipboardRepository.ClipboardMode.Cut) {
-                deleteEmptySourceDirectories(files, sourceRepo)
+                deleteSourceDirectories(files, sourceRepo)
             }
 
             pasteJobRepository.updateStatus(jobId, PasteJobRepository.PasteJobStatus.COMPLETED)
@@ -319,34 +305,30 @@ internal class FilePasteWorker @AssistedInject constructor(
         notificationManager.notify(notificationId, notification)
     }
 
-    private suspend fun deleteEmptySourceDirectories(
+    private suspend fun deleteSourceDirectories(
         files: List<PasteJobRepository.PasteFile>,
         sourceRepo: FileRepository,
     ) {
-        val ancestorDirPaths = buildList {
-            val seen = mutableSetOf<String>()
-            for (file in files) {
-                // isDirectory=true はディレクトリ自身を起点にする
-                // isDirectory=false はファイルの親ディレクトリを起点にする
-                val startPath = if (file.isDirectory) {
-                    file.sourceFileId.id
+        files
+            .filter { it.isDirectory && !it.deleted }
+            .distinctBy { it.sourceFileId }
+            .sortedByDescending { file ->
+                val path = if (file.destinationRelativePath.isEmpty()) {
+                    file.fileName
                 } else {
-                    file.sourceFileId.id.substringBeforeLast("/", "")
+                    "${file.destinationRelativePath}/${file.fileName}"
                 }
-                var dir = startPath
-                while (dir.isNotEmpty() && seen.add(dir)) {
-                    add(Pair(dir, file.sourceFileId.storageId))
-                    dir = dir.substringBeforeLast("/", "")
+                path.count { it == '/' }
+            }
+            .forEach { file ->
+                runCatching {
+                    sourceRepo.deleteDirectory(file.sourceFileId)
+                    pasteJobRepository.markFileDeleted(file.id)
+                }.onFailure { throwable ->
+                    throwable.printStackTrace()
+                    pasteJobRepository.markFileFailed(file.id, throwable.message ?: throwable.toString())
                 }
             }
-        }.sortedByDescending { it.first.count { c -> c == '/' } }
-
-        for ((dirPath, storageId) in ancestorDirPaths) {
-            val dirId = FileObjectId.Item(storageId = storageId, id = dirPath)
-            // 非空ディレクトリの削除は実装側で失敗するため安全
-            runCatching { sourceRepo.deleteDirectory(dirId) }
-                .onFailure { it.printStackTrace() }
-        }
     }
 
     private suspend fun ensureDirectory(
