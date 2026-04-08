@@ -46,8 +46,14 @@ internal class FileDeleteWorker @AssistedInject constructor(
             }
 
             val sortedFiles = pendingFiles.sortedWith(
-                compareByDescending<DeleteJobRepository.DeleteFile> { it.parentRelativePath.count { c -> c == '/' } }
-                    .thenBy { !it.isDirectory },
+                compareByDescending<DeleteJobRepository.DeleteFile> { file ->
+                    val ownPath = if (file.parentRelativePath.isEmpty()) {
+                        file.fileName
+                    } else {
+                        "${file.parentRelativePath}/${file.fileName}"
+                    }
+                    ownPath.count { c -> c == '/' }
+                }.thenBy { it.isDirectory },
             )
 
             var completedFiles = allFiles.count { it.completed && !it.isDirectory }
