@@ -63,8 +63,7 @@ internal class FileDeleteWorker @AssistedInject constructor(
 
             for (file in sortedFiles) {
                 if (isStopped) {
-                    deleteJobRepository.updateStatus(operationId, OperationRepository.OperationStatus.PAUSED, workerId = null)
-                    return@withContext Result.success()
+                    return@withContext Result.retry()
                 }
 
                 val storageId = file.sourceFileId.storageId
