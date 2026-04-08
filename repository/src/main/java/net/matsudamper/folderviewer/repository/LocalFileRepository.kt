@@ -252,6 +252,8 @@ internal class LocalFileRepository(
         if (!newDir.exists()) {
             val created = newDir.mkdir()
             require(created) { "Failed to create directory: $directoryName" }
+        } else {
+            require(newDir.isDirectory) { "A file with the same name already exists: $directoryName" }
         }
 
         val relativePath = if (path.isEmpty()) directoryName else "$path/$directoryName"
