@@ -1,7 +1,6 @@
 package net.matsudamper.folderviewer.repository
 
 import java.io.ByteArrayInputStream
-import java.io.File
 import java.io.InputStream
 import java.net.URL
 import java.time.OffsetDateTime
@@ -15,6 +14,7 @@ import com.azure.identity.ClientSecretCredentialBuilder
 import com.microsoft.graph.core.tasks.LargeFileUploadTask
 import com.microsoft.graph.drives.item.items.item.createuploadsession.CreateUploadSessionPostRequestBody
 import com.microsoft.graph.models.DriveItem
+import com.microsoft.graph.models.DriveItemUploadableProperties
 import com.microsoft.graph.serviceclient.GraphServiceClient
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.dao.graphapi.GraphApiClient
@@ -144,23 +144,13 @@ class SharePointFileRepository(
                 is FileObjectId.Item -> id.id
             }
 
-            if (!overwrite) {
-                val existing = runCatching {
-                    graphServiceClient.drives().byDriveId(driveId)
-                        .items().byDriveItemId(parentId)
-                        .children().get()
-                        ?.value?.any { it.name == fileName }
-                }.getOrNull() ?: false
-                if (existing) throw FileAlreadyExistsException(File(fileName))
-            }
-
             coroutineScope {
                 val progressInputStream = ProgressInputStream(inputStream)
                 val job = launch {
                     progressInputStream.onRead.collect(onRead)
                 }
 
-                uploadWithSession(driveId, parentId, fileName, progressInputStream, size)
+                uploadWithSession(driveId, parentId, fileName, progressInputStream, size, overwrite)
 
                 job.cancel()
             }
@@ -232,11 +222,19 @@ class SharePointFileRepository(
         fileName: String,
         inputStream: InputStream,
         fileSize: Long,
+        overwrite: Boolean = false,
     ) {
+        val requestBody = CreateUploadSessionPostRequestBody().also { body ->
+            body.item = DriveItemUploadableProperties().also { item ->
+                item.additionalData = mapOf(
+                    "@microsoft.graph.conflictBehavior" to if (overwrite) "replace" else "fail",
+                )
+            }
+        }
         val uploadSession = graphServiceClient.drives().byDriveId(driveId)
             .items().byDriveItemId("$parentId:/$fileName:")
             .createUploadSession()
-            .post(CreateUploadSessionPostRequestBody())
+            .post(requestBody)
             ?: throw IllegalStateException("Failed to create upload session")
 
         val maxSliceSize = UPLOAD_CHUNK_SIZE
