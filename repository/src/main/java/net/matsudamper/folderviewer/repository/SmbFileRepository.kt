@@ -613,7 +613,9 @@ class SmbFileRepository(
 
                 share.use { diskShare ->
                     val fullPath = if (subPath.isEmpty()) directoryName else "$subPath\\$directoryName"
-                    runCatching { diskShare.mkdir(fullPath) }
+                    if (!diskShare.folderExists(fullPath)) {
+                        diskShare.mkdir(fullPath)
+                    }
                 }
             }
             FileObjectId.Item(config.id, "$path/$directoryName")

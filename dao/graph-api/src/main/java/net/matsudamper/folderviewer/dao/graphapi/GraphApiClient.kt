@@ -12,6 +12,7 @@ import io.ktor.client.request.header
 import io.ktor.client.request.request
 import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.parameters
 import io.ktor.serialization.kotlinx.json.json
@@ -111,12 +112,12 @@ class GraphApiClient(
 
     suspend fun deleteDriveItem(itemId: String, ifMatch: String) {
         val token = getAccessToken()
-        client.request("https://graph.microsoft.com/v1.0/users/$objectId/drive/items/$itemId") {
+        val response = client.request("https://graph.microsoft.com/v1.0/users/$objectId/drive/items/$itemId") {
             method = HttpMethod.Delete
             header("Authorization", "Bearer $token")
             header("if-match", ifMatch)
-            contentType(ContentType.Application.Json)
         }
+        check(response.status == HttpStatusCode.NoContent) { "DriveItem の削除に失敗しました: ${response.status}" }
     }
 
     fun close() {

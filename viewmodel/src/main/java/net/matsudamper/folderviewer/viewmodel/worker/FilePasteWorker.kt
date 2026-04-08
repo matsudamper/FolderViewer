@@ -40,6 +40,7 @@ internal class FilePasteWorker @AssistedInject constructor(
         val notificationId = PASTE_NOTIFICATION_BASE_ID + jobId.toInt()
 
         try {
+            pasteJobRepository.updateStatus(jobId, PasteJobRepository.PasteJobStatus.RUNNING, workerId = id.toString())
             setForeground(createForegroundInfo(notificationId, 0, job.totalFiles, null))
 
             val files = pasteJobRepository.getFiles(jobId)
@@ -81,13 +82,13 @@ internal class FilePasteWorker @AssistedInject constructor(
                         rootId = job.destinationFileObjectId,
                         cache = directoryCache,
                     )
+                    pasteJobRepository.markFileCompleted(dir.id)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Throwable) {
-                    e.printStackTrace()
+                    pasteJobRepository.markFileFailed(jobId, dir.id, e.message ?: e.toString())
+                    throw e
                 }
-
-                pasteJobRepository.markFileCompleted(dir.id)
             }
 
             var completedFiles = files.count { it.completed && !it.isDirectory }
@@ -113,6 +114,17 @@ internal class FilePasteWorker @AssistedInject constructor(
                     }
                     completedFiles++
                     completedBytes += file.fileSize
+                    pasteJobRepository.updateProgress(
+                        jobId = jobId,
+                        progress = PasteJobRepository.ProgressUpdate(
+                            completedFiles = completedFiles,
+                            completedBytes = completedBytes,
+                            currentFileName = null,
+                            currentFileBytes = 0L,
+                            currentFileTotalBytes = 0L,
+                        ),
+                    )
+                    updateNotification(notificationId, completedFiles, job.totalFiles, null)
                 } else if (!file.isDuplicate || file.resolution == PasteJobRepository.DuplicateResolution.OVERWRITE_WITH_SOURCE) {
                     pasteJobRepository.updateProgress(
                         jobId = jobId,
