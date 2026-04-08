@@ -65,11 +65,12 @@ internal class LocalFileRepository(
 
     override suspend fun getFileInfo(fileId: FileObjectId.Item): FileItem = withContext(Dispatchers.IO) {
         val file = buildAbsoluteFile(fileId.id)
+        require(file.exists() && file.canRead()) { "File not found or cannot read: ${fileId.id}" }
         FileItem(
             id = fileId,
             displayPath = file.name,
             isDirectory = file.isDirectory,
-            size = file.length(),
+            size = if (file.isDirectory) 0 else file.length(),
             lastModified = file.lastModified(),
         )
     }
