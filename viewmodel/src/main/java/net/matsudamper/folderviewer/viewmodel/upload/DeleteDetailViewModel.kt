@@ -2,6 +2,7 @@ package net.matsudamper.folderviewer.viewmodel.upload
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,8 +27,11 @@ class DeleteDetailViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<DeleteDetailUiState?>(null)
     val uiState: StateFlow<DeleteDetailUiState?> = _uiState.asStateFlow()
 
+    private var initJob: Job? = null
+
     fun init(operationId: Long) {
-        viewModelScope.launch {
+        if (initJob?.isActive == true) return
+        initJob = viewModelScope.launch {
             combine(
                 deleteJobRepository.observeJob(operationId),
                 deleteJobRepository.observeFiles(operationId),
