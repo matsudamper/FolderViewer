@@ -7,6 +7,7 @@ import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import java.util.Locale
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -32,8 +33,11 @@ class PasteDetailViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<PasteDetailUiState?>(null)
     val uiState: StateFlow<PasteDetailUiState?> = _uiState.asStateFlow()
 
+    private var initJob: Job? = null
+
     fun init(jobId: Long) {
-        viewModelScope.launch {
+        if (initJob?.isActive == true) return
+        initJob = viewModelScope.launch {
             combine(
                 pasteJobRepository.observeJob(jobId),
                 pasteJobRepository.observeDuplicateFiles(jobId),
