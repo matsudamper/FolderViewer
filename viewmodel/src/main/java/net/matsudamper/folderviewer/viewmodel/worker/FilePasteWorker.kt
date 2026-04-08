@@ -108,7 +108,9 @@ internal class FilePasteWorker @AssistedInject constructor(
 
                 if (file.isDuplicate && file.resolution == PasteJobRepository.DuplicateResolution.KEEP_DESTINATION) {
                     pasteJobRepository.markFileCompleted(file.id)
-                    if (job.mode == ClipboardRepository.ClipboardMode.Cut && !file.deleted) {
+                    if (job.mode == ClipboardRepository.ClipboardMode.Cut && !file.deleted &&
+                        file.sourceFileId != file.destinationFileId
+                    ) {
                         try {
                             sourceRepo.deleteFile(file.sourceFileId)
                             pasteJobRepository.markFileDeleted(file.id)
@@ -132,6 +134,23 @@ internal class FilePasteWorker @AssistedInject constructor(
                     )
                     updateNotification(notificationId, completedFiles, job.totalFiles, null)
                 } else if (!file.isDuplicate || file.resolution == PasteJobRepository.DuplicateResolution.OVERWRITE_WITH_SOURCE) {
+                    if (file.isDuplicate && file.sourceFileId == file.destinationFileId) {
+                        pasteJobRepository.markFileCompleted(file.id)
+                        completedFiles++
+                        completedBytes += file.fileSize
+                        pasteJobRepository.updateProgress(
+                            jobId = jobId,
+                            progress = PasteJobRepository.ProgressUpdate(
+                                completedFiles = completedFiles,
+                                completedBytes = completedBytes,
+                                currentFileName = null,
+                                currentFileBytes = 0L,
+                                currentFileTotalBytes = 0L,
+                            ),
+                        )
+                        updateNotification(notificationId, completedFiles, job.totalFiles, null)
+                        continue
+                    }
                     pasteJobRepository.updateProgress(
                         jobId = jobId,
                         progress = PasteJobRepository.ProgressUpdate(
