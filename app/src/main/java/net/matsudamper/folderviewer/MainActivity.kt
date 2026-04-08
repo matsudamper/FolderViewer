@@ -469,13 +469,11 @@ private fun EntryProviderScope<NavKey>.sharePointAddEntry(navigator: Navigator) 
 private fun FileBrowserEventHandler(
     viewModel: FileBrowserViewModel,
     navigator: Navigator,
-    scope: kotlinx.coroutines.CoroutineScope,
+    callbacks: net.matsudamper.folderviewer.ui.browser.FileBrowserUiState.Callbacks,
     filePickerLauncher: androidx.activity.compose.ManagedActivityResultLauncher<String, android.net.Uri?>,
     folderPickerLauncher: androidx.activity.compose.ManagedActivityResultLauncher<android.net.Uri?, android.net.Uri?>,
     pasteNotificationPermissionLauncher: androidx.activity.compose.ManagedActivityResultLauncher<String, Boolean>,
-    pendingPasteClipboardState: androidx.compose.runtime.MutableState<net.matsudamper.folderviewer.repository.ClipboardRepository.ClipboardState?>,
     deleteNotificationPermissionLauncher: androidx.activity.compose.ManagedActivityResultLauncher<String, Boolean>,
-    pendingDeleteItems: androidx.compose.runtime.MutableState<List<net.matsudamper.folderviewer.repository.FileItem>?>,
 ) {
     val context = LocalContext.current
     LaunchedEffect(viewModel.viewModelEventFlow) {
@@ -505,7 +503,6 @@ private fun FileBrowserEventHandler(
                 is FileBrowserViewModel.ViewModelEvent.LaunchFolderPicker -> folderPickerLauncher.launch(null)
 
                 is FileBrowserViewModel.ViewModelEvent.RequestNotificationPermissionForPaste -> {
-                    pendingPasteClipboardState.value = event.clipboardState
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
                         androidx.core.content.ContextCompat.checkSelfPermission(
                             context,
@@ -514,12 +511,11 @@ private fun FileBrowserEventHandler(
                     ) {
                         pasteNotificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
                     } else {
-                        scope.launch { viewModel.handlePaste(event.clipboardState) }
+                        callbacks.onPastePermissionResult()
                     }
                 }
 
                 is FileBrowserViewModel.ViewModelEvent.RequestNotificationPermissionForDelete -> {
-                    pendingDeleteItems.value = event.items
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
                         androidx.core.content.ContextCompat.checkSelfPermission(
                             context,
@@ -528,9 +524,7 @@ private fun FileBrowserEventHandler(
                     ) {
                         deleteNotificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
                     } else {
-                        val items = event.items
-                        pendingDeleteItems.value = null
-                        scope.launch { viewModel.handleDelete(items) }
+                        callbacks.onDeletePermissionResult()
                     }
                 }
 
@@ -627,40 +621,26 @@ private fun EntryProviderScope<NavKey>.fileBrowserEntry(navigator: Navigator) {
             }
         }
 
-        val pendingPasteClipboardState = remember {
-            androidx.compose.runtime.mutableStateOf<net.matsudamper.folderviewer.repository.ClipboardRepository.ClipboardState?>(null)
-        }
-
         val pasteNotificationPermissionLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestPermission(),
         ) { _ ->
-            val clipboardState = pendingPasteClipboardState.value ?: return@rememberLauncherForActivityResult
-            pendingPasteClipboardState.value = null
-            scope.launch { viewModel.handlePaste(clipboardState) }
-        }
-
-        val pendingDeleteItems = remember {
-            androidx.compose.runtime.mutableStateOf<List<net.matsudamper.folderviewer.repository.FileItem>?>(null)
+            uiStateValue.callbacks.onPastePermissionResult()
         }
 
         val deleteNotificationPermissionLauncher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestPermission(),
         ) { _ ->
-            val items = pendingDeleteItems.value ?: return@rememberLauncherForActivityResult
-            pendingDeleteItems.value = null
-            scope.launch { viewModel.handleDelete(items) }
+            uiStateValue.callbacks.onDeletePermissionResult()
         }
 
         FileBrowserEventHandler(
             viewModel = viewModel,
             navigator = navigator,
-            scope = scope,
+            callbacks = uiStateValue.callbacks,
             filePickerLauncher = filePickerLauncher,
             folderPickerLauncher = folderPickerLauncher,
             pasteNotificationPermissionLauncher = pasteNotificationPermissionLauncher,
-            pendingPasteClipboardState = pendingPasteClipboardState,
             deleteNotificationPermissionLauncher = deleteNotificationPermissionLauncher,
-            pendingDeleteItems = pendingDeleteItems,
         )
 
         FileBrowserScreen(

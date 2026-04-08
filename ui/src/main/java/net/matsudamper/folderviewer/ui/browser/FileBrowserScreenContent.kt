@@ -290,6 +290,8 @@ private fun Preview() {
                 override fun onDeleteClick() = Unit
                 override fun onConfirmDelete() = Unit
                 override fun onPasteClick() = Unit
+                override fun onPastePermissionResult() = Unit
+                override fun onDeletePermissionResult() = Unit
                 override fun onCancelPaste() = Unit
             },
             contentState = FileBrowserUiState.ContentState.Content(

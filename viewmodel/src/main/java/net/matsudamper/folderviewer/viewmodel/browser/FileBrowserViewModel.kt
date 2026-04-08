@@ -64,6 +64,8 @@ class FileBrowserViewModel @AssistedInject constructor(
     private val uiChannelEvent = Channel<FileBrowserUiEvent>()
     val uiEvent: Flow<FileBrowserUiEvent> = uiChannelEvent.receiveAsFlow()
     private val fileObjectId = arg.fileId
+    private var pendingPasteClipboardState: ClipboardRepository.ClipboardState? = null
+    private var pendingDeleteItems: List<FileItem>? = null
 
     private val displayName get() = arg.displayPath ?: viewModelStateFlow.value.storageName ?: "null"
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> = MutableStateFlow(ViewModelState())
@@ -237,21 +239,39 @@ class FileBrowserViewModel @AssistedInject constructor(
             }
             val rawFiles = viewModelStateFlow.value.rawFiles
             val selectedFileItems = selectedIds.mapNotNull { id -> rawFiles.find { it.id == id } }
+            pendingDeleteItems = selectedFileItems
             viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
             selectionModeRepository.setSelectionMode(false)
             viewModelScope.launch {
                 viewModelEventChannel.send(
-                    ViewModelEvent.RequestNotificationPermissionForDelete(selectedFileItems),
+                    ViewModelEvent.RequestNotificationPermissionForDelete,
                 )
             }
         }
 
         override fun onPasteClick() {
             val clipboard = clipboardRepository.clipboardState.value ?: return
+            pendingPasteClipboardState = clipboard
             viewModelScope.launch {
                 viewModelEventChannel.send(
-                    ViewModelEvent.RequestNotificationPermissionForPaste(clipboard),
+                    ViewModelEvent.RequestNotificationPermissionForPaste,
                 )
+            }
+        }
+
+        override fun onPastePermissionResult() {
+            val clipboardState = pendingPasteClipboardState ?: return
+            pendingPasteClipboardState = null
+            viewModelScope.launch {
+                handlePaste(clipboardState)
+            }
+        }
+
+        override fun onDeletePermissionResult() {
+            val items = pendingDeleteItems ?: return
+            pendingDeleteItems = null
+            viewModelScope.launch {
+                handleDelete(items)
             }
         }
 
@@ -502,13 +522,9 @@ class FileBrowserViewModel @AssistedInject constructor(
         data object LaunchFilePicker : ViewModelEvent
         data object LaunchFolderPicker : ViewModelEvent
 
-        data class RequestNotificationPermissionForPaste(
-            val clipboardState: ClipboardRepository.ClipboardState,
-        ) : ViewModelEvent
+        data object RequestNotificationPermissionForPaste : ViewModelEvent
 
-        data class RequestNotificationPermissionForDelete(
-            val items: List<FileItem>,
-        ) : ViewModelEvent
+        data object RequestNotificationPermissionForDelete : ViewModelEvent
 
         data class OpenWithExternalPlayer(
             val viewSourceUri: ViewSourceUri,
@@ -544,7 +560,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ファイルのアップロードを開始しました"))
     }
 
-    suspend fun handlePaste(clipboardState: ClipboardRepository.ClipboardState) {
+    private suspend fun handlePaste(clipboardState: ClipboardRepository.ClipboardState) {
         runCatching {
             val sourceRepo = storageRepository.getFileRepository(
                 clipboardState.items.first().id.storageId,
@@ -559,19 +575,15 @@ class FileBrowserViewModel @AssistedInject constructor(
 
             val totalBytes = files.sumOf { it.fileSize }
 
-            val workRequest = OneTimeWorkRequestBuilder<FilePasteWorker>()
-                .addTag(FilePasteWorker.TAG_PASTE)
-                .build()
-
             val jobId = pasteJobRepository.saveJob(
                 job = PasteJobRepository.PasteJob(
-                    workerId = workRequest.id.toString(),
+                    workerId = null,
                     mode = clipboardState.mode,
                     destinationFileObjectId = fileObjectId,
                     destinationDisplayPath = arg.displayPath.orEmpty(),
                     totalFiles = files.count { !it.isDirectory },
                     totalBytes = totalBytes,
-                    status = PasteJobRepository.PasteJobStatus.RUNNING,
+                    status = PasteJobRepository.PasteJobStatus.ENQUEUED,
                 ),
                 files = files,
             )
@@ -585,7 +597,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                 .addTag(FilePasteWorker.TAG_PASTE)
                 .build()
 
-            pasteJobRepository.updateStatus(jobId, PasteJobRepository.PasteJobStatus.RUNNING, workerId = workRequestWithData.id.toString())
+            pasteJobRepository.updateStatus(jobId, PasteJobRepository.PasteJobStatus.ENQUEUED, workerId = workRequestWithData.id.toString())
 
             WorkManager.getInstance(getApplication()).enqueue(workRequestWithData)
 
@@ -602,7 +614,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         }
     }
 
-    suspend fun handleDelete(items: List<FileItem>) {
+    private suspend fun handleDelete(items: List<FileItem>) {
         runCatching {
             val repository = getRepository()
             val files = items.flatMap { collectDeleteFiles(repository, it, "") }
@@ -618,7 +630,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                 .addTag(FileDeleteWorker.TAG_DELETE)
                 .build()
 
-            deleteJobRepository.updateStatus(operationId, net.matsudamper.folderviewer.repository.OperationRepository.OperationStatus.RUNNING, workRequest.id.toString())
+            deleteJobRepository.updateStatus(operationId, net.matsudamper.folderviewer.repository.OperationRepository.OperationStatus.ENQUEUED, workRequest.id.toString())
 
             WorkManager.getInstance(getApplication()).enqueue(workRequest)
 

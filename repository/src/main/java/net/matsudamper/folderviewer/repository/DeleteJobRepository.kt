@@ -2,10 +2,12 @@ package net.matsudamper.folderviewer.repository
 
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
+import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import net.matsudamper.folderviewer.common.FileObjectId
+import net.matsudamper.folderviewer.repository.db.AppDatabase
 import net.matsudamper.folderviewer.repository.db.DeleteFileDao
 import net.matsudamper.folderviewer.repository.db.DeleteFileEntity
 import net.matsudamper.folderviewer.repository.db.OperationDao
@@ -13,36 +15,39 @@ import net.matsudamper.folderviewer.repository.db.OperationEntity
 
 @Singleton
 class DeleteJobRepository @Inject internal constructor(
+    private val database: AppDatabase,
     private val operationDao: OperationDao,
     private val deleteFileDao: DeleteFileDao,
 ) {
     suspend fun saveJob(name: String, files: List<DeleteFile>): Long {
-        val totalFiles = files.count { !it.isDirectory }
-        val totalBytes = files.sumOf { it.fileSize }
-        val operationId = operationDao.insert(
-            OperationEntity(
-                type = OperationRepository.OperationType.DELETE.name,
-                workerId = null,
-                name = name,
-                status = OperationRepository.OperationStatus.ENQUEUED.name,
-                createdAt = System.currentTimeMillis(),
-                totalFiles = totalFiles,
-                totalBytes = totalBytes,
-            ),
-        )
-        deleteFileDao.insertAll(
-            files.map { file ->
-                DeleteFileEntity(
-                    operationId = operationId,
-                    sourceFileId = Json.encodeToString(file.sourceFileId),
-                    fileName = file.fileName,
-                    fileSize = file.fileSize,
-                    isDirectory = file.isDirectory,
-                    parentRelativePath = file.parentRelativePath,
-                )
-            },
-        )
-        return operationId
+        return database.withTransaction {
+            val totalFiles = files.count { !it.isDirectory }
+            val totalBytes = files.sumOf { it.fileSize }
+            val operationId = operationDao.insert(
+                OperationEntity(
+                    type = OperationRepository.OperationType.DELETE.name,
+                    workerId = null,
+                    name = name,
+                    status = OperationRepository.OperationStatus.ENQUEUED.name,
+                    createdAt = System.currentTimeMillis(),
+                    totalFiles = totalFiles,
+                    totalBytes = totalBytes,
+                ),
+            )
+            deleteFileDao.insertAll(
+                files.map { file ->
+                    DeleteFileEntity(
+                        operationId = operationId,
+                        sourceFileId = Json.encodeToString(file.sourceFileId),
+                        fileName = file.fileName,
+                        fileSize = file.fileSize,
+                        isDirectory = file.isDirectory,
+                        parentRelativePath = file.parentRelativePath,
+                    )
+                },
+            )
+            operationId
+        }
     }
 
     suspend fun getJobById(id: Long): DeleteJob? {

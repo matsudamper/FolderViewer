@@ -48,6 +48,7 @@ class PasteDetailViewModel @Inject constructor(
                 }
 
                 val statusText = when (job.status) {
+                    PasteJobRepository.PasteJobStatus.ENQUEUED -> "待機中"
                     PasteJobRepository.PasteJobStatus.RUNNING -> "実行中"
                     PasteJobRepository.PasteJobStatus.PAUSED -> "一時停止"
                     PasteJobRepository.PasteJobStatus.COMPLETED -> "完了"
@@ -56,6 +57,7 @@ class PasteDetailViewModel @Inject constructor(
                 }
 
                 val uiStatus = when (job.status) {
+                    PasteJobRepository.PasteJobStatus.ENQUEUED -> PasteDetailUiState.Status.ENQUEUED
                     PasteJobRepository.PasteJobStatus.RUNNING -> PasteDetailUiState.Status.RUNNING
                     PasteJobRepository.PasteJobStatus.PAUSED -> PasteDetailUiState.Status.PAUSED
                     PasteJobRepository.PasteJobStatus.COMPLETED -> PasteDetailUiState.Status.COMPLETED
@@ -187,7 +189,7 @@ class PasteDetailViewModel @Inject constructor(
 
             pasteJobRepository.updateStatus(
                 jobId = jobId,
-                status = PasteJobRepository.PasteJobStatus.RUNNING,
+                status = PasteJobRepository.PasteJobStatus.ENQUEUED,
                 workerId = workRequest.id.toString(),
             )
 

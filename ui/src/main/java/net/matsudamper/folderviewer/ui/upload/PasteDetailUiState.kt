@@ -15,6 +15,7 @@ data class PasteDetailUiState(
     val callbacks: Callbacks,
 ) {
     enum class Status {
+        ENQUEUED,
         RUNNING,
         PAUSED,
         COMPLETED,

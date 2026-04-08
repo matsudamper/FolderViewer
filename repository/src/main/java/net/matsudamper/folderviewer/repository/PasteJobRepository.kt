@@ -2,10 +2,12 @@ package net.matsudamper.folderviewer.repository
 
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
+import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import net.matsudamper.folderviewer.common.FileObjectId
+import net.matsudamper.folderviewer.repository.db.AppDatabase
 import net.matsudamper.folderviewer.repository.db.OperationDao
 import net.matsudamper.folderviewer.repository.db.OperationEntity
 import net.matsudamper.folderviewer.repository.db.PasteFileDao
@@ -15,6 +17,7 @@ import net.matsudamper.folderviewer.repository.db.PasteOperationEntity
 
 @Singleton
 class PasteJobRepository @Inject internal constructor(
+    private val database: AppDatabase,
     private val operationDao: OperationDao,
     private val pasteOperationDao: PasteOperationDao,
     private val pasteFileDao: PasteFileDao,
@@ -46,38 +49,40 @@ class PasteJobRepository @Inject internal constructor(
     }
 
     suspend fun saveJob(job: PasteJob, files: List<PasteFile>): Long {
-        val operationId = operationDao.insert(
-            OperationEntity(
-                type = OperationRepository.OperationType.PASTE.name,
-                workerId = job.workerId,
-                name = job.name,
-                status = job.status.name,
-                createdAt = System.currentTimeMillis(),
-                totalFiles = job.totalFiles,
-                totalBytes = job.totalBytes,
-            ),
-        )
-        pasteOperationDao.insert(
-            PasteOperationEntity(
-                operationId = operationId,
-                mode = job.mode.name,
-                destinationFileObjectId = Json.encodeToString(job.destinationFileObjectId),
-                destinationDisplayPath = job.destinationDisplayPath,
-            ),
-        )
-        pasteFileDao.insertAll(
-            files.map { file ->
-                PasteFileEntity(
+        return database.withTransaction {
+            val operationId = operationDao.insert(
+                OperationEntity(
+                    type = OperationRepository.OperationType.PASTE.name,
+                    workerId = job.workerId,
+                    name = job.name,
+                    status = job.status.name,
+                    createdAt = System.currentTimeMillis(),
+                    totalFiles = job.totalFiles,
+                    totalBytes = job.totalBytes,
+                ),
+            )
+            pasteOperationDao.insert(
+                PasteOperationEntity(
                     operationId = operationId,
-                    sourceFileId = Json.encodeToString(file.sourceFileId),
-                    fileName = file.fileName,
-                    fileSize = file.fileSize,
-                    destinationRelativePath = file.destinationRelativePath,
-                    isDirectory = file.isDirectory,
-                )
-            },
-        )
-        return operationId
+                    mode = job.mode.name,
+                    destinationFileObjectId = Json.encodeToString(job.destinationFileObjectId),
+                    destinationDisplayPath = job.destinationDisplayPath,
+                ),
+            )
+            pasteFileDao.insertAll(
+                files.map { file ->
+                    PasteFileEntity(
+                        operationId = operationId,
+                        sourceFileId = Json.encodeToString(file.sourceFileId),
+                        fileName = file.fileName,
+                        fileSize = file.fileSize,
+                        destinationRelativePath = file.destinationRelativePath,
+                        isDirectory = file.isDirectory,
+                    )
+                },
+            )
+            operationId
+        }
     }
 
     suspend fun getFiles(jobId: Long): List<PasteFile> {
@@ -227,7 +232,7 @@ class PasteJobRepository @Inject internal constructor(
     }
 
     enum class PasteJobStatus {
-        RUNNING, PAUSED, COMPLETED, FAILED, WAITING_RESOLUTION
+        ENQUEUED, RUNNING, PAUSED, COMPLETED, FAILED, WAITING_RESOLUTION
     }
 
     enum class DuplicateResolution {

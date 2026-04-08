@@ -5,7 +5,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
+import androidx.room.withTransaction
 import net.matsudamper.folderviewer.common.FileObjectId
+import net.matsudamper.folderviewer.repository.db.AppDatabase
 import net.matsudamper.folderviewer.repository.db.OperationDao
 import net.matsudamper.folderviewer.repository.db.OperationEntity
 import net.matsudamper.folderviewer.repository.db.UploadOperationDao
@@ -13,6 +15,7 @@ import net.matsudamper.folderviewer.repository.db.UploadOperationEntity
 
 @Singleton
 class UploadJobRepository @Inject internal constructor(
+    private val database: AppDatabase,
     private val operationDao: OperationDao,
     private val uploadOperationDao: UploadOperationDao,
 ) {
@@ -35,29 +38,31 @@ class UploadJobRepository @Inject internal constructor(
     }
 
     suspend fun saveJob(job: UploadJob) {
-        val type = if (job.isFolder) {
-            OperationRepository.OperationType.UPLOAD_FOLDER
-        } else {
-            OperationRepository.OperationType.UPLOAD_FILE
+        database.withTransaction {
+            val type = if (job.isFolder) {
+                OperationRepository.OperationType.UPLOAD_FOLDER
+            } else {
+                OperationRepository.OperationType.UPLOAD_FILE
+            }
+            val operationId = operationDao.insert(
+                OperationEntity(
+                    type = type.name,
+                    workerId = job.workerId,
+                    name = job.name,
+                    status = OperationRepository.OperationStatus.ENQUEUED.name,
+                    createdAt = System.currentTimeMillis(),
+                ),
+            )
+            uploadOperationDao.insert(
+                UploadOperationEntity(
+                    operationId = operationId,
+                    isFolder = job.isFolder,
+                    storageId = Json.encodeToString(job.fileObjectId.storageId),
+                    fileObjectId = Json.encodeToString(job.fileObjectId),
+                    displayPath = job.displayPath,
+                ),
+            )
         }
-        val operationId = operationDao.insert(
-            OperationEntity(
-                type = type.name,
-                workerId = job.workerId,
-                name = job.name,
-                status = OperationRepository.OperationStatus.ENQUEUED.name,
-                createdAt = System.currentTimeMillis(),
-            ),
-        )
-        uploadOperationDao.insert(
-            UploadOperationEntity(
-                operationId = operationId,
-                isFolder = job.isFolder,
-                storageId = Json.encodeToString(job.fileObjectId.storageId),
-                fileObjectId = Json.encodeToString(job.fileObjectId),
-                displayPath = job.displayPath,
-            ),
-        )
     }
 
     suspend fun deleteJob(workerId: String) {

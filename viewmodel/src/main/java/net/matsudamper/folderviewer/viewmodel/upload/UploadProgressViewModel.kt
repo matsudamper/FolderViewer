@@ -208,6 +208,7 @@ class UploadProgressViewModel @Inject constructor(
     private fun mapPasteOperation(op: OperationEntity): UploadProgressUiState.UploadItem {
         val pasteState = when {
             op.failedFiles > 0 -> UploadProgressUiState.UploadState.FAILED
+            op.status == OperationRepository.OperationStatus.ENQUEUED.name -> UploadProgressUiState.UploadState.ENQUEUED
             op.status == OperationRepository.OperationStatus.RUNNING.name -> UploadProgressUiState.UploadState.RUNNING
             op.status == OperationRepository.OperationStatus.PAUSED.name -> UploadProgressUiState.UploadState.PAUSED
             op.status == OperationRepository.OperationStatus.COMPLETED.name -> UploadProgressUiState.UploadState.SUCCEEDED

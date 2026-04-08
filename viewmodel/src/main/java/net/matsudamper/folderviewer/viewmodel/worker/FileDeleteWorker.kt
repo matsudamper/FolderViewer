@@ -35,6 +35,7 @@ internal class FileDeleteWorker @AssistedInject constructor(
         val notificationId = DELETE_NOTIFICATION_BASE_ID + operationId.toInt()
 
         try {
+            deleteJobRepository.updateStatus(operationId, OperationRepository.OperationStatus.RUNNING, workerId = id.toString())
             setForeground(createForegroundInfo(notificationId, 0, job.totalFiles, null))
 
             val allFiles = deleteJobRepository.getPendingFiles(operationId)
