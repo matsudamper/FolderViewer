@@ -39,7 +39,7 @@ internal interface PasteFileDao {
     @Query(
         "SELECT * FROM paste_files WHERE operationId = :operationId AND completed = 1 ORDER BY id ASC",
     )
-    fun observeCompletedNonDuplicatesByOperationId(operationId: Long): Flow<List<PasteFileEntity>>
+    fun observeCompletedFilesByOperationId(operationId: Long): Flow<List<PasteFileEntity>>
 
     @Query(
         "SELECT * FROM paste_files WHERE operationId = :operationId AND errorMessage IS NOT NULL ORDER BY id ASC",

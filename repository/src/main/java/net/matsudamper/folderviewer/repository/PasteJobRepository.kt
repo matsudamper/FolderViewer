@@ -98,7 +98,7 @@ class PasteJobRepository @Inject internal constructor(
     }
 
     fun observeCompletedFiles(jobId: Long): Flow<List<PasteFile>> {
-        return pasteFileDao.observeCompletedNonDuplicatesByOperationId(jobId).map { entities ->
+        return pasteFileDao.observeCompletedFilesByOperationId(jobId).map { entities ->
             entities.mapNotNull { runCatching { it.toDomain() }.getOrNull() }
         }
     }
