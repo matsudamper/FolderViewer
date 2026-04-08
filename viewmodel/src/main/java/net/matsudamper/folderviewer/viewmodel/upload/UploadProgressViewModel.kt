@@ -215,13 +215,16 @@ class UploadProgressViewModel @Inject constructor(
             else -> UploadProgressUiState.UploadState.FAILED
         }
 
-        val overallProgress = if (op.totalBytes > 0) {
+        val isActive = pasteState == UploadProgressUiState.UploadState.RUNNING ||
+            pasteState == UploadProgressUiState.UploadState.PAUSED
+
+        val overallProgress = if (isActive && op.totalBytes > 0) {
             (op.completedBytes + op.currentFileBytes).toFloat() / op.totalBytes.toFloat()
         } else {
             null
         }
 
-        val currentFileProgress = if (op.currentFileTotalBytes > 0) {
+        val currentFileProgress = if (isActive && op.currentFileTotalBytes > 0) {
             op.currentFileBytes.toFloat() / op.currentFileTotalBytes.toFloat()
         } else {
             null
@@ -278,7 +281,7 @@ class UploadProgressViewModel @Inject constructor(
             else -> UploadProgressUiState.UploadState.FAILED
         }
 
-        val progress = if (op.totalFiles > 0) {
+        val progress = if (deleteState == UploadProgressUiState.UploadState.RUNNING && op.totalFiles > 0) {
             op.completedFiles.toFloat() / op.totalFiles.toFloat()
         } else {
             null
