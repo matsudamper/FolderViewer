@@ -79,8 +79,6 @@ public fun UploadProgressScreen(
                 contentPadding = PaddingValues(
                     top = innerPadding.calculateTopPadding() + 8.dp,
                     bottom = innerPadding.calculateBottomPadding() + 8.dp,
-                    start = 16.dp,
-                    end = 16.dp,
                 ),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -131,7 +129,7 @@ private fun UploadItemRow(
                     Modifier
                 },
             )
-            .padding(vertical = 8.dp),
+            .padding(vertical = 8.dp, horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -235,7 +233,7 @@ private fun PasteItemRow(
         modifier = modifier
             .fillMaxWidth()
             .then(if (item.canNavigate) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(vertical = 8.dp),
+            .padding(vertical = 8.dp, horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Row(
@@ -370,7 +368,7 @@ private fun DeleteItemRow(
         modifier = modifier
             .fillMaxWidth()
             .then(if (item.canNavigate) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(vertical = 8.dp),
+            .padding(vertical = 8.dp, horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Row(
