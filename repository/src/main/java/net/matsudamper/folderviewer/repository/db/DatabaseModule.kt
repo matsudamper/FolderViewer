@@ -19,7 +19,10 @@ internal object DatabaseModule {
             context,
             AppDatabase::class.java,
             "folder_viewer_db",
-        ).fallbackToDestructiveMigrationFrom(dropAllTables = true, startVersions = intArrayOf(7)).build()
+        ).fallbackToDestructiveMigrationFrom(
+            dropAllTables = true,
+            startVersions = intArrayOf(3, 4, 5, 6, 7),
+        ).build()
     }
 
     @Provides
