@@ -110,24 +110,29 @@ class SmbFileRepository(
                 ?: throw IllegalArgumentException("Share not found: $shareName")
             share.use { diskShare ->
                 val isDirectory = diskShare.folderExists(subPath)
-                val size = if (isDirectory) {
-                    0L
+                val size: Long
+                val lastModified: Long
+                if (isDirectory) {
+                    size = 0L
+                    lastModified = diskShare.getFileInformation(subPath).basicInformation.changeTime.toEpochMillis()
                 } else {
-                    diskShare.openFile(
+                    val fileInfo = diskShare.openFile(
                         subPath,
                         EnumSet.of(AccessMask.GENERIC_READ),
                         null,
                         SMB2ShareAccess.ALL,
                         SMB2CreateDisposition.FILE_OPEN,
                         null,
-                    ).use { it.fileInformation.standardInformation.endOfFile }
+                    ).use { it.fileInformation }
+                    size = fileInfo.standardInformation.endOfFile
+                    lastModified = fileInfo.basicInformation.changeTime.toEpochMillis()
                 }
                 FileItem(
                     id = fileId,
                     displayPath = fileName,
                     isDirectory = isDirectory,
                     size = size,
-                    lastModified = 0L,
+                    lastModified = lastModified,
                 )
             }
         }
