@@ -19,6 +19,9 @@ class UploadJobRepository @Inject internal constructor(
     private val operationDao: OperationDao,
     private val uploadOperationDao: UploadOperationDao,
 ) {
+    // TODO: paste/delete が多い場合に UPLOAD の件数が 500 件未満でも欠けるリスクがある。
+    //       また toUploadJob() が per-item で uploadOperationDao を呼ぶため 1+N クエリになっている。
+    //       DAO に type 条件と JOIN を含む専用クエリを追加して置き換える。
     fun getAllJobs(): Flow<List<UploadJob>> {
         return operationDao.observeAll(limit = 500).map { entities ->
             entities
