@@ -105,11 +105,12 @@ class PasteJobRepository @Inject internal constructor(
     }
 
     suspend fun updateProgress(jobId: Long, progress: ProgressUpdate) {
+        val failedFiles = operationDao.getById(jobId)?.failedFiles ?: 0
         operationDao.updateCompletedProgress(
             id = jobId,
             completedFiles = progress.completedFiles,
             completedBytes = progress.completedBytes,
-            failedFiles = 0,
+            failedFiles = failedFiles,
         )
         operationDao.updateCurrentFile(
             id = jobId,
@@ -127,8 +128,9 @@ class PasteJobRepository @Inject internal constructor(
         pasteFileDao.markDeleted(fileId)
     }
 
-    suspend fun markFileFailed(fileId: Long, errorMessage: String?) {
+    suspend fun markFileFailed(jobId: Long, fileId: Long, errorMessage: String?) {
         pasteFileDao.markFailed(fileId, errorMessage)
+        operationDao.updateFailedCount(jobId, pasteFileDao.countFailedFiles(jobId))
     }
 
     suspend fun markFileDuplicate(fileId: Long, destinationFileId: FileObjectId.Item, destinationFileSize: Long) {

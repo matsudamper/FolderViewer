@@ -50,4 +50,9 @@ internal interface PasteFileDao {
         "SELECT COUNT(*) FROM paste_files WHERE operationId = :operationId AND isDuplicate = 1 AND resolution = 'PENDING'",
     )
     suspend fun countUnresolvedDuplicates(operationId: Long): Int
+
+    @Query(
+        "SELECT COUNT(*) FROM paste_files WHERE operationId = :operationId AND errorMessage IS NOT NULL",
+    )
+    suspend fun countFailedFiles(operationId: Long): Int
 }

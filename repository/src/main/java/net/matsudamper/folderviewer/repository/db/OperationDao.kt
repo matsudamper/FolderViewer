@@ -48,6 +48,9 @@ internal interface OperationDao {
     @Query("UPDATE operations SET resolvedFiles = :resolvedFiles WHERE id = :id")
     suspend fun updateResolvedCount(id: Long, resolvedFiles: Int)
 
+    @Query("UPDATE operations SET failedFiles = :failedFiles WHERE id = :id")
+    suspend fun updateFailedCount(id: Long, failedFiles: Int)
+
     @Query("DELETE FROM operations WHERE id = :id")
     suspend fun deleteById(id: Long)
 

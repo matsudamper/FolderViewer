@@ -206,12 +206,13 @@ class UploadProgressViewModel @Inject constructor(
     }
 
     private fun mapPasteOperation(op: OperationEntity): UploadProgressUiState.UploadItem {
-        val pasteState = when (op.status) {
-            OperationRepository.OperationStatus.RUNNING.name -> UploadProgressUiState.UploadState.RUNNING
-            OperationRepository.OperationStatus.PAUSED.name -> UploadProgressUiState.UploadState.PAUSED
-            OperationRepository.OperationStatus.COMPLETED.name -> UploadProgressUiState.UploadState.SUCCEEDED
-            OperationRepository.OperationStatus.FAILED.name -> UploadProgressUiState.UploadState.FAILED
-            OperationRepository.OperationStatus.WAITING_RESOLUTION.name -> UploadProgressUiState.UploadState.WAITING_RESOLUTION
+        val pasteState = when {
+            op.failedFiles > 0 -> UploadProgressUiState.UploadState.FAILED
+            op.status == OperationRepository.OperationStatus.RUNNING.name -> UploadProgressUiState.UploadState.RUNNING
+            op.status == OperationRepository.OperationStatus.PAUSED.name -> UploadProgressUiState.UploadState.PAUSED
+            op.status == OperationRepository.OperationStatus.COMPLETED.name -> UploadProgressUiState.UploadState.SUCCEEDED
+            op.status == OperationRepository.OperationStatus.FAILED.name -> UploadProgressUiState.UploadState.FAILED
+            op.status == OperationRepository.OperationStatus.WAITING_RESOLUTION.name -> UploadProgressUiState.UploadState.WAITING_RESOLUTION
             else -> UploadProgressUiState.UploadState.FAILED
         }
 
@@ -235,6 +236,8 @@ class UploadProgressViewModel @Inject constructor(
             val total = formatFileSize(op.totalBytes)
             val duplicateText = if (op.duplicateFiles > 0) " (重複${op.duplicateFiles}件)" else ""
             "${op.completedFiles}/${op.totalFiles}ファイル ($completed/$total)$duplicateText"
+        } else if (pasteState == UploadProgressUiState.UploadState.FAILED && op.failedFiles > 0) {
+            "失敗${op.failedFiles}件"
         } else if (pasteState == UploadProgressUiState.UploadState.WAITING_RESOLUTION && op.duplicateFiles > 0) {
             "重複${op.duplicateFiles}件"
         } else {

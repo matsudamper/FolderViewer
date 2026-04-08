@@ -108,7 +108,7 @@ internal class FilePasteWorker @AssistedInject constructor(
                         } catch (e: CancellationException) {
                             throw e
                         } catch (e: Throwable) {
-                            pasteJobRepository.markFileFailed(file.id, e.message ?: e.toString())
+                            pasteJobRepository.markFileFailed(jobId, file.id, e.message ?: e.toString())
                         }
                     }
                     completedFiles++
@@ -192,7 +192,7 @@ internal class FilePasteWorker @AssistedInject constructor(
                                 throw e
                             } catch (e: Throwable) {
                                 e.printStackTrace()
-                                pasteJobRepository.markFileFailed(file.id, e.message ?: e.toString())
+                                pasteJobRepository.markFileFailed(jobId, file.id, e.message ?: e.toString())
                             }
                         }
 
@@ -326,7 +326,7 @@ internal class FilePasteWorker @AssistedInject constructor(
                     pasteJobRepository.markFileDeleted(file.id)
                 }.onFailure { throwable ->
                     throwable.printStackTrace()
-                    pasteJobRepository.markFileFailed(file.id, throwable.message ?: throwable.toString())
+                    pasteJobRepository.markFileFailed(file.jobId, file.id, throwable.message ?: throwable.toString())
                 }
             }
     }
