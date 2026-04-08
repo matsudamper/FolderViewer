@@ -621,8 +621,10 @@ class SmbFileRepository(
 
                 share.use { diskShare ->
                     val fullPath = if (subPath.isEmpty()) directoryName else "$subPath\\$directoryName"
-                    if (!diskShare.folderExists(fullPath)) {
-                        diskShare.mkdir(fullPath)
+                    when {
+                        diskShare.folderExists(fullPath) -> { /* 既にディレクトリが存在 */ }
+                        diskShare.fileExists(fullPath) -> throw IllegalStateException("同名のファイルが既に存在します: $fullPath")
+                        else -> diskShare.mkdir(fullPath)
                     }
                 }
             }
