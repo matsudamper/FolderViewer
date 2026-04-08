@@ -60,6 +60,7 @@ internal fun FileSmallListItem(
     file: FileBrowserUiState.UiFileItem.File,
     textOverflow: TextOverflow,
     isSelectionMode: Boolean,
+    isPasteMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -67,7 +68,7 @@ internal fun FileSmallListItem(
             .fillMaxWidth()
             .combinedClickable(
                 onClick = file.callbacks::onClick,
-                onLongClick = file.callbacks::onLongClick,
+                onLongClick = if (isPasteMode) null else file.callbacks::onLongClick,
             )
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -101,6 +102,7 @@ internal fun FileMediumListItem(
     file: FileBrowserUiState.UiFileItem.File,
     textOverflow: TextOverflow,
     isSelectionMode: Boolean,
+    isPasteMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -108,7 +110,7 @@ internal fun FileMediumListItem(
             .fillMaxWidth()
             .combinedClickable(
                 onClick = file.callbacks::onClick,
-                onLongClick = file.callbacks::onLongClick,
+                onLongClick = if (isPasteMode) null else file.callbacks::onLongClick,
             )
             .padding(4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -152,6 +154,7 @@ internal fun FileLargeListItem(
     file: FileBrowserUiState.UiFileItem.File,
     textOverflow: TextOverflow,
     isSelectionMode: Boolean,
+    isPasteMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -159,7 +162,7 @@ internal fun FileLargeListItem(
             .fillMaxWidth()
             .combinedClickable(
                 onClick = file.callbacks::onClick,
-                onLongClick = file.callbacks::onLongClick,
+                onLongClick = if (isPasteMode) null else file.callbacks::onLongClick,
             )
             .padding(4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -218,6 +221,7 @@ internal fun FileSmallGridItem(
     file: FileBrowserUiState.UiFileItem.File,
     textOverflow: TextOverflow,
     isSelectionMode: Boolean,
+    isPasteMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
     FileGridItem(
@@ -226,6 +230,7 @@ internal fun FileSmallGridItem(
         textOverflow = textOverflow,
         padding = 4.dp,
         isSelectionMode = isSelectionMode,
+        isPasteMode = isPasteMode,
     )
 }
 
@@ -234,6 +239,7 @@ internal fun FileLargeGridItem(
     file: FileBrowserUiState.UiFileItem.File,
     textOverflow: TextOverflow,
     isSelectionMode: Boolean,
+    isPasteMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
     FileGridItem(
@@ -242,6 +248,7 @@ internal fun FileLargeGridItem(
         textOverflow = textOverflow,
         padding = 8.dp,
         isSelectionMode = isSelectionMode,
+        isPasteMode = isPasteMode,
     )
 }
 
@@ -252,13 +259,14 @@ private fun FileGridItem(
     padding: Dp,
     textOverflow: TextOverflow,
     isSelectionMode: Boolean,
+    isPasteMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
             .combinedClickable(
                 onClick = file.callbacks::onClick,
-                onLongClick = file.callbacks::onLongClick,
+                onLongClick = if (isPasteMode) null else file.callbacks::onLongClick,
             )
             .padding(padding),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -343,6 +351,7 @@ private fun PreviewFileSmallListItem() {
             file = previewUiFileItem(),
             textOverflow = TextOverflow.Ellipsis,
             isSelectionMode = false,
+            isPasteMode = false,
         )
     }
 }
@@ -355,6 +364,7 @@ private fun PreviewFileMediumListItem() {
             file = previewUiFileItem(),
             textOverflow = TextOverflow.Ellipsis,
             isSelectionMode = false,
+            isPasteMode = false,
         )
     }
 }
@@ -367,6 +377,7 @@ private fun PreviewFileLargeListItem() {
             file = previewUiFileItem(),
             textOverflow = TextOverflow.Ellipsis,
             isSelectionMode = false,
+            isPasteMode = false,
         )
     }
 }
@@ -379,6 +390,7 @@ private fun PreviewFileSmallGridItem() {
             file = previewUiFileItem(),
             textOverflow = TextOverflow.Ellipsis,
             isSelectionMode = false,
+            isPasteMode = false,
         )
     }
 }
@@ -391,6 +403,7 @@ private fun PreviewFileLargeGridItem() {
             file = previewUiFileItem(),
             textOverflow = TextOverflow.Ellipsis,
             isSelectionMode = false,
+            isPasteMode = false,
         )
     }
 }
