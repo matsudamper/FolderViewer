@@ -22,6 +22,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.FileToUpload
+import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.UploadJobRepository
 import net.matsudamper.folderviewer.repository.UploadProgress
@@ -48,6 +49,10 @@ internal class FolderUploadWorker @AssistedInject constructor(
             )
 
             setForeground(createForegroundInfo())
+            uploadJobRepository.updateStatus(
+                workerId = id.toString(),
+                status = OperationRepository.OperationStatus.RUNNING,
+            )
 
             val fileObjectId = Json.decodeFromString<FileObjectId>(fileObjectIdString)
             val uriDataList = Json.decodeFromString<List<UriData>>(uriDataListJson)
@@ -95,6 +100,10 @@ internal class FolderUploadWorker @AssistedInject constructor(
                 progressJob.cancel()
             }
 
+            uploadJobRepository.updateStatus(
+                workerId = id.toString(),
+                status = OperationRepository.OperationStatus.COMPLETED,
+            )
             Result.success()
         } catch (e: Exception) {
             e.printStackTrace()

@@ -75,6 +75,15 @@ class UploadJobRepository @Inject internal constructor(
         )
     }
 
+    suspend fun updateStatus(workerId: String, status: OperationRepository.OperationStatus) {
+        val entity = operationDao.getByWorkerId(workerId) ?: return
+        operationDao.updateStatusAndWorkerId(
+            id = entity.id,
+            status = status.name,
+            workerId = workerId,
+        )
+    }
+
     private suspend fun OperationEntity.toUploadJob(uploadOperationDao: UploadOperationDao): UploadJob {
         val uploadDetail = uploadOperationDao.getByOperationId(id)
             ?: error("UploadOperationEntity not found for operationId=$id")
