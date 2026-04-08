@@ -22,6 +22,9 @@ class PasteJobRepository @Inject internal constructor(
     private val pasteOperationDao: PasteOperationDao,
     private val pasteFileDao: PasteFileDao,
 ) {
+    // TODO: 他タイプの operation が多い場合に PASTE が 500 件未満でも欠けるリスクがある。
+    //       また toPasteJob() が per-item で pasteOperationDao を呼ぶため 1+N クエリになっている。
+    //       DAO に type = PASTE で JOIN したクエリを追加して置き換える。
     fun getAllJobs(): Flow<List<PasteJob>> {
         return operationDao.observeAll(limit = 500).map { entities ->
             entities
