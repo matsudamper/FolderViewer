@@ -161,10 +161,17 @@ class UploadProgressViewModel @Inject constructor(
             WorkInfo.State.FAILED -> UploadProgressUiState.UploadState.FAILED
             WorkInfo.State.BLOCKED -> UploadProgressUiState.UploadState.ENQUEUED
             WorkInfo.State.CANCELLED -> UploadProgressUiState.UploadState.CANCELLED
-            null -> if (op.errorMessage != null) {
-                UploadProgressUiState.UploadState.FAILED
-            } else {
-                UploadProgressUiState.UploadState.SUCCEEDED
+            null -> when (op.status) {
+                OperationRepository.OperationStatus.RUNNING.name -> UploadProgressUiState.UploadState.RUNNING
+                OperationRepository.OperationStatus.ENQUEUED.name -> UploadProgressUiState.UploadState.ENQUEUED
+                OperationRepository.OperationStatus.PAUSED.name -> UploadProgressUiState.UploadState.ENQUEUED
+                OperationRepository.OperationStatus.FAILED.name -> UploadProgressUiState.UploadState.FAILED
+                OperationRepository.OperationStatus.CANCELLED.name -> UploadProgressUiState.UploadState.CANCELLED
+                else -> if (op.errorMessage != null) {
+                    UploadProgressUiState.UploadState.FAILED
+                } else {
+                    UploadProgressUiState.UploadState.SUCCEEDED
+                }
             }
         }
 
