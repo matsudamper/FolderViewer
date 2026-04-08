@@ -55,9 +55,15 @@ internal class FilePasteWorker @AssistedInject constructor(
 
             val sourceStorageId = pendingFiles.first().sourceFileId.storageId
             val sourceRepo = storageRepository.getFileRepository(sourceStorageId)
-                ?: return@withContext Result.failure()
+                ?: run {
+                    pasteJobRepository.updateError(jobId, "ソースストレージが見つかりません: $sourceStorageId", null)
+                    return@withContext Result.failure()
+                }
             val destRepo = storageRepository.getFileRepository(job.destinationFileObjectId.storageId)
-                ?: return@withContext Result.failure()
+                ?: run {
+                    pasteJobRepository.updateError(jobId, "宛先ストレージが見つかりません: ${job.destinationFileObjectId.storageId}", null)
+                    return@withContext Result.failure()
+                }
 
             val directoryCache = mutableMapOf<String, FileObjectId>()
 
