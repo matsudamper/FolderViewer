@@ -262,7 +262,12 @@ internal class FilePasteWorker @AssistedInject constructor(
                 deleteSourceDirectories(files, sourceRepo)
             }
 
-            pasteJobRepository.updateStatus(jobId, PasteJobRepository.PasteJobStatus.COMPLETED)
+            val finalStatus = if (pasteJobRepository.countFailedFiles(jobId) > 0) {
+                PasteJobRepository.PasteJobStatus.FAILED
+            } else {
+                PasteJobRepository.PasteJobStatus.COMPLETED
+            }
+            pasteJobRepository.updateStatus(jobId, finalStatus)
             Result.success()
         } catch (e: CancellationException) {
             throw e
