@@ -10,7 +10,11 @@ internal interface DeleteFileDao {
     @Insert
     suspend fun insertAll(files: List<DeleteFileEntity>)
 
-    @Query("SELECT * FROM delete_files WHERE operationId = :operationId ORDER BY id ASC")
+    @Query(
+        "SELECT * FROM delete_files " +
+            "WHERE operationId = :operationId AND completed = 0 AND errorMessage IS NULL " +
+            "ORDER BY id ASC",
+    )
     suspend fun getPendingByOperationId(operationId: Long): List<DeleteFileEntity>
 
     @Query("SELECT * FROM delete_files WHERE operationId = :operationId ORDER BY id ASC")
