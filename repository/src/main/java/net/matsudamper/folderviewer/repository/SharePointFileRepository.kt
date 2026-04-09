@@ -73,6 +73,12 @@ class SharePointFileRepository(
         return drive.id
     }
 
+    private suspend fun getRootItemId(driveId: String): String {
+        val rootItem = graphServiceClient.drives().byDriveId(driveId).root().get()
+            ?: throw IllegalStateException("Failed to resolve drive root item")
+        return requireNotNull(rootItem.id) { "Drive root item id is null" }
+    }
+
     override suspend fun getFileContent(fileId: FileObjectId.Item): InputStream = withContext(Dispatchers.IO) {
         val driveId = getDriveId()
 
@@ -287,7 +293,7 @@ class SharePointFileRepository(
         return withContext(Dispatchers.IO) {
             val driveId = getDriveId()
             val parentId = when (id) {
-                is FileObjectId.Root -> throw UnsupportedOperationException("Cannot create directory in root")
+                is FileObjectId.Root -> getRootItemId(driveId)
                 is FileObjectId.Item -> id.id
             }
             val folderId = createOrGetFolder(driveId, parentId, directoryName)
