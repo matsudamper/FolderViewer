@@ -146,7 +146,7 @@ class SharePointFileRepository(
         withContext(Dispatchers.IO) {
             val driveId = getDriveId()
             val parentId = when (id) {
-                is FileObjectId.Root -> return@withContext
+                is FileObjectId.Root -> getRootItemId(driveId)
                 is FileObjectId.Item -> id.id
             }
 
@@ -177,14 +177,13 @@ class SharePointFileRepository(
                 item.folder = com.microsoft.graph.models.Folder()
             }
 
+            val parentId = when (id) {
+                is FileObjectId.Root -> getRootItemId(driveId)
+                is FileObjectId.Item -> id.id
+            }
             val createdFolder = graphServiceClient.drives().byDriveId(driveId)
                 .items()
-                .byDriveItemId(
-                    when (id) {
-                        is FileObjectId.Root -> return@withContext
-                        is FileObjectId.Item -> id.id
-                    },
-                )
+                .byDriveItemId(parentId)
                 .children()
                 .post(folderItem) ?: throw IllegalStateException("Failed to create folder")
 
