@@ -57,7 +57,7 @@ internal class FileUploadWorker @AssistedInject constructor(
 
                 val fileObjectId = Json.decodeFromString<FileObjectId>(fileObjectIdString)
                 val repository = storageRepository.getFileRepository(fileObjectId.storageId)
-                    ?: return@withContext Result.failure()
+                    ?: throw IllegalStateException("ストレージが見つかりません: ${fileObjectId.storageId}")
 
                 val uri = android.net.Uri.parse(uriString)
                 val fileSize = getFileSize(uri)

@@ -57,7 +57,7 @@ internal class FolderUploadWorker @AssistedInject constructor(
             val fileObjectId = Json.decodeFromString<FileObjectId>(fileObjectIdString)
             val uriDataList = Json.decodeFromString<List<UriData>>(uriDataListJson)
             val repository = storageRepository.getFileRepository(fileObjectId.storageId)
-                ?: return@withContext Result.failure()
+                ?: throw IllegalStateException("ストレージが見つかりません: ${fileObjectId.storageId}")
 
             val filesToUpload = getFilesToUpload(uriDataList)
             val totalSize = filesToUpload.fold<FileToUpload, Long?>(0L) { acc, file ->
