@@ -15,6 +15,7 @@ data class DriveItemResponse(
     val folder: FolderFacet? = null,
     val size: Long? = null,
     val lastModifiedDateTime: String? = null,
+    val eTag: String? = null,
 )
 
 @Serializable

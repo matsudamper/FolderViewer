@@ -4,10 +4,20 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [UploadJobEntity::class],
-    version = 3,
+    entities = [
+        OperationEntity::class,
+        UploadOperationEntity::class,
+        PasteOperationEntity::class,
+        PasteFileEntity::class,
+        DeleteFileEntity::class,
+    ],
+    version = 8,
     exportSchema = false,
 )
 internal abstract class AppDatabase : RoomDatabase() {
-    abstract fun uploadJobDao(): UploadJobDao
+    abstract fun operationDao(): OperationDao
+    abstract fun uploadOperationDao(): UploadOperationDao
+    abstract fun pasteOperationDao(): PasteOperationDao
+    abstract fun pasteFileDao(): PasteFileDao
+    abstract fun deleteFileDao(): DeleteFileDao
 }

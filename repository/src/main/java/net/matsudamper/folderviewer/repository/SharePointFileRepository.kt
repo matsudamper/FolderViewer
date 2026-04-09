@@ -14,6 +14,7 @@ import com.azure.identity.ClientSecretCredentialBuilder
 import com.microsoft.graph.core.tasks.LargeFileUploadTask
 import com.microsoft.graph.drives.item.items.item.createuploadsession.CreateUploadSessionPostRequestBody
 import com.microsoft.graph.models.DriveItem
+import com.microsoft.graph.models.DriveItemUploadableProperties
 import com.microsoft.graph.serviceclient.GraphServiceClient
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.dao.graphapi.GraphApiClient
@@ -72,6 +73,12 @@ class SharePointFileRepository(
         return drive.id
     }
 
+    private suspend fun getRootItemId(driveId: String): String {
+        val rootItem = graphServiceClient.drives().byDriveId(driveId).root().get()
+            ?: throw IllegalStateException("Failed to resolve drive root item")
+        return requireNotNull(rootItem.id) { "Drive root item id is null" }
+    }
+
     override suspend fun getFileContent(fileId: FileObjectId.Item): InputStream = withContext(Dispatchers.IO) {
         val driveId = getDriveId()
 
@@ -82,6 +89,31 @@ class SharePointFileRepository(
     override suspend fun getFileSize(fileId: FileObjectId.Item): Long = withContext(Dispatchers.IO) {
         val item = graphApiClient.getDriveItem(fileId.id)
         item.size ?: 0L
+    }
+
+    override suspend fun getFileInfo(fileId: FileObjectId.Item): FileItem = withContext(Dispatchers.IO) {
+        val item = graphApiClient.getDriveItem(fileId.id)
+        FileItem(
+            id = fileId,
+            displayPath = item.name,
+            isDirectory = item.folder != null,
+            size = item.size ?: 0L,
+            lastModified = item.lastModifiedDateTime?.let { OffsetDateTime.parse(it).toInstant().toEpochMilli() } ?: 0L,
+        )
+    }
+
+    override suspend fun deleteFile(fileId: FileObjectId.Item): Unit = withContext(Dispatchers.IO) {
+        val driveId = getDriveId()
+        graphServiceClient.drives().byDriveId(driveId)
+            .items().byDriveItemId(fileId.id)
+            .delete()
+    }
+
+    override suspend fun deleteDirectory(dirId: FileObjectId.Item): Unit = withContext(Dispatchers.IO) {
+        val item = graphApiClient.getDriveItem(dirId.id)
+        require(item.folder?.childCount == 0) { "ディレクトリが空ではありません: ${dirId.id}" }
+        val eTag = requireNotNull(item.eTag) { "eTagが取得できません: ${dirId.id}" }
+        graphApiClient.deleteDriveItem(dirId.id, eTag)
     }
 
     override suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream? {
@@ -109,11 +141,12 @@ class SharePointFileRepository(
         inputStream: InputStream,
         size: Long,
         onRead: FlowCollector<Long>,
+        overwrite: Boolean,
     ) {
         withContext(Dispatchers.IO) {
             val driveId = getDriveId()
             val parentId = when (id) {
-                is FileObjectId.Root -> return@withContext
+                is FileObjectId.Root -> getRootItemId(driveId)
                 is FileObjectId.Item -> id.id
             }
 
@@ -123,7 +156,7 @@ class SharePointFileRepository(
                     progressInputStream.onRead.collect(onRead)
                 }
 
-                uploadWithSession(driveId, parentId, fileName, progressInputStream, size)
+                uploadWithSession(driveId, parentId, fileName, progressInputStream, size, overwrite)
 
                 job.cancel()
             }
@@ -144,14 +177,13 @@ class SharePointFileRepository(
                 item.folder = com.microsoft.graph.models.Folder()
             }
 
+            val parentId = when (id) {
+                is FileObjectId.Root -> getRootItemId(driveId)
+                is FileObjectId.Item -> id.id
+            }
             val createdFolder = graphServiceClient.drives().byDriveId(driveId)
                 .items()
-                .byDriveItemId(
-                    when (id) {
-                        is FileObjectId.Root -> return@withContext
-                        is FileObjectId.Item -> id.id
-                    },
-                )
+                .byDriveItemId(parentId)
                 .children()
                 .post(folderItem) ?: throw IllegalStateException("Failed to create folder")
 
@@ -195,11 +227,19 @@ class SharePointFileRepository(
         fileName: String,
         inputStream: InputStream,
         fileSize: Long,
+        overwrite: Boolean = false,
     ) {
+        val requestBody = CreateUploadSessionPostRequestBody().also { body ->
+            body.item = DriveItemUploadableProperties().also { item ->
+                item.additionalData = mapOf(
+                    "@microsoft.graph.conflictBehavior" to if (overwrite) "replace" else "fail",
+                )
+            }
+        }
         val uploadSession = graphServiceClient.drives().byDriveId(driveId)
             .items().byDriveItemId("$parentId:/$fileName:")
             .createUploadSession()
-            .post(CreateUploadSessionPostRequestBody())
+            .post(requestBody)
             ?: throw IllegalStateException("Failed to create upload session")
 
         val maxSliceSize = UPLOAD_CHUNK_SIZE
@@ -248,16 +288,15 @@ class SharePointFileRepository(
     override suspend fun createDirectory(
         id: FileObjectId,
         directoryName: String,
-    ) {
-        withContext(Dispatchers.IO) {
+    ): FileObjectId.Item {
+        return withContext(Dispatchers.IO) {
             val driveId = getDriveId()
-
             val parentId = when (id) {
-                is FileObjectId.Root -> return@withContext
+                is FileObjectId.Root -> getRootItemId(driveId)
                 is FileObjectId.Item -> id.id
             }
-
-            createOrGetFolder(driveId, parentId, directoryName)
+            val folderId = createOrGetFolder(driveId, parentId, directoryName)
+            FileObjectId.Item(config.id, folderId)
         }
     }
 

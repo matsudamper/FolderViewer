@@ -7,8 +7,10 @@ complexity:
   LongMethod:
     active: false
   LongParameterList:
+    ignoreDefaultParameters: true
     ignoreAnnotated:
       - 'androidx.compose.runtime.Composable'
+      - 'dagger.hilt.android.lifecycle.HiltViewModel'
   TooManyFunctions:
     active: false
 

@@ -19,11 +19,34 @@ internal object DatabaseModule {
             context,
             AppDatabase::class.java,
             "folder_viewer_db",
-        ).fallbackToDestructiveMigration(dropAllTables = true).build()
+        ).fallbackToDestructiveMigrationFrom(
+            dropAllTables = true,
+            startVersions = intArrayOf(3, 4, 5, 6, 7),
+        ).build()
     }
 
     @Provides
-    fun provideUploadJobDao(database: AppDatabase): UploadJobDao {
-        return database.uploadJobDao()
+    fun provideOperationDao(database: AppDatabase): OperationDao {
+        return database.operationDao()
+    }
+
+    @Provides
+    fun provideUploadOperationDao(database: AppDatabase): UploadOperationDao {
+        return database.uploadOperationDao()
+    }
+
+    @Provides
+    fun providePasteOperationDao(database: AppDatabase): PasteOperationDao {
+        return database.pasteOperationDao()
+    }
+
+    @Provides
+    fun providePasteFileDao(database: AppDatabase): PasteFileDao {
+        return database.pasteFileDao()
+    }
+
+    @Provides
+    fun provideDeleteFileDao(database: AppDatabase): DeleteFileDao {
+        return database.deleteFileDao()
     }
 }

@@ -21,6 +21,7 @@ import kotlinx.serialization.json.Json
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import net.matsudamper.folderviewer.common.FileObjectId
+import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.UploadJobRepository
 import net.matsudamper.folderviewer.viewmodel.worker.FolderUploadWorker.Companion.KEY_CURRENT_BYTES
@@ -49,10 +50,14 @@ internal class FileUploadWorker @AssistedInject constructor(
                 )
 
                 setForeground(createForegroundInfo())
+                uploadJobRepository.updateStatus(
+                    workerId = id.toString(),
+                    status = OperationRepository.OperationStatus.RUNNING,
+                )
 
                 val fileObjectId = Json.decodeFromString<FileObjectId>(fileObjectIdString)
                 val repository = storageRepository.getFileRepository(fileObjectId.storageId)
-                    ?: return@withContext Result.failure()
+                    ?: throw IllegalStateException("ストレージが見つかりません: ${fileObjectId.storageId}")
 
                 val uri = android.net.Uri.parse(uriString)
                 val fileSize = getFileSize(uri)
@@ -85,6 +90,10 @@ internal class FileUploadWorker @AssistedInject constructor(
                     progressJob.cancel()
                 }
 
+                uploadJobRepository.updateStatus(
+                    workerId = id.toString(),
+                    status = OperationRepository.OperationStatus.COMPLETED,
+                )
                 Result.success()
             } catch (e: Throwable) {
                 e.printStackTrace()

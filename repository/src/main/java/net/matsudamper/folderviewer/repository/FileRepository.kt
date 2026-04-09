@@ -9,6 +9,9 @@ interface FileRepository {
     suspend fun getFiles(id: FileObjectId): List<FileItem>
     suspend fun getFileContent(fileId: FileObjectId.Item): InputStream
     suspend fun getFileSize(fileId: FileObjectId.Item): Long
+    suspend fun getFileInfo(fileId: FileObjectId.Item): FileItem
+    suspend fun deleteFile(fileId: FileObjectId.Item)
+    suspend fun deleteDirectory(dirId: FileObjectId.Item)
     suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream?
 
     suspend fun uploadFile(
@@ -17,6 +20,7 @@ interface FileRepository {
         inputStream: InputStream,
         size: Long,
         onRead: FlowCollector<Long>,
+        overwrite: Boolean = false,
     )
 
     suspend fun uploadFolder(
@@ -31,7 +35,7 @@ interface FileRepository {
     suspend fun createDirectory(
         id: FileObjectId,
         directoryName: String,
-    )
+    ): FileObjectId.Item
 }
 
 interface RandomAccessFileRepository : FileRepository {

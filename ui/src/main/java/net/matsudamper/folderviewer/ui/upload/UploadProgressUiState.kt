@@ -42,6 +42,43 @@ data class UploadProgressUiState(
             override val progress: Float?,
             override val progressText: String?,
         ) : UploadItem
+
+        data class Paste(
+            override val id: String,
+            override val name: String,
+            override val state: UploadState,
+            override val canNavigate: Boolean,
+            val mode: String,
+            val totalFiles: Int,
+            val completedFiles: Int,
+            val duplicateFiles: Int,
+            val currentFileName: String?,
+            val currentFileProgress: Float?,
+            override val progress: Float?,
+            override val progressText: String?,
+            val isPausable: Boolean,
+            val isResumable: Boolean,
+            val pasteCallbacks: PasteCallbacks,
+        ) : UploadItem
+
+        data class Delete(
+            override val id: String,
+            override val name: String,
+            override val state: UploadState,
+            override val canNavigate: Boolean,
+            val totalFiles: Int,
+            val completedFiles: Int,
+            val failedFiles: Int,
+            val currentFileName: String?,
+            override val progress: Float?,
+            override val progressText: String?,
+        ) : UploadItem
+    }
+
+    @Immutable
+    interface PasteCallbacks {
+        fun onPauseClick()
+        fun onResumeClick()
     }
 
     enum class UploadState {
@@ -50,5 +87,7 @@ data class UploadProgressUiState(
         SUCCEEDED,
         FAILED,
         CANCELLED,
+        PAUSED,
+        WAITING_RESOLUTION,
     }
 }

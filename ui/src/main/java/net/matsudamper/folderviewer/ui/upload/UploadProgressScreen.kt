@@ -20,6 +20,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -78,8 +79,6 @@ public fun UploadProgressScreen(
                 contentPadding = PaddingValues(
                     top = innerPadding.calculateTopPadding() + 8.dp,
                     bottom = innerPadding.calculateBottomPadding() + 8.dp,
-                    start = 16.dp,
-                    end = 16.dp,
                 ),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -87,10 +86,26 @@ public fun UploadProgressScreen(
                     items = uiState.uploadItems,
                     key = { it.id },
                 ) { item ->
-                    UploadItemRow(
-                        item = item,
-                        onClick = { uiState.callbacks.onItemClick(item) },
-                    )
+                    when (item) {
+                        is UploadProgressUiState.UploadItem.Paste -> {
+                            PasteItemRow(
+                                item = item,
+                                onClick = { uiState.callbacks.onItemClick(item) },
+                            )
+                        }
+                        is UploadProgressUiState.UploadItem.Delete -> {
+                            DeleteItemRow(
+                                item = item,
+                                onClick = { uiState.callbacks.onItemClick(item) },
+                            )
+                        }
+                        else -> {
+                            UploadItemRow(
+                                item = item,
+                                onClick = { uiState.callbacks.onItemClick(item) },
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -114,7 +129,7 @@ private fun UploadItemRow(
                     Modifier
                 },
             )
-            .padding(vertical = 8.dp),
+            .padding(vertical = 8.dp, horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -123,6 +138,8 @@ private fun UploadItemRow(
                 id = when (item) {
                     is UploadProgressUiState.UploadItem.File -> R.drawable.ic_file
                     is UploadProgressUiState.UploadItem.Folder -> R.drawable.ic_folder
+                    is UploadProgressUiState.UploadItem.Paste -> R.drawable.ic_file
+                    is UploadProgressUiState.UploadItem.Delete -> R.drawable.ic_file
                 },
             ),
             contentDescription = null,
@@ -154,6 +171,8 @@ private fun UploadItemRow(
                         UploadProgressUiState.UploadState.SUCCEEDED -> stringResource(R.string.upload_state_succeeded)
                         UploadProgressUiState.UploadState.FAILED -> stringResource(R.string.upload_state_failed)
                         UploadProgressUiState.UploadState.CANCELLED -> stringResource(R.string.upload_state_cancelled)
+                        UploadProgressUiState.UploadState.PAUSED -> stringResource(R.string.upload_state_paused)
+                        UploadProgressUiState.UploadState.WAITING_RESOLUTION -> stringResource(R.string.upload_state_waiting_resolution)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = when (item.state) {
@@ -199,6 +218,248 @@ private fun UploadItemRow(
             }
 
             else -> {}
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun PasteItemRow(
+    item: UploadProgressUiState.UploadItem.Paste,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (item.canNavigate) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(vertical = 8.dp, horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_file),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(
+                    text = item.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    if (item.progressText != null) {
+                        Text(
+                            text = item.progressText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Text(
+                        text = when (item.state) {
+                            UploadProgressUiState.UploadState.ENQUEUED -> stringResource(R.string.upload_state_enqueued)
+                            UploadProgressUiState.UploadState.RUNNING -> stringResource(R.string.upload_state_running)
+                            UploadProgressUiState.UploadState.SUCCEEDED -> stringResource(R.string.upload_state_succeeded)
+                            UploadProgressUiState.UploadState.FAILED -> stringResource(R.string.upload_state_failed)
+                            UploadProgressUiState.UploadState.CANCELLED -> stringResource(R.string.upload_state_cancelled)
+                            UploadProgressUiState.UploadState.PAUSED -> stringResource(R.string.upload_state_paused)
+                            UploadProgressUiState.UploadState.WAITING_RESOLUTION -> stringResource(R.string.upload_state_waiting_resolution)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = when (item.state) {
+                            UploadProgressUiState.UploadState.SUCCEEDED -> MaterialTheme.colorScheme.primary
+                            UploadProgressUiState.UploadState.FAILED -> MaterialTheme.colorScheme.error
+                            UploadProgressUiState.UploadState.WAITING_RESOLUTION -> MaterialTheme.colorScheme.tertiary
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                }
+            }
+            when {
+                item.isPausable -> {
+                    IconButton(onClick = { item.pasteCallbacks.onPauseClick() }) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_pause),
+                            contentDescription = stringResource(R.string.paste_pause),
+                        )
+                    }
+                }
+                item.isResumable -> {
+                    IconButton(onClick = { item.pasteCallbacks.onResumeClick() }) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_play),
+                            contentDescription = stringResource(R.string.paste_resume),
+                        )
+                    }
+                }
+                item.state == UploadProgressUiState.UploadState.SUCCEEDED -> {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_check),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                item.state == UploadProgressUiState.UploadState.FAILED -> {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_close),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        }
+
+        val overallProgress = item.progress
+        if (overallProgress != null) {
+            LinearProgressIndicator(
+                progress = { overallProgress },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+
+        val currentFileName = item.currentFileName
+        if (currentFileName != null && item.state == UploadProgressUiState.UploadState.RUNNING) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 36.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = currentFileName,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+                val currentFileProgress = item.currentFileProgress
+                if (currentFileProgress != null) {
+                    LinearProgressIndicator(
+                        progress = { currentFileProgress },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else {
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun DeleteItemRow(
+    item: UploadProgressUiState.UploadItem.Delete,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .then(if (item.canNavigate) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(vertical = 8.dp, horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_file),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(
+                    text = item.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    if (item.progressText != null) {
+                        Text(
+                            text = item.progressText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Text(
+                        text = when (item.state) {
+                            UploadProgressUiState.UploadState.ENQUEUED -> stringResource(R.string.upload_state_enqueued)
+                            UploadProgressUiState.UploadState.RUNNING -> stringResource(R.string.delete_state_running)
+                            UploadProgressUiState.UploadState.SUCCEEDED -> stringResource(R.string.upload_state_succeeded)
+                            UploadProgressUiState.UploadState.FAILED -> stringResource(R.string.upload_state_failed)
+                            UploadProgressUiState.UploadState.CANCELLED -> stringResource(R.string.upload_state_cancelled)
+                            UploadProgressUiState.UploadState.PAUSED -> stringResource(R.string.upload_state_paused)
+                            UploadProgressUiState.UploadState.WAITING_RESOLUTION -> stringResource(R.string.upload_state_waiting_resolution)
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = when (item.state) {
+                            UploadProgressUiState.UploadState.SUCCEEDED -> MaterialTheme.colorScheme.primary
+                            UploadProgressUiState.UploadState.FAILED -> MaterialTheme.colorScheme.error
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                }
+            }
+            when (item.state) {
+                UploadProgressUiState.UploadState.RUNNING -> {
+                    val progress = item.progress
+                    val indicatorModifier = Modifier
+                        .padding(4.dp)
+                        .size(24.dp)
+                    if (progress != null) {
+                        CircularWavyProgressIndicator(
+                            modifier = indicatorModifier,
+                            progress = { progress },
+                        )
+                    } else {
+                        CircularWavyProgressIndicator(
+                            modifier = indicatorModifier,
+                        )
+                    }
+                }
+                UploadProgressUiState.UploadState.SUCCEEDED -> {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_check),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+                UploadProgressUiState.UploadState.FAILED -> {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_close),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                    )
+                }
+                else -> {}
+            }
+        }
+
+        val overallProgress = item.progress
+        if (overallProgress != null) {
+            LinearProgressIndicator(
+                progress = { overallProgress },
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }

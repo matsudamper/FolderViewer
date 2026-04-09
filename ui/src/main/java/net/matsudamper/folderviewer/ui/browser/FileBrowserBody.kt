@@ -108,6 +108,7 @@ internal fun FileBrowserBody(
                     content = contentState,
                     displayConfig = uiState.displayConfig,
                     isSelectionMode = uiState.isSelectionMode,
+                    isPasteMode = uiState.isPasteMode,
                     contentPadding = contentPadding,
                 )
             }
@@ -120,6 +121,7 @@ private fun FileBrowserContent(
     content: FileBrowserUiState.ContentState.Content,
     displayConfig: UiDisplayConfig,
     isSelectionMode: Boolean,
+    isPasteMode: Boolean,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
@@ -169,6 +171,7 @@ private fun FileBrowserContent(
                                 displaySize = displayConfig.displaySize,
                                 textOverflow = TextOverflow.Ellipsis,
                                 isSelectionMode = isSelectionMode,
+                                isPasteMode = isPasteMode,
                             )
                         }
                     }
@@ -183,6 +186,7 @@ private fun FileBrowserContent(
                             displaySize = displayConfig.displaySize,
                             textOverflow = TextOverflow.StartEllipsis,
                             isSelectionMode = false,
+                            isPasteMode = isPasteMode,
                         )
                     }
                 }
@@ -214,6 +218,7 @@ private fun FileBrowserContent(
                                 displaySize = displayConfig.displaySize,
                                 textOverflow = TextOverflow.Ellipsis,
                                 isSelectionMode = isSelectionMode,
+                                isPasteMode = isPasteMode,
                             )
                         }
                     }
@@ -228,6 +233,7 @@ private fun FileBrowserContent(
                             displaySize = displayConfig.displaySize,
                             textOverflow = TextOverflow.StartEllipsis,
                             isSelectionMode = false,
+                            isPasteMode = isPasteMode,
                         )
                     }
                 }
@@ -242,6 +248,7 @@ private fun FileBrowserGridItem(
     displaySize: UiDisplayConfig.DisplaySize,
     textOverflow: TextOverflow,
     isSelectionMode: Boolean,
+    isPasteMode: Boolean,
 ) {
     when (displaySize) {
         UiDisplayConfig.DisplaySize.Small -> {
@@ -249,6 +256,7 @@ private fun FileBrowserGridItem(
                 file = file,
                 textOverflow = textOverflow,
                 isSelectionMode = isSelectionMode,
+                isPasteMode = isPasteMode,
             )
         }
 
@@ -257,6 +265,7 @@ private fun FileBrowserGridItem(
                 file = file,
                 textOverflow = textOverflow,
                 isSelectionMode = isSelectionMode,
+                isPasteMode = isPasteMode,
             )
         }
 
@@ -265,6 +274,7 @@ private fun FileBrowserGridItem(
                 file = file,
                 textOverflow = textOverflow,
                 isSelectionMode = isSelectionMode,
+                isPasteMode = isPasteMode,
             )
         }
     }
@@ -276,6 +286,7 @@ private fun FileBrowserListItem(
     displaySize: UiDisplayConfig.DisplaySize,
     textOverflow: TextOverflow,
     isSelectionMode: Boolean,
+    isPasteMode: Boolean,
 ) {
     when (displaySize) {
         UiDisplayConfig.DisplaySize.Small -> {
@@ -283,6 +294,7 @@ private fun FileBrowserListItem(
                 file = file,
                 textOverflow = textOverflow,
                 isSelectionMode = isSelectionMode,
+                isPasteMode = isPasteMode,
             )
         }
 
@@ -291,6 +303,7 @@ private fun FileBrowserListItem(
                 file = file,
                 textOverflow = textOverflow,
                 isSelectionMode = isSelectionMode,
+                isPasteMode = isPasteMode,
             )
         }
 
@@ -299,6 +312,7 @@ private fun FileBrowserListItem(
                 file = file,
                 textOverflow = textOverflow,
                 isSelectionMode = isSelectionMode,
+                isPasteMode = isPasteMode,
             )
         }
     }

@@ -14,8 +14,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.hierynomus.msdtyp.AccessMask
 import com.hierynomus.msfscc.FileAttributes
+import com.hierynomus.msfscc.fileinformation.FileBasicInformation
+import com.hierynomus.mserref.NtStatus
 import com.hierynomus.mssmb2.SMB2CreateDisposition
 import com.hierynomus.mssmb2.SMB2ShareAccess
+import com.hierynomus.mssmb2.SMBApiException
 import com.hierynomus.smbj.SMBClient
 import com.hierynomus.smbj.auth.AuthenticationContext
 import com.hierynomus.smbj.session.Session
@@ -74,6 +77,7 @@ class SmbFileRepository(
             val parts = fileId.id.split("/", limit = PATH_SPLIT_LIMIT)
             val shareName = parts[0]
             val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+            require(subPath.isNotEmpty()) { "Cannot get size of share root: $shareName" }
 
             val share = session.connectShare(shareName) as? DiskShare
                 ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
@@ -91,6 +95,124 @@ class SmbFileRepository(
                 }
             }
         }
+    }
+
+    override suspend fun getFileInfo(fileId: FileObjectId.Item): FileItem = withContext(Dispatchers.IO) {
+        val fileName = fileId.id.substringAfterLast("/")
+        val parts = fileId.id.split("/", limit = PATH_SPLIT_LIMIT)
+        val shareName = parts[0]
+        val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+        require(subPath.isNotEmpty()) { "Cannot get info of share root: $shareName" }
+
+        client.connect(config.ip).use { connection ->
+            val session = connection.authenticate(
+                AuthenticationContext(config.username, config.password.toCharArray(), null),
+            )
+            val share = session.connectShare(shareName) as? DiskShare
+                ?: throw IllegalArgumentException("Share not found: $shareName")
+            share.use { diskShare ->
+                val isDirectory = diskShare.folderExists(subPath)
+                val size: Long
+                val lastModified: Long
+                if (isDirectory) {
+                    size = 0L
+                    lastModified = diskShare.getFileInformation(subPath).basicInformation.changeTime.toEpochMillis()
+                } else {
+                    val fileInfo = diskShare.openFile(
+                        subPath,
+                        EnumSet.of(AccessMask.GENERIC_READ),
+                        null,
+                        SMB2ShareAccess.ALL,
+                        SMB2CreateDisposition.FILE_OPEN,
+                        null,
+                    ).use { it.fileInformation }
+                    size = fileInfo.standardInformation.endOfFile
+                    lastModified = fileInfo.basicInformation.changeTime.toEpochMillis()
+                }
+                FileItem(
+                    id = fileId,
+                    displayPath = fileName,
+                    isDirectory = isDirectory,
+                    size = size,
+                    lastModified = lastModified,
+                )
+            }
+        }
+    }
+
+    override suspend fun deleteFile(fileId: FileObjectId.Item): Unit = withContext(Dispatchers.IO) {
+        client.connect(config.ip).use { connection ->
+            val session = connection.authenticate(
+                AuthenticationContext(
+                    config.username,
+                    config.password.toCharArray(),
+                    null,
+                ),
+            )
+            val parts = fileId.id.split("/", limit = PATH_SPLIT_LIMIT)
+            val shareName = parts[0]
+            val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+            require(subPath.isNotEmpty()) { "Cannot delete share root: $shareName" }
+            val share = session.connectShare(shareName) as? DiskShare
+                ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+            share.use { diskShare ->
+                try {
+                    diskShare.rm(subPath)
+                } catch (e: SMBApiException) {
+                    if (e.statusCode == NtStatus.STATUS_CANNOT_DELETE.value) {
+                        clearReadOnlyAttribute(diskShare, subPath)
+                        diskShare.rm(subPath)
+                    } else {
+                        throw e
+                    }
+                }
+            }
+        }
+    }
+
+    override suspend fun deleteDirectory(dirId: FileObjectId.Item): Unit = withContext(Dispatchers.IO) {
+        client.connect(config.ip).use { connection ->
+            val session = connection.authenticate(
+                AuthenticationContext(
+                    config.username,
+                    config.password.toCharArray(),
+                    null,
+                ),
+            )
+            val parts = dirId.id.split("/", limit = PATH_SPLIT_LIMIT)
+            val shareName = parts[0]
+            val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+            require(subPath.isNotEmpty()) { "Cannot delete share root: $shareName" }
+            val share = session.connectShare(shareName) as? DiskShare
+                ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+            share.use { diskShare ->
+                try {
+                    diskShare.rmdir(subPath, false)
+                } catch (e: SMBApiException) {
+                    if (e.statusCode == NtStatus.STATUS_CANNOT_DELETE.value) {
+                        clearReadOnlyAttribute(diskShare, subPath)
+                        diskShare.rmdir(subPath, false)
+                    } else {
+                        throw e
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 読み取り専用属性が付与されたファイル/ディレクトリは削除時に STATUS_CANNOT_DELETE を返すため、
+     * FILE_ATTRIBUTE_NORMAL を設定して属性をクリアする。
+     */
+    private fun clearReadOnlyAttribute(share: DiskShare, path: String) {
+        val basicInfo = FileBasicInformation(
+            FileBasicInformation.DONT_SET,
+            FileBasicInformation.DONT_SET,
+            FileBasicInformation.DONT_SET,
+            FileBasicInformation.DONT_SET,
+            FileAttributes.FILE_ATTRIBUTE_NORMAL.value,
+        )
+        share.setFileInformation(path, basicInfo)
     }
 
     override suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream = withContext(Dispatchers.IO) {
@@ -331,6 +453,7 @@ class SmbFileRepository(
         inputStream: InputStream,
         size: Long,
         onRead: FlowCollector<Long>,
+        overwrite: Boolean,
     ) {
         val path = when (id) {
             is FileObjectId.Root -> return
@@ -361,7 +484,7 @@ class SmbFileRepository(
                         EnumSet.of(AccessMask.GENERIC_WRITE),
                         null,
                         SMB2ShareAccess.ALL,
-                        SMB2CreateDisposition.FILE_OVERWRITE_IF,
+                        if (overwrite) SMB2CreateDisposition.FILE_OVERWRITE_IF else SMB2CreateDisposition.FILE_CREATE,
                         null,
                     ).use { file ->
                         file.outputStream.use { outputStream ->
@@ -371,9 +494,7 @@ class SmbFileRepository(
                                     progressInputStream.onRead.collect(onRead)
                                 }
 
-                                progressInputStream.use { input ->
-                                    input.copyTo(outputStream)
-                                }
+                                progressInputStream.copyTo(outputStream)
                                 job.cancel()
                             }
                         }
@@ -476,12 +597,12 @@ class SmbFileRepository(
     override suspend fun createDirectory(
         id: FileObjectId,
         directoryName: String,
-    ) {
+    ): FileObjectId.Item {
         val path = when (id) {
-            is FileObjectId.Root -> return
+            is FileObjectId.Root -> throw UnsupportedOperationException("Cannot create directory in root")
             is FileObjectId.Item -> id.id
         }
-        withContext(Dispatchers.IO) {
+        return withContext(Dispatchers.IO) {
             client.connect(config.ip).use { connection ->
                 val session = connection.authenticate(
                     AuthenticationContext(
@@ -500,9 +621,14 @@ class SmbFileRepository(
 
                 share.use { diskShare ->
                     val fullPath = if (subPath.isEmpty()) directoryName else "$subPath\\$directoryName"
-                    diskShare.mkdir(fullPath)
+                    when {
+                        diskShare.folderExists(fullPath) -> { /* 既にディレクトリが存在 */ }
+                        diskShare.fileExists(fullPath) -> throw IllegalStateException("同名のファイルが既に存在します: $fullPath")
+                        else -> diskShare.mkdir(fullPath)
+                    }
                 }
             }
+            FileObjectId.Item(config.id, "$path/$directoryName")
         }
     }
 

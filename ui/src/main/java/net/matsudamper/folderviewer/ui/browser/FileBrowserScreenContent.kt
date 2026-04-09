@@ -51,6 +51,9 @@ internal fun FileBrowserScreenContent(
     showCreateDirectoryDialog: Boolean = false,
     onCreateDirectoryDialogDismiss: () -> Unit = {},
     onConfirmCreateDirectory: (String) -> Unit = {},
+    deleteConfirmCount: Int? = null,
+    onDeleteConfirmDialogDismiss: () -> Unit = {},
+    onConfirmDelete: () -> Unit = {},
 ) {
     BackHandler(enabled = uiState.isSelectionMode) {
         uiState.callbacks.onCancelSelection()
@@ -125,6 +128,14 @@ internal fun FileBrowserScreenContent(
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("切り取り")
                     }
+                    TextButton(onClick = { callbacks.onDeleteClick() }) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_delete),
+                            contentDescription = null,
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("削除")
+                    }
                 }
             } else if (uiState.visibleFolderBrowserButton) {
                 HorizontalFloatingToolbar(
@@ -166,7 +177,8 @@ internal fun FileBrowserScreenContent(
             }
         },
     ) { innerPadding ->
-        val contentPadding = if ((uiState.isPasteMode || uiState.isSelectionMode || uiState.visibleFolderBrowserButton) && fabHeight > 0) {
+        val showFab = uiState.isPasteMode || uiState.isSelectionMode || uiState.visibleFolderBrowserButton
+        val contentPadding = if (showFab && fabHeight > 0) {
             innerPadding.plus(
                 PaddingValues(bottom = with(LocalDensity.current) { fabHeight.toDp() } + 16.dp),
             )
@@ -220,6 +232,24 @@ internal fun FileBrowserScreenContent(
             },
         )
     }
+
+    if (deleteConfirmCount != null) {
+        AlertDialog(
+            onDismissRequest = { onDeleteConfirmDialogDismiss() },
+            title = { Text("削除の確認") },
+            text = { Text("選択した${deleteConfirmCount}件を削除しますか？この操作は元に戻せません。") },
+            confirmButton = {
+                TextButton(onClick = { onConfirmDelete() }) {
+                    Text("削除")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { onDeleteConfirmDialogDismiss() }) {
+                    Text("キャンセル")
+                }
+            },
+        )
+    }
 }
 
 @Composable
@@ -257,7 +287,11 @@ private fun Preview() {
                 override fun onCancelSelection() = Unit
                 override fun onCopyClick() = Unit
                 override fun onCutClick() = Unit
+                override fun onDeleteClick() = Unit
+                override fun onConfirmDelete() = Unit
                 override fun onPasteClick() = Unit
+                override fun onPastePermissionResult() = Unit
+                override fun onDeletePermissionResult() = Unit
                 override fun onCancelPaste() = Unit
             },
             contentState = FileBrowserUiState.ContentState.Content(

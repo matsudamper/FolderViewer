@@ -3,6 +3,8 @@ package net.matsudamper.folderviewer.viewmodel.upload
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.Data
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import java.util.Locale
@@ -13,21 +15,22 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
-import net.matsudamper.folderviewer.repository.UploadJobRepository
+import net.matsudamper.folderviewer.repository.OperationRepository
+import net.matsudamper.folderviewer.repository.db.OperationEntity
 import net.matsudamper.folderviewer.ui.upload.UploadProgressUiState
+import net.matsudamper.folderviewer.viewmodel.worker.FilePasteWorker
 import net.matsudamper.folderviewer.viewmodel.worker.FileUploadWorker
 import net.matsudamper.folderviewer.viewmodel.worker.FolderUploadWorker
 
 @HiltViewModel
 class UploadProgressViewModel @Inject constructor(
     application: Application,
-    private val uploadJobRepository: UploadJobRepository,
+    private val operationRepository: OperationRepository,
 ) : AndroidViewModel(application) {
 
     private val viewModelEventChannel = Channel<ViewModelEvent>(Channel.UNLIMITED)
@@ -46,14 +49,23 @@ class UploadProgressViewModel @Inject constructor(
 
         override fun onItemClick(item: UploadProgressUiState.UploadItem) {
             viewModelScope.launch {
-                val uuid = runCatching { UUID.fromString(item.id) }.getOrNull() ?: return@launch
-                val job = uploadJobRepository.getJob(uuid.toString()) ?: return@launch
-
-                viewModelEventChannel.send(
-                    ViewModelEvent.NavigateToUploadDetail(
-                        workerId = job.workerId,
-                    ),
-                )
+                when (item) {
+                    is UploadProgressUiState.UploadItem.Paste -> {
+                        val jobId = item.id.toLongOrNull() ?: return@launch
+                        viewModelEventChannel.send(ViewModelEvent.NavigateToPasteDetail(jobId))
+                    }
+                    is UploadProgressUiState.UploadItem.Delete -> {
+                        val opId = item.id.toLongOrNull() ?: return@launch
+                        viewModelEventChannel.send(ViewModelEvent.NavigateToDeleteDetail(opId))
+                    }
+                    else -> {
+                        val uuid = runCatching { UUID.fromString(item.id) }.getOrNull()
+                            ?: return@launch
+                        viewModelEventChannel.send(
+                            ViewModelEvent.NavigateToUploadDetail(workerId = uuid.toString()),
+                        )
+                    }
+                }
             }
         }
 
@@ -64,16 +76,7 @@ class UploadProgressViewModel @Inject constructor(
         override fun onClearHistoryConfirm() {
             showClearConfirmDialog.value = false
             viewModelScope.launch {
-                val state = viewModelStateFlow.value
-                state.jobs.forEach { job ->
-                    val workInfo = state.workInfoMap[job.workerId]
-                    val isActive = workInfo?.state == WorkInfo.State.RUNNING ||
-                        workInfo?.state == WorkInfo.State.ENQUEUED ||
-                        workInfo?.state == WorkInfo.State.BLOCKED
-                    if (!isActive) {
-                        uploadJobRepository.deleteJob(job.workerId)
-                    }
-                }
+                operationRepository.deleteNonActiveHistory()
             }
         }
 
@@ -97,55 +100,12 @@ class UploadProgressViewModel @Inject constructor(
                 state to showDialog
             }.collectLatest { (state, showDialog) ->
                 mutableState.update {
+                    val items = state.operations.map { op ->
+                        mapOperationToUiItem(op, state.workInfoMap)
+                    }
+
                     UploadProgressUiState(
-                        uploadItems = state.jobs.map { job ->
-                            val workInfo = state.workInfoMap[job.workerId]
-
-                            val uploadState = when (workInfo?.state) {
-                                WorkInfo.State.ENQUEUED -> UploadProgressUiState.UploadState.ENQUEUED
-                                WorkInfo.State.RUNNING -> UploadProgressUiState.UploadState.RUNNING
-                                WorkInfo.State.SUCCEEDED -> UploadProgressUiState.UploadState.SUCCEEDED
-                                WorkInfo.State.FAILED -> UploadProgressUiState.UploadState.FAILED
-                                WorkInfo.State.BLOCKED -> UploadProgressUiState.UploadState.ENQUEUED
-                                WorkInfo.State.CANCELLED -> UploadProgressUiState.UploadState.CANCELLED
-                                null -> UploadProgressUiState.UploadState.SUCCEEDED
-                            }
-
-                            val currentBytes = workInfo?.progress?.getLong(FolderUploadWorker.KEY_CURRENT_BYTES, 0L) ?: 0L
-                            val totalBytes = workInfo?.progress?.getLong("TotalBytes", 0L) ?: 0L
-                            val progress = if (totalBytes > 0) {
-                                currentBytes.toFloat() / totalBytes.toFloat()
-                            } else {
-                                null
-                            }
-
-                            val progressText = if (uploadState == UploadProgressUiState.UploadState.RUNNING) {
-                                "${formatFileSize(currentBytes)}/${formatFileSize(totalBytes)}"
-                            } else {
-                                null
-                            }
-
-                            if (job.isFolder) {
-                                UploadProgressUiState.UploadItem.Folder(
-                                    id = job.workerId,
-                                    name = job.name,
-                                    state = uploadState,
-                                    canNavigate = true,
-                                    fileCount = 0,
-                                    progress = progress,
-                                    progressText = progressText,
-                                )
-                            } else {
-                                UploadProgressUiState.UploadItem.File(
-                                    id = job.workerId,
-                                    name = job.name,
-                                    state = uploadState,
-                                    canNavigate = true,
-                                    progress = progress,
-                                    progressText = progressText,
-                                )
-                            }
-                        },
+                        uploadItems = items,
                         showClearConfirmDialog = showDialog,
                         callbacks = callbacks,
                     )
@@ -158,14 +118,12 @@ class UploadProgressViewModel @Inject constructor(
         viewModelScope.launch {
             val workManager = WorkManager.getInstance(getApplication())
             combine(
-                uploadJobRepository.getAllJobs(),
+                operationRepository.observeAll(),
                 workManager.getWorkInfosByTagFlow(FileUploadWorker.TAG_UPLOAD),
-            ) { jobs, workInfoList ->
+            ) { operations, workInfoList ->
                 val workInfoMap = workInfoList.associateBy { it.id.toString() }
                 ViewModelState(
-                    jobs = jobs.sortedByDescending {
-                        workInfoMap[it.workerId]?.state == WorkInfo.State.RUNNING
-                    },
+                    operations = operations,
                     workInfoMap = workInfoMap,
                 )
             }.collect { state ->
@@ -174,15 +132,233 @@ class UploadProgressViewModel @Inject constructor(
         }
     }
 
+    private fun mapOperationToUiItem(
+        op: OperationEntity,
+        workInfoMap: Map<String, WorkInfo>,
+    ): UploadProgressUiState.UploadItem {
+        return when (op.type) {
+            OperationRepository.OperationType.UPLOAD_FILE.name,
+            OperationRepository.OperationType.UPLOAD_FOLDER.name,
+            -> mapUploadOperation(op, workInfoMap)
+
+            OperationRepository.OperationType.PASTE.name -> mapPasteOperation(op)
+
+            OperationRepository.OperationType.DELETE.name -> mapDeleteOperation(op)
+
+            else -> mapUploadOperation(op, workInfoMap)
+        }
+    }
+
+    private fun mapUploadOperation(
+        op: OperationEntity,
+        workInfoMap: Map<String, WorkInfo>,
+    ): UploadProgressUiState.UploadItem {
+        val workInfo = op.workerId?.let { workInfoMap[it] }
+        val uploadState = when (workInfo?.state) {
+            WorkInfo.State.ENQUEUED -> UploadProgressUiState.UploadState.ENQUEUED
+            WorkInfo.State.RUNNING -> UploadProgressUiState.UploadState.RUNNING
+            WorkInfo.State.SUCCEEDED -> UploadProgressUiState.UploadState.SUCCEEDED
+            WorkInfo.State.FAILED -> UploadProgressUiState.UploadState.FAILED
+            WorkInfo.State.BLOCKED -> UploadProgressUiState.UploadState.ENQUEUED
+            WorkInfo.State.CANCELLED -> UploadProgressUiState.UploadState.CANCELLED
+            null -> when (op.status) {
+                OperationRepository.OperationStatus.RUNNING.name -> UploadProgressUiState.UploadState.RUNNING
+                OperationRepository.OperationStatus.ENQUEUED.name -> UploadProgressUiState.UploadState.ENQUEUED
+                OperationRepository.OperationStatus.PAUSED.name -> UploadProgressUiState.UploadState.ENQUEUED
+                OperationRepository.OperationStatus.FAILED.name -> UploadProgressUiState.UploadState.FAILED
+                OperationRepository.OperationStatus.CANCELLED.name -> UploadProgressUiState.UploadState.CANCELLED
+                else -> if (op.errorMessage != null) {
+                    UploadProgressUiState.UploadState.FAILED
+                } else {
+                    UploadProgressUiState.UploadState.SUCCEEDED
+                }
+            }
+        }
+
+        val currentBytes = workInfo?.progress?.getLong(FolderUploadWorker.KEY_CURRENT_BYTES, 0L) ?: 0L
+        val totalBytes = workInfo?.progress?.getLong("TotalBytes", 0L) ?: 0L
+        val progress = if (totalBytes > 0) {
+            currentBytes.toFloat() / totalBytes.toFloat()
+        } else {
+            null
+        }
+        val progressText = if (uploadState == UploadProgressUiState.UploadState.RUNNING) {
+            "${formatFileSize(currentBytes)}/${formatFileSize(totalBytes)}"
+        } else {
+            null
+        }
+
+        val isFolder = op.type == OperationRepository.OperationType.UPLOAD_FOLDER.name
+        val id = op.workerId ?: op.id.toString()
+        return if (isFolder) {
+            UploadProgressUiState.UploadItem.Folder(
+                id = id,
+                name = op.name,
+                state = uploadState,
+                canNavigate = true,
+                fileCount = 0,
+                progress = progress,
+                progressText = progressText,
+            )
+        } else {
+            UploadProgressUiState.UploadItem.File(
+                id = id,
+                name = op.name,
+                state = uploadState,
+                canNavigate = true,
+                progress = progress,
+                progressText = progressText,
+            )
+        }
+    }
+
+    private fun mapPasteOperation(op: OperationEntity): UploadProgressUiState.UploadItem {
+        val pasteState = when {
+            op.failedFiles > 0 -> UploadProgressUiState.UploadState.FAILED
+            op.status == OperationRepository.OperationStatus.ENQUEUED.name -> UploadProgressUiState.UploadState.ENQUEUED
+            op.status == OperationRepository.OperationStatus.RUNNING.name -> UploadProgressUiState.UploadState.RUNNING
+            op.status == OperationRepository.OperationStatus.PAUSED.name -> UploadProgressUiState.UploadState.PAUSED
+            op.status == OperationRepository.OperationStatus.COMPLETED.name -> UploadProgressUiState.UploadState.SUCCEEDED
+            op.status == OperationRepository.OperationStatus.FAILED.name -> UploadProgressUiState.UploadState.FAILED
+            op.status == OperationRepository.OperationStatus.WAITING_RESOLUTION.name -> UploadProgressUiState.UploadState.WAITING_RESOLUTION
+            else -> UploadProgressUiState.UploadState.FAILED
+        }
+
+        val isActive = pasteState == UploadProgressUiState.UploadState.RUNNING ||
+            pasteState == UploadProgressUiState.UploadState.PAUSED
+
+        val overallProgress = if (isActive && op.totalBytes > 0) {
+            (op.completedBytes + op.currentFileBytes).toFloat() / op.totalBytes.toFloat()
+        } else {
+            null
+        }
+
+        val currentFileProgress = if (isActive && op.currentFileTotalBytes > 0) {
+            op.currentFileBytes.toFloat() / op.currentFileTotalBytes.toFloat()
+        } else {
+            null
+        }
+
+        val progressText = if (pasteState == UploadProgressUiState.UploadState.RUNNING) {
+            val completed = formatFileSize(op.completedBytes + op.currentFileBytes)
+            val total = formatFileSize(op.totalBytes)
+            val duplicateText = if (op.duplicateFiles > 0) " (重複${op.duplicateFiles}件)" else ""
+            "${op.completedFiles}/${op.totalFiles}ファイル ($completed/$total)$duplicateText"
+        } else if (pasteState == UploadProgressUiState.UploadState.FAILED && op.failedFiles > 0) {
+            "失敗${op.failedFiles}件"
+        } else if (pasteState == UploadProgressUiState.UploadState.WAITING_RESOLUTION && op.duplicateFiles > 0) {
+            "重複${op.duplicateFiles}件"
+        } else {
+            null
+        }
+
+        val pasteCallbacks = object : UploadProgressUiState.PasteCallbacks {
+            override fun onPauseClick() {
+                pausePasteJob(op)
+            }
+
+            override fun onResumeClick() {
+                resumePasteJob(op)
+            }
+        }
+
+        return UploadProgressUiState.UploadItem.Paste(
+            id = op.id.toString(),
+            name = op.name,
+            state = pasteState,
+            canNavigate = true,
+            mode = op.name,
+            totalFiles = op.totalFiles,
+            completedFiles = op.completedFiles,
+            duplicateFiles = op.duplicateFiles,
+            currentFileName = op.currentFileName,
+            currentFileProgress = currentFileProgress,
+            progress = overallProgress,
+            progressText = progressText,
+            isPausable = pasteState == UploadProgressUiState.UploadState.RUNNING,
+            isResumable = pasteState == UploadProgressUiState.UploadState.PAUSED,
+            pasteCallbacks = pasteCallbacks,
+        )
+    }
+
+    private fun mapDeleteOperation(op: OperationEntity): UploadProgressUiState.UploadItem {
+        val deleteState = when (op.status) {
+            OperationRepository.OperationStatus.ENQUEUED.name -> UploadProgressUiState.UploadState.ENQUEUED
+            OperationRepository.OperationStatus.RUNNING.name -> UploadProgressUiState.UploadState.RUNNING
+            OperationRepository.OperationStatus.PAUSED.name -> UploadProgressUiState.UploadState.PAUSED
+            OperationRepository.OperationStatus.COMPLETED.name -> UploadProgressUiState.UploadState.SUCCEEDED
+            OperationRepository.OperationStatus.FAILED.name -> UploadProgressUiState.UploadState.FAILED
+            OperationRepository.OperationStatus.CANCELLED.name -> UploadProgressUiState.UploadState.CANCELLED
+            else -> UploadProgressUiState.UploadState.FAILED
+        }
+
+        val progress = if (deleteState == UploadProgressUiState.UploadState.RUNNING && op.totalFiles > 0) {
+            op.completedFiles.toFloat() / op.totalFiles.toFloat()
+        } else {
+            null
+        }
+
+        val progressText = if (deleteState == UploadProgressUiState.UploadState.RUNNING) {
+            val failedText = if (op.failedFiles > 0) " (失敗${op.failedFiles}件)" else ""
+            "${op.completedFiles}/${op.totalFiles}ファイル$failedText"
+        } else if (deleteState == UploadProgressUiState.UploadState.FAILED && op.failedFiles > 0) {
+            "失敗${op.failedFiles}件"
+        } else {
+            null
+        }
+
+        return UploadProgressUiState.UploadItem.Delete(
+            id = op.id.toString(),
+            name = op.name,
+            state = deleteState,
+            canNavigate = true,
+            totalFiles = op.totalFiles,
+            completedFiles = op.completedFiles,
+            failedFiles = op.failedFiles,
+            currentFileName = op.currentFileName,
+            progress = progress,
+            progressText = progressText,
+        )
+    }
+
+    private fun pausePasteJob(op: OperationEntity) {
+        viewModelScope.launch {
+            val workerId = op.workerId ?: return@launch
+            val uuid = runCatching { UUID.fromString(workerId) }.getOrNull() ?: return@launch
+            WorkManager.getInstance(getApplication()).cancelWorkById(uuid)
+        }
+    }
+
+    private fun resumePasteJob(op: OperationEntity) {
+        viewModelScope.launch {
+            val inputData = Data.Builder()
+                .putLong(FilePasteWorker.KEY_PASTE_JOB_ID, op.id)
+                .build()
+
+            val workRequest = OneTimeWorkRequestBuilder<FilePasteWorker>()
+                .setInputData(inputData)
+                .addTag(FilePasteWorker.TAG_PASTE)
+                .build()
+
+            operationRepository.updateStatusAndWorkerId(
+                id = op.id,
+                status = OperationRepository.OperationStatus.RUNNING,
+                workerId = workRequest.id.toString(),
+            )
+
+            WorkManager.getInstance(getApplication()).enqueue(workRequest)
+        }
+    }
+
     sealed interface ViewModelEvent {
         data object NavigateBack : ViewModelEvent
-        data class NavigateToUploadDetail(
-            val workerId: String,
-        ) : ViewModelEvent
+        data class NavigateToUploadDetail(val workerId: String) : ViewModelEvent
+        data class NavigateToPasteDetail(val jobId: Long) : ViewModelEvent
+        data class NavigateToDeleteDetail(val opId: Long) : ViewModelEvent
     }
 
     private data class ViewModelState(
-        val jobs: List<UploadJobRepository.UploadJob> = emptyList(),
+        val operations: List<OperationEntity> = emptyList(),
         val workInfoMap: Map<String, WorkInfo> = emptyMap(),
     )
 

@@ -11,6 +11,8 @@ import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.request
 import io.ktor.http.ContentType
+import io.ktor.http.HttpMethod
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.http.parameters
 import io.ktor.serialization.kotlinx.json.json
@@ -99,13 +101,23 @@ class GraphApiClient(
 
     suspend fun getDriveItem(itemId: String): DriveItemResponse {
         val token = getAccessToken()
-        val selectParam = "id,name,size,lastModifiedDateTime"
+        val selectParam = "id,name,folder,size,lastModifiedDateTime,eTag"
         return client.get(
             "https://graph.microsoft.com/v1.0/users/$objectId/drive/items/$itemId?select=$selectParam",
         ) {
             header("Authorization", "Bearer $token")
             contentType(ContentType.Application.Json)
         }.body()
+    }
+
+    suspend fun deleteDriveItem(itemId: String, ifMatch: String) {
+        val token = getAccessToken()
+        val response = client.request("https://graph.microsoft.com/v1.0/users/$objectId/drive/items/$itemId") {
+            method = HttpMethod.Delete
+            header("Authorization", "Bearer $token")
+            header("if-match", ifMatch)
+        }
+        check(response.status == HttpStatusCode.NoContent) { "DriveItem の削除に失敗しました: ${response.status}" }
     }
 
     fun close() {
