@@ -32,6 +32,9 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import net.matsudamper.folderviewer.ui.R
 import net.matsudamper.folderviewer.ui.util.formatBytes
 
@@ -137,13 +140,12 @@ internal fun FileMediumListItem(
                 textOverflow = textOverflow,
             )
 
-            if (!file.isDirectory) {
-                Text(
-                    text = formatBytes(file.size),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            val dateText = formatLastModified(file.lastModified)
+            Text(
+                text = if (file.isDirectory) dateText else "$dateText  ${formatBytes(file.size)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -189,13 +191,12 @@ internal fun FileLargeListItem(
                 textOverflow = textOverflow,
             )
 
-            if (!file.isDirectory) {
-                Text(
-                    text = formatBytes(file.size),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            val dateText = formatLastModified(file.lastModified)
+            Text(
+                text = if (file.isDirectory) dateText else "$dateText  ${formatBytes(file.size)}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -406,6 +407,11 @@ private fun PreviewFileLargeGridItem() {
             isPasteMode = false,
         )
     }
+}
+
+private fun formatLastModified(timestamp: Long): String {
+    val sdf = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault())
+    return sdf.format(Date(timestamp))
 }
 
 @Composable
