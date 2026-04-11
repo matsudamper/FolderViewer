@@ -646,6 +646,7 @@ private fun EntryProviderScope<NavKey>.fileBrowserEntry(navigator: Navigator) {
         FileBrowserScreen(
             uiState = uiStateValue,
             uiEvent = viewModel.uiEvent,
+            onNavigateToUploadProgress = { navigator.navigate(UploadProgress) },
         )
     }
 }
