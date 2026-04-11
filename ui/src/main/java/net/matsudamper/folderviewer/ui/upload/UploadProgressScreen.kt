@@ -249,41 +249,24 @@ private fun PasteItemRow(
             Column(
                 modifier = Modifier.weight(1f),
             ) {
-                Text(
-                    text = item.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    if (item.progressText != null) {
-                        Text(
-                            text = item.progressText,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                if (item.progressText != null) {
                     Text(
-                        text = when (item.state) {
-                            UploadProgressUiState.UploadState.ENQUEUED -> stringResource(R.string.upload_state_enqueued)
-                            UploadProgressUiState.UploadState.RUNNING -> stringResource(R.string.upload_state_running)
-                            UploadProgressUiState.UploadState.SUCCEEDED -> stringResource(R.string.upload_state_succeeded)
-                            UploadProgressUiState.UploadState.FAILED -> stringResource(R.string.upload_state_failed)
-                            UploadProgressUiState.UploadState.CANCELLED -> stringResource(R.string.upload_state_cancelled)
-                            UploadProgressUiState.UploadState.PAUSED -> stringResource(R.string.upload_state_paused)
-                            UploadProgressUiState.UploadState.WAITING_RESOLUTION -> stringResource(R.string.upload_state_waiting_resolution)
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = when (item.state) {
-                            UploadProgressUiState.UploadState.SUCCEEDED -> MaterialTheme.colorScheme.primary
-                            UploadProgressUiState.UploadState.FAILED -> MaterialTheme.colorScheme.error
-                            UploadProgressUiState.UploadState.WAITING_RESOLUTION -> MaterialTheme.colorScheme.tertiary
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                        },
+                        text = item.progressText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
                     )
                 }
+                val subInfo = if (item.totalFiles > 1) {
+                    "${item.name} 他${item.totalFiles - 1}件"
+                } else {
+                    item.name
+                }
+                Text(
+                    text = subInfo,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
             }
             when {
                 item.isPausable -> {
@@ -384,40 +367,24 @@ private fun DeleteItemRow(
             Column(
                 modifier = Modifier.weight(1f),
             ) {
-                Text(
-                    text = item.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    if (item.progressText != null) {
-                        Text(
-                            text = item.progressText,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                if (item.progressText != null) {
                     Text(
-                        text = when (item.state) {
-                            UploadProgressUiState.UploadState.ENQUEUED -> stringResource(R.string.upload_state_enqueued)
-                            UploadProgressUiState.UploadState.RUNNING -> stringResource(R.string.delete_state_running)
-                            UploadProgressUiState.UploadState.SUCCEEDED -> stringResource(R.string.upload_state_succeeded)
-                            UploadProgressUiState.UploadState.FAILED -> stringResource(R.string.upload_state_failed)
-                            UploadProgressUiState.UploadState.CANCELLED -> stringResource(R.string.upload_state_cancelled)
-                            UploadProgressUiState.UploadState.PAUSED -> stringResource(R.string.upload_state_paused)
-                            UploadProgressUiState.UploadState.WAITING_RESOLUTION -> stringResource(R.string.upload_state_waiting_resolution)
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = when (item.state) {
-                            UploadProgressUiState.UploadState.SUCCEEDED -> MaterialTheme.colorScheme.primary
-                            UploadProgressUiState.UploadState.FAILED -> MaterialTheme.colorScheme.error
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                        },
+                        text = item.progressText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
                     )
                 }
+                val subInfo = if (item.totalFiles > 1) {
+                    "${item.name} 他${item.totalFiles - 1}件"
+                } else {
+                    item.name
+                }
+                Text(
+                    text = subInfo,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
             }
             when (item.state) {
                 UploadProgressUiState.UploadState.RUNNING -> {

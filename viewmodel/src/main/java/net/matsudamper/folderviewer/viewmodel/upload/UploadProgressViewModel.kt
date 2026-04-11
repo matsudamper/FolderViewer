@@ -239,17 +239,35 @@ class UploadProgressViewModel @Inject constructor(
             null
         }
 
-        val progressText = if (pasteState == UploadProgressUiState.UploadState.RUNNING) {
-            val completed = formatFileSize(op.completedBytes + op.currentFileBytes)
-            val total = formatFileSize(op.totalBytes)
-            val duplicateText = if (op.duplicateFiles > 0) " (重複${op.duplicateFiles}件)" else ""
-            "${op.completedFiles}/${op.totalFiles}ファイル ($completed/$total)$duplicateText"
-        } else if (pasteState == UploadProgressUiState.UploadState.FAILED && op.failedFiles > 0) {
-            "失敗${op.failedFiles}件"
-        } else if (pasteState == UploadProgressUiState.UploadState.WAITING_RESOLUTION && op.duplicateFiles > 0) {
-            "重複${op.duplicateFiles}件"
-        } else {
-            null
+        val operationModeName = if (op.name.contains("カット")) "カット" else "コピー"
+        val notCompletedFiles = op.totalFiles - op.completedFiles - op.duplicateFiles
+
+        val progressText = when {
+            pasteState == UploadProgressUiState.UploadState.WAITING_RESOLUTION -> {
+                if (op.duplicateFiles > 0) {
+                    "$operationModeName ${op.totalFiles}件 - ${op.completedFiles}完了 ${op.duplicateFiles}重複"
+                } else {
+                    "$operationModeName ${op.totalFiles}件 - ${op.completedFiles}完了"
+                }
+            }
+            pasteState == UploadProgressUiState.UploadState.RUNNING -> {
+                val completed = formatFileSize(op.completedBytes + op.currentFileBytes)
+                val total = formatFileSize(op.totalBytes)
+                "$operationModeName ${op.totalFiles}件 - ${op.completedFiles}完了 ${notCompletedFiles}未完了 ($completed/$total)"
+            }
+            pasteState == UploadProgressUiState.UploadState.SUCCEEDED -> {
+                if (op.duplicateFiles > 0) {
+                    "$operationModeName ${op.totalFiles}件 - ${op.completedFiles}完了 ${op.duplicateFiles}重複"
+                } else {
+                    "$operationModeName ${op.totalFiles}件 - ${op.completedFiles}完了"
+                }
+            }
+            pasteState == UploadProgressUiState.UploadState.FAILED -> {
+                "$operationModeName ${op.totalFiles}件 - ${op.completedFiles}完了 ${op.failedFiles}失敗"
+            }
+            else -> {
+                "$operationModeName ${op.totalFiles}件"
+            }
         }
 
         val pasteCallbacks = object : UploadProgressUiState.PasteCallbacks {
@@ -264,13 +282,16 @@ class UploadProgressViewModel @Inject constructor(
 
         return UploadProgressUiState.UploadItem.Paste(
             id = op.id.toString(),
-            name = op.name,
+            name = op.currentFileName ?: op.name,
             state = pasteState,
             canNavigate = true,
             mode = op.name,
+            operationMode = operationModeName,
             totalFiles = op.totalFiles,
             completedFiles = op.completedFiles,
+            failedFiles = op.failedFiles,
             duplicateFiles = op.duplicateFiles,
+            firstFileName = op.currentFileName,
             currentFileName = op.currentFileName,
             currentFileProgress = currentFileProgress,
             progress = overallProgress,
@@ -298,23 +319,32 @@ class UploadProgressViewModel @Inject constructor(
             null
         }
 
-        val progressText = if (deleteState == UploadProgressUiState.UploadState.RUNNING) {
-            val failedText = if (op.failedFiles > 0) " (失敗${op.failedFiles}件)" else ""
-            "${op.completedFiles}/${op.totalFiles}ファイル$failedText"
-        } else if (deleteState == UploadProgressUiState.UploadState.FAILED && op.failedFiles > 0) {
-            "失敗${op.failedFiles}件"
-        } else {
-            null
+        val notCompletedFiles = op.totalFiles - op.completedFiles
+
+        val progressText = when {
+            deleteState == UploadProgressUiState.UploadState.RUNNING -> {
+                "削除 ${op.totalFiles}件 - ${op.completedFiles}完了 ${notCompletedFiles}未完了"
+            }
+            deleteState == UploadProgressUiState.UploadState.SUCCEEDED -> {
+                "削除 ${op.totalFiles}件 - ${op.completedFiles}完了"
+            }
+            deleteState == UploadProgressUiState.UploadState.FAILED -> {
+                "削除 ${op.totalFiles}件 - ${op.completedFiles}完了 ${op.failedFiles}失敗"
+            }
+            else -> {
+                "削除 ${op.totalFiles}件"
+            }
         }
 
         return UploadProgressUiState.UploadItem.Delete(
             id = op.id.toString(),
-            name = op.name,
+            name = op.currentFileName ?: op.name,
             state = deleteState,
             canNavigate = true,
             totalFiles = op.totalFiles,
             completedFiles = op.completedFiles,
             failedFiles = op.failedFiles,
+            firstFileName = op.currentFileName,
             currentFileName = op.currentFileName,
             progress = progress,
             progressText = progressText,
