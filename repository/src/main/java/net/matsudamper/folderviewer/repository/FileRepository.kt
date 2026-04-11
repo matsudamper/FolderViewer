@@ -42,6 +42,24 @@ interface RandomAccessFileRepository : FileRepository {
     suspend fun openRandomAccess(fileId: FileObjectId.Item): RandomAccessSource
 }
 
+interface RangeReadableFileRepository : FileRepository {
+    suspend fun openFileContent(fileId: FileObjectId.Item, offset: Long): InputStream
+}
+
+interface ResumableFileUploadRepository : FileRepository {
+    suspend fun uploadFileResumable(
+        id: FileObjectId,
+        fileName: String,
+        source: RangeReadableFileRepository,
+        sourceFileId: FileObjectId.Item,
+        size: Long,
+        onRead: FlowCollector<Long>,
+        overwrite: Boolean = false,
+        resumeKey: String,
+        shouldStop: () -> Boolean = { false },
+    ): Boolean
+}
+
 interface RandomAccessSource : Closeable {
     /**
      * (Bytes)
