@@ -528,6 +528,17 @@ private fun FileBrowserEventHandler(
                     }
                 }
 
+                is FileBrowserViewModel.ViewModelEvent.OpenFolderWithExternalApp -> {
+                    val uri = android.net.Uri.fromFile(File(event.path))
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(uri, "resource/folder")
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    runCatching {
+                        context.startActivity(intent)
+                    }
+                }
+
                 is FileBrowserViewModel.ViewModelEvent.OpenWithExternalPlayer -> {
                     val uri = when (val externalUri = event.viewSourceUri) {
                         is ViewSourceUri.LocalFile -> {
