@@ -9,15 +9,17 @@ import java.nio.file.StandardCopyOption
 import kotlinx.coroutines.delay
 
 internal class ResumableFileWriter(
-    private val destinationFile: File,
-    private val partialFile: File,
-    private val sourceSize: Long,
-    private val overwrite: Boolean,
-    private val openInputStream: suspend (offset: Long) -> InputStream,
-    private val onProgress: suspend (currentBytes: Long) -> Unit,
-    private val shouldStop: () -> Boolean,
+    private val request: Request,
     private val retryDelaysMillis: LongArray = RETRY_DELAYS_MILLIS,
 ) {
+    private val destinationFile = request.destinationFile
+    private val partialFile = request.partialFile
+    private val sourceSize = request.sourceSize
+    private val overwrite = request.overwrite
+    private val openInputStream = request.openInputStream
+    private val onProgress = request.onProgress
+    private val shouldStop = request.shouldStop
+
     suspend fun copy(): Boolean {
         require(sourceSize >= 0L) { "sourceSize must be greater than or equal to 0: $sourceSize" }
         if (!overwrite && destinationFile.exists()) {
@@ -72,35 +74,35 @@ internal class ResumableFileWriter(
     }
 
     private suspend fun copyFromOffset(startOffset: Long): CopyResult {
-        val inputStream = try {
-            openInputStream(startOffset)
-        } catch (_: IOException) {
-            return CopyResult.SourceFailed(startOffset)
-        }
+        val inputStream = openInputStreamOrNull(startOffset) ?: return CopyResult.SourceFailed(startOffset)
 
-        var currentBytes = startOffset
-        inputStream.use { input ->
+        return inputStream.use { input ->
             RandomAccessFile(partialFile, "rw").use { output ->
                 output.seek(startOffset)
-                val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                while (currentBytes < sourceSize) {
-                    if (shouldStop()) return CopyResult.Stopped(currentBytes)
-
-                    val readLength = minOf(buffer.size, (sourceSize - currentBytes).toInt())
-                    val read = try {
-                        input.read(buffer, 0, readLength)
-                    } catch (_: IOException) {
-                        return CopyResult.SourceFailed(currentBytes)
-                    }
-                    if (read == -1) {
-                        return CopyResult.SourceFailed(currentBytes)
-                    }
-
-                    output.write(buffer, 0, read)
-                    currentBytes += read
-                    onProgress(currentBytes.coerceAtMost(sourceSize))
-                }
+                copyFromInput(input, output, startOffset)
             }
+        }
+    }
+
+    private suspend fun copyFromInput(
+        input: InputStream,
+        output: RandomAccessFile,
+        startOffset: Long,
+    ): CopyResult {
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        var currentBytes = startOffset
+        while (currentBytes < sourceSize) {
+            if (shouldStop()) return CopyResult.Stopped(currentBytes)
+
+            val readLength = minOf(buffer.size, (sourceSize - currentBytes).toInt())
+            val read = input.readOrNull(buffer, readLength)
+            if (read == null || read == -1) {
+                return CopyResult.SourceFailed(currentBytes)
+            }
+
+            output.write(buffer, 0, read)
+            currentBytes += read
+            onProgress(currentBytes.coerceAtMost(sourceSize))
         }
         return CopyResult.Completed(currentBytes)
     }
@@ -118,6 +120,32 @@ internal class ResumableFileWriter(
             Files.move(source, destination)
         }
     }
+
+    private suspend fun openInputStreamOrNull(offset: Long): InputStream? {
+        return try {
+            openInputStream(offset)
+        } catch (_: IOException) {
+            null
+        }
+    }
+
+    private fun InputStream.readOrNull(buffer: ByteArray, readLength: Int): Int? {
+        return try {
+            read(buffer, 0, readLength)
+        } catch (_: IOException) {
+            null
+        }
+    }
+
+    internal data class Request(
+        val destinationFile: File,
+        val partialFile: File,
+        val sourceSize: Long,
+        val overwrite: Boolean,
+        val openInputStream: suspend (offset: Long) -> InputStream,
+        val onProgress: suspend (currentBytes: Long) -> Unit,
+        val shouldStop: () -> Boolean,
+    )
 
     private sealed interface CopyResult {
         val currentBytes: Long

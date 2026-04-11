@@ -24,16 +24,18 @@ class ResumableFileWriterTest {
             val offsets = mutableListOf<Long>()
 
             val writer = ResumableFileWriter(
-                destinationFile = destinationFile,
-                partialFile = partialFile,
-                sourceSize = sourceBytes.size.toLong(),
-                overwrite = false,
-                openInputStream = { offset ->
-                    offsets += offset
-                    ByteArrayInputStream(sourceBytes.copyOfRange(offset.toInt(), sourceBytes.size))
-                },
-                onProgress = {},
-                shouldStop = { false },
+                request = ResumableFileWriter.Request(
+                    destinationFile = destinationFile,
+                    partialFile = partialFile,
+                    sourceSize = sourceBytes.size.toLong(),
+                    overwrite = false,
+                    openInputStream = { offset ->
+                        offsets += offset
+                        ByteArrayInputStream(sourceBytes.copyOfRange(offset.toInt(), sourceBytes.size))
+                    },
+                    onProgress = {},
+                    shouldStop = { false },
+                ),
             )
 
             val completed = writer.copy()
@@ -57,21 +59,23 @@ class ResumableFileWriterTest {
             var openCount = 0
 
             val writer = ResumableFileWriter(
-                destinationFile = destinationFile,
-                partialFile = partialFile,
-                sourceSize = sourceBytes.size.toLong(),
-                overwrite = false,
-                openInputStream = { offset ->
-                    offsets += offset
-                    val bytes = sourceBytes.copyOfRange(offset.toInt(), sourceBytes.size)
-                    if (openCount++ == 0) {
-                        FailingInputStream(bytes, failAfter = 5)
-                    } else {
-                        ByteArrayInputStream(bytes)
-                    }
-                },
-                onProgress = {},
-                shouldStop = { false },
+                request = ResumableFileWriter.Request(
+                    destinationFile = destinationFile,
+                    partialFile = partialFile,
+                    sourceSize = sourceBytes.size.toLong(),
+                    overwrite = false,
+                    openInputStream = { offset ->
+                        offsets += offset
+                        val bytes = sourceBytes.copyOfRange(offset.toInt(), sourceBytes.size)
+                        if (openCount++ == 0) {
+                            FailingInputStream(bytes, failAfter = 5)
+                        } else {
+                            ByteArrayInputStream(bytes)
+                        }
+                    },
+                    onProgress = {},
+                    shouldStop = { false },
+                ),
             )
 
             val completed = writer.copy()
@@ -93,13 +97,15 @@ class ResumableFileWriterTest {
             destinationFile.writeText("existing")
 
             val writer = ResumableFileWriter(
-                destinationFile = destinationFile,
-                partialFile = partialFile,
-                sourceSize = 3L,
-                overwrite = false,
-                openInputStream = { ByteArrayInputStream(byteArrayOf(1, 2, 3)) },
-                onProgress = {},
-                shouldStop = { false },
+                request = ResumableFileWriter.Request(
+                    destinationFile = destinationFile,
+                    partialFile = partialFile,
+                    sourceSize = 3L,
+                    overwrite = false,
+                    openInputStream = { ByteArrayInputStream(byteArrayOf(1, 2, 3)) },
+                    onProgress = {},
+                    shouldStop = { false },
+                ),
             )
 
             val exception = runCatching { writer.copy() }.exceptionOrNull()

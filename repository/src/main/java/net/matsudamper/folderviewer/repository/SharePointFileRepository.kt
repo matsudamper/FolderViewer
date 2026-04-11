@@ -317,31 +317,42 @@ class SharePointFileRepository(
 
         return try {
             val responseCode = connection.responseCode
-            when {
-                offset == 0L && (responseCode == HttpURLConnection.HTTP_OK || responseCode == HttpURLConnection.HTTP_PARTIAL) -> {
-                    DisconnectingInputStream(connection.inputStream, connection)
-                }
-
-                offset > 0L && responseCode == HttpURLConnection.HTTP_PARTIAL -> {
-                    val contentRange = connection.getHeaderField("Content-Range")
-                    if (contentRange?.startsWith("bytes $offset-") != true) {
-                        throw IOException("Unexpected Content-Range: $contentRange")
-                    }
-                    DisconnectingInputStream(connection.inputStream, connection)
-                }
-
-                offset > 0L && responseCode == HttpURLConnection.HTTP_OK -> {
-                    throw IOException("Range request was not accepted")
-                }
-
-                else -> {
-                    throw IOException("Failed to open download stream: HTTP $responseCode")
-                }
+            if (!connection.canUseDownloadResponse(responseCode, offset)) {
+                throw IOException(connection.downloadErrorMessage(responseCode, offset))
             }
+            DisconnectingInputStream(connection.inputStream, connection)
         } catch (e: Throwable) {
             connection.errorStream?.close()
             connection.disconnect()
             throw e
+        }
+    }
+
+    private fun HttpURLConnection.canUseDownloadResponse(responseCode: Int, offset: Long): Boolean {
+        return when {
+            offset == 0L -> {
+                responseCode == HttpURLConnection.HTTP_OK || responseCode == HttpURLConnection.HTTP_PARTIAL
+            }
+
+            responseCode == HttpURLConnection.HTTP_PARTIAL -> {
+                getHeaderField("Content-Range")?.startsWith("bytes $offset-") == true
+            }
+
+            else -> false
+        }
+    }
+
+    private fun HttpURLConnection.downloadErrorMessage(responseCode: Int, offset: Long): String {
+        return when {
+            offset > 0L && responseCode == HttpURLConnection.HTTP_PARTIAL -> {
+                "Unexpected Content-Range: ${getHeaderField("Content-Range")}"
+            }
+
+            offset > 0L && responseCode == HttpURLConnection.HTTP_OK -> {
+                "Range request was not accepted"
+            }
+
+            else -> "Failed to open download stream: HTTP $responseCode"
         }
     }
 

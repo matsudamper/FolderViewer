@@ -46,16 +46,24 @@ interface RangeReadableFileRepository : FileRepository {
     suspend fun openFileContent(fileId: FileObjectId.Item, offset: Long): InputStream
 }
 
+data class ResumableFileSource(
+    val repository: RangeReadableFileRepository,
+    val fileId: FileObjectId.Item,
+    val size: Long,
+)
+
+data class ResumableFileUploadRequest(
+    val id: FileObjectId,
+    val fileName: String,
+    val source: ResumableFileSource,
+    val overwrite: Boolean = false,
+    val resumeKey: String,
+)
+
 interface ResumableFileUploadRepository : FileRepository {
     suspend fun uploadFileResumable(
-        id: FileObjectId,
-        fileName: String,
-        source: RangeReadableFileRepository,
-        sourceFileId: FileObjectId.Item,
-        size: Long,
+        request: ResumableFileUploadRequest,
         onRead: FlowCollector<Long>,
-        overwrite: Boolean = false,
-        resumeKey: String,
         shouldStop: () -> Boolean = { false },
     ): Boolean
 }

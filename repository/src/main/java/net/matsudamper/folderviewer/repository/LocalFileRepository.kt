@@ -201,19 +201,13 @@ internal class LocalFileRepository(
     }
 
     override suspend fun uploadFileResumable(
-        id: FileObjectId,
-        fileName: String,
-        source: RangeReadableFileRepository,
-        sourceFileId: FileObjectId.Item,
-        size: Long,
+        request: ResumableFileUploadRequest,
         onRead: FlowCollector<Long>,
-        overwrite: Boolean,
-        resumeKey: String,
         shouldStop: () -> Boolean,
     ): Boolean = withContext(Dispatchers.IO) {
-        val path = when (id) {
+        val path = when (request.id) {
             is FileObjectId.Root -> ""
-            is FileObjectId.Item -> id.id
+            is FileObjectId.Item -> request.id.id
         }
         val destinationDir = buildAbsoluteFile(path)
 
@@ -221,16 +215,20 @@ internal class LocalFileRepository(
             "Destination directory not found or cannot write: $path"
         }
 
-        val destinationFile = File(destinationDir, fileName)
-        val partialFile = File(destinationDir, ".folderviewer-${resumeKey.toSafeFileName()}.part")
+        val destinationFile = File(destinationDir, request.fileName)
+        val partialFile = File(destinationDir, ".folderviewer-${request.resumeKey.toSafeFileName()}.part")
         val completed = ResumableFileWriter(
-            destinationFile = destinationFile,
-            partialFile = partialFile,
-            sourceSize = size,
-            overwrite = overwrite,
-            openInputStream = { offset -> source.openFileContent(sourceFileId, offset) },
-            onProgress = { currentBytes -> onRead.emit(currentBytes) },
-            shouldStop = shouldStop,
+            request = ResumableFileWriter.Request(
+                destinationFile = destinationFile,
+                partialFile = partialFile,
+                sourceSize = request.source.size,
+                overwrite = request.overwrite,
+                openInputStream = { offset ->
+                    request.source.repository.openFileContent(request.source.fileId, offset)
+                },
+                onProgress = { currentBytes -> onRead.emit(currentBytes) },
+                shouldStop = shouldStop,
+            ),
         ).copy()
 
         if (completed) {
