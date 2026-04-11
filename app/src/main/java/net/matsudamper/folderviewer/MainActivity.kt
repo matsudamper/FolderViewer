@@ -549,6 +549,19 @@ private fun FileBrowserEventHandler(
                             )
                         }
                     }
+                    val isApk = event.mimeType == "application/vnd.android.package-archive"
+                    if (isApk && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O &&
+                        !context.packageManager.canRequestPackageInstalls()
+                    ) {
+                        runCatching {
+                            context.startActivity(
+                                Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                                    data = android.net.Uri.parse("package:${context.packageName}")
+                                },
+                            )
+                        }
+                        return@collect
+                    }
                     val intent = Intent(Intent.ACTION_VIEW).apply {
                         setDataAndType(uri, event.mimeType ?: "*/*")
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
