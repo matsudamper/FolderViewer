@@ -6,6 +6,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -41,6 +44,7 @@ import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
+import net.matsudamper.folderviewer.ui.util.formatBytes
 import net.matsudamper.folderviewer.viewmodel.util.FileUtil
 import net.matsudamper.folderviewer.viewmodel.worker.FilePasteWorker
 import net.matsudamper.folderviewer.viewmodel.worker.FileUploadWorker
@@ -307,8 +311,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                 name = fileItem.displayPath,
                 key = fileItem.id.id,
                 isDirectory = fileItem.isDirectory,
-                size = fileItem.size,
-                lastModified = fileItem.lastModified,
+                subText = buildSubText(fileItem.isDirectory, fileItem.lastModified, fileItem.size),
                 thumbnail = if (isImage) {
                     FileImageSource.Thumbnail(
                         fileId = fileItem.id,
@@ -326,8 +329,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                 name = favorite.displayPath,
                 key = favorite.fileId.id,
                 isDirectory = true,
-                size = 0,
-                lastModified = 0,
+                subText = "",
                 thumbnail = if (FileUtil.isImage(favorite.displayPath)) {
                     FileImageSource.Thumbnail(
                         fileId = favorite.fileId,
@@ -973,6 +975,11 @@ class FileBrowserViewModel @AssistedInject constructor(
         selectionModeRepository.setSelectionMode(true)
     }
 
+    private fun buildSubText(isDirectory: Boolean, lastModified: Long, size: Long): String {
+        val dateText = lastModifiedFormatter.format(Instant.ofEpochMilli(lastModified).atZone(ZoneId.systemDefault()))
+        return if (isDirectory) dateText else "$dateText  ${formatBytes(size)}"
+    }
+
     private data class ViewModelState(
         val isLoading: Boolean = false,
         val isRefreshing: Boolean = false,
@@ -1002,6 +1009,9 @@ class FileBrowserViewModel @AssistedInject constructor(
     }
 
     companion object {
+        private val lastModifiedFormatter: DateTimeFormatter =
+            DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm")
+
         @AssistedFactory
         interface Factory {
             fun create(arguments: FileBrowser): FileBrowserViewModel
