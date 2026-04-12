@@ -54,6 +54,7 @@ class UploadJobRepository @Inject internal constructor(
                     name = job.name,
                     status = OperationRepository.OperationStatus.ENQUEUED.name,
                     createdAt = System.currentTimeMillis(),
+                    totalFiles = job.totalFiles,
                 ),
             )
             uploadOperationDao.insert(
@@ -101,6 +102,7 @@ class UploadJobRepository @Inject internal constructor(
             isFolder = uploadDetail.isFolder,
             fileObjectId = Json.decodeFromString<FileObjectId>(uploadDetail.fileObjectId),
             displayPath = uploadDetail.displayPath,
+            totalFiles = totalFiles,
             errorMessage = errorMessage,
             errorCause = errorCause,
         )
@@ -112,6 +114,7 @@ class UploadJobRepository @Inject internal constructor(
         val isFolder: Boolean,
         val fileObjectId: FileObjectId,
         val displayPath: String,
+        val totalFiles: Int = 1,
         val errorMessage: String? = null,
         val errorCause: String? = null,
     )

@@ -153,35 +153,12 @@ private fun UploadItemRow(
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
             )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (item.progressText != null) {
-                    Text(
-                        text = item.progressText!!,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-
-                Text(
-                    text = when (item.state) {
-                        UploadProgressUiState.UploadState.ENQUEUED -> stringResource(R.string.upload_state_enqueued)
-                        UploadProgressUiState.UploadState.RUNNING -> stringResource(R.string.upload_state_running)
-                        UploadProgressUiState.UploadState.SUCCEEDED -> stringResource(R.string.upload_state_succeeded)
-                        UploadProgressUiState.UploadState.FAILED -> stringResource(R.string.upload_state_failed)
-                        UploadProgressUiState.UploadState.CANCELLED -> stringResource(R.string.upload_state_cancelled)
-                        UploadProgressUiState.UploadState.PAUSED -> stringResource(R.string.upload_state_paused)
-                        UploadProgressUiState.UploadState.WAITING_RESOLUTION -> stringResource(R.string.upload_state_waiting_resolution)
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = when (item.state) {
-                        UploadProgressUiState.UploadState.SUCCEEDED -> MaterialTheme.colorScheme.primary
-                        UploadProgressUiState.UploadState.FAILED -> MaterialTheme.colorScheme.error
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                )
-            }
+            Text(
+                text = item.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+            )
         }
         when (item.state) {
             UploadProgressUiState.UploadState.RUNNING -> {
@@ -249,20 +226,13 @@ private fun PasteItemRow(
             Column(
                 modifier = Modifier.weight(1f),
             ) {
-                if (item.progressText != null) {
-                    Text(
-                        text = item.progressText,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                    )
-                }
-                val subInfo = if (item.totalFiles > 1) {
-                    "${item.name} 他${item.totalFiles - 1}件"
-                } else {
-                    item.name
-                }
                 Text(
-                    text = subInfo,
+                    text = item.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                )
+                Text(
+                    text = item.description,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -310,32 +280,14 @@ private fun PasteItemRow(
             )
         }
 
-        val currentFileName = item.currentFileName
-        if (currentFileName != null && item.state == UploadProgressUiState.UploadState.RUNNING) {
-            Column(
+        val currentFileProgress = item.currentFileProgress
+        if (currentFileProgress != null && item.state == UploadProgressUiState.UploadState.RUNNING) {
+            LinearProgressIndicator(
+                progress = { currentFileProgress },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 36.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(
-                    text = currentFileName,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
-                val currentFileProgress = item.currentFileProgress
-                if (currentFileProgress != null) {
-                    LinearProgressIndicator(
-                        progress = { currentFileProgress },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                } else {
-                    LinearProgressIndicator(
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            }
+            )
         }
     }
 }
@@ -367,20 +319,13 @@ private fun DeleteItemRow(
             Column(
                 modifier = Modifier.weight(1f),
             ) {
-                if (item.progressText != null) {
-                    Text(
-                        text = item.progressText,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                    )
-                }
-                val subInfo = if (item.totalFiles > 1) {
-                    "${item.name} 他${item.totalFiles - 1}件"
-                } else {
-                    item.name
-                }
                 Text(
-                    text = subInfo,
+                    text = item.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                )
+                Text(
+                    text = item.description,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,

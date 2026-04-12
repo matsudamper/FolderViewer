@@ -16,11 +16,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
+import net.matsudamper.folderviewer.repository.ClipboardRepository
+import net.matsudamper.folderviewer.repository.DeleteJobRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
+import net.matsudamper.folderviewer.repository.PasteJobRepository
 import net.matsudamper.folderviewer.repository.db.OperationEntity
 import net.matsudamper.folderviewer.ui.upload.UploadProgressUiState
 import net.matsudamper.folderviewer.viewmodel.worker.FilePasteWorker
@@ -31,6 +34,8 @@ import net.matsudamper.folderviewer.viewmodel.worker.FolderUploadWorker
 class UploadProgressViewModel @Inject constructor(
     application: Application,
     private val operationRepository: OperationRepository,
+    private val pasteJobRepository: PasteJobRepository,
+    private val deleteJobRepository: DeleteJobRepository,
 ) : AndroidViewModel(application) {
 
     private val viewModelEventChannel = Channel<ViewModelEvent>(Channel.UNLIMITED)
@@ -99,17 +104,14 @@ class UploadProgressViewModel @Inject constructor(
             ) { state, showDialog ->
                 state to showDialog
             }.collectLatest { (state, showDialog) ->
-                mutableState.update {
-                    val items = state.operations.map { op ->
-                        mapOperationToUiItem(op, state.workInfoMap)
-                    }
-
-                    UploadProgressUiState(
-                        uploadItems = items,
-                        showClearConfirmDialog = showDialog,
-                        callbacks = callbacks,
-                    )
+                val items = state.operations.map { op ->
+                    mapOperationToUiItem(op, state.workInfoMap)
                 }
+                mutableState.value = UploadProgressUiState(
+                    uploadItems = items,
+                    showClearConfirmDialog = showDialog,
+                    callbacks = callbacks,
+                )
             }
         }
     }.asStateFlow()
@@ -132,7 +134,7 @@ class UploadProgressViewModel @Inject constructor(
         }
     }
 
-    private fun mapOperationToUiItem(
+    private suspend fun mapOperationToUiItem(
         op: OperationEntity,
         workInfoMap: Map<String, WorkInfo>,
     ): UploadProgressUiState.UploadItem {
@@ -189,21 +191,25 @@ class UploadProgressViewModel @Inject constructor(
         }
 
         val isFolder = op.type == OperationRepository.OperationType.UPLOAD_FOLDER.name
+        val fileCount = getUploadFileCount(op, isFolder, workInfo)
+        val description = getUploadDescription(op, isFolder, uploadState, workInfo)
         val id = op.workerId ?: op.id.toString()
         return if (isFolder) {
             UploadProgressUiState.UploadItem.Folder(
                 id = id,
-                name = op.name,
+                name = "アップロード ${fileCount}件",
+                description = description,
                 state = uploadState,
                 canNavigate = true,
-                fileCount = 0,
+                fileCount = fileCount,
                 progress = progress,
                 progressText = progressText,
             )
         } else {
             UploadProgressUiState.UploadItem.File(
                 id = id,
-                name = op.name,
+                name = "アップロード ${fileCount}件",
+                description = description,
                 state = uploadState,
                 canNavigate = true,
                 progress = progress,
@@ -212,7 +218,7 @@ class UploadProgressViewModel @Inject constructor(
         }
     }
 
-    private fun mapPasteOperation(op: OperationEntity): UploadProgressUiState.UploadItem {
+    private suspend fun mapPasteOperation(op: OperationEntity): UploadProgressUiState.UploadItem {
         val pasteState = when {
             op.failedFiles > 0 -> UploadProgressUiState.UploadState.FAILED
             op.status == OperationRepository.OperationStatus.ENQUEUED.name -> UploadProgressUiState.UploadState.ENQUEUED
@@ -239,7 +245,13 @@ class UploadProgressViewModel @Inject constructor(
             null
         }
 
-        val operationModeName = if (op.name.contains("カット")) "カット" else "コピー"
+        val job = runCatching { pasteJobRepository.getJobById(op.id) }.getOrNull()
+        val files = runCatching { pasteJobRepository.getFiles(op.id) }.getOrDefault(emptyList())
+        val operationModeName = when (job?.mode) {
+            ClipboardRepository.ClipboardMode.Copy -> "コピー"
+            ClipboardRepository.ClipboardMode.Cut -> "カット"
+            null -> if (op.name.contains("カット")) "カット" else "コピー"
+        }
         val notCompletedFiles = op.totalFiles - op.completedFiles - op.duplicateFiles
 
         val progressText = when {
@@ -269,6 +281,12 @@ class UploadProgressViewModel @Inject constructor(
                 "$operationModeName ${op.totalFiles}件"
             }
         }
+        val currentFileName = op.currentFileName
+        val description = if (pasteState == UploadProgressUiState.UploadState.RUNNING && currentFileName != null) {
+            currentFileName
+        } else {
+            buildPasteDescription(files, currentFileName ?: op.name)
+        }
 
         val pasteCallbacks = object : UploadProgressUiState.PasteCallbacks {
             override fun onPauseClick() {
@@ -282,7 +300,8 @@ class UploadProgressViewModel @Inject constructor(
 
         return UploadProgressUiState.UploadItem.Paste(
             id = op.id.toString(),
-            name = op.currentFileName ?: op.name,
+            name = "$operationModeName ${op.totalFiles}件",
+            description = description,
             state = pasteState,
             canNavigate = true,
             mode = op.name,
@@ -302,7 +321,7 @@ class UploadProgressViewModel @Inject constructor(
         )
     }
 
-    private fun mapDeleteOperation(op: OperationEntity): UploadProgressUiState.UploadItem {
+    private suspend fun mapDeleteOperation(op: OperationEntity): UploadProgressUiState.UploadItem {
         val deleteState = when (op.status) {
             OperationRepository.OperationStatus.ENQUEUED.name -> UploadProgressUiState.UploadState.ENQUEUED
             OperationRepository.OperationStatus.RUNNING.name -> UploadProgressUiState.UploadState.RUNNING
@@ -335,10 +354,18 @@ class UploadProgressViewModel @Inject constructor(
                 "削除 ${op.totalFiles}件"
             }
         }
+        val files = runCatching { deleteJobRepository.getFiles(op.id) }.getOrDefault(emptyList())
+        val currentFileName = op.currentFileName
+        val description = if (deleteState == UploadProgressUiState.UploadState.RUNNING && currentFileName != null) {
+            currentFileName
+        } else {
+            buildDeleteDescription(files, currentFileName ?: op.name)
+        }
 
         return UploadProgressUiState.UploadItem.Delete(
             id = op.id.toString(),
-            name = op.currentFileName ?: op.name,
+            name = "削除 ${op.totalFiles}件",
+            description = description,
             state = deleteState,
             canNavigate = true,
             totalFiles = op.totalFiles,
@@ -349,6 +376,94 @@ class UploadProgressViewModel @Inject constructor(
             progress = progress,
             progressText = progressText,
         )
+    }
+
+    private fun getUploadFileCount(op: OperationEntity, isFolder: Boolean, workInfo: WorkInfo?): Int {
+        return when {
+            !isFolder -> op.totalFiles.takeIf { it > 0 } ?: 1
+            op.totalFiles > 0 -> op.totalFiles
+            else -> extractFolderUploadFileNames(workInfo)?.size ?: 1
+        }
+    }
+
+    private fun getUploadDescription(
+        op: OperationEntity,
+        isFolder: Boolean,
+        uploadState: UploadProgressUiState.UploadState,
+        workInfo: WorkInfo?,
+    ): String {
+        if (uploadState == UploadProgressUiState.UploadState.RUNNING) {
+            val currentFileName = if (isFolder) {
+                extractCurrentFolderUploadFileName(workInfo)
+            } else {
+                workInfo?.progress?.getString(FileUploadWorker.KEY_FILE_NAME)
+            }
+            if (currentFileName != null) return currentFileName
+        }
+        return op.name
+    }
+
+    private fun extractCurrentFolderUploadFileName(workInfo: WorkInfo?): String? {
+        val fileNames = extractFolderUploadFileNames(workInfo) ?: return null
+        val completedFiles = workInfo?.progress?.getInt(FolderUploadWorker.KEY_COMPLETED_FILES, 0) ?: 0
+        return fileNames.getOrNull(completedFiles)
+    }
+
+    private fun extractFolderUploadFileNames(workInfo: WorkInfo?): List<String>? {
+        val fileNamesJson = workInfo?.progress?.getString(FolderUploadWorker.KEY_FILE_NAMES) ?: return null
+        return runCatching {
+            Json.decodeFromString<List<String>>(fileNamesJson)
+        }.getOrNull()
+    }
+
+    private fun buildPasteDescription(files: List<PasteJobRepository.PasteFile>, fallback: String): String {
+        val directory = files
+            .filter { it.isDirectory }
+            .minWithOrNull(compareBy<PasteJobRepository.PasteFile>({ pathDepth(it.displayPath()) }, { it.id }))
+        if (directory != null) return directory.displayPath()
+
+        val fileCount = files.count { !it.isDirectory }
+        val file = files
+            .filter { !it.isDirectory }
+            .minWithOrNull(compareBy<PasteJobRepository.PasteFile>({ pathDepth(it.displayPath()) }, { it.id }))
+            ?: return fallback
+
+        return if (fileCount > 1) "${file.displayPath()} 他" else file.displayPath()
+    }
+
+    private fun buildDeleteDescription(files: List<DeleteJobRepository.DeleteFile>, fallback: String): String {
+        val directory = files
+            .filter { it.isDirectory }
+            .minWithOrNull(compareBy<DeleteJobRepository.DeleteFile>({ pathDepth(it.displayPath()) }, { it.id }))
+        if (directory != null) return directory.displayPath()
+
+        val fileCount = files.count { !it.isDirectory }
+        val file = files
+            .filter { !it.isDirectory }
+            .minWithOrNull(compareBy<DeleteJobRepository.DeleteFile>({ pathDepth(it.displayPath()) }, { it.id }))
+            ?: return fallback
+
+        return if (fileCount > 1) "${file.displayPath()} 他" else file.displayPath()
+    }
+
+    private fun PasteJobRepository.PasteFile.displayPath(): String {
+        return if (destinationRelativePath.isEmpty()) {
+            fileName
+        } else {
+            "$destinationRelativePath/$fileName"
+        }
+    }
+
+    private fun DeleteJobRepository.DeleteFile.displayPath(): String {
+        return if (parentRelativePath.isEmpty()) {
+            fileName
+        } else {
+            "$parentRelativePath/$fileName"
+        }
+    }
+
+    private fun pathDepth(path: String): Int {
+        return path.count { it == '/' }
     }
 
     private fun pausePasteJob(op: OperationEntity) {

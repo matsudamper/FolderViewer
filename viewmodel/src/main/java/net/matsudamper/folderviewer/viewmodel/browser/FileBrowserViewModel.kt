@@ -803,6 +803,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                 isFolder = true,
                 fileObjectId = fileObjectId,
                 displayPath = arg.displayPath.orEmpty(),
+                totalFiles = files.size,
             ),
         )
 
