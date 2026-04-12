@@ -1,7 +1,9 @@
 package net.matsudamper.folderviewer.repository
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.media.MediaScannerConnection
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -17,6 +19,7 @@ import net.matsudamper.folderviewer.common.FileObjectId
 
 internal class LocalFileRepository(
     private val config: StorageConfiguration.Local,
+    private val context: Context,
 ) : RandomAccessFileRepository {
     override suspend fun getFiles(id: FileObjectId): List<FileItem> = withContext(Dispatchers.IO) {
         val path = when (id) {
@@ -79,12 +82,14 @@ internal class LocalFileRepository(
         val file = buildAbsoluteFile(fileId.id)
         require(file.exists()) { "File not found: ${fileId.id}" }
         require(file.delete()) { "Failed to delete file: ${fileId.id}" }
+        notifyMediaScanner(listOf(file.absolutePath))
     }
 
     override suspend fun deleteDirectory(dirId: FileObjectId.Item): Unit = withContext(Dispatchers.IO) {
         val dir = buildAbsoluteFile(dirId.id)
         require(dir.exists() && dir.isDirectory) { "Directory not found: ${dirId.id}" }
         require(dir.delete()) { "Failed to delete directory: ${dirId.id}" }
+        notifyMediaScanner(listOf(dir.absolutePath))
     }
 
     override suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream = withContext(Dispatchers.IO) {
@@ -125,6 +130,10 @@ internal class LocalFileRepository(
             e.printStackTrace()
             getFileContent(fileId)
         }
+    }
+
+    private fun notifyMediaScanner(paths: List<String>) {
+        MediaScannerConnection.scanFile(context, paths.toTypedArray(), null, null)
     }
 
     private fun buildAbsoluteFile(path: String): File {
@@ -181,6 +190,7 @@ internal class LocalFileRepository(
             }
             job.cancel()
         }
+        notifyMediaScanner(listOf(destinationFile.absolutePath))
     }
 
     override suspend fun uploadFolder(
@@ -202,6 +212,7 @@ internal class LocalFileRepository(
         val folderDir = File(destinationDir, folderName)
         folderDir.mkdirs()
 
+        val writtenPaths = mutableListOf<String>()
         coroutineScope {
             var uploadedSize = 0L
             var completedFiles = 0
@@ -223,9 +234,13 @@ internal class LocalFileRepository(
                     }
                 }
                 job.cancel()
+                writtenPaths.add(targetFile.absolutePath)
                 uploadedSize += fileToUpload.size ?: 0L
                 completedFiles++
             }
+        }
+        if (writtenPaths.isNotEmpty()) {
+            notifyMediaScanner(writtenPaths)
         }
     }
 
@@ -255,6 +270,7 @@ internal class LocalFileRepository(
         } else {
             require(newDir.isDirectory) { "A file with the same name already exists: $directoryName" }
         }
+        notifyMediaScanner(listOf(newDir.absolutePath))
 
         val relativePath = if (path.isEmpty()) directoryName else "$path/$directoryName"
         FileObjectId.Item(config.id, relativePath)

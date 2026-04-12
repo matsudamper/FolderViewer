@@ -106,6 +106,7 @@ internal class FilePasteWorker @AssistedInject constructor(
                     return@withContext Result.success()
                 }
 
+                val currentFileName = file.displayPath()
                 if (file.isDuplicate && file.resolution == PasteJobRepository.DuplicateResolution.KEEP_DESTINATION) {
                     pasteJobRepository.markFileCompleted(file.id)
                     if (job.mode == ClipboardRepository.ClipboardMode.Cut && !file.deleted &&
@@ -127,12 +128,12 @@ internal class FilePasteWorker @AssistedInject constructor(
                         progress = PasteJobRepository.ProgressUpdate(
                             completedFiles = completedFiles,
                             completedBytes = completedBytes,
-                            currentFileName = null,
+                            currentFileName = currentFileName,
                             currentFileBytes = 0L,
                             currentFileTotalBytes = 0L,
                         ),
                     )
-                    updateNotification(notificationId, completedFiles, job.totalFiles, null)
+                    updateNotification(notificationId, completedFiles, job.totalFiles, currentFileName)
                 } else if (!file.isDuplicate || file.resolution == PasteJobRepository.DuplicateResolution.OVERWRITE_WITH_SOURCE) {
                     if (file.isDuplicate && file.sourceFileId == file.destinationFileId) {
                         pasteJobRepository.markFileCompleted(file.id)
@@ -143,12 +144,12 @@ internal class FilePasteWorker @AssistedInject constructor(
                             progress = PasteJobRepository.ProgressUpdate(
                                 completedFiles = completedFiles,
                                 completedBytes = completedBytes,
-                                currentFileName = null,
+                                currentFileName = currentFileName,
                                 currentFileBytes = 0L,
                                 currentFileTotalBytes = 0L,
                             ),
                         )
-                        updateNotification(notificationId, completedFiles, job.totalFiles, null)
+                        updateNotification(notificationId, completedFiles, job.totalFiles, currentFileName)
                         continue
                     }
                     pasteJobRepository.updateProgress(
@@ -156,12 +157,12 @@ internal class FilePasteWorker @AssistedInject constructor(
                         progress = PasteJobRepository.ProgressUpdate(
                             completedFiles = completedFiles,
                             completedBytes = completedBytes,
-                            currentFileName = file.fileName,
+                            currentFileName = currentFileName,
                             currentFileBytes = 0L,
                             currentFileTotalBytes = file.fileSize,
                         ),
                     )
-                    updateNotification(notificationId, completedFiles, job.totalFiles, file.fileName)
+                    updateNotification(notificationId, completedFiles, job.totalFiles, currentFileName)
 
                     val progressFlow = MutableStateFlow(0L)
                     val progressJob = launch {
@@ -171,7 +172,7 @@ internal class FilePasteWorker @AssistedInject constructor(
                                 progress = PasteJobRepository.ProgressUpdate(
                                     completedFiles = completedFiles,
                                     completedBytes = completedBytes,
-                                    currentFileName = file.fileName,
+                                    currentFileName = currentFileName,
                                     currentFileBytes = currentBytes,
                                     currentFileTotalBytes = file.fileSize,
                                 ),
@@ -346,6 +347,15 @@ internal class FilePasteWorker @AssistedInject constructor(
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(notificationId, notification)
     }
+
+    private fun PasteJobRepository.PasteFile.displayPath(): String {
+        return if (destinationRelativePath.isEmpty()) {
+            fileName
+        } else {
+            "$destinationRelativePath/$fileName"
+        }
+    }
+
 
     private suspend fun deleteSourceDirectories(
         files: List<PasteJobRepository.PasteFile>,

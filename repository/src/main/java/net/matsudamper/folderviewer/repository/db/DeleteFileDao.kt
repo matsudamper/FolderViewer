@@ -18,6 +18,9 @@ internal interface DeleteFileDao {
     suspend fun getPendingByOperationId(operationId: Long): List<DeleteFileEntity>
 
     @Query("SELECT * FROM delete_files WHERE operationId = :operationId ORDER BY id ASC")
+    suspend fun getByOperationId(operationId: Long): List<DeleteFileEntity>
+
+    @Query("SELECT * FROM delete_files WHERE operationId = :operationId ORDER BY id ASC")
     fun observeByOperationId(operationId: Long): Flow<List<DeleteFileEntity>>
 
     @Query("UPDATE delete_files SET completed = 1 WHERE id = :fileId")

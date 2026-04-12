@@ -221,7 +221,7 @@ class StorageRepository @Inject constructor(
 
         return when (val config = configProto.toDomain()) {
             is StorageConfiguration.Smb -> SmbFileRepository(config)
-            is StorageConfiguration.Local -> LocalFileRepository(config)
+            is StorageConfiguration.Local -> LocalFileRepository(config, context)
             is StorageConfiguration.SharePoint -> SharePointFileRepository(config)
             null -> null
         }
