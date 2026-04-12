@@ -42,6 +42,32 @@ interface RandomAccessFileRepository : FileRepository {
     suspend fun openRandomAccess(fileId: FileObjectId.Item): RandomAccessSource
 }
 
+interface RangeReadableFileRepository : FileRepository {
+    suspend fun openFileContent(fileId: FileObjectId.Item, offset: Long): InputStream
+}
+
+data class ResumableFileSource(
+    val repository: RangeReadableFileRepository,
+    val fileId: FileObjectId.Item,
+    val size: Long,
+)
+
+data class ResumableFileUploadRequest(
+    val id: FileObjectId,
+    val fileName: String,
+    val source: ResumableFileSource,
+    val overwrite: Boolean = false,
+    val resumeKey: String,
+)
+
+interface ResumableFileUploadRepository : FileRepository {
+    suspend fun uploadFileResumable(
+        request: ResumableFileUploadRequest,
+        onRead: FlowCollector<Long>,
+        shouldStop: () -> Boolean = { false },
+    ): Boolean
+}
+
 interface RandomAccessSource : Closeable {
     /**
      * (Bytes)

@@ -1,7 +1,9 @@
 package net.matsudamper.folderviewer.repository
 
-import java.io.ByteArrayInputStream
+import java.io.FilterInputStream
+import java.io.IOException
 import java.io.InputStream
+import java.net.HttpURLConnection
 import java.net.URL
 import java.time.OffsetDateTime
 import kotlin.collections.map
@@ -21,7 +23,7 @@ import net.matsudamper.folderviewer.dao.graphapi.GraphApiClient
 
 class SharePointFileRepository(
     private val config: StorageConfiguration.SharePoint,
-) : FileRepository {
+) : RangeReadableFileRepository {
     private val graphServiceClient: GraphServiceClient by lazy {
         val credential = ClientSecretCredentialBuilder()
             .clientId(config.clientId)
@@ -79,11 +81,15 @@ class SharePointFileRepository(
         return requireNotNull(rootItem.id) { "Drive root item id is null" }
     }
 
-    override suspend fun getFileContent(fileId: FileObjectId.Item): InputStream = withContext(Dispatchers.IO) {
-        val driveId = getDriveId()
+    override suspend fun getFileContent(fileId: FileObjectId.Item): InputStream = openFileContent(fileId, offset = 0L)
 
-        graphServiceClient.drives().byDriveId(driveId).items().byDriveItemId(fileId.id).content().get()
-            ?: ByteArrayInputStream(ByteArray(0))
+    override suspend fun openFileContent(fileId: FileObjectId.Item, offset: Long): InputStream = withContext(Dispatchers.IO) {
+        require(offset >= 0L) { "offset must be greater than or equal to 0: $offset" }
+
+        val response = graphApiClient.getDriveItemWithDownloadUrl(fileId.id)
+        val downloadUrl = response.downloadUrl
+            ?: throw IllegalStateException("Download URL not available")
+        openDownloadUrl(downloadUrl, offset)
     }
 
     override suspend fun getFileSize(fileId: FileObjectId.Item): Long = withContext(Dispatchers.IO) {
@@ -300,7 +306,71 @@ class SharePointFileRepository(
         }
     }
 
+    private fun openDownloadUrl(downloadUrl: String, offset: Long): InputStream {
+        val connection = URL(downloadUrl).openConnection() as HttpURLConnection
+        connection.connectTimeout = HTTP_TIMEOUT_MILLIS
+        connection.readTimeout = HTTP_TIMEOUT_MILLIS
+        connection.setRequestProperty("Accept-Encoding", "identity")
+        if (offset > 0L) {
+            connection.setRequestProperty("Range", "bytes=$offset-")
+        }
+
+        return try {
+            val responseCode = connection.responseCode
+            if (!connection.canUseDownloadResponse(responseCode, offset)) {
+                throw IOException(connection.downloadErrorMessage(responseCode, offset))
+            }
+            DisconnectingInputStream(connection.inputStream, connection)
+        } catch (e: Throwable) {
+            connection.errorStream?.close()
+            connection.disconnect()
+            throw e
+        }
+    }
+
+    private fun HttpURLConnection.canUseDownloadResponse(responseCode: Int, offset: Long): Boolean {
+        return when {
+            offset == 0L -> {
+                responseCode == HttpURLConnection.HTTP_OK || responseCode == HttpURLConnection.HTTP_PARTIAL
+            }
+
+            responseCode == HttpURLConnection.HTTP_PARTIAL -> {
+                getHeaderField("Content-Range")?.startsWith("bytes $offset-") == true
+            }
+
+            else -> false
+        }
+    }
+
+    private fun HttpURLConnection.downloadErrorMessage(responseCode: Int, offset: Long): String {
+        return when {
+            offset > 0L && responseCode == HttpURLConnection.HTTP_PARTIAL -> {
+                "Unexpected Content-Range: ${getHeaderField("Content-Range")}"
+            }
+
+            offset > 0L && responseCode == HttpURLConnection.HTTP_OK -> {
+                "Range request was not accepted"
+            }
+
+            else -> "Failed to open download stream: HTTP $responseCode"
+        }
+    }
+
+    private class DisconnectingInputStream(
+        inputStream: InputStream,
+        private val connection: HttpURLConnection,
+    ) : FilterInputStream(inputStream) {
+        override fun close() {
+            try {
+                super.close()
+            } finally {
+                connection.disconnect()
+            }
+        }
+    }
+
     private companion object {
         private const val UPLOAD_CHUNK_SIZE = 5L * 1024 * 1024
+        private const val HTTP_TIMEOUT_MILLIS = 300_000
     }
 }

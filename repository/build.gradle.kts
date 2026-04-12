@@ -43,6 +43,8 @@ dependencies {
     implementation(libs.androidxRoomRuntime)
     implementation(libs.androidxRoomKtx)
     ksp(libs.androidxRoomCompiler)
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinxCoroutinesTest)
 }
 
 protobuf {

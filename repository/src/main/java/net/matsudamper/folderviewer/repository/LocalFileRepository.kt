@@ -20,7 +20,7 @@ import net.matsudamper.folderviewer.common.FileObjectId
 internal class LocalFileRepository(
     private val config: StorageConfiguration.Local,
     private val context: Context,
-) : RandomAccessFileRepository {
+) : RandomAccessFileRepository, ResumableFileUploadRepository {
     override suspend fun getFiles(id: FileObjectId): List<FileItem> = withContext(Dispatchers.IO) {
         val path = when (id) {
             is FileObjectId.Root -> ""
@@ -155,6 +155,13 @@ internal class LocalFileRepository(
         return inSampleSize
     }
 
+    private fun String.toSafeFileName(): String {
+        val safeName = map { char ->
+            if (char.isLetterOrDigit() || char == '-' || char == '_') char else '_'
+        }.joinToString("")
+        return safeName.ifEmpty { "default" }
+    }
+
     override suspend fun uploadFile(
         id: FileObjectId,
         fileName: String,
@@ -191,6 +198,43 @@ internal class LocalFileRepository(
             job.cancel()
         }
         notifyMediaScanner(listOf(destinationFile.absolutePath))
+    }
+
+    override suspend fun uploadFileResumable(
+        request: ResumableFileUploadRequest,
+        onRead: FlowCollector<Long>,
+        shouldStop: () -> Boolean,
+    ): Boolean = withContext(Dispatchers.IO) {
+        val path = when (request.id) {
+            is FileObjectId.Root -> ""
+            is FileObjectId.Item -> request.id.id
+        }
+        val destinationDir = buildAbsoluteFile(path)
+
+        require(destinationDir.exists() && destinationDir.isDirectory && destinationDir.canWrite()) {
+            "Destination directory not found or cannot write: $path"
+        }
+
+        val destinationFile = File(destinationDir, request.fileName)
+        val partialFile = File(destinationDir, ".folderviewer-${request.resumeKey.toSafeFileName()}.part")
+        val completed = ResumableFileWriter(
+            request = ResumableFileWriter.Request(
+                destinationFile = destinationFile,
+                partialFile = partialFile,
+                sourceSize = request.source.size,
+                overwrite = request.overwrite,
+                openInputStream = { offset ->
+                    request.source.repository.openFileContent(request.source.fileId, offset)
+                },
+                onProgress = { currentBytes -> onRead.emit(currentBytes) },
+                shouldStop = shouldStop,
+            ),
+        ).copy()
+
+        if (completed) {
+            notifyMediaScanner(listOf(destinationFile.absolutePath))
+        }
+        completed
     }
 
     override suspend fun uploadFolder(

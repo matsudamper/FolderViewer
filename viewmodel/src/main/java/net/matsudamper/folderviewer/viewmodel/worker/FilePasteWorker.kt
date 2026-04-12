@@ -18,11 +18,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.ClipboardRepository
 import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.PasteJobRepository
+import net.matsudamper.folderviewer.repository.RangeReadableFileRepository
+import net.matsudamper.folderviewer.repository.ResumableFileSource
+import net.matsudamper.folderviewer.repository.ResumableFileUploadRepository
+import net.matsudamper.folderviewer.repository.ResumableFileUploadRequest
 import net.matsudamper.folderviewer.repository.StorageRepository
-import net.matsudamper.folderviewer.common.FileObjectId
 
 @HiltWorker
 internal class FilePasteWorker @AssistedInject constructor(
@@ -181,6 +185,7 @@ internal class FilePasteWorker @AssistedInject constructor(
                     }
 
                     var detectedDuplicate = false
+                    var paused = false
                     try {
                         val destDirId = ensureDirectory(
                             path = file.destinationRelativePath,
@@ -203,20 +208,27 @@ internal class FilePasteWorker @AssistedInject constructor(
                         }
 
                         if (!detectedDuplicate) {
-                            sourceRepo.getFileContent(file.sourceFileId).use { inputStream ->
-                                destRepo.uploadFile(
-                                    id = destDirId,
-                                    fileName = file.fileName,
-                                    inputStream = inputStream,
-                                    size = file.fileSize,
-                                    onRead = progressFlow,
-                                    overwrite = file.isDuplicate &&
-                                        file.resolution == PasteJobRepository.DuplicateResolution.OVERWRITE_WITH_SOURCE,
-                                )
-                            }
+                            val overwrite = file.isDuplicate &&
+                                file.resolution == PasteJobRepository.DuplicateResolution.OVERWRITE_WITH_SOURCE
+                            paused = !pasteFile(
+                                request = PasteFileRequest(
+                                    sourceRepo = sourceRepo,
+                                    destRepo = destRepo,
+                                    destDirId = destDirId,
+                                    file = file,
+                                    overwrite = overwrite,
+                                    jobId = jobId,
+                                ),
+                                progressFlow = progressFlow,
+                            )
                         }
                     } finally {
                         progressJob.cancel()
+                    }
+
+                    if (paused) {
+                        pasteJobRepository.updateStatus(jobId, PasteJobRepository.PasteJobStatus.PAUSED, workerId = null)
+                        return@withContext Result.success()
                     }
 
                     if (!detectedDuplicate) {
@@ -271,6 +283,10 @@ internal class FilePasteWorker @AssistedInject constructor(
             pasteJobRepository.updateStatus(jobId, finalStatus)
             Result.success()
         } catch (e: CancellationException) {
+            if (isStopped) {
+                pasteJobRepository.updateStatus(jobId, PasteJobRepository.PasteJobStatus.PAUSED, workerId = null)
+                return@withContext Result.success()
+            }
             throw e
         } catch (e: Throwable) {
             e.printStackTrace()
@@ -356,6 +372,55 @@ internal class FilePasteWorker @AssistedInject constructor(
         }
     }
 
+    private suspend fun pasteFile(
+        request: PasteFileRequest,
+        progressFlow: MutableStateFlow<Long>,
+    ): Boolean {
+        if (isStopped) return false
+
+        val sourceRepo = request.sourceRepo
+        val destRepo = request.destRepo
+        val file = request.file
+
+        if (sourceRepo is RangeReadableFileRepository && destRepo is ResumableFileUploadRepository) {
+            return destRepo.uploadFileResumable(
+                request = ResumableFileUploadRequest(
+                    id = request.destDirId,
+                    fileName = file.fileName,
+                    source = ResumableFileSource(
+                        repository = sourceRepo,
+                        fileId = file.sourceFileId,
+                        size = file.fileSize,
+                    ),
+                    overwrite = request.overwrite,
+                    resumeKey = "paste_${request.jobId}_${file.id}",
+                ),
+                onRead = progressFlow,
+                shouldStop = { isStopped },
+            )
+        }
+
+        sourceRepo.getFileContent(file.sourceFileId).use { inputStream ->
+            destRepo.uploadFile(
+                id = request.destDirId,
+                fileName = file.fileName,
+                inputStream = inputStream,
+                size = file.fileSize,
+                onRead = progressFlow,
+                overwrite = request.overwrite,
+            )
+        }
+        return true
+    }
+
+    private data class PasteFileRequest(
+        val sourceRepo: FileRepository,
+        val destRepo: FileRepository,
+        val destDirId: FileObjectId,
+        val file: PasteJobRepository.PasteFile,
+        val overwrite: Boolean,
+        val jobId: Long,
+    )
 
     private suspend fun deleteSourceDirectories(
         files: List<PasteJobRepository.PasteFile>,
