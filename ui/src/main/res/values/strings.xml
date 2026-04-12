@@ -88,4 +88,5 @@
     <string name="delete_detail_failed_section">失敗ファイル</string>
     <string name="delete_detail_completed_section">削除済みファイル</string>
     <string name="delete_state_running">削除中</string>
+    <string name="open_folder_with_external_app">外部アプリで開く</string>
 </resources>
