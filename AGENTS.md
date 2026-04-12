@@ -24,7 +24,7 @@ Androidのファイルビューアです。
 コメントやコミットメッセージ、PRはすべて日本語で記述する。
 
 Composeの記述は以下のルールに従う。
-https://github.com/androidx/androidx/blob/androidx-main/compose/docs/compose-api-guidelines.md
+@docs/compose-guidelines.md
 
 private/internalをできる限り使用し、最小限のアクセスに絞ること。
 
