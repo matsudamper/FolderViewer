@@ -32,11 +32,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import net.matsudamper.folderviewer.ui.R
-import net.matsudamper.folderviewer.ui.util.formatBytes
 
 @Composable
 internal fun FileHeaderItem(
@@ -140,9 +136,8 @@ internal fun FileMediumListItem(
                 textOverflow = textOverflow,
             )
 
-            val dateText = formatLastModified(file.lastModified)
             Text(
-                text = if (file.isDirectory) dateText else "$dateText  ${formatBytes(file.size)}",
+                text = file.subText,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -191,9 +186,8 @@ internal fun FileLargeListItem(
                 textOverflow = textOverflow,
             )
 
-            val dateText = formatLastModified(file.lastModified)
             Text(
-                text = if (file.isDirectory) dateText else "$dateText  ${formatBytes(file.size)}",
+                text = file.subText,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -409,18 +403,12 @@ private fun PreviewFileLargeGridItem() {
     }
 }
 
-private fun formatLastModified(timestamp: Long): String {
-    val sdf = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault())
-    return sdf.format(Date(timestamp))
-}
-
 @Composable
 private fun previewUiFileItem() = FileBrowserUiState.UiFileItem.File(
     name = "FileName.txt",
     key = "/path/to/FileName.txt",
     isDirectory = false,
-    size = 1024L * 1024L,
-    lastModified = 0L,
+    subText = "1970/01/01 09:00  1.0 MB",
     thumbnail = null,
     isSelected = false,
     callbacks = object : FileBrowserUiState.UiFileItem.File.Callbacks {
