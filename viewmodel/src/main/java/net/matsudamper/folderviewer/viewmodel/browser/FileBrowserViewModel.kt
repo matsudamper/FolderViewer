@@ -6,9 +6,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -975,8 +975,7 @@ class FileBrowserViewModel @AssistedInject constructor(
     }
 
     private fun buildSubText(isDirectory: Boolean, lastModified: Long, size: Long): String {
-        val sdf = SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault())
-        val dateText = sdf.format(Date(lastModified))
+        val dateText = lastModifiedFormatter.format(Instant.ofEpochMilli(lastModified).atZone(ZoneId.systemDefault()))
         return if (isDirectory) dateText else "$dateText  ${formatBytes(size)}"
     }
 
@@ -1009,6 +1008,9 @@ class FileBrowserViewModel @AssistedInject constructor(
     }
 
     companion object {
+        private val lastModifiedFormatter: DateTimeFormatter =
+            DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm")
+
         @AssistedFactory
         interface Factory {
             fun create(arguments: FileBrowser): FileBrowserViewModel
