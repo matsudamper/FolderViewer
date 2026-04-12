@@ -33,7 +33,6 @@ import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import net.matsudamper.folderviewer.ui.R
-import net.matsudamper.folderviewer.ui.util.formatBytes
 
 @Composable
 internal fun FileHeaderItem(
@@ -137,13 +136,11 @@ internal fun FileMediumListItem(
                 textOverflow = textOverflow,
             )
 
-            if (!file.isDirectory) {
-                Text(
-                    text = formatBytes(file.size),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            Text(
+                text = file.subText,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -189,13 +186,11 @@ internal fun FileLargeListItem(
                 textOverflow = textOverflow,
             )
 
-            if (!file.isDirectory) {
-                Text(
-                    text = formatBytes(file.size),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            Text(
+                text = file.subText,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -413,8 +408,7 @@ private fun previewUiFileItem() = FileBrowserUiState.UiFileItem.File(
     name = "FileName.txt",
     key = "/path/to/FileName.txt",
     isDirectory = false,
-    size = 1024L * 1024L,
-    lastModified = 0L,
+    subText = "1970/01/01 09:00  1.0 MB",
     thumbnail = null,
     isSelected = false,
     callbacks = object : FileBrowserUiState.UiFileItem.File.Callbacks {

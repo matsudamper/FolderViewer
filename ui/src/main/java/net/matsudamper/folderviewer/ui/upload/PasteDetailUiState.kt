@@ -12,6 +12,9 @@ data class PasteDetailUiState(
     val completedFiles: List<CompletedFileItem>,
     val failedFiles: List<FailedFileItem> = emptyList(),
     val canApply: Boolean,
+    val progress: Float?,
+    val currentFileName: String?,
+    val currentFileProgress: Float?,
     val callbacks: Callbacks,
 ) {
     enum class Status {

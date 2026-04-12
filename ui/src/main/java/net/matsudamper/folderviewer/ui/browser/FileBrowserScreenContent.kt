@@ -173,6 +173,14 @@ internal fun FileBrowserScreenContent(
                             contentDescription = "ディレクトリを作成",
                         )
                     }
+                    if (uiState.visibleOpenFolderWithExternalAppButton) {
+                        IconButton(onClick = { callbacks.onOpenFolderWithExternalAppClick() }) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_open_in_new),
+                                contentDescription = "外部アプリで開く",
+                            )
+                        }
+                    }
                 }
             }
         },
@@ -258,6 +266,7 @@ private fun Preview() {
     FileBrowserScreenContent(
         uiState = FileBrowserUiState(
             visibleFolderBrowserButton = true,
+            visibleOpenFolderWithExternalAppButton = false,
             visibleFavoriteButton = true,
             isRefreshing = false,
             title = "サンプルフォルダ",
@@ -284,6 +293,7 @@ private fun Preview() {
                 override fun onUploadFolderClick() = Unit
                 override fun onCreateDirectoryClick() = Unit
                 override fun onConfirmCreateDirectory(directoryName: String) = Unit
+                override fun onOpenFolderWithExternalAppClick() = Unit
                 override fun onCancelSelection() = Unit
                 override fun onCopyClick() = Unit
                 override fun onCutClick() = Unit
@@ -300,8 +310,7 @@ private fun Preview() {
                         name = "ドキュメント",
                         key = "doc1",
                         isDirectory = true,
-                        size = 0,
-                        lastModified = System.currentTimeMillis(),
+                        subText = "2026/01/01 00:00",
                         thumbnail = null,
                         isSelected = false,
                         callbacks = object : FileBrowserUiState.UiFileItem.File.Callbacks {
@@ -314,8 +323,7 @@ private fun Preview() {
                         name = "sample.txt",
                         key = "file1",
                         isDirectory = false,
-                        size = 1024,
-                        lastModified = System.currentTimeMillis(),
+                        subText = "2026/01/01 00:00  1.0 KB",
                         thumbnail = null,
                         isSelected = false,
                         callbacks = object : FileBrowserUiState.UiFileItem.File.Callbacks {

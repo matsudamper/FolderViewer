@@ -66,6 +66,15 @@ internal class FileDeleteWorker @AssistedInject constructor(
                     return@withContext Result.retry()
                 }
 
+                val currentFileName = file.displayPath()
+                deleteJobRepository.updateProgress(
+                    operationId = operationId,
+                    completedFiles = completedFiles,
+                    completedBytes = completedBytes,
+                    failedFiles = failedFiles,
+                    currentFileName = currentFileName,
+                )
+
                 val storageId = file.sourceFileId.storageId
                 val repo = storageRepository.getFileRepository(storageId)
 
@@ -77,7 +86,7 @@ internal class FileDeleteWorker @AssistedInject constructor(
                         completedFiles = completedFiles,
                         completedBytes = completedBytes,
                         failedFiles = failedFiles,
-                        currentFileName = null,
+                        currentFileName = currentFileName,
                     )
                     continue
                 }
@@ -105,9 +114,9 @@ internal class FileDeleteWorker @AssistedInject constructor(
                     completedFiles = completedFiles,
                     completedBytes = completedBytes,
                     failedFiles = failedFiles,
-                    currentFileName = null,
+                    currentFileName = currentFileName,
                 )
-                updateNotification(notificationId, completedFiles, job.totalFiles)
+                updateNotification(notificationId, completedFiles, job.totalFiles, currentFileName)
             }
 
             val finalStatus = if (failedFiles > 0) {
@@ -168,17 +177,35 @@ internal class FileDeleteWorker @AssistedInject constructor(
         }
     }
 
-    private fun updateNotification(notificationId: Int, completedFiles: Int, totalFiles: Int) {
+    private fun updateNotification(
+        notificationId: Int,
+        completedFiles: Int,
+        totalFiles: Int,
+        currentFileName: String?,
+    ) {
         createNotificationChannel()
+        val text = if (currentFileName != null) {
+            "$currentFileName ($completedFiles/$totalFiles)"
+        } else {
+            "$completedFiles/$totalFiles ファイル完了"
+        }
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setContentTitle("ファイル削除中")
-            .setContentText("$completedFiles/$totalFiles ファイル完了")
+            .setContentText(text)
             .setSmallIcon(android.R.drawable.ic_menu_delete)
             .setProgress(totalFiles, completedFiles, false)
             .setOngoing(true)
             .build()
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(notificationId, notification)
+    }
+
+    private fun DeleteJobRepository.DeleteFile.displayPath(): String {
+        return if (parentRelativePath.isEmpty()) {
+            fileName
+        } else {
+            "$parentRelativePath/$fileName"
+        }
     }
 
     private fun createNotificationChannel() {

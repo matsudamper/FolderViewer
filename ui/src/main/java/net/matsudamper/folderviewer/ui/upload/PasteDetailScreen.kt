@@ -15,6 +15,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -92,6 +93,17 @@ public fun PasteDetailScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            if (uiState.status == Status.ENQUEUED || uiState.status == Status.RUNNING) {
+                item {
+                    ProgressCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        progress = uiState.progress,
+                        currentFileName = uiState.currentFileName,
+                        currentFileProgress = uiState.currentFileProgress,
+                    )
+                }
+            }
+
             if (uiState.status == Status.FAILED) {
                 item {
                     Card(
@@ -203,6 +215,55 @@ public fun PasteDetailScreen(
                 key = { it.path },
             ) { item ->
                 CompletedFileRow(item = item)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProgressCard(
+    progress: Float?,
+    currentFileName: String?,
+    currentFileProgress: Float?,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (progress != null) {
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            if (currentFileName != null) {
+                Text(
+                    text = currentFileName,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+                if (currentFileProgress != null) {
+                    LinearProgressIndicator(
+                        progress = { currentFileProgress },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else {
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
         }
     }

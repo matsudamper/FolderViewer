@@ -528,6 +528,17 @@ private fun FileBrowserEventHandler(
                     }
                 }
 
+                is FileBrowserViewModel.ViewModelEvent.OpenFolderWithExternalApp -> {
+                    val uri = android.net.Uri.fromFile(File(event.path))
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(uri, "resource/folder")
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    runCatching {
+                        context.startActivity(intent)
+                    }
+                }
+
                 is FileBrowserViewModel.ViewModelEvent.OpenWithExternalPlayer -> {
                     val uri = when (val externalUri = event.viewSourceUri) {
                         is ViewSourceUri.LocalFile -> {
@@ -548,6 +559,19 @@ private fun FileBrowserEventHandler(
                                 fileName = event.fileName,
                             )
                         }
+                    }
+                    val isApk = event.mimeType == "application/vnd.android.package-archive"
+                    if (isApk && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O &&
+                        !context.packageManager.canRequestPackageInstalls()
+                    ) {
+                        runCatching {
+                            context.startActivity(
+                                Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                                    data = android.net.Uri.parse("package:${context.packageName}")
+                                },
+                            )
+                        }
+                        return@collect
                     }
                     val intent = Intent(Intent.ACTION_VIEW).apply {
                         setDataAndType(uri, event.mimeType ?: "*/*")
@@ -646,6 +670,7 @@ private fun EntryProviderScope<NavKey>.fileBrowserEntry(navigator: Navigator) {
         FileBrowserScreen(
             uiState = uiStateValue,
             uiEvent = viewModel.uiEvent,
+            onNavigateToUploadProgress = { navigator.navigate(UploadProgress) },
         )
     }
 }

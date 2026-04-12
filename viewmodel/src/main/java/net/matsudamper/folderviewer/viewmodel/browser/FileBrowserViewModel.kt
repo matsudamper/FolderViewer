@@ -6,6 +6,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -33,6 +36,7 @@ import net.matsudamper.folderviewer.repository.PasteJobRepository
 import net.matsudamper.folderviewer.repository.PreferencesRepository
 import net.matsudamper.folderviewer.repository.ClipboardRepository
 import net.matsudamper.folderviewer.repository.SelectionModeRepository
+import net.matsudamper.folderviewer.repository.StorageConfiguration
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.UploadJobRepository
 import net.matsudamper.folderviewer.viewmodel.worker.FileDeleteWorker
@@ -40,6 +44,7 @@ import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
+import net.matsudamper.folderviewer.ui.util.formatBytes
 import net.matsudamper.folderviewer.viewmodel.util.FileUtil
 import net.matsudamper.folderviewer.viewmodel.worker.FilePasteWorker
 import net.matsudamper.folderviewer.viewmodel.worker.FileUploadWorker
@@ -172,6 +177,13 @@ class FileBrowserViewModel @AssistedInject constructor(
             }
         }
 
+        override fun onOpenFolderWithExternalAppClick() {
+            val path = viewModelStateFlow.value.localFolderPath ?: return
+            viewModelScope.launch {
+                viewModelEventChannel.send(ViewModelEvent.OpenFolderWithExternalApp(path))
+            }
+        }
+
         override fun onConfirmCreateDirectory(directoryName: String) {
             viewModelScope.launch {
                 runCatching {
@@ -299,8 +311,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                 name = fileItem.displayPath,
                 key = fileItem.id.id,
                 isDirectory = fileItem.isDirectory,
-                size = fileItem.size,
-                lastModified = fileItem.lastModified,
+                subText = buildSubText(fileItem.isDirectory, fileItem.lastModified, fileItem.size),
                 thumbnail = if (isImage) {
                     FileImageSource.Thumbnail(
                         fileId = fileItem.id,
@@ -318,8 +329,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                 name = favorite.displayPath,
                 key = favorite.fileId.id,
                 isDirectory = true,
-                size = 0,
-                lastModified = 0,
+                subText = "",
                 thumbnail = if (FileUtil.isImage(favorite.displayPath)) {
                     FileImageSource.Thumbnail(
                         fileId = favorite.fileId,
@@ -354,6 +364,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             sortConfig = viewModelState.sortConfig,
             displayConfig = viewModelState.displayConfig,
             visibleFolderBrowserButton = viewModelState.rootWritable,
+            visibleOpenFolderWithExternalAppButton = viewModelState.localFolderPath != null,
             isSelectionMode = isSelectionMode,
             selectedCount = selectedItems.size,
             isPasteMode = clipboardState != null,
@@ -438,8 +449,18 @@ class FileBrowserViewModel @AssistedInject constructor(
     private fun loadStorageName() {
         viewModelScope.launch {
             val storage = storageRepository.storageList.first().find { it.id == fileObjectId.storageId }
-            if (storage != null) {
-                viewModelStateFlow.update { it.copy(storageName = storage.name) }
+            viewModelStateFlow.update { state ->
+                state.copy(
+                    storageName = storage?.name ?: state.storageName,
+                    localFolderPath = if (storage is StorageConfiguration.Local) {
+                        when (fileObjectId) {
+                            is FileObjectId.Root -> storage.rootPath
+                            is FileObjectId.Item -> "${storage.rootPath}/${fileObjectId.id}"
+                        }
+                    } else {
+                        state.localFolderPath
+                    },
+                )
             }
         }
     }
@@ -528,6 +549,8 @@ class FileBrowserViewModel @AssistedInject constructor(
 
         data object RequestNotificationPermissionForDelete : ViewModelEvent
 
+        data class OpenFolderWithExternalApp(val path: String) : ViewModelEvent
+
         data class OpenWithExternalPlayer(
             val viewSourceUri: ViewSourceUri,
             val fileId: FileObjectId.Item,
@@ -559,7 +582,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         )
 
         WorkManager.getInstance(getApplication()).enqueue(workRequest)
-        uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ファイルのアップロードを開始しました"))
+        uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ファイルのアップロードを開始しました", showAction = true))
     }
 
     private suspend fun handlePaste(clipboardState: ClipboardRepository.ClipboardState) {
@@ -604,7 +627,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             WorkManager.getInstance(getApplication()).enqueue(workRequestWithData)
 
             clipboardRepository.clearClipboard()
-            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ペーストを開始しました"))
+            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ペーストを開始しました", showAction = true))
         }.onFailure { e ->
             when (e) {
                 is CancellationException -> throw e
@@ -636,7 +659,7 @@ class FileBrowserViewModel @AssistedInject constructor(
 
             WorkManager.getInstance(getApplication()).enqueue(workRequest)
 
-            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("削除を開始しました"))
+            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("削除を開始しました", showAction = true))
         }.onFailure { e ->
             when (e) {
                 is CancellationException -> throw e
@@ -740,7 +763,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             }
 
             enqueueFolderUpload(documentFile, folderName)
-            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("フォルダのアップロードを開始しました"))
+            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("フォルダのアップロードを開始しました", showAction = true))
         }.onFailure { e ->
             when (e) {
                 is CancellationException -> throw e
@@ -782,6 +805,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                 isFolder = true,
                 fileObjectId = fileObjectId,
                 displayPath = arg.displayPath.orEmpty(),
+                totalFiles = files.size,
             ),
         )
 
@@ -951,6 +975,11 @@ class FileBrowserViewModel @AssistedInject constructor(
         selectionModeRepository.setSelectionMode(true)
     }
 
+    private fun buildSubText(isDirectory: Boolean, lastModified: Long, size: Long): String {
+        val dateText = lastModifiedFormatter.format(Instant.ofEpochMilli(lastModified).atZone(ZoneId.systemDefault()))
+        return if (isDirectory) dateText else "$dateText  ${formatBytes(size)}"
+    }
+
     private data class ViewModelState(
         val isLoading: Boolean = false,
         val isRefreshing: Boolean = false,
@@ -969,6 +998,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         val hasError: Boolean = false,
         val selectedState: SelectionState = SelectionState.NonSelected,
         val rootWritable: Boolean = false,
+        val localFolderPath: String? = null,
     ) {
         sealed interface SelectionState {
             data object NonSelected : SelectionState
@@ -979,6 +1009,9 @@ class FileBrowserViewModel @AssistedInject constructor(
     }
 
     companion object {
+        private val lastModifiedFormatter: DateTimeFormatter =
+            DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm")
+
         @AssistedFactory
         interface Factory {
             fun create(arguments: FileBrowser): FileBrowserViewModel
