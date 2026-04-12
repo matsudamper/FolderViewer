@@ -580,7 +580,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         )
 
         WorkManager.getInstance(getApplication()).enqueue(workRequest)
-        uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ファイルのアップロードを開始しました"))
+        uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ファイルのアップロードを開始しました", showAction = true))
     }
 
     private suspend fun handlePaste(clipboardState: ClipboardRepository.ClipboardState) {
@@ -625,7 +625,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             WorkManager.getInstance(getApplication()).enqueue(workRequestWithData)
 
             clipboardRepository.clearClipboard()
-            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ペーストを開始しました"))
+            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ペーストを開始しました", showAction = true))
         }.onFailure { e ->
             when (e) {
                 is CancellationException -> throw e
@@ -657,7 +657,7 @@ class FileBrowserViewModel @AssistedInject constructor(
 
             WorkManager.getInstance(getApplication()).enqueue(workRequest)
 
-            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("削除を開始しました"))
+            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("削除を開始しました", showAction = true))
         }.onFailure { e ->
             when (e) {
                 is CancellationException -> throw e
@@ -761,7 +761,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             }
 
             enqueueFolderUpload(documentFile, folderName)
-            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("フォルダのアップロードを開始しました"))
+            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("フォルダのアップロードを開始しました", showAction = true))
         }.onFailure { e ->
             when (e) {
                 is CancellationException -> throw e

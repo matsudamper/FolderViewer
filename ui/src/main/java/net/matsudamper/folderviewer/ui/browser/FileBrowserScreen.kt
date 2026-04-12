@@ -3,6 +3,7 @@ package net.matsudamper.folderviewer.ui.browser
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.Flow
 fun FileBrowserScreen(
     uiState: FileBrowserUiState,
     uiEvent: Flow<FileBrowserUiEvent>,
+    onNavigateToUploadProgress: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BackHandler(enabled = true) {
@@ -28,7 +30,13 @@ fun FileBrowserScreen(
         uiEvent.collect { event ->
             when (event) {
                 is FileBrowserUiEvent.ShowSnackbar -> {
-                    snackbarHostState.showSnackbar(event.message)
+                    val result = snackbarHostState.showSnackbar(
+                        message = event.message,
+                        actionLabel = if (event.showAction) "表示" else null,
+                    )
+                    if (result == SnackbarResult.ActionPerformed) {
+                        onNavigateToUploadProgress()
+                    }
                 }
                 is FileBrowserUiEvent.ShowCreateDirectoryDialog -> {
                     showCreateDirectoryDialog.value = true
