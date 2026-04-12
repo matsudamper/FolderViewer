@@ -310,8 +310,7 @@ private fun Preview() {
                         name = "ドキュメント",
                         key = "doc1",
                         isDirectory = true,
-                        size = 0,
-                        lastModified = System.currentTimeMillis(),
+                        subText = "2026/01/01 00:00",
                         thumbnail = null,
                         isSelected = false,
                         callbacks = object : FileBrowserUiState.UiFileItem.File.Callbacks {
@@ -324,8 +323,7 @@ private fun Preview() {
                         name = "sample.txt",
                         key = "file1",
                         isDirectory = false,
-                        size = 1024,
-                        lastModified = System.currentTimeMillis(),
+                        subText = "2026/01/01 00:00  1.0 KB",
                         thumbnail = null,
                         isSelected = false,
                         callbacks = object : FileBrowserUiState.UiFileItem.File.Callbacks {
