@@ -126,6 +126,20 @@ class PasteDetailViewModel @Inject constructor(
                     duplicateItems.all { it.resolution != null } &&
                     job.status == PasteJobRepository.PasteJobStatus.WAITING_RESOLUTION
 
+                val isRunning = job.status == PasteJobRepository.PasteJobStatus.RUNNING
+                val isActive = isRunning || job.status == PasteJobRepository.PasteJobStatus.ENQUEUED
+                val progress = if (isActive && job.totalBytes > 0) {
+                    (job.completedBytes + job.currentFileBytes).toFloat() / job.totalBytes.toFloat()
+                } else {
+                    null
+                }
+                val currentFileName = if (isRunning) job.currentFileName else null
+                val currentFileProgress = if (isRunning && job.currentFileTotalBytes > 0) {
+                    job.currentFileBytes.toFloat() / job.currentFileTotalBytes.toFloat()
+                } else {
+                    null
+                }
+
                 val callbacks = object : PasteDetailUiState.Callbacks {
                     override fun onBackClick() {
                         viewModelScope.launch {
@@ -161,6 +175,9 @@ class PasteDetailViewModel @Inject constructor(
                     completedFiles = completedItems,
                     failedFiles = failedItems,
                     canApply = canApply,
+                    progress = progress,
+                    currentFileName = currentFileName,
+                    currentFileProgress = currentFileProgress,
                     callbacks = callbacks,
                 )
             }.collect { state ->

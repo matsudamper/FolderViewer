@@ -33,6 +33,7 @@ import net.matsudamper.folderviewer.repository.PasteJobRepository
 import net.matsudamper.folderviewer.repository.PreferencesRepository
 import net.matsudamper.folderviewer.repository.ClipboardRepository
 import net.matsudamper.folderviewer.repository.SelectionModeRepository
+import net.matsudamper.folderviewer.repository.StorageConfiguration
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.UploadJobRepository
 import net.matsudamper.folderviewer.viewmodel.worker.FileDeleteWorker
@@ -169,6 +170,13 @@ class FileBrowserViewModel @AssistedInject constructor(
         override fun onCreateDirectoryClick() {
             viewModelScope.launch {
                 uiChannelEvent.send(FileBrowserUiEvent.ShowCreateDirectoryDialog)
+            }
+        }
+
+        override fun onOpenFolderWithExternalAppClick() {
+            val path = viewModelStateFlow.value.localFolderPath ?: return
+            viewModelScope.launch {
+                viewModelEventChannel.send(ViewModelEvent.OpenFolderWithExternalApp(path))
             }
         }
 
@@ -354,6 +362,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             sortConfig = viewModelState.sortConfig,
             displayConfig = viewModelState.displayConfig,
             visibleFolderBrowserButton = viewModelState.rootWritable,
+            visibleOpenFolderWithExternalAppButton = viewModelState.localFolderPath != null,
             isSelectionMode = isSelectionMode,
             selectedCount = selectedItems.size,
             isPasteMode = clipboardState != null,
@@ -438,8 +447,18 @@ class FileBrowserViewModel @AssistedInject constructor(
     private fun loadStorageName() {
         viewModelScope.launch {
             val storage = storageRepository.storageList.first().find { it.id == fileObjectId.storageId }
-            if (storage != null) {
-                viewModelStateFlow.update { it.copy(storageName = storage.name) }
+            viewModelStateFlow.update { state ->
+                state.copy(
+                    storageName = storage?.name ?: state.storageName,
+                    localFolderPath = if (storage is StorageConfiguration.Local) {
+                        when (fileObjectId) {
+                            is FileObjectId.Root -> storage.rootPath
+                            is FileObjectId.Item -> "${storage.rootPath}/${fileObjectId.id}"
+                        }
+                    } else {
+                        state.localFolderPath
+                    },
+                )
             }
         }
     }
@@ -528,6 +547,8 @@ class FileBrowserViewModel @AssistedInject constructor(
 
         data object RequestNotificationPermissionForDelete : ViewModelEvent
 
+        data class OpenFolderWithExternalApp(val path: String) : ViewModelEvent
+
         data class OpenWithExternalPlayer(
             val viewSourceUri: ViewSourceUri,
             val fileId: FileObjectId.Item,
@@ -559,7 +580,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         )
 
         WorkManager.getInstance(getApplication()).enqueue(workRequest)
-        uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ファイルのアップロードを開始しました"))
+        uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ファイルのアップロードを開始しました", showAction = true))
     }
 
     private suspend fun handlePaste(clipboardState: ClipboardRepository.ClipboardState) {
@@ -604,7 +625,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             WorkManager.getInstance(getApplication()).enqueue(workRequestWithData)
 
             clipboardRepository.clearClipboard()
-            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ペーストを開始しました"))
+            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ペーストを開始しました", showAction = true))
         }.onFailure { e ->
             when (e) {
                 is CancellationException -> throw e
@@ -636,7 +657,7 @@ class FileBrowserViewModel @AssistedInject constructor(
 
             WorkManager.getInstance(getApplication()).enqueue(workRequest)
 
-            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("削除を開始しました"))
+            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("削除を開始しました", showAction = true))
         }.onFailure { e ->
             when (e) {
                 is CancellationException -> throw e
@@ -740,7 +761,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             }
 
             enqueueFolderUpload(documentFile, folderName)
-            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("フォルダのアップロードを開始しました"))
+            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("フォルダのアップロードを開始しました", showAction = true))
         }.onFailure { e ->
             when (e) {
                 is CancellationException -> throw e
@@ -782,6 +803,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                 isFolder = true,
                 fileObjectId = fileObjectId,
                 displayPath = arg.displayPath.orEmpty(),
+                totalFiles = files.size,
             ),
         )
 
@@ -969,6 +991,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         val hasError: Boolean = false,
         val selectedState: SelectionState = SelectionState.NonSelected,
         val rootWritable: Boolean = false,
+        val localFolderPath: String? = null,
     ) {
         sealed interface SelectionState {
             data object NonSelected : SelectionState

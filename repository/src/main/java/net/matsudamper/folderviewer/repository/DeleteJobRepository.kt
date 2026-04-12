@@ -67,6 +67,12 @@ class DeleteJobRepository @Inject internal constructor(
         }
     }
 
+    suspend fun getFiles(operationId: Long): List<DeleteFile> {
+        return deleteFileDao.getByOperationId(operationId).mapNotNull { entity ->
+            runCatching { entity.toDomain() }.getOrNull()
+        }
+    }
+
     suspend fun getPendingFiles(operationId: Long): List<DeleteFile> {
         return deleteFileDao.getPendingByOperationId(operationId).mapNotNull { entity ->
             runCatching { entity.toDomain() }.getOrNull()

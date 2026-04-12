@@ -5,6 +5,7 @@ import net.matsudamper.folderviewer.coil.FileImageSource
 
 data class FileBrowserUiState(
     val visibleFolderBrowserButton: Boolean,
+    val visibleOpenFolderWithExternalAppButton: Boolean,
     val visibleFavoriteButton: Boolean,
     val isRefreshing: Boolean,
     val title: String,
@@ -73,6 +74,7 @@ data class FileBrowserUiState(
         fun onUploadFileClick()
         fun onUploadFolderClick()
         fun onCreateDirectoryClick()
+        fun onOpenFolderWithExternalAppClick()
         fun onConfirmCreateDirectory(directoryName: String)
         fun onCancelSelection()
         fun onCopyClick()
