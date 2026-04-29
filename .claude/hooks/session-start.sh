@@ -212,8 +212,15 @@ if sdk_license_hash not in existing_license:
         f.write(f'\n{sdk_license_hash}\n')
 print("[session-start] Android SDK license accepted")
 
+try:
+    with open(local_props) as f:
+        existing_local_lines = f.readlines()
+except FileNotFoundError:
+    existing_local_lines = []
+new_local_lines = [l for l in existing_local_lines if not l.startswith('sdk.dir=')]
+new_local_lines.append(f'sdk.dir={android_home}\n')
 with open(local_props, 'w') as f:
-    f.write(f"sdk.dir={android_home}\n")
+    f.writelines(new_local_lines)
 print(f"[session-start] local.properties written: sdk.dir={android_home}")
 
 platform_dir = os.path.join(android_home, 'platforms', 'android-36')
