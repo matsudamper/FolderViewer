@@ -200,8 +200,16 @@ if not os.path.exists(sdkmanager_bin):
 
 licenses_dir = os.path.join(android_home, 'licenses')
 os.makedirs(licenses_dir, exist_ok=True)
-with open(os.path.join(licenses_dir, 'android-sdk-license'), 'w') as f:
-    f.write('\n24333f8a63b6825ea9c5514f83c2829b004d1fee\n')
+sdk_license_file = os.path.join(licenses_dir, 'android-sdk-license')
+sdk_license_hash = '24333f8a63b6825ea9c5514f83c2829b004d1fee'
+try:
+    with open(sdk_license_file) as f:
+        existing_license = f.read()
+except FileNotFoundError:
+    existing_license = ''
+if sdk_license_hash not in existing_license:
+    with open(sdk_license_file, 'a') as f:
+        f.write(f'\n{sdk_license_hash}\n')
 print("[session-start] Android SDK license accepted")
 
 with open(local_props, 'w') as f:
