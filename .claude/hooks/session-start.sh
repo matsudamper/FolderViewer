@@ -122,23 +122,32 @@ if (proxyUser && proxyPassword) {{
 """)
     print(f"[session-start] Gradle init script written: {init_script}")
 
-    props = (
-        f"systemProp.https.proxyHost={host}\n"
-        f"systemProp.https.proxyPort={port}\n"
-        f"systemProp.https.proxyUser={user}\n"
-        f"systemProp.https.proxyPassword={password}\n"
-        f"systemProp.http.proxyHost={host}\n"
-        f"systemProp.http.proxyPort={port}\n"
-        f"systemProp.http.proxyUser={user}\n"
-        f"systemProp.http.proxyPassword={password}\n"
-        f"systemProp.https.nonProxyHosts=localhost|127.0.0.1\n"
-        f"systemProp.http.nonProxyHosts=localhost|127.0.0.1\n"
-        f"systemProp.jdk.http.auth.tunneling.disabledSchemes=\n"
-        f"systemProp.jdk.http.auth.proxying.disabledSchemes=\n"
-    )
+    proxy_props = {
+        'systemProp.https.proxyHost': host,
+        'systemProp.https.proxyPort': port,
+        'systemProp.https.proxyUser': urllib.parse.unquote(user),
+        'systemProp.https.proxyPassword': urllib.parse.unquote(password),
+        'systemProp.http.proxyHost': host,
+        'systemProp.http.proxyPort': port,
+        'systemProp.http.proxyUser': urllib.parse.unquote(user),
+        'systemProp.http.proxyPassword': urllib.parse.unquote(password),
+        'systemProp.https.nonProxyHosts': 'localhost|127.0.0.1',
+        'systemProp.http.nonProxyHosts': 'localhost|127.0.0.1',
+        'systemProp.jdk.http.auth.tunneling.disabledSchemes': '',
+        'systemProp.jdk.http.auth.proxying.disabledSchemes': '',
+    }
     gradle_home = os.path.expanduser('~/.gradle')
-    with open(os.path.join(gradle_home, 'gradle.properties'), 'w') as f:
-        f.write(props)
+    gradle_props_path = os.path.join(gradle_home, 'gradle.properties')
+    try:
+        with open(gradle_props_path) as f:
+            existing_lines = f.readlines()
+    except FileNotFoundError:
+        existing_lines = []
+    new_lines = [l for l in existing_lines if l.split('=', 1)[0].strip() not in proxy_props]
+    for k, v in proxy_props.items():
+        new_lines.append(f'{k}={v}\n')
+    with open(gradle_props_path, 'w') as f:
+        f.writelines(new_lines)
     print(f"[session-start] gradle.properties written (proxy={host}:{port})")
 
 if proxy_url:
