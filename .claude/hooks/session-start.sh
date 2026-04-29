@@ -16,15 +16,23 @@ def enable_basic_auth_tunneling(jdk_path, label):
     net_props = os.path.join(jdk_path, 'conf', 'net.properties')
     if not os.path.exists(net_props):
         return
+    if not os.access(net_props, os.W_OK):
+        print(f"[session-start] Skipping {label} net.properties (read-only)")
+        return
     with open(net_props) as f:
-        content = f.read()
-    if 'jdk.http.auth.tunneling.disabledSchemes=Basic' in content:
-        content = content.replace(
-            'jdk.http.auth.tunneling.disabledSchemes=Basic',
-            'jdk.http.auth.tunneling.disabledSchemes='
-        )
+        lines = f.readlines()
+    new_lines = []
+    changed = False
+    for line in lines:
+        stripped = line.strip()
+        if not stripped.startswith('#') and stripped.startswith('jdk.http.auth.tunneling.disabledSchemes=Basic'):
+            new_lines.append(line.replace('disabledSchemes=Basic', 'disabledSchemes='))
+            changed = True
+        else:
+            new_lines.append(line)
+    if changed:
         with open(net_props, 'w') as f:
-            f.write(content)
+            f.writelines(new_lines)
         print(f"[session-start] Enabled Basic auth tunneling in {label} net.properties")
 
 def import_ca_into_jdk(jdk_path, label):
