@@ -91,7 +91,7 @@ if not proxy_url:
 else:
     parsed   = urllib.parse.urlparse(proxy_url)
     host     = parsed.hostname
-    port     = str(parsed.port)
+    port     = str(parsed.port) if parsed.port is not None else ''
     user     = parsed.username or ''
     password = parsed.password or ''
 
@@ -124,11 +124,9 @@ if (proxyUser && proxyPassword) {{
 
     proxy_props = {
         'systemProp.https.proxyHost': host,
-        'systemProp.https.proxyPort': port,
         'systemProp.https.proxyUser': urllib.parse.unquote(user),
         'systemProp.https.proxyPassword': urllib.parse.unquote(password),
         'systemProp.http.proxyHost': host,
-        'systemProp.http.proxyPort': port,
         'systemProp.http.proxyUser': urllib.parse.unquote(user),
         'systemProp.http.proxyPassword': urllib.parse.unquote(password),
         'systemProp.https.nonProxyHosts': 'localhost|127.0.0.1',
@@ -136,6 +134,9 @@ if (proxyUser && proxyPassword) {{
         'systemProp.jdk.http.auth.tunneling.disabledSchemes': '',
         'systemProp.jdk.http.auth.proxying.disabledSchemes': '',
     }
+    if port:
+        proxy_props['systemProp.https.proxyPort'] = port
+        proxy_props['systemProp.http.proxyPort'] = port
     gradle_home = os.path.expanduser('~/.gradle')
     gradle_props_path = os.path.join(gradle_home, 'gradle.properties')
     try:
