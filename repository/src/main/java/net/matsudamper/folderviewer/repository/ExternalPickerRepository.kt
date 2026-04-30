@@ -46,6 +46,6 @@ class ExternalPickerRepository @Inject constructor() {
     }
 
     fun clear() {
-        _selectedItems.value = LinkedHashMap()
+        _selectedItems.update { LinkedHashMap() }
     }
 }

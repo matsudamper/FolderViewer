@@ -87,6 +87,14 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
 
         override fun onDisplayModeChanged(config: UiDisplayConfig) {
             viewModelStateFlow.update { it.copy(displayConfig = config) }
+            viewModelScope.launch {
+                preferencesRepository.saveFileBrowserDisplayMode(
+                    when (config.displayMode) {
+                        UiDisplayConfig.DisplayMode.List -> PreferencesRepository.DisplayMode.List
+                        UiDisplayConfig.DisplayMode.Grid -> PreferencesRepository.DisplayMode.Grid
+                    },
+                )
+            }
         }
 
         override fun onSelectedCountClick() {

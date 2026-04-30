@@ -71,11 +71,16 @@ class FilePickerActivity : ComponentActivity() {
                 FilePickerContent(
                     allowMultiple = allowMultiple,
                     onReturnResult = { uris, mimeType ->
+                        if (uris.isEmpty()) {
+                            setResult(RESULT_CANCELED)
+                            finish()
+                            return@FilePickerContent
+                        }
                         val resultIntent = Intent()
                         if (uris.size == 1) {
                             resultIntent.data = uris.first()
                             if (mimeType != null) resultIntent.type = mimeType
-                        } else if (uris.size > 1) {
+                        } else {
                             val clipData = ClipData.newRawUri(null, uris.first())
                             uris.drop(1).forEach { clipData.addItem(ClipData.Item(it)) }
                             resultIntent.clipData = clipData
