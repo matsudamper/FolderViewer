@@ -4,11 +4,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import dagger.hilt.android.scopes.ActivityRetainedScoped
 import jakarta.inject.Inject
-import jakarta.inject.Singleton
 import net.matsudamper.folderviewer.common.FileObjectId
 
-@Singleton
+@ActivityRetainedScoped
 class ExternalPickerRepository @Inject constructor() {
     data class PickerFileItem(
         val id: FileObjectId.Item,

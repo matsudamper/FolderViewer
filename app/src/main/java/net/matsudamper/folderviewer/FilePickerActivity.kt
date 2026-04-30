@@ -14,7 +14,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
-import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.EntryProviderScope
@@ -351,7 +350,9 @@ private fun buildUri(
             )
         }
 
-        is ViewSourceUri.RemoteUrl -> viewSourceUri.url.toUri()
+        is ViewSourceUri.RemoteUrl -> {
+            StreamingContentProvider.buildUri(fileId = fileId, fileName = fileName)
+        }
 
         is ViewSourceUri.StreamProvider -> {
             StreamingContentProvider.buildUri(fileId = fileId, fileName = fileName)
