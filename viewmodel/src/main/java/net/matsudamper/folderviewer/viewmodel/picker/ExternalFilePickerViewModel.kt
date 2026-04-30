@@ -53,7 +53,7 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
     private val viewModelStateFlow = MutableStateFlow(ViewModelState())
     private var fileRepository: FileRepository? = null
 
-    private val displayName get() = arg.displayPath ?: viewModelStateFlow.value.storageName ?: "null"
+    private val displayName get() = arg.displayPath ?: viewModelStateFlow.value.storageName.orEmpty()
 
     private val callbacks = object : ExternalFilePickerUiState.Callbacks {
         override fun onBack() {
@@ -107,10 +107,10 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
             viewModelScope.launch {
                 val selectedItems = externalPickerRepository.selectedItems.value.values.toList()
                 if (selectedItems.isEmpty()) return@launch
-                val results = selectedItems.mapNotNull { pickerItem ->
+                val results = selectedItems.map { pickerItem ->
                     runCatching {
                         val repo = storageRepository.getFileRepository(pickerItem.id.storageId)
-                            ?: return@mapNotNull null
+                            ?: error("storage not found: ${pickerItem.id.storageId}")
                         val viewSourceUri = repo.getViewSourceUri(pickerItem.id)
                         val mimeType = FileUtil.getMimeType(pickerItem.name)
                         ViewModelEvent.ReturnMultipleResults.ResultItem(
@@ -119,9 +119,10 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
                             fileName = pickerItem.name,
                             mimeType = mimeType,
                         )
-                    }.getOrNull()
+                    }
                 }
-                viewModelEventChannel.send(ViewModelEvent.ReturnMultipleResults(results))
+                if (results.any { it.isFailure }) return@launch
+                viewModelEventChannel.send(ViewModelEvent.ReturnMultipleResults(results.map { it.getOrThrow() }))
             }
         }
     }
@@ -278,7 +279,9 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
                 viewModelScope.launch {
                     viewModelEventChannel.send(
                         ViewModelEvent.NavigateToExternalFilePicker(
-                            displayPath = "$displayName/${fileItem.displayPath}",
+                            displayPath = listOf(displayName, fileItem.displayPath)
+                                .filter { it.isNotEmpty() }
+                                .joinToString("/"),
                             fileId = fileItem.id,
                         ),
                     )

@@ -64,7 +64,9 @@ class FilePickerActivity : ComponentActivity() {
 
         val allowMultiple = intent.getBooleanExtra(Intent.EXTRA_ALLOW_MULTIPLE, false)
 
-        externalPickerRepository.clear()
+        if (savedInstanceState == null) {
+            externalPickerRepository.clear()
+        }
 
         setContent {
             FolderViewerTheme {
