@@ -69,7 +69,7 @@ fun ExternalFilePickerSelectedListScreen(
             ) {
                 items(
                     items = uiState.items,
-                    key = { it.fileId.id },
+                    key = { "${it.fileId.storageId.id}/${it.fileId.id}" },
                 ) { item ->
                     SelectedFileItem(item = item)
                 }

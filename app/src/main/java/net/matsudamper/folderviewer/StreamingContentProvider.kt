@@ -161,14 +161,17 @@ class StreamingContentProvider : ContentProvider() {
 
         val pipes = ParcelFileDescriptor.createPipe()
         Thread {
-            ParcelFileDescriptor.AutoCloseOutputStream(pipes[1]).use { output ->
-                runCatching {
-                    runBlocking {
-                        repository.getFileContent(fileId).use { input ->
-                            input.copyTo(output)
-                        }
+            val output = ParcelFileDescriptor.AutoCloseOutputStream(pipes[1])
+            runCatching {
+                runBlocking {
+                    repository.getFileContent(fileId).use { input ->
+                        input.copyTo(output)
                     }
-                }.onFailure { it.printStackTrace() }
+                }
+                output.close()
+            }.onFailure { e ->
+                e.printStackTrace()
+                runCatching { pipes[1].closeWithError(e.message ?: "stream error") }
             }
         }.start()
         return pipes[0]
