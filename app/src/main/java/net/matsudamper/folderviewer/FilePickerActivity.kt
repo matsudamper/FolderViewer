@@ -39,12 +39,12 @@ import net.matsudamper.folderviewer.repository.ExternalPickerRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.ImageViewerScreen
-import net.matsudamper.folderviewer.ui.home.HomeScreen
+import net.matsudamper.folderviewer.ui.home.StoragePickerScreen
 import net.matsudamper.folderviewer.ui.picker.ExternalFilePickerScreen
 import net.matsudamper.folderviewer.ui.picker.ExternalFilePickerSelectedListScreen
 import net.matsudamper.folderviewer.ui.theme.FolderViewerTheme
 import net.matsudamper.folderviewer.viewmodel.browser.ImageViewerViewModel
-import net.matsudamper.folderviewer.viewmodel.home.HomeViewModel
+import net.matsudamper.folderviewer.viewmodel.home.StoragePickerViewModel
 import net.matsudamper.folderviewer.viewmodel.picker.ExternalFilePickerSelectedListViewModel
 import net.matsudamper.folderviewer.viewmodel.picker.ExternalFilePickerViewModel
 
@@ -148,13 +148,13 @@ private fun EntryProviderScope<NavKey>.pickerHomeEntry(
     allowMultiple: Boolean,
 ) {
     entry<Home> {
-        val viewModel: HomeViewModel = hiltViewModel()
+        val viewModel: StoragePickerViewModel = hiltViewModel()
         val uiState by viewModel.uiState.collectAsState()
 
         LaunchedEffect(viewModel.viewModelEventFlow) {
             viewModel.viewModelEventFlow.collect { event ->
                 when (event) {
-                    is HomeViewModel.ViewModelEvent.NavigateToFileBrowser -> {
+                    is StoragePickerViewModel.ViewModelEvent.NavigateToFileBrowser -> {
                         navigator.navigate(
                             ExternalFilePicker(
                                 allowMultiple = allowMultiple,
@@ -163,18 +163,11 @@ private fun EntryProviderScope<NavKey>.pickerHomeEntry(
                             ),
                         )
                     }
-
-                    HomeViewModel.ViewModelEvent.NavigateToSettings,
-                    HomeViewModel.ViewModelEvent.NavigateToUploadProgress,
-                    HomeViewModel.ViewModelEvent.NavigateToStorageTypeSelection,
-                    is HomeViewModel.ViewModelEvent.NavigateToSmbAdd,
-                    is HomeViewModel.ViewModelEvent.NavigateToSharePointAdd,
-                    -> Unit
                 }
             }
         }
 
-        HomeScreen(uiState = uiState)
+        StoragePickerScreen(uiState = uiState)
     }
 }
 

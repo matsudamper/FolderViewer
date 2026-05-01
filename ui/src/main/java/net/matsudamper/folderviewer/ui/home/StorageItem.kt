@@ -71,7 +71,7 @@ internal fun StorageItem(
 }
 
 @Composable
-private fun StorageItemContent(
+internal fun StorageItemContent(
     storage: UiStorageConfiguration,
 ) {
     Column(modifier = Modifier.padding(PaddingNormal)) {
