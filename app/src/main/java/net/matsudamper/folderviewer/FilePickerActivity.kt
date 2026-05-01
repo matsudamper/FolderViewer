@@ -79,8 +79,7 @@ class FilePickerActivity : ComponentActivity() {
                         }
                         val resultIntent = Intent()
                         if (uris.size == 1) {
-                            resultIntent.data = uris.first()
-                            if (mimeType != null) resultIntent.type = mimeType
+                            resultIntent.setDataAndType(uris.first(), mimeType)
                         } else {
                             val clipData = ClipData.newRawUri(null, uris.first())
                             uris.drop(1).forEach { clipData.addItem(ClipData.Item(it)) }
