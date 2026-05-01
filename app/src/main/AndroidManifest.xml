@@ -47,7 +47,7 @@
         <provider
             android:name=".StreamingContentProvider"
             android:authorities="net.matsudamper.folderviewer.streaming"
-            android:exported="true"
+            android:exported="false"
             android:grantUriPermissions="true" />
 
         <service
