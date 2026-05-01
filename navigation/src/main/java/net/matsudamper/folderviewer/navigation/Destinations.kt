@@ -49,6 +49,7 @@ data class ExternalFilePicker(
     val allowMultiple: Boolean,
     val displayPath: String?,
     val fileId: FileObjectId,
+    val acceptedMimeTypes: List<String> = emptyList(),
 ) : NavKey
 
 @Serializable

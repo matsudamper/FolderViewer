@@ -24,4 +24,17 @@ object FileUtil {
         if (extension.isEmpty()) return null
         return MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension.lowercase())
     }
+
+    fun matchesMimeFilter(fileName: String, acceptedMimeTypes: List<String>): Boolean {
+        if (acceptedMimeTypes.isEmpty()) return true
+        if (acceptedMimeTypes.any { it == "*/*" }) return true
+        val fileMimeType = getMimeType(fileName) ?: return true
+        return acceptedMimeTypes.any { pattern ->
+            if (pattern.endsWith("/*")) {
+                fileMimeType.startsWith(pattern.substringBefore("/*") + "/")
+            } else {
+                fileMimeType.equals(pattern, ignoreCase = true)
+            }
+        }
+    }
 }

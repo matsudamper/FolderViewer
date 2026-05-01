@@ -20,6 +20,7 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,6 +34,22 @@ import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
 import net.matsudamper.folderviewer.ui.R
+
+@Composable
+private fun DisabledContentProvider(
+    isEnabled: Boolean,
+    content: @Composable () -> Unit,
+) {
+    val contentColor = if (isEnabled) {
+        LocalContentColor.current
+    } else {
+        LocalContentColor.current.copy(alpha = 0.38f)
+    }
+    CompositionLocalProvider(
+        LocalContentColor provides contentColor,
+        content = content,
+    )
+}
 
 @Composable
 internal fun FileHeaderItem(
@@ -62,36 +79,40 @@ internal fun FileSmallListItem(
     isPasteMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = file.callbacks::onClick,
-                onLongClick = if (isPasteMode) null else file.callbacks::onLongClick,
+    DisabledContentProvider(file.isEnabled) {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    enabled = file.isEnabled,
+                    onClick = file.callbacks::onClick,
+                    onLongClick = if (isPasteMode) null else file.callbacks::onLongClick,
+                )
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (isSelectionMode) {
+                Checkbox(
+                    checked = file.isSelected,
+                    enabled = file.isEnabled,
+                    onCheckedChange = file.callbacks::onCheckedChange,
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+            }
+            FileIcon(
+                file = file,
+                modifier = Modifier
+                    .size(24.dp)
+                    .aspectRatio(1f)
+                    .clip(MaterialTheme.shapes.extraSmall),
             )
-            .padding(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (isSelectionMode) {
-            Checkbox(
-                checked = file.isSelected,
-                onCheckedChange = file.callbacks::onCheckedChange,
+            Spacer(modifier = Modifier.width(8.dp))
+            FileNameText(
+                name = file.name,
+                textOverflow = textOverflow,
+                maxLines = 1,
             )
-            Spacer(modifier = Modifier.width(4.dp))
         }
-        FileIcon(
-            file = file,
-            modifier = Modifier
-                .size(24.dp)
-                .aspectRatio(1f)
-                .clip(MaterialTheme.shapes.extraSmall),
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        FileNameText(
-            name = file.name,
-            textOverflow = textOverflow,
-            maxLines = 1,
-        )
     }
 }
 
@@ -104,43 +125,47 @@ internal fun FileMediumListItem(
     isPasteMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = file.callbacks::onClick,
-                onLongClick = if (isPasteMode) null else file.callbacks::onLongClick,
+    DisabledContentProvider(file.isEnabled) {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    enabled = file.isEnabled,
+                    onClick = file.callbacks::onClick,
+                    onLongClick = if (isPasteMode) null else file.callbacks::onLongClick,
+                )
+                .padding(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (isSelectionMode) {
+                Checkbox(
+                    checked = file.isSelected,
+                    enabled = file.isEnabled,
+                    onCheckedChange = file.callbacks::onCheckedChange,
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+            }
+            FileIcon(
+                file = file,
+                modifier = Modifier
+                    .size(50.dp)
+                    .aspectRatio(1f)
+                    .clip(MaterialTheme.shapes.extraSmall),
             )
-            .padding(4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (isSelectionMode) {
-            Checkbox(
-                checked = file.isSelected,
-                onCheckedChange = file.callbacks::onCheckedChange,
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-        }
-        FileIcon(
-            file = file,
-            modifier = Modifier
-                .size(50.dp)
-                .aspectRatio(1f)
-                .clip(MaterialTheme.shapes.extraSmall),
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Column {
-            FileNameText(
-                name = file.name,
-                maxLines = 2,
-                textOverflow = textOverflow,
-            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                FileNameText(
+                    name = file.name,
+                    maxLines = 2,
+                    textOverflow = textOverflow,
+                )
 
-            Text(
-                text = file.subText,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+                Text(
+                    text = file.subText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -154,43 +179,47 @@ internal fun FileLargeListItem(
     isPasteMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = file.callbacks::onClick,
-                onLongClick = if (isPasteMode) null else file.callbacks::onLongClick,
+    DisabledContentProvider(file.isEnabled) {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    enabled = file.isEnabled,
+                    onClick = file.callbacks::onClick,
+                    onLongClick = if (isPasteMode) null else file.callbacks::onLongClick,
+                )
+                .padding(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (isSelectionMode) {
+                Checkbox(
+                    checked = file.isSelected,
+                    enabled = file.isEnabled,
+                    onCheckedChange = file.callbacks::onCheckedChange,
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+            }
+            FileIcon(
+                file = file,
+                modifier = Modifier
+                    .size(100.dp)
+                    .aspectRatio(1f)
+                    .clip(MaterialTheme.shapes.medium),
             )
-            .padding(4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (isSelectionMode) {
-            Checkbox(
-                checked = file.isSelected,
-                onCheckedChange = file.callbacks::onCheckedChange,
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-        }
-        FileIcon(
-            file = file,
-            modifier = Modifier
-                .size(100.dp)
-                .aspectRatio(1f)
-                .clip(MaterialTheme.shapes.medium),
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Column {
-            FileNameText(
-                name = file.name,
-                maxLines = 4,
-                textOverflow = textOverflow,
-            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                FileNameText(
+                    name = file.name,
+                    maxLines = 4,
+                    textOverflow = textOverflow,
+                )
 
-            Text(
-                text = file.subText,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+                Text(
+                    text = file.subText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }
@@ -257,40 +286,44 @@ private fun FileGridItem(
     isPasteMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier
-            .combinedClickable(
-                onClick = file.callbacks::onClick,
-                onLongClick = if (isPasteMode) null else file.callbacks::onLongClick,
-            )
-            .padding(padding),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Box {
-            FileIcon(
-                file = file,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .clip(MaterialTheme.shapes.medium)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-            )
-            if (isSelectionMode) {
-                Checkbox(
-                    checked = file.isSelected,
-                    onCheckedChange = file.callbacks::onCheckedChange,
-                    modifier = Modifier.align(Alignment.TopStart),
+    DisabledContentProvider(file.isEnabled) {
+        Column(
+            modifier = modifier
+                .combinedClickable(
+                    enabled = file.isEnabled,
+                    onClick = file.callbacks::onClick,
+                    onLongClick = if (isPasteMode) null else file.callbacks::onLongClick,
                 )
+                .padding(padding),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Box {
+                FileIcon(
+                    file = file,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .clip(MaterialTheme.shapes.medium)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                )
+                if (isSelectionMode) {
+                    Checkbox(
+                        checked = file.isSelected,
+                        enabled = file.isEnabled,
+                        onCheckedChange = file.callbacks::onCheckedChange,
+                        modifier = Modifier.align(Alignment.TopStart),
+                    )
+                }
             }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = file.name,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 2,
+                overflow = textOverflow,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
         }
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = file.name,
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 2,
-            overflow = textOverflow,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-        )
     }
 }
 
