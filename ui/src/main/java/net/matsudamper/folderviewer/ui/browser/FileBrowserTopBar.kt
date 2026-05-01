@@ -110,7 +110,7 @@ internal fun FileBrowserTopBar(
                 )
             }
 
-            DropDownMenu(
+            FileBrowserSortDropDownMenu(
                 showSortMenu = showSortMenu,
                 onDismissRequest = { showSortMenu = false },
                 sortConfig = sortConfig,
@@ -147,7 +147,7 @@ internal fun FileBrowserSelectionTopBar(
 }
 
 @Composable
-private fun DropDownMenu(
+internal fun FileBrowserSortDropDownMenu(
     showSortMenu: Boolean,
     onDismissRequest: () -> Unit,
     sortConfig: FileBrowserUiState.FileSortConfig,

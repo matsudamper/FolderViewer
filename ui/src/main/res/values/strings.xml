@@ -89,4 +89,12 @@
     <string name="delete_detail_completed_section">削除済みファイル</string>
     <string name="delete_state_running">削除中</string>
     <string name="open_folder_with_external_app">外部アプリで開く</string>
+    <string name="external_picker_title">ファイルを選択</string>
+    <string name="external_picker_selected_list_title">選択済みファイル</string>
+    <string name="external_picker_submit">送信</string>
+    <string name="external_picker_preview">プレビュー</string>
+    <string name="external_picker_properties_title">ファイルのプロパティ</string>
+    <string name="external_picker_file_size">ファイルサイズ</string>
+    <string name="external_picker_last_modified">更新日時</string>
+    <string name="external_picker_deselect">選択解除</string>
 </resources>

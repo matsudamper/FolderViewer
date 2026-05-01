@@ -144,29 +144,37 @@ class StreamingContentProvider : ContentProvider() {
         val encodedFileId = pathSegments[1]
         val fileId = FileObjectId.Item(storageId = storageId, id = URLDecoder.decode(encodedFileId, "UTF-8"))
 
-        val source = runBlocking {
-            val repository = storageRepository.getFileRepository(storageId)
-            if (repository !is RandomAccessFileRepository) {
-                throw IllegalStateException("storageId=$storageId is not RandomAccessFileRepository")
-            }
+        val repository = runBlocking {
+            storageRepository.getFileRepository(storageId)
+        } ?: throw IllegalStateException("storage not found: $storageId")
 
-            repository.openRandomAccess(fileId)
+        if (repository is RandomAccessFileRepository) {
+            val source = runBlocking { repository.openRandomAccess(fileId) }
+            val storageManager = requireContext().getSystemService(StorageManager::class.java)
+                ?: throw IllegalStateException("StorageManager not available")
+            return storageManager.openProxyFileDescriptor(
+                ParcelFileDescriptor.MODE_READ_ONLY,
+                RandomAccessProxyCallback(source),
+                handler,
+            )
         }
 
-        val storageManager = requireContext().getSystemService(StorageManager::class.java)
-            ?: run {
-                throw IllegalStateException("StorageManager not available")
+        val pipes = ParcelFileDescriptor.createPipe()
+        Thread(null, {
+            val output = ParcelFileDescriptor.AutoCloseOutputStream(pipes[1])
+            runCatching {
+                runBlocking {
+                    repository.getFileContent(fileId).use { input ->
+                        input.copyTo(output)
+                    }
+                }
+                output.close()
+            }.onFailure { e ->
+                e.printStackTrace()
+                runCatching { pipes[1].closeWithError(e.message ?: "stream error") }
             }
-
-        val callback = RandomAccessProxyCallback(source)
-
-        val pfd = storageManager.openProxyFileDescriptor(
-            ParcelFileDescriptor.MODE_READ_ONLY,
-            callback,
-            handler,
-        )
-
-        return pfd
+        }, "StreamingContentProvider-${fileId.id}").start()
+        return pipes[0]
     }
 
     private class RandomAccessProxyCallback(
