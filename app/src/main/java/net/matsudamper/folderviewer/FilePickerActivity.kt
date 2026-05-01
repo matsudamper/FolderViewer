@@ -221,7 +221,7 @@ private fun ExternalFilePickerEventHandler(
                 }
 
                 ExternalFilePickerViewModel.ViewModelEvent.SubmitFailed -> {
-                    Toast.makeText(context, "ファイルの送信に失敗しました", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "ファイルの取得に失敗しました", Toast.LENGTH_SHORT).show()
                 }
 
                 is ExternalFilePickerViewModel.ViewModelEvent.ReturnMultipleResults -> {
