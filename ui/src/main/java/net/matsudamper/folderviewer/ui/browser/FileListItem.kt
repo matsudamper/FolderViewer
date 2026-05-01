@@ -40,14 +40,15 @@ private fun DisabledContentProvider(
     isEnabled: Boolean,
     content: @Composable () -> Unit,
 ) {
-    if (isEnabled) {
-        content()
+    val contentColor = if (isEnabled) {
+        LocalContentColor.current
     } else {
-        CompositionLocalProvider(
-            LocalContentColor provides LocalContentColor.current.copy(alpha = 0.38f),
-            content = content,
-        )
+        LocalContentColor.current.copy(alpha = 0.38f)
     }
+    CompositionLocalProvider(
+        LocalContentColor provides contentColor,
+        content = content,
+    )
 }
 
 @Composable
