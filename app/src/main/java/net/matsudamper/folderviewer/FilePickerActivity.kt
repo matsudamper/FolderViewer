@@ -3,6 +3,7 @@ package net.matsudamper.folderviewer
 import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -217,6 +218,10 @@ private fun ExternalFilePickerEventHandler(
                 is ExternalFilePickerViewModel.ViewModelEvent.ReturnSingleResult -> {
                     val uri = buildUri(context, event.viewSourceUri, event.fileId, event.fileName)
                     onReturnResult(listOf(uri), event.mimeType)
+                }
+
+                ExternalFilePickerViewModel.ViewModelEvent.SubmitFailed -> {
+                    Toast.makeText(context, "ファイルの取得に失敗しました", Toast.LENGTH_SHORT).show()
                 }
 
                 is ExternalFilePickerViewModel.ViewModelEvent.ReturnMultipleResults -> {

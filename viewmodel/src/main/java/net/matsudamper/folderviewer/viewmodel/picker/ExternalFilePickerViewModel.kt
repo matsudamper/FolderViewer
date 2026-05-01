@@ -121,7 +121,10 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
                         )
                     }
                 }
-                if (results.any { it.isFailure }) return@launch
+                if (results.any { it.isFailure }) {
+                    viewModelEventChannel.send(ViewModelEvent.SubmitFailed)
+                    return@launch
+                }
                 viewModelEventChannel.send(ViewModelEvent.ReturnMultipleResults(results.map { it.getOrThrow() }))
             }
         }
@@ -391,6 +394,7 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
 
     sealed interface ViewModelEvent {
         data object PopBackStack : ViewModelEvent
+        data object SubmitFailed : ViewModelEvent
         data class NavigateToExternalFilePicker(
             val displayPath: String,
             val fileId: FileObjectId.Item,
