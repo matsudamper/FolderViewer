@@ -62,6 +62,8 @@ class FilePickerActivity : ComponentActivity() {
         Coil.setImageLoader(imageLoader)
 
         val allowMultiple = intent.getBooleanExtra(Intent.EXTRA_ALLOW_MULTIPLE, false)
+        val acceptedMimeTypes = intent.getStringArrayExtra(Intent.EXTRA_MIME_TYPES)?.toList()
+            ?: listOfNotNull(intent.type)
 
         if (savedInstanceState == null) {
             externalPickerRepository.clear()
@@ -71,6 +73,7 @@ class FilePickerActivity : ComponentActivity() {
             FolderViewerTheme {
                 FilePickerContent(
                     allowMultiple = allowMultiple,
+                    acceptedMimeTypes = acceptedMimeTypes,
                     onReturnResult = { uris, mimeType ->
                         if (uris.isEmpty()) {
                             setResult(RESULT_CANCELED)
@@ -102,6 +105,7 @@ class FilePickerActivity : ComponentActivity() {
 @Composable
 private fun FilePickerContent(
     allowMultiple: Boolean,
+    acceptedMimeTypes: List<String>,
     onReturnResult: (List<Uri>, String?) -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -111,7 +115,7 @@ private fun FilePickerContent(
     )
     val navigator = remember(navigationState) { Navigator(navigationState) }
     val entryProvider = remember(navigator) {
-        entryProvider(navigator, allowMultiple, onReturnResult)
+        entryProvider(navigator, allowMultiple, acceptedMimeTypes, onReturnResult)
     }
 
     NavDisplay(
@@ -133,10 +137,11 @@ private fun FilePickerContent(
 private fun entryProvider(
     navigator: Navigator,
     allowMultiple: Boolean,
+    acceptedMimeTypes: List<String>,
     onReturnResult: (List<Uri>, String?) -> Unit,
 ): (NavKey) -> NavEntry<NavKey> {
     return entryProvider {
-        pickerHomeEntry(navigator, allowMultiple)
+        pickerHomeEntry(navigator, allowMultiple, acceptedMimeTypes)
         externalFilePickerEntry(navigator, onReturnResult)
         externalFilePickerSelectedListEntry(navigator)
         imageViewerEntry(navigator)
@@ -146,6 +151,7 @@ private fun entryProvider(
 private fun EntryProviderScope<NavKey>.pickerHomeEntry(
     navigator: Navigator,
     allowMultiple: Boolean,
+    acceptedMimeTypes: List<String>,
 ) {
     entry<Home> {
         val viewModel: StoragePickerViewModel = hiltViewModel()
@@ -160,6 +166,7 @@ private fun EntryProviderScope<NavKey>.pickerHomeEntry(
                                 allowMultiple = allowMultiple,
                                 displayPath = null,
                                 fileId = FileObjectId.Root(storageId = event.storageId),
+                                acceptedMimeTypes = acceptedMimeTypes,
                             ),
                         )
                     }
@@ -176,6 +183,7 @@ private fun ExternalFilePickerEventHandler(
     viewModel: ExternalFilePickerViewModel,
     navigator: Navigator,
     allowMultiple: Boolean,
+    acceptedMimeTypes: List<String>,
     onReturnResult: (List<Uri>, String?) -> Unit,
 ) {
     val context = LocalContext.current
@@ -191,6 +199,7 @@ private fun ExternalFilePickerEventHandler(
                             allowMultiple = allowMultiple,
                             displayPath = event.displayPath,
                             fileId = event.fileId,
+                            acceptedMimeTypes = acceptedMimeTypes,
                         ),
                     )
                 }
@@ -248,6 +257,7 @@ private fun EntryProviderScope<NavKey>.externalFilePickerEntry(
             viewModel = viewModel,
             navigator = navigator,
             allowMultiple = key.allowMultiple,
+            acceptedMimeTypes = key.acceptedMimeTypes,
             onReturnResult = onReturnResult,
         )
 

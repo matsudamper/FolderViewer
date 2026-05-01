@@ -27,6 +27,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImagePainter
@@ -66,15 +67,18 @@ internal fun FileSmallListItem(
         modifier = modifier
             .fillMaxWidth()
             .combinedClickable(
+                enabled = file.isEnabled,
                 onClick = file.callbacks::onClick,
                 onLongClick = if (isPasteMode) null else file.callbacks::onLongClick,
             )
+            .alpha(if (file.isEnabled) 1f else 0.38f)
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (isSelectionMode) {
             Checkbox(
                 checked = file.isSelected,
+                enabled = file.isEnabled,
                 onCheckedChange = file.callbacks::onCheckedChange,
             )
             Spacer(modifier = Modifier.width(4.dp))
@@ -108,15 +112,18 @@ internal fun FileMediumListItem(
         modifier = modifier
             .fillMaxWidth()
             .combinedClickable(
+                enabled = file.isEnabled,
                 onClick = file.callbacks::onClick,
                 onLongClick = if (isPasteMode) null else file.callbacks::onLongClick,
             )
+            .alpha(if (file.isEnabled) 1f else 0.38f)
             .padding(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (isSelectionMode) {
             Checkbox(
                 checked = file.isSelected,
+                enabled = file.isEnabled,
                 onCheckedChange = file.callbacks::onCheckedChange,
             )
             Spacer(modifier = Modifier.width(4.dp))
@@ -158,15 +165,18 @@ internal fun FileLargeListItem(
         modifier = modifier
             .fillMaxWidth()
             .combinedClickable(
+                enabled = file.isEnabled,
                 onClick = file.callbacks::onClick,
                 onLongClick = if (isPasteMode) null else file.callbacks::onLongClick,
             )
+            .alpha(if (file.isEnabled) 1f else 0.38f)
             .padding(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (isSelectionMode) {
             Checkbox(
                 checked = file.isSelected,
+                enabled = file.isEnabled,
                 onCheckedChange = file.callbacks::onCheckedChange,
             )
             Spacer(modifier = Modifier.width(4.dp))
@@ -260,9 +270,11 @@ private fun FileGridItem(
     Column(
         modifier = modifier
             .combinedClickable(
+                enabled = file.isEnabled,
                 onClick = file.callbacks::onClick,
                 onLongClick = if (isPasteMode) null else file.callbacks::onLongClick,
             )
+            .alpha(if (file.isEnabled) 1f else 0.38f)
             .padding(padding),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -278,6 +290,7 @@ private fun FileGridItem(
             if (isSelectionMode) {
                 Checkbox(
                     checked = file.isSelected,
+                    enabled = file.isEnabled,
                     onCheckedChange = file.callbacks::onCheckedChange,
                     modifier = Modifier.align(Alignment.TopStart),
                 )

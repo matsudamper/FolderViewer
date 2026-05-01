@@ -135,6 +135,8 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
 
         val uiItems = sortedFiles.map { fileItem ->
             val isImage = FileUtil.isImage(fileItem.displayPath)
+            val isEnabled = fileItem.isDirectory ||
+                FileUtil.matchesMimeFilter(fileItem.displayPath, arg.acceptedMimeTypes)
             FileBrowserUiState.UiFileItem.File(
                 name = fileItem.displayPath,
                 key = fileItem.id.id,
@@ -142,6 +144,7 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
                 subText = buildSubText(fileItem.isDirectory, fileItem.lastModified, fileItem.size),
                 thumbnail = if (isImage) FileImageSource.Thumbnail(fileId = fileItem.id) else null,
                 isSelected = selectedItems.containsKey(fileItem.id),
+                isEnabled = isEnabled,
                 callbacks = FileItemCallbacks(fileItem, sortedFiles),
             )
         }
