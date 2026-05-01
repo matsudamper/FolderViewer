@@ -28,7 +28,7 @@ object FileUtil {
     fun matchesMimeFilter(fileName: String, acceptedMimeTypes: List<String>): Boolean {
         if (acceptedMimeTypes.isEmpty()) return true
         if (acceptedMimeTypes.any { it == "*/*" }) return true
-        val fileMimeType = getMimeType(fileName) ?: return false
+        val fileMimeType = getMimeType(fileName) ?: return true
         return acceptedMimeTypes.any { pattern ->
             if (pattern.endsWith("/*")) {
                 fileMimeType.startsWith(pattern.substringBefore("/*") + "/")
