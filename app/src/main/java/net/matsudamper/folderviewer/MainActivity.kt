@@ -539,6 +539,45 @@ private fun FileBrowserEventHandler(
                     }
                 }
 
+                is FileBrowserViewModel.ViewModelEvent.ShareFiles -> {
+                    val uris = ArrayList<android.net.Uri>(event.items.size)
+                    event.items.forEach { item ->
+                        val uri = when (val externalUri = item.viewSourceUri) {
+                            is ViewSourceUri.LocalFile -> FileProvider.getUriForFile(
+                                context,
+                                "${context.packageName}.fileprovider",
+                                File(externalUri.path),
+                            )
+
+                            is ViewSourceUri.RemoteUrl -> externalUri.url.toUri()
+
+                            is ViewSourceUri.StreamProvider -> StreamingContentProvider.buildUri(
+                                fileId = externalUri.fileId,
+                                fileName = item.fileName,
+                            )
+                        }
+                        uris.add(uri)
+                    }
+                    val mimeTypes = event.items.map { it.mimeType ?: "*/*" }.distinct()
+                    val commonMime = if (mimeTypes.size == 1) mimeTypes.first() else "*/*"
+                    val sendIntent = if (uris.size == 1) {
+                        Intent(Intent.ACTION_SEND).apply {
+                            putExtra(Intent.EXTRA_STREAM, uris.first())
+                            type = commonMime
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                    } else {
+                        Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                            putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+                            type = commonMime
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                    }
+                    runCatching {
+                        context.startActivity(Intent.createChooser(sendIntent, null))
+                    }
+                }
+
                 is FileBrowserViewModel.ViewModelEvent.OpenWithExternalPlayer -> {
                     val uri = when (val externalUri = event.viewSourceUri) {
                         is ViewSourceUri.LocalFile -> {

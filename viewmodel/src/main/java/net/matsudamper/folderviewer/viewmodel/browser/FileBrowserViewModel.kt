@@ -235,6 +235,46 @@ class FileBrowserViewModel @AssistedInject constructor(
             selectionModeRepository.setSelectionMode(false)
         }
 
+        override fun onShareClick() {
+            val selectedIds = when (val s = viewModelStateFlow.value.selectedState) {
+                is ViewModelState.SelectionState.NonSelected -> return
+                is ViewModelState.SelectionState.Selected -> s.items
+            }
+            val rawFiles = viewModelStateFlow.value.rawFiles
+            val selectedFileItems = selectedIds.mapNotNull { id -> rawFiles.find { it.id == id } }
+                .filter { !it.isDirectory }
+            if (selectedFileItems.isEmpty()) {
+                viewModelScope.launch {
+                    uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("共有できるファイルがありません"))
+                }
+                return
+            }
+            viewModelScope.launch {
+                runCatching {
+                    val repository = getRepository()
+                    val items = selectedFileItems.map { fileItem ->
+                        ViewModelEvent.ShareFiles.Item(
+                            viewSourceUri = repository.getViewSourceUri(fileItem.id),
+                            fileId = fileItem.id,
+                            fileName = fileItem.displayPath,
+                            mimeType = FileUtil.getMimeType(fileItem.displayPath),
+                        )
+                    }
+                    viewModelEventChannel.send(ViewModelEvent.ShareFiles(items))
+                    viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
+                    selectionModeRepository.setSelectionMode(false)
+                }.onFailure { e ->
+                    when (e) {
+                        is CancellationException -> throw e
+                        else -> {
+                            e.printStackTrace()
+                            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("共有の準備に失敗しました: ${e.message}"))
+                        }
+                    }
+                }
+            }
+        }
+
         override fun onDeleteClick() {
             val selectedIds = when (val s = viewModelStateFlow.value.selectedState) {
                 is ViewModelState.SelectionState.NonSelected -> return
@@ -557,6 +597,17 @@ class FileBrowserViewModel @AssistedInject constructor(
             val fileName: String,
             val mimeType: String?,
         ) : ViewModelEvent
+
+        data class ShareFiles(
+            val items: List<Item>,
+        ) : ViewModelEvent {
+            data class Item(
+                val viewSourceUri: ViewSourceUri,
+                val fileId: FileObjectId.Item,
+                val fileName: String,
+                val mimeType: String?,
+            )
+        }
     }
 
     suspend fun handleFileUpload(uri: android.net.Uri, fileName: String) {

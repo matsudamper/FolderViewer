@@ -79,6 +79,7 @@ data class FileBrowserUiState(
         fun onCancelSelection()
         fun onCopyClick()
         fun onCutClick()
+        fun onShareClick()
         fun onDeleteClick()
         fun onConfirmDelete()
         fun onPasteClick()

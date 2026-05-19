@@ -70,6 +70,7 @@ internal fun FileBrowserScreenContent(
                 FileBrowserSelectionTopBar(
                     selectedCount = uiState.selectedCount,
                     onCancelSelection = callbacks::onCancelSelection,
+                    onShareClick = callbacks::onShareClick,
                 )
             } else {
                 FileBrowserTopBar(
@@ -297,6 +298,7 @@ private fun Preview() {
                 override fun onCancelSelection() = Unit
                 override fun onCopyClick() = Unit
                 override fun onCutClick() = Unit
+                override fun onShareClick() = Unit
                 override fun onDeleteClick() = Unit
                 override fun onConfirmDelete() = Unit
                 override fun onPasteClick() = Unit
