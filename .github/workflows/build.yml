@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      pull-requests: write
+      id-token: write
     env:
       DEBUG_KEYSTORE_FILE: debug.keystore
 
@@ -35,8 +37,72 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew assembleDebug ktlintCheck detekt
 
+      - name: Rename APK with branch and short hash
+        if: github.event_name == 'pull_request'
+        env:
+          BRANCH_NAME: ${{ github.head_ref }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          SHORT_SHA="${GITHUB_SHA:0:7}"
+          SAFE_REPO="${REPOSITORY##*/}"
+          SAFE_BRANCH="${BRANCH_NAME//\//-}"
+          APK_NAME="app-${SAFE_REPO}-${SAFE_BRANCH}-${SHORT_SHA}.apk"
+          APK_SRC=$(find app/build/outputs/apk/debug -name "*.apk" | head -1)
+          mv "$APK_SRC" "app/build/outputs/apk/debug/${APK_NAME}"
+          echo "APK_NAME=${APK_NAME}" >> "$GITHUB_ENV"
+
       - name: Upload APK
+        id: upload_apk
         uses: actions/upload-artifact@v7
         with:
-          name: debug-apk
+          name: ${{ env.APK_NAME || 'debug-apk' }}
           path: app/build/outputs/apk/debug/*.apk
+
+      - name: Upload APK to S3
+        if: github.event_name == 'pull_request'
+        id: upload_s3
+        uses: matsudamper/actions/upload-matsudamper-s3@a1ecf81b1a0ce320824a49711e456f396e4e8fea
+        continue-on-error: true
+        with:
+          file_path: app/build/outputs/apk/debug/${{ env.APK_NAME }}
+
+      - name: Generate and upload GitHub QR code
+        if: github.event_name == 'pull_request'
+        id: upload_github_qr
+        run: |
+          pip install "qrcode[pil]" --quiet
+          python3 -c "import qrcode, sys; qrcode.make(sys.argv[1]).save('qrcode-github.png')" "${{ steps.upload_apk.outputs.artifact-url }}"
+
+      - name: Upload GitHub QR artifact
+        if: github.event_name == 'pull_request'
+        id: github_qr_artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: apk-qr-code-github
+          path: qrcode-github.png
+
+      - name: Generate S3 QR code
+        if: github.event_name == 'pull_request' && steps.upload_s3.outputs.url != ''
+        run: python3 -c "import qrcode, sys; qrcode.make(sys.argv[1]).save('qrcode-s3.png')" "${{ steps.upload_s3.outputs.url }}"
+
+      - name: Upload S3 QR artifact
+        if: github.event_name == 'pull_request' && steps.upload_s3.outputs.url != ''
+        id: s3_qr_artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: apk-qr-code-s3
+          path: qrcode-s3.png
+
+      - name: Comment APK download URLs
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: apk-download
+          message: |
+            ✅ **Debug APK is ready!**
+            | Storage | Download Link | QR Code |
+            | :--- | :--- | :--- |
+            | 🐙 GitHub Artifacts | [Download](${{ steps.upload_apk.outputs.artifact-url }}) | [View](${{ steps.github_qr_artifact.outputs.artifact-url }}) |
+            ${{ steps.upload_s3.outputs.url && format('| ☁️ S3 | [Download]({0}) | [View]({1}) |', steps.upload_s3.outputs.url, steps.s3_qr_artifact.outputs.artifact-url) || '' }}
+            ---
+            *Artifact Name: `${{ env.APK_NAME }}`*
