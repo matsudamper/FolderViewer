@@ -549,7 +549,10 @@ private fun FileBrowserEventHandler(
                                 File(externalUri.path),
                             )
 
-                            is ViewSourceUri.RemoteUrl -> externalUri.url.toUri()
+                            is ViewSourceUri.RemoteUrl -> StreamingContentProvider.buildUri(
+                                fileId = item.fileId,
+                                fileName = item.fileName,
+                            )
 
                             is ViewSourceUri.StreamProvider -> StreamingContentProvider.buildUri(
                                 fileId = externalUri.fileId,
