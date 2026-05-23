@@ -83,6 +83,13 @@ internal fun FileSmallListItem(
         Row(
             modifier = modifier
                 .fillMaxWidth()
+                .then(
+                    if (file.isLastOpened) {
+                        Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                    } else {
+                        Modifier
+                    },
+                )
                 .combinedClickable(
                     enabled = file.isEnabled,
                     onClick = file.callbacks::onClick,
@@ -129,6 +136,13 @@ internal fun FileMediumListItem(
         Row(
             modifier = modifier
                 .fillMaxWidth()
+                .then(
+                    if (file.isLastOpened) {
+                        Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                    } else {
+                        Modifier
+                    },
+                )
                 .combinedClickable(
                     enabled = file.isEnabled,
                     onClick = file.callbacks::onClick,
@@ -183,6 +197,13 @@ internal fun FileLargeListItem(
         Row(
             modifier = modifier
                 .fillMaxWidth()
+                .then(
+                    if (file.isLastOpened) {
+                        Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                    } else {
+                        Modifier
+                    },
+                )
                 .combinedClickable(
                     enabled = file.isEnabled,
                     onClick = file.callbacks::onClick,
@@ -289,6 +310,13 @@ private fun FileGridItem(
     DisabledContentProvider(file.isEnabled) {
         Column(
             modifier = modifier
+                .then(
+                    if (file.isLastOpened) {
+                        Modifier.background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                    } else {
+                        Modifier
+                    },
+                )
                 .combinedClickable(
                     enabled = file.isEnabled,
                     onClick = file.callbacks::onClick,

@@ -360,6 +360,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                     null
                 },
                 isSelected = selectedItems.contains(fileItem.id),
+                isLastOpened = fileItem.id.id == viewModelState.lastOpenedFileKey,
                 callbacks = FileItemCallbacks(fileItem, sortedFiles, isSelectionMode),
             )
         }
@@ -912,6 +913,8 @@ class FileBrowserViewModel @AssistedInject constructor(
                 val isImage = FileUtil.isImage(fileItem.displayPath.lowercase())
                 val isVideo = FileUtil.isVideo(fileItem.displayPath.lowercase())
 
+                viewModelStateFlow.update { it.copy(lastOpenedFileKey = fileItem.id.id) }
+
                 when {
                     isImage -> {
                         viewModelScope.launch {
@@ -1050,6 +1053,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         val selectedState: SelectionState = SelectionState.NonSelected,
         val rootWritable: Boolean = false,
         val localFolderPath: String? = null,
+        val lastOpenedFileKey: String? = null,
     ) {
         sealed interface SelectionState {
             data object NonSelected : SelectionState
