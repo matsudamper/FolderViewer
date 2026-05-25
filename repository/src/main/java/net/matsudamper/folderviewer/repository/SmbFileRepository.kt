@@ -262,7 +262,7 @@ class SmbFileRepository(
                 } ?: return@withContext getFileContentInternal(fileId.id, maxReadSize = MAX_THUMBNAIL_READ_SIZE.toLong())
 
                 val bos = ByteArrayOutputStream()
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 80, bos)
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 75, bos)
                 bitmap.recycle()
 
                 ByteArrayInputStream(bos.toByteArray())
