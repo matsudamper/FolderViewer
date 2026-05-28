@@ -95,7 +95,7 @@ jobs:
 
       - name: Comment APK download URLs
         if: github.event_name == 'pull_request'
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@v3.0.4
         with:
           header: apk-download
           message: |
