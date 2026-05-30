@@ -20,6 +20,7 @@ data class ExternalFilePickerUiState(
         data object Empty : ContentState
         data class Content(
             val files: List<FileBrowserUiState.UiFileItem>,
+            val favorites: List<FileBrowserUiState.UiFileItem.File>,
         ) : ContentState
     }
 
