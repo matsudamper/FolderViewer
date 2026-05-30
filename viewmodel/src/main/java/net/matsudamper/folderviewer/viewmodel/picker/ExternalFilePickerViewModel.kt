@@ -174,7 +174,7 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
         val contentState = when {
             viewModelState.isLoading && uiItems.isEmpty() -> ExternalFilePickerUiState.ContentState.Loading
             viewModelState.hasError && uiItems.isEmpty() -> ExternalFilePickerUiState.ContentState.Error
-            uiItems.isEmpty() -> ExternalFilePickerUiState.ContentState.Empty
+            uiItems.isEmpty() && favoriteItems.isEmpty() -> ExternalFilePickerUiState.ContentState.Empty
             else -> ExternalFilePickerUiState.ContentState.Content(
                 files = uiItems,
                 favorites = favoriteItems,
