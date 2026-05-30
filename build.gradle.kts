@@ -39,6 +39,15 @@ subprojects {
             md.required.set(false)
         }
     }
+    tasks.withType<Test> {
+        testLogging {
+            events("failed")
+            exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+            showCauses = true
+            showExceptions = true
+            showStackTraces = true
+        }
+    }
     tasks.withType<KotlinJvmCompile> {
         compilerOptions {
             allWarningsAsErrors.set(true)
