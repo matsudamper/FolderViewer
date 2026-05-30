@@ -10,8 +10,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -23,6 +25,7 @@ import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.navigation.ExternalFilePicker
 import net.matsudamper.folderviewer.repository.ExternalPickerRepository
+import net.matsudamper.folderviewer.repository.FavoriteConfiguration
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.PreferencesRepository
@@ -152,11 +155,30 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
             )
         }
 
+        val favoriteItems = viewModelState.favorites.map { favorite ->
+            FileBrowserUiState.UiFileItem.File(
+                name = favorite.displayPath,
+                key = favorite.fileId.id,
+                isDirectory = true,
+                subText = "",
+                thumbnail = if (FileUtil.isImage(favorite.displayPath)) {
+                    FileImageSource.Thumbnail(fileId = favorite.fileId)
+                } else {
+                    null
+                },
+                isSelected = false,
+                callbacks = FavoriteItemCallbacks(favorite),
+            )
+        }
+
         val contentState = when {
             viewModelState.isLoading && uiItems.isEmpty() -> ExternalFilePickerUiState.ContentState.Loading
             viewModelState.hasError && uiItems.isEmpty() -> ExternalFilePickerUiState.ContentState.Error
-            uiItems.isEmpty() -> ExternalFilePickerUiState.ContentState.Empty
-            else -> ExternalFilePickerUiState.ContentState.Content(files = uiItems)
+            uiItems.isEmpty() && favoriteItems.isEmpty() -> ExternalFilePickerUiState.ContentState.Empty
+            else -> ExternalFilePickerUiState.ContentState.Content(
+                files = uiItems,
+                favorites = favoriteItems,
+            )
         }
 
         ExternalFilePickerUiState(
@@ -176,6 +198,17 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
         loadStorageName()
         viewModelScope.launch { loadSortConfig() }
         viewModelScope.launch { loadDisplayMode() }
+        if (arg.displayPath == null) {
+            viewModelScope.launch {
+                storageRepository.favorites
+                    .map { favorites ->
+                        favorites.filter { it.fileId.storageId == arg.fileId.storageId }
+                    }
+                    .collectLatest { favorites ->
+                        viewModelStateFlow.update { it.copy(favorites = favorites) }
+                    }
+            }
+        }
     }
 
     private fun loadFiles() {
@@ -376,6 +409,24 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
         }
     }
 
+    private inner class FavoriteItemCallbacks(
+        private val favorite: FavoriteConfiguration,
+    ) : FileBrowserUiState.UiFileItem.File.Callbacks {
+        override fun onClick() {
+            viewModelScope.launch {
+                viewModelEventChannel.send(
+                    ViewModelEvent.NavigateToExternalFilePicker(
+                        displayPath = favorite.displayPath,
+                        fileId = favorite.fileId,
+                    ),
+                )
+            }
+        }
+
+        override fun onLongClick() = Unit
+        override fun onCheckedChange(checked: Boolean) = Unit
+    }
+
     private suspend fun openWithExternalPlayer(fileItem: FileItem) {
         runCatching {
             val repo = getRepository()
@@ -436,6 +487,7 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
         val isRefreshing: Boolean = false,
         val storageName: String? = null,
         val rawFiles: List<FileItem> = emptyList(),
+        val favorites: List<FavoriteConfiguration> = emptyList(),
         val sortConfig: FileBrowserUiState.FileSortConfig = FileBrowserUiState.FileSortConfig(
             key = FileBrowserUiState.FileSortKey.Name,
             isAscending = true,

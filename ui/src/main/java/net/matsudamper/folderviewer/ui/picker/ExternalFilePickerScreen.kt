@@ -382,6 +382,16 @@ private fun ExternalFilePickerContent(
                         }
                     }
                 }
+                if (content.favorites.isNotEmpty()) {
+                    stickyHeader { FileHeaderItem(title = stringResource(R.string.favorites)) }
+                    items(items = content.favorites) { item ->
+                        PickerGridItem(
+                            file = item,
+                            displaySize = displayConfig.displaySize,
+                            isMultipleMode = false,
+                        )
+                    }
+                }
             }
         }
 
@@ -411,6 +421,16 @@ private fun ExternalFilePickerContent(
                                 isMultipleMode = isMultipleMode,
                             )
                         }
+                    }
+                }
+                if (content.favorites.isNotEmpty()) {
+                    stickyHeader { FileHeaderItem(title = stringResource(R.string.favorites)) }
+                    items(items = content.favorites) { item ->
+                        PickerListItem(
+                            file = item,
+                            displaySize = displayConfig.displaySize,
+                            isMultipleMode = false,
+                        )
                     }
                 }
             }
