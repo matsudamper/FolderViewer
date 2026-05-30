@@ -57,6 +57,7 @@ jobs:
         with:
           name: ${{ env.APK_NAME || 'debug-apk' }}
           path: app/build/outputs/apk/debug/*.apk
+          archive: false
 
       - name: Upload APK to S3
         if: github.event_name == 'pull_request'
