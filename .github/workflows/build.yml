@@ -57,6 +57,7 @@ jobs:
         with:
           name: ${{ env.APK_NAME || 'debug-apk' }}
           path: app/build/outputs/apk/debug/*.apk
+          archive: false
 
       - name: Upload APK to S3
         if: github.event_name == 'pull_request'
@@ -80,6 +81,7 @@ jobs:
         with:
           name: apk-qr-code-github
           path: qrcode-github.png
+          archive: false
 
       - name: Generate S3 QR code
         if: github.event_name == 'pull_request' && steps.upload_s3.outputs.url != ''
@@ -92,6 +94,7 @@ jobs:
         with:
           name: apk-qr-code-s3
           path: qrcode-s3.png
+          archive: false
 
       - name: Comment APK download URLs
         if: github.event_name == 'pull_request'
