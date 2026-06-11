@@ -209,6 +209,14 @@ class FileBrowserViewModel @AssistedInject constructor(
             selectionModeRepository.setSelectionMode(false)
         }
 
+        override fun onSelectAllClick() {
+            val allIds = viewModelStateFlow.value.rawFiles.map { it.id }.toSet()
+            if (allIds.isEmpty()) return
+            viewModelStateFlow.update {
+                it.copy(selectedState = ViewModelState.SelectionState.Selected(items = allIds))
+            }
+        }
+
         override fun onCopyClick() {
             val selectedIds = when (val s = viewModelStateFlow.value.selectedState) {
                 is ViewModelState.SelectionState.NonSelected -> return

@@ -125,6 +125,7 @@ internal fun FileBrowserTopBar(
 internal fun FileBrowserSelectionTopBar(
     selectedCount: Int,
     onCancelSelection: () -> Unit,
+    onSelectAllClick: () -> Unit,
     onShareClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -145,6 +146,12 @@ internal fun FileBrowserSelectionTopBar(
             }
         },
         actions = {
+            IconButton(onClick = onSelectAllClick) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_select_all),
+                    contentDescription = stringResource(R.string.select_all),
+                )
+            }
             IconButton(onClick = onShareClick) {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_share),
