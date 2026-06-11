@@ -70,6 +70,7 @@ internal fun FileBrowserScreenContent(
                 FileBrowserSelectionTopBar(
                     selectedCount = uiState.selectedCount,
                     onCancelSelection = callbacks::onCancelSelection,
+                    onSelectAllClick = callbacks::onSelectAllClick,
                     onShareClick = callbacks::onShareClick,
                 )
             } else {
@@ -296,6 +297,7 @@ private fun Preview() {
                 override fun onConfirmCreateDirectory(directoryName: String) = Unit
                 override fun onOpenFolderWithExternalAppClick() = Unit
                 override fun onCancelSelection() = Unit
+                override fun onSelectAllClick() = Unit
                 override fun onCopyClick() = Unit
                 override fun onCutClick() = Unit
                 override fun onShareClick() = Unit
