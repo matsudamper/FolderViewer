@@ -34,6 +34,8 @@
     <string name="cancel_selection">選択をキャンセル</string>
     <string name="select_all">すべて選択</string>
     <string name="share">共有</string>
+    <string name="compress">圧縮</string>
+    <string name="more_options">その他</string>
     <string name="upload_progress">操作状況</string>
     <string name="upload_state_enqueued">待機中</string>
     <string name="upload_state_running">アップロード中</string>
