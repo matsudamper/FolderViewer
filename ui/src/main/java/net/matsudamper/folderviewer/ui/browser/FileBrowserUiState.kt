@@ -78,6 +78,7 @@ data class FileBrowserUiState(
         fun onOpenFolderWithExternalAppClick()
         fun onConfirmCreateDirectory(directoryName: String)
         fun onCancelSelection()
+        fun onSelectAllClick()
         fun onCopyClick()
         fun onCutClick()
         fun onShareClick()
