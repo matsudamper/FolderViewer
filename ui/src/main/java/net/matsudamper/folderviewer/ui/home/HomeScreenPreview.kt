@@ -16,6 +16,11 @@ private fun HomeScreenPreview() {
                     ip = "192.168.1.10",
                     username = "user",
                 ),
+                UiStorageConfiguration.External(
+                    id = StorageId("external:1234-ABCD"),
+                    name = "USBドライブ",
+                    rootPath = "/storage/1234-ABCD",
+                ),
             ),
             callbacks = object : HomeUiState.Callbacks {
                 override fun onNavigateToSettings() = Unit

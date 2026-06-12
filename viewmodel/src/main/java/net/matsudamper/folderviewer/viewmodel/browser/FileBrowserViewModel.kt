@@ -6,10 +6,16 @@ import androidx.lifecycle.viewModelScope
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import java.io.BufferedOutputStream
+import java.io.File
+import java.io.FileOutputStream
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +26,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -284,6 +291,30 @@ class FileBrowserViewModel @AssistedInject constructor(
             }
         }
 
+        override fun onCompressClick() {
+            val selectedIds = when (val s = viewModelStateFlow.value.selectedState) {
+                is ViewModelState.SelectionState.NonSelected -> return
+                is ViewModelState.SelectionState.Selected -> s.items
+            }
+            if (selectedIds.isEmpty()) return
+            viewModelScope.launch {
+                uiChannelEvent.send(FileBrowserUiEvent.ShowCompressDialog)
+            }
+        }
+
+        override fun onConfirmCompress(fileName: String) {
+            val selectedIds = when (val s = viewModelStateFlow.value.selectedState) {
+                is ViewModelState.SelectionState.NonSelected -> return
+                is ViewModelState.SelectionState.Selected -> s.items
+            }
+            val rawFiles = viewModelStateFlow.value.rawFiles
+            val selectedFileItems = selectedIds.mapNotNull { id -> rawFiles.find { it.id == id } }
+            if (selectedFileItems.isEmpty()) return
+            viewModelScope.launch {
+                handleCompress(selectedFileItems, fileName)
+            }
+        }
+
         override fun onDeleteClick() {
             val selectedIds = when (val s = viewModelStateFlow.value.selectedState) {
                 is ViewModelState.SelectionState.NonSelected -> return
@@ -417,6 +448,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             visibleOpenFolderWithExternalAppButton = viewModelState.localFolderPath != null,
             isSelectionMode = isSelectionMode,
             selectedCount = selectedItems.size,
+            visibleCompressMenu = viewModelState.localFolderPath != null,
             isPasteMode = clipboardState != null,
             contentState = contentState,
         )
@@ -499,13 +531,18 @@ class FileBrowserViewModel @AssistedInject constructor(
     private fun loadStorageName() {
         viewModelScope.launch {
             val storage = storageRepository.storageList.first().find { it.id == fileObjectId.storageId }
+            val localRootPath = when (storage) {
+                is StorageConfiguration.Local -> storage.rootPath
+                is StorageConfiguration.External -> storage.rootPath
+                else -> null
+            }
             viewModelStateFlow.update { state ->
                 state.copy(
                     storageName = storage?.name ?: state.storageName,
-                    localFolderPath = if (storage is StorageConfiguration.Local) {
+                    localFolderPath = if (localRootPath != null) {
                         when (fileObjectId) {
-                            is FileObjectId.Root -> storage.rootPath
-                            is FileObjectId.Item -> "${storage.rootPath}/${fileObjectId.id}"
+                            is FileObjectId.Root -> localRootPath
+                            is FileObjectId.Item -> "$localRootPath/${fileObjectId.id}"
                         }
                     } else {
                         state.localFolderPath
@@ -730,6 +767,70 @@ class FileBrowserViewModel @AssistedInject constructor(
                     uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar("削除開始失敗: ${e.message}"))
                 }
             }
+        }
+    }
+
+    private suspend fun handleCompress(items: List<FileItem>, fileName: String) {
+        runCatching {
+            val repository = getRepository()
+            val sourceFiles = items.map { item ->
+                when (val uri = repository.getViewSourceUri(item.id)) {
+                    is ViewSourceUri.LocalFile -> File(uri.path)
+
+                    // TODO: リモートストレージの圧縮に対応する。getFileContentでストリーミングしながらzip化し、uploadFileで書き込む別実装が必要
+                    is ViewSourceUri.RemoteUrl,
+                    is ViewSourceUri.StreamProvider,
+                    -> {
+                        uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("圧縮はローカルストレージのみ対応しています"))
+                        return
+                    }
+                }
+            }
+            val parentPath = viewModelStateFlow.value.localFolderPath ?: run {
+                uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("圧縮はローカルストレージのみ対応しています"))
+                return
+            }
+            val zipFile = File(parentPath, "$fileName.zip")
+            if (zipFile.exists()) {
+                uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("同じ名前のファイルが既に存在します: ${zipFile.name}"))
+                return
+            }
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    ZipOutputStream(BufferedOutputStream(FileOutputStream(zipFile))).use { zipOut ->
+                        sourceFiles.forEach { file -> addZipEntry(zipOut, file, file.name) }
+                    }
+                }.onFailure { e ->
+                    zipFile.delete()
+                    throw e
+                }
+            }
+            viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
+            selectionModeRepository.setSelectionMode(false)
+            fetchFilesInternal()
+            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("${zipFile.name}を作成しました"))
+        }.onFailure { e ->
+            when (e) {
+                is CancellationException -> throw e
+                else -> {
+                    e.printStackTrace()
+                    uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar("圧縮に失敗しました: ${e.message}"))
+                }
+            }
+        }
+    }
+
+    private fun addZipEntry(zipOut: ZipOutputStream, file: File, entryName: String) {
+        if (file.isDirectory) {
+            zipOut.putNextEntry(ZipEntry("$entryName/"))
+            zipOut.closeEntry()
+            file.listFiles()?.forEach { child ->
+                addZipEntry(zipOut, child, "$entryName/${child.name}")
+            }
+        } else {
+            zipOut.putNextEntry(ZipEntry(entryName))
+            file.inputStream().use { input -> input.copyTo(zipOut) }
+            zipOut.closeEntry()
         }
     }
 

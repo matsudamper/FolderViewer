@@ -18,10 +18,12 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
+import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.repository.ClipboardRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.PasteJobRepository
 import net.matsudamper.folderviewer.ui.upload.PasteDetailUiState
+import net.matsudamper.folderviewer.viewmodel.util.FileUtil
 import net.matsudamper.folderviewer.viewmodel.worker.FilePasteWorker
 
 @HiltViewModel
@@ -138,6 +140,16 @@ class PasteDetailViewModel @Inject constructor(
         } else {
             null
         }
+        val fileCountText = if (isActive) {
+            "${progress.completedFiles}/${progress.totalFiles}"
+        } else {
+            null
+        }
+        val sizeProgressText = if (isActive && progress.totalBytes > 0) {
+            "${formatFileSize(progress.completedBytes)} / ${formatFileSize(progress.totalBytes)}"
+        } else {
+            null
+        }
         val currentFileTotalBytes = progress.currentFileTotalBytes
         val currentFileProgress = if (isRunning && currentFileTotalBytes != null && currentFileTotalBytes > 0) {
             (progress.currentFileBytes ?: 0L).toFloat() / currentFileTotalBytes.toFloat()
@@ -168,6 +180,8 @@ class PasteDetailViewModel @Inject constructor(
             failedFiles = failedItems,
             canApply = canApply,
             progress = overallProgress,
+            fileCountText = fileCountText,
+            sizeProgressText = sizeProgressText,
             currentFileName = if (isRunning) progress.currentFileName else null,
             currentFileProgress = currentFileProgress,
             callbacks = callbacks,
@@ -185,6 +199,7 @@ class PasteDetailViewModel @Inject constructor(
                 PasteDetailUiState.Resolution.OVERWRITE_WITH_SOURCE
             PasteJobRepository.DuplicateResolution.PENDING, null -> null
         }
+        val isImage = !file.isDirectory && FileUtil.isImage(file.fileName)
         return PasteDetailUiState.DuplicateFileItem(
             fileId = file.id,
             fileName = file.fileName,
@@ -194,6 +209,16 @@ class PasteDetailViewModel @Inject constructor(
             destinationPath = destinationPath(meta, file),
             destinationSize = file.destinationFileSize,
             destinationSizeText = formatFileSize(file.destinationFileSize),
+            sourceThumbnail = if (isImage) {
+                FileImageSource.Thumbnail(fileId = file.sourceFileId)
+            } else {
+                null
+            },
+            destinationThumbnail = if (isImage) {
+                file.destinationFileId?.let { FileImageSource.Thumbnail(fileId = it) }
+            } else {
+                null
+            },
             resolution = uiResolution,
             onKeepDestination = {
                 resolveFile(file.id, PasteJobRepository.DuplicateResolution.KEEP_DESTINATION)

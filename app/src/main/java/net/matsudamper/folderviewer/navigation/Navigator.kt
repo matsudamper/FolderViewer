@@ -5,7 +5,10 @@ import androidx.navigation3.runtime.NavKey
 /**
  * Handles navigation events (forward and back) by updating the navigation state.
  */
-class Navigator(val state: NavigationState) {
+class Navigator(
+    val state: NavigationState,
+    private val onExit: () -> Unit = {},
+) {
     fun navigate(route: NavKey) {
         if (route in state.backStacks.keys) {
             // This is a top level route, just switch to it.
@@ -24,6 +27,8 @@ class Navigator(val state: NavigationState) {
         if (currentRoute == state.topLevelRoute) {
             if (state.topLevelRoute != state.startRoute) {
                 state.topLevelRoute = state.startRoute
+            } else {
+                onExit()
             }
         } else {
             currentStack.removeLastOrNull()
