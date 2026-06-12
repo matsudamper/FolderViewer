@@ -64,6 +64,10 @@ class HomeViewModel @Inject constructor(
                     // 何もしない
                 }
 
+                is UiStorageConfiguration.External -> {
+                    // 何もしない
+                }
+
                 is UiStorageConfiguration.SharePoint -> {
                     viewModelScope.launch {
                         viewModelEventChannel.send(ViewModelEvent.NavigateToSharePointAdd(storage.id))
@@ -100,6 +104,14 @@ class HomeViewModel @Inject constructor(
 
                                 is StorageConfiguration.Local -> {
                                     UiStorageConfiguration.Local(
+                                        id = storage.id,
+                                        name = storage.name,
+                                        rootPath = storage.rootPath,
+                                    )
+                                }
+
+                                is StorageConfiguration.External -> {
+                                    UiStorageConfiguration.External(
                                         id = storage.id,
                                         name = storage.name,
                                         rootPath = storage.rootPath,
