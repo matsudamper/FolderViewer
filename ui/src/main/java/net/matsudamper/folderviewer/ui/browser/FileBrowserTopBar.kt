@@ -37,6 +37,8 @@ internal fun FileBrowserTopBar(
     displayConfig: UiDisplayConfig,
     onDisplayConfigChange: (UiDisplayConfig) -> Unit,
     onFavoriteClick: () -> Unit,
+    visibleOpenFolderWithExternalAppButton: Boolean,
+    onOpenFolderWithExternalAppClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
@@ -111,6 +113,21 @@ internal fun FileBrowserTopBar(
                                 } else {
                                     LocalContentColor.current
                                 },
+                            )
+                        },
+                    )
+                }
+                if (visibleOpenFolderWithExternalAppButton) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.open_folder_with_external_app)) },
+                        onClick = {
+                            showMoreMenu = false
+                            onOpenFolderWithExternalAppClick()
+                        },
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_open_in_new),
+                                contentDescription = null,
                             )
                         },
                     )
@@ -275,6 +292,8 @@ private fun FileBrowserTopBarPreview() {
         ),
         onDisplayConfigChange = {},
         onFavoriteClick = {},
+        visibleOpenFolderWithExternalAppButton = true,
+        onOpenFolderWithExternalAppClick = {},
     )
 }
 

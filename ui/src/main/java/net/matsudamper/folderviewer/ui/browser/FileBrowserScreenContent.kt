@@ -89,6 +89,8 @@ internal fun FileBrowserScreenContent(
                     displayConfig = uiState.displayConfig,
                     onDisplayConfigChange = callbacks::onDisplayModeChanged,
                     onFavoriteClick = callbacks::onFavoriteClick,
+                    visibleOpenFolderWithExternalAppButton = uiState.visibleOpenFolderWithExternalAppButton,
+                    onOpenFolderWithExternalAppClick = callbacks::onOpenFolderWithExternalAppClick,
                 )
             }
         },
@@ -179,14 +181,6 @@ internal fun FileBrowserScreenContent(
                             painter = painterResource(R.drawable.ic_folder_add),
                             contentDescription = "ディレクトリを作成",
                         )
-                    }
-                    if (uiState.visibleOpenFolderWithExternalAppButton) {
-                        IconButton(onClick = { callbacks.onOpenFolderWithExternalAppClick() }) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_open_in_new),
-                                contentDescription = "外部アプリで開く",
-                            )
-                        }
                     }
                 }
             }
