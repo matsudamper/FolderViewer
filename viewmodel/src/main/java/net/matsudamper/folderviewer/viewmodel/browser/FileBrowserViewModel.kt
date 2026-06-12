@@ -39,6 +39,7 @@ import net.matsudamper.folderviewer.repository.DeleteJobRepository
 import net.matsudamper.folderviewer.repository.FavoriteConfiguration
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
+import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.PasteJobRepository
 import net.matsudamper.folderviewer.repository.PreferencesRepository
 import net.matsudamper.folderviewer.repository.ClipboardRepository
@@ -668,13 +669,14 @@ class FileBrowserViewModel @AssistedInject constructor(
             .addTag(FileUploadWorker.TAG_UPLOAD)
             .build()
 
-        uploadJobRepository.saveJob(
-            UploadJobRepository.UploadJob(
+        uploadJobRepository.createJob(
+            UploadJobRepository.NewUploadJob(
                 workerId = workRequest.id.toString(),
                 name = fileName,
                 isFolder = false,
                 fileObjectId = fileObjectId,
                 displayPath = arg.displayPath.orEmpty(),
+                files = listOf(UploadJobRepository.NewUploadFile(fileName = fileName)),
             ),
         )
 
@@ -695,18 +697,10 @@ class FileBrowserViewModel @AssistedInject constructor(
                 collectPasteFiles(sourceRepo, fileItem, "")
             }
 
-            val totalBytes = files.sumOf { it.fileSize }
-
-            val jobId = pasteJobRepository.saveJob(
-                job = PasteJobRepository.PasteJob(
-                    workerId = null,
-                    mode = clipboardState.mode,
-                    destinationFileObjectId = fileObjectId,
-                    destinationDisplayPath = arg.displayPath.orEmpty(),
-                    totalFiles = files.count { !it.isDirectory },
-                    totalBytes = totalBytes,
-                    status = PasteJobRepository.PasteJobStatus.ENQUEUED,
-                ),
+            val jobId = pasteJobRepository.createJob(
+                mode = clipboardState.mode,
+                destinationFileObjectId = fileObjectId,
+                destinationDisplayPath = arg.displayPath.orEmpty(),
                 files = files,
             )
 
@@ -719,7 +713,11 @@ class FileBrowserViewModel @AssistedInject constructor(
                 .addTag(FilePasteWorker.TAG_PASTE)
                 .build()
 
-            pasteJobRepository.updateStatus(jobId, PasteJobRepository.PasteJobStatus.ENQUEUED, workerId = workRequestWithData.id.toString())
+            pasteJobRepository.updateStatus(
+                jobId = jobId,
+                status = OperationRepository.OperationStatus.ENQUEUED,
+                workerId = workRequestWithData.id.toString(),
+            )
 
             WorkManager.getInstance(getApplication()).enqueue(workRequestWithData)
 
@@ -741,7 +739,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             val repository = getRepository()
             val files = items.flatMap { collectDeleteFiles(repository, it, "") }
             val jobName = "${items.size}件を削除"
-            val operationId = deleteJobRepository.saveJob(name = jobName, files = files)
+            val operationId = deleteJobRepository.createJob(name = jobName, files = files)
 
             val inputData = androidx.work.Data.Builder()
                 .putLong(FileDeleteWorker.KEY_DELETE_OPERATION_ID, operationId)
@@ -752,7 +750,11 @@ class FileBrowserViewModel @AssistedInject constructor(
                 .addTag(FileDeleteWorker.TAG_DELETE)
                 .build()
 
-            deleteJobRepository.updateStatus(operationId, net.matsudamper.folderviewer.repository.OperationRepository.OperationStatus.ENQUEUED, workRequest.id.toString())
+            deleteJobRepository.updateStatus(
+                operationId = operationId,
+                status = OperationRepository.OperationStatus.ENQUEUED,
+                workerId = workRequest.id.toString(),
+            )
 
             WorkManager.getInstance(getApplication()).enqueue(workRequest)
 
@@ -836,28 +838,26 @@ class FileBrowserViewModel @AssistedInject constructor(
         repo: FileRepository,
         item: FileItem,
         parentRelativePath: String,
-    ): List<DeleteJobRepository.DeleteFile> {
+    ): List<DeleteJobRepository.NewDeleteFile> {
         return if (item.isDirectory) {
             val children = repo.getFiles(item.id)
             val dirPath = if (parentRelativePath.isEmpty()) item.displayPath else "$parentRelativePath/${item.displayPath}"
             val childFiles = children.flatMap { child -> collectDeleteFiles(repo, child, dirPath) }
-            childFiles + DeleteJobRepository.DeleteFile(
-                operationId = 0,
+            childFiles + DeleteJobRepository.NewDeleteFile(
                 sourceFileId = item.id,
                 fileName = item.displayPath,
                 fileSize = 0,
                 isDirectory = true,
-                parentRelativePath = parentRelativePath,
+                relativePath = parentRelativePath,
             )
         } else {
             listOf(
-                DeleteJobRepository.DeleteFile(
-                    operationId = 0,
+                DeleteJobRepository.NewDeleteFile(
                     sourceFileId = item.id,
                     fileName = item.displayPath,
                     fileSize = item.size,
                     isDirectory = false,
-                    parentRelativePath = parentRelativePath,
+                    relativePath = parentRelativePath,
                 ),
             )
         }
@@ -867,7 +867,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         repo: FileRepository,
         item: FileItem,
         destinationRelativePath: String,
-    ): List<PasteJobRepository.PasteFile> {
+    ): List<PasteJobRepository.NewPasteFile> {
         return if (item.isDirectory) {
             val dirPath = if (destinationRelativePath.isEmpty()) {
                 item.displayPath
@@ -876,23 +876,21 @@ class FileBrowserViewModel @AssistedInject constructor(
             }
             val children = repo.getFiles(item.id)
             listOf(
-                PasteJobRepository.PasteFile(
-                    jobId = 0,
+                PasteJobRepository.NewPasteFile(
                     sourceFileId = item.id,
                     fileName = item.displayPath,
                     fileSize = 0,
-                    destinationRelativePath = destinationRelativePath,
+                    relativePath = destinationRelativePath,
                     isDirectory = true,
                 ),
             ) + children.flatMap { child -> collectPasteFiles(repo, child, dirPath) }
         } else {
             listOf(
-                PasteJobRepository.PasteFile(
-                    jobId = 0,
+                PasteJobRepository.NewPasteFile(
                     sourceFileId = item.id,
                     fileName = item.displayPath,
                     fileSize = item.size,
-                    destinationRelativePath = destinationRelativePath,
+                    relativePath = destinationRelativePath,
                 ),
             )
         }
@@ -959,14 +957,19 @@ class FileBrowserViewModel @AssistedInject constructor(
             .addTag(FolderUploadWorker.TAG_UPLOAD)
             .build()
 
-        uploadJobRepository.saveJob(
-            UploadJobRepository.UploadJob(
+        uploadJobRepository.createJob(
+            UploadJobRepository.NewUploadJob(
                 workerId = uploadWorkRequest.id.toString(),
                 name = folderName,
                 isFolder = true,
                 fileObjectId = fileObjectId,
                 displayPath = arg.displayPath.orEmpty(),
-                totalFiles = files.size,
+                files = uriDataList.map { uriData ->
+                    UploadJobRepository.NewUploadFile(
+                        fileName = uriData.relativePath.substringAfterLast('/'),
+                        relativePath = uriData.relativePath.substringBeforeLast('/', ""),
+                    )
+                },
             ),
         )
 

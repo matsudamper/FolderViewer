@@ -18,6 +18,7 @@ import net.matsudamper.folderviewer.ui.upload.DeleteDetailUiState
 
 @HiltViewModel
 class DeleteDetailViewModel @Inject constructor(
+    private val operationRepository: OperationRepository,
     private val deleteJobRepository: DeleteJobRepository,
 ) : ViewModel() {
 
@@ -33,12 +34,12 @@ class DeleteDetailViewModel @Inject constructor(
         if (initJob?.isActive == true) return
         initJob = viewModelScope.launch {
             combine(
-                deleteJobRepository.observeJob(operationId),
+                operationRepository.observeProgressById(operationId),
                 deleteJobRepository.observeFiles(operationId),
-            ) { job, files ->
-                if (job == null) return@combine null
+            ) { progress, files ->
+                if (progress == null) return@combine null
 
-                val statusText = when (job.status) {
+                val statusText = when (progress.status) {
                     OperationRepository.OperationStatus.ENQUEUED -> "待機中"
                     OperationRepository.OperationStatus.RUNNING -> "削除中"
                     OperationRepository.OperationStatus.PAUSED -> "一時停止"
@@ -48,29 +49,30 @@ class DeleteDetailViewModel @Inject constructor(
                     OperationRepository.OperationStatus.WAITING_RESOLUTION -> "確認待ち"
                 }
 
-                val uiStatus = when (job.status) {
+                val uiStatus = when (progress.status) {
                     OperationRepository.OperationStatus.COMPLETED -> DeleteDetailUiState.Status.COMPLETED
-                    OperationRepository.OperationStatus.FAILED -> DeleteDetailUiState.Status.FAILED
-                    OperationRepository.OperationStatus.RUNNING -> DeleteDetailUiState.Status.RUNNING
+                    OperationRepository.OperationStatus.FAILED,
+                    OperationRepository.OperationStatus.CANCELLED,
+                    -> DeleteDetailUiState.Status.FAILED
                     else -> DeleteDetailUiState.Status.RUNNING
                 }
 
                 val failedItems = files
-                    .filter { it.errorMessage != null }
+                    .filter { it.status == OperationRepository.FileStatus.FAILED }
                     .map { file ->
                         DeleteDetailUiState.FailedFileItem(
                             fileName = file.fileName,
-                            path = if (file.parentRelativePath.isEmpty()) file.fileName else "${file.parentRelativePath}/${file.fileName}",
+                            path = file.displayPath(),
                             errorMessage = file.errorMessage ?: "",
                         )
                     }
 
                 val completedItems = files
-                    .filter { it.completed && it.errorMessage == null && !it.isDirectory }
+                    .filter { it.status == OperationRepository.FileStatus.COMPLETED && !it.isDirectory }
                     .map { file ->
                         DeleteDetailUiState.CompletedFileItem(
                             fileName = file.fileName,
-                            path = if (file.parentRelativePath.isEmpty()) file.fileName else "${file.parentRelativePath}/${file.fileName}",
+                            path = file.displayPath(),
                         )
                     }
 
@@ -83,14 +85,14 @@ class DeleteDetailViewModel @Inject constructor(
                 }
 
                 DeleteDetailUiState(
-                    jobName = job.name,
+                    jobName = progress.name,
                     statusText = statusText,
                     status = uiStatus,
-                    totalFiles = job.totalFiles,
-                    completedFiles = job.completedFiles,
-                    failedFiles = job.failedFiles,
-                    errorMessage = job.errorMessage,
-                    errorCause = job.errorCause,
+                    totalFiles = progress.totalFiles,
+                    completedFiles = progress.completedFiles,
+                    failedFiles = progress.failedFiles,
+                    errorMessage = progress.errorMessage,
+                    errorCause = progress.errorCause,
                     failedFileItems = failedItems,
                     completedFileItems = completedItems,
                     callbacks = callbacks,
@@ -98,6 +100,14 @@ class DeleteDetailViewModel @Inject constructor(
             }.collect { state ->
                 _uiState.value = state
             }
+        }
+    }
+
+    private fun DeleteJobRepository.DeleteFile.displayPath(): String {
+        return if (relativePath.isEmpty()) {
+            fileName
+        } else {
+            "$relativePath/$fileName"
         }
     }
 

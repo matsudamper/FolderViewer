@@ -19,6 +19,8 @@ import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import net.matsudamper.folderviewer.coil.FileImageSource
+import net.matsudamper.folderviewer.repository.ClipboardRepository
+import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.PasteJobRepository
 import net.matsudamper.folderviewer.ui.upload.PasteDetailUiState
 import net.matsudamper.folderviewer.viewmodel.util.FileUtil
@@ -27,6 +29,7 @@ import net.matsudamper.folderviewer.viewmodel.worker.FilePasteWorker
 @HiltViewModel
 class PasteDetailViewModel @Inject constructor(
     application: Application,
+    private val operationRepository: OperationRepository,
     private val pasteJobRepository: PasteJobRepository,
 ) : AndroidViewModel(application) {
 
@@ -41,170 +44,21 @@ class PasteDetailViewModel @Inject constructor(
     fun init(jobId: Long) {
         if (initJob?.isActive == true) return
         initJob = viewModelScope.launch {
+            val meta = pasteJobRepository.getJobMeta(jobId) ?: return@launch
             combine(
-                pasteJobRepository.observeJob(jobId),
+                operationRepository.observeProgressById(jobId),
                 pasteJobRepository.observeDuplicateFiles(jobId),
                 pasteJobRepository.observeCompletedFiles(jobId),
                 pasteJobRepository.observeFailedFiles(jobId),
-            ) { job, duplicates, completed, failedFiles ->
-                if (job == null) return@combine null
-
-                val modeText = when (job.mode) {
-                    net.matsudamper.folderviewer.repository.ClipboardRepository.ClipboardMode.Copy -> "コピー"
-                    net.matsudamper.folderviewer.repository.ClipboardRepository.ClipboardMode.Cut -> "カット"
-                }
-
-                val statusText = when (job.status) {
-                    PasteJobRepository.PasteJobStatus.ENQUEUED -> "待機中"
-                    PasteJobRepository.PasteJobStatus.RUNNING -> "実行中"
-                    PasteJobRepository.PasteJobStatus.PAUSED -> "一時停止"
-                    PasteJobRepository.PasteJobStatus.COMPLETED -> "完了"
-                    PasteJobRepository.PasteJobStatus.FAILED -> "失敗"
-                    PasteJobRepository.PasteJobStatus.WAITING_RESOLUTION -> "解決待ち"
-                }
-
-                val uiStatus = when (job.status) {
-                    PasteJobRepository.PasteJobStatus.ENQUEUED -> PasteDetailUiState.Status.ENQUEUED
-                    PasteJobRepository.PasteJobStatus.RUNNING -> PasteDetailUiState.Status.RUNNING
-                    PasteJobRepository.PasteJobStatus.PAUSED -> PasteDetailUiState.Status.PAUSED
-                    PasteJobRepository.PasteJobStatus.COMPLETED -> PasteDetailUiState.Status.COMPLETED
-                    PasteJobRepository.PasteJobStatus.FAILED -> PasteDetailUiState.Status.FAILED
-                    PasteJobRepository.PasteJobStatus.WAITING_RESOLUTION -> PasteDetailUiState.Status.WAITING_RESOLUTION
-                }
-
-                val duplicateItems = duplicates.map { file ->
-                    val sourcePath = "${file.sourceFileId.storageId}/${file.sourceFileId.id}"
-                    val destinationPath = if (file.destinationRelativePath.isEmpty()) {
-                        "${job.destinationDisplayPath}/${file.fileName}"
-                    } else {
-                        "${job.destinationDisplayPath}/${file.destinationRelativePath}/${file.fileName}"
-                    }
-
-                    val uiResolution = when (file.resolution) {
-                        PasteJobRepository.DuplicateResolution.KEEP_DESTINATION -> PasteDetailUiState.Resolution.KEEP_DESTINATION
-                        PasteJobRepository.DuplicateResolution.OVERWRITE_WITH_SOURCE -> PasteDetailUiState.Resolution.OVERWRITE_WITH_SOURCE
-                        PasteJobRepository.DuplicateResolution.PENDING, null -> null
-                    }
-
-                    val isImage = !file.isDirectory && FileUtil.isImage(file.fileName)
-
-                    PasteDetailUiState.DuplicateFileItem(
-                        fileId = file.id,
-                        fileName = file.fileName,
-                        sourcePath = sourcePath,
-                        sourceSize = file.fileSize,
-                        sourceSizeText = formatFileSize(file.fileSize),
-                        destinationPath = destinationPath,
-                        destinationSize = file.destinationFileSize,
-                        destinationSizeText = formatFileSize(file.destinationFileSize),
-                        sourceThumbnail = if (isImage) {
-                            FileImageSource.Thumbnail(fileId = file.sourceFileId)
-                        } else {
-                            null
-                        },
-                        destinationThumbnail = if (isImage) {
-                            file.destinationFileId?.let { FileImageSource.Thumbnail(fileId = it) }
-                        } else {
-                            null
-                        },
-                        resolution = uiResolution,
-                        onKeepDestination = {
-                            resolveFile(file.id, PasteJobRepository.DuplicateResolution.KEEP_DESTINATION, jobId)
-                        },
-                        onOverwriteWithSource = {
-                            resolveFile(file.id, PasteJobRepository.DuplicateResolution.OVERWRITE_WITH_SOURCE, jobId)
-                        },
-                    )
-                }
-
-                val completedItems = completed.map { file ->
-                    val path = if (file.destinationRelativePath.isEmpty()) {
-                        "${job.destinationDisplayPath}/${file.fileName}"
-                    } else {
-                        "${job.destinationDisplayPath}/${file.destinationRelativePath}/${file.fileName}"
-                    }
-                    val uiResolution = when (file.resolution) {
-                        PasteJobRepository.DuplicateResolution.KEEP_DESTINATION -> PasteDetailUiState.Resolution.KEEP_DESTINATION
-                        PasteJobRepository.DuplicateResolution.OVERWRITE_WITH_SOURCE -> PasteDetailUiState.Resolution.OVERWRITE_WITH_SOURCE
-                        else -> PasteDetailUiState.Resolution.NONE
-                    }
-                    PasteDetailUiState.CompletedFileItem(
-                        fileName = file.fileName,
-                        path = path,
-                        sizeText = formatFileSize(file.fileSize),
-                        resolution = uiResolution,
-                    )
-                }
-
-                val canApply = duplicateItems.isNotEmpty() &&
-                    duplicateItems.all { it.resolution != null } &&
-                    job.status == PasteJobRepository.PasteJobStatus.WAITING_RESOLUTION
-
-                val isRunning = job.status == PasteJobRepository.PasteJobStatus.RUNNING
-                val isActive = isRunning || job.status == PasteJobRepository.PasteJobStatus.ENQUEUED
-                val progress = if (isActive && job.totalBytes > 0) {
-                    (job.completedBytes + job.currentFileBytes).toFloat() / job.totalBytes.toFloat()
-                } else {
-                    null
-                }
-                val fileCountText = if (isActive) {
-                    "${job.completedFiles}/${job.totalFiles}"
-                } else {
-                    null
-                }
-                val sizeProgressText = if (isActive && job.totalBytes > 0) {
-                    "${formatFileSize(job.completedBytes + job.currentFileBytes)} / ${formatFileSize(job.totalBytes)}"
-                } else {
-                    null
-                }
-                val currentFileName = if (isRunning) job.currentFileName else null
-                val currentFileProgress = if (isRunning && job.currentFileTotalBytes > 0) {
-                    job.currentFileBytes.toFloat() / job.currentFileTotalBytes.toFloat()
-                } else {
-                    null
-                }
-
-                val callbacks = object : PasteDetailUiState.Callbacks {
-                    override fun onBackClick() {
-                        viewModelScope.launch {
-                            viewModelEventChannel.send(ViewModelEvent.NavigateBack)
-                        }
-                    }
-
-                    override fun onApplyResolutions() {
-                        applyResolutions(jobId)
-                    }
-                }
-
-                val failedItems = failedFiles.map { file ->
-                    val path = if (file.destinationRelativePath.isEmpty()) {
-                        "${job.destinationDisplayPath}/${file.fileName}"
-                    } else {
-                        "${job.destinationDisplayPath}/${file.destinationRelativePath}/${file.fileName}"
-                    }
-                    PasteDetailUiState.FailedFileItem(
-                        fileName = file.fileName,
-                        path = path,
-                        errorMessage = file.errorMessage ?: "",
-                    )
-                }
-
-                PasteDetailUiState(
-                    jobName = "${job.totalFiles}ファイルを${modeText}",
-                    statusText = statusText,
-                    status = uiStatus,
-                    errorMessage = job.errorMessage,
-                    errorCause = job.errorCause,
-                    duplicateFiles = duplicateItems,
-                    completedFiles = completedItems,
-                    failedFiles = failedItems,
-                    canApply = canApply,
+            ) { progress, duplicates, completed, failedFiles ->
+                if (progress == null) return@combine null
+                createUiState(
+                    jobId = jobId,
+                    meta = meta,
                     progress = progress,
-                    fileCountText = fileCountText,
-                    sizeProgressText = sizeProgressText,
-                    currentFileName = currentFileName,
-                    currentFileProgress = currentFileProgress,
-                    callbacks = callbacks,
+                    duplicates = duplicates,
+                    completed = completed,
+                    failedFiles = failedFiles,
                 )
             }.collect { state ->
                 _uiState.value = state
@@ -212,12 +66,183 @@ class PasteDetailViewModel @Inject constructor(
         }
     }
 
-    private fun resolveFile(fileId: Long, resolution: PasteJobRepository.DuplicateResolution, jobId: Long) {
+    private fun createUiState(
+        jobId: Long,
+        meta: PasteJobRepository.PasteJobMeta,
+        progress: OperationRepository.OperationProgress,
+        duplicates: List<PasteJobRepository.PasteFile>,
+        completed: List<PasteJobRepository.PasteFile>,
+        failedFiles: List<PasteJobRepository.PasteFile>,
+    ): PasteDetailUiState {
+        val modeText = when (meta.mode) {
+            ClipboardRepository.ClipboardMode.Copy -> "コピー"
+            ClipboardRepository.ClipboardMode.Cut -> "カット"
+        }
+
+        val statusText = when (progress.status) {
+            OperationRepository.OperationStatus.ENQUEUED -> "待機中"
+            OperationRepository.OperationStatus.RUNNING -> "実行中"
+            OperationRepository.OperationStatus.PAUSED -> "一時停止"
+            OperationRepository.OperationStatus.COMPLETED -> "完了"
+            OperationRepository.OperationStatus.FAILED -> "失敗"
+            OperationRepository.OperationStatus.CANCELLED -> "キャンセル"
+            OperationRepository.OperationStatus.WAITING_RESOLUTION -> "解決待ち"
+        }
+
+        val uiStatus = when (progress.status) {
+            OperationRepository.OperationStatus.ENQUEUED -> PasteDetailUiState.Status.ENQUEUED
+            OperationRepository.OperationStatus.RUNNING -> PasteDetailUiState.Status.RUNNING
+            OperationRepository.OperationStatus.PAUSED -> PasteDetailUiState.Status.PAUSED
+            OperationRepository.OperationStatus.COMPLETED -> PasteDetailUiState.Status.COMPLETED
+            OperationRepository.OperationStatus.FAILED,
+            OperationRepository.OperationStatus.CANCELLED,
+            -> PasteDetailUiState.Status.FAILED
+            OperationRepository.OperationStatus.WAITING_RESOLUTION ->
+                PasteDetailUiState.Status.WAITING_RESOLUTION
+        }
+
+        val duplicateItems = duplicates.map { file ->
+            createDuplicateItem(meta = meta, file = file)
+        }
+
+        val completedItems = completed.map { file ->
+            val uiResolution = when (file.resolution) {
+                PasteJobRepository.DuplicateResolution.KEEP_DESTINATION ->
+                    PasteDetailUiState.Resolution.KEEP_DESTINATION
+                PasteJobRepository.DuplicateResolution.OVERWRITE_WITH_SOURCE ->
+                    PasteDetailUiState.Resolution.OVERWRITE_WITH_SOURCE
+                else -> PasteDetailUiState.Resolution.NONE
+            }
+            PasteDetailUiState.CompletedFileItem(
+                fileName = file.fileName,
+                path = destinationPath(meta, file),
+                sizeText = formatFileSize(file.fileSize),
+                resolution = uiResolution,
+            )
+        }
+
+        val failedItems = failedFiles.map { file ->
+            PasteDetailUiState.FailedFileItem(
+                fileName = file.fileName,
+                path = destinationPath(meta, file),
+                errorMessage = file.errorMessage ?: "",
+            )
+        }
+
+        val canApply = duplicateItems.isNotEmpty() &&
+            duplicateItems.all { it.resolution != null } &&
+            progress.status == OperationRepository.OperationStatus.WAITING_RESOLUTION
+
+        val isRunning = progress.status == OperationRepository.OperationStatus.RUNNING
+        val isActive = isRunning || progress.status == OperationRepository.OperationStatus.ENQUEUED
+        val overallProgress = if (isActive && progress.totalBytes > 0) {
+            progress.completedBytes.toFloat() / progress.totalBytes.toFloat()
+        } else {
+            null
+        }
+        val fileCountText = if (isActive) {
+            "${progress.completedFiles}/${progress.totalFiles}"
+        } else {
+            null
+        }
+        val sizeProgressText = if (isActive && progress.totalBytes > 0) {
+            "${formatFileSize(progress.completedBytes)} / ${formatFileSize(progress.totalBytes)}"
+        } else {
+            null
+        }
+        val currentFileTotalBytes = progress.currentFileTotalBytes
+        val currentFileProgress = if (isRunning && currentFileTotalBytes != null && currentFileTotalBytes > 0) {
+            (progress.currentFileBytes ?: 0L).toFloat() / currentFileTotalBytes.toFloat()
+        } else {
+            null
+        }
+
+        val callbacks = object : PasteDetailUiState.Callbacks {
+            override fun onBackClick() {
+                viewModelScope.launch {
+                    viewModelEventChannel.send(ViewModelEvent.NavigateBack)
+                }
+            }
+
+            override fun onApplyResolutions() {
+                applyResolutions(jobId)
+            }
+        }
+
+        return PasteDetailUiState(
+            jobName = "${progress.totalFiles}ファイルを$modeText",
+            statusText = statusText,
+            status = uiStatus,
+            errorMessage = progress.errorMessage,
+            errorCause = progress.errorCause,
+            duplicateFiles = duplicateItems,
+            completedFiles = completedItems,
+            failedFiles = failedItems,
+            canApply = canApply,
+            progress = overallProgress,
+            fileCountText = fileCountText,
+            sizeProgressText = sizeProgressText,
+            currentFileName = if (isRunning) progress.currentFileName else null,
+            currentFileProgress = currentFileProgress,
+            callbacks = callbacks,
+        )
+    }
+
+    private fun createDuplicateItem(
+        meta: PasteJobRepository.PasteJobMeta,
+        file: PasteJobRepository.PasteFile,
+    ): PasteDetailUiState.DuplicateFileItem {
+        val uiResolution = when (file.resolution) {
+            PasteJobRepository.DuplicateResolution.KEEP_DESTINATION ->
+                PasteDetailUiState.Resolution.KEEP_DESTINATION
+            PasteJobRepository.DuplicateResolution.OVERWRITE_WITH_SOURCE ->
+                PasteDetailUiState.Resolution.OVERWRITE_WITH_SOURCE
+            PasteJobRepository.DuplicateResolution.PENDING, null -> null
+        }
+        val isImage = !file.isDirectory && FileUtil.isImage(file.fileName)
+        return PasteDetailUiState.DuplicateFileItem(
+            fileId = file.id,
+            fileName = file.fileName,
+            sourcePath = "${file.sourceFileId.storageId}/${file.sourceFileId.id}",
+            sourceSize = file.fileSize,
+            sourceSizeText = formatFileSize(file.fileSize),
+            destinationPath = destinationPath(meta, file),
+            destinationSize = file.destinationFileSize,
+            destinationSizeText = formatFileSize(file.destinationFileSize),
+            sourceThumbnail = if (isImage) {
+                FileImageSource.Thumbnail(fileId = file.sourceFileId)
+            } else {
+                null
+            },
+            destinationThumbnail = if (isImage) {
+                file.destinationFileId?.let { FileImageSource.Thumbnail(fileId = it) }
+            } else {
+                null
+            },
+            resolution = uiResolution,
+            onKeepDestination = {
+                resolveFile(file.id, PasteJobRepository.DuplicateResolution.KEEP_DESTINATION)
+            },
+            onOverwriteWithSource = {
+                resolveFile(file.id, PasteJobRepository.DuplicateResolution.OVERWRITE_WITH_SOURCE)
+            },
+        )
+    }
+
+    private fun destinationPath(
+        meta: PasteJobRepository.PasteJobMeta,
+        file: PasteJobRepository.PasteFile,
+    ): String {
+        return if (file.relativePath.isEmpty()) {
+            "${meta.destinationDisplayPath}/${file.fileName}"
+        } else {
+            "${meta.destinationDisplayPath}/${file.relativePath}/${file.fileName}"
+        }
+    }
+
+    private fun resolveFile(fileId: Long, resolution: PasteJobRepository.DuplicateResolution) {
         viewModelScope.launch {
             pasteJobRepository.resolveFile(fileId, resolution)
-            val unresolvedCount = pasteJobRepository.countUnresolvedDuplicates(jobId)
-            val job = pasteJobRepository.getJobById(jobId) ?: return@launch
-            pasteJobRepository.updateResolvedCount(jobId, job.duplicateFiles - unresolvedCount)
         }
     }
 
@@ -237,7 +262,7 @@ class PasteDetailViewModel @Inject constructor(
 
             pasteJobRepository.updateStatus(
                 jobId = jobId,
-                status = PasteJobRepository.PasteJobStatus.ENQUEUED,
+                status = OperationRepository.OperationStatus.ENQUEUED,
                 workerId = workRequest.id.toString(),
             )
 

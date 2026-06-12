@@ -13,6 +13,7 @@ import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -33,104 +34,18 @@ internal class FileDeleteWorker @AssistedInject constructor(
         val operationId = inputData.getLong(KEY_DELETE_OPERATION_ID, -1L)
         if (operationId == -1L) return@withContext Result.failure()
 
-        val job = deleteJobRepository.getJobById(operationId) ?: return@withContext Result.failure()
-        val notificationId = DELETE_NOTIFICATION_BASE_ID + operationId.toInt()
-
         try {
-            deleteJobRepository.updateStatus(operationId, OperationRepository.OperationStatus.RUNNING, workerId = id.toString())
-            setForeground(createForegroundInfo(notificationId, 0, job.totalFiles, null))
-
-            val allFiles = deleteJobRepository.getPendingFiles(operationId)
-            val pendingFiles = allFiles.filter { !it.completed }
-
-            if (pendingFiles.isEmpty()) {
-                deleteJobRepository.updateStatus(operationId, OperationRepository.OperationStatus.COMPLETED)
-                notifyCompleted(operationId, job.totalFiles)
-                return@withContext Result.success()
-            }
-
-            val sortedFiles = pendingFiles.sortedWith(
-                compareByDescending<DeleteJobRepository.DeleteFile> { file ->
-                    val ownPath = if (file.parentRelativePath.isEmpty()) {
-                        file.fileName
-                    } else {
-                        "${file.parentRelativePath}/${file.fileName}"
-                    }
-                    ownPath.count { c -> c == '/' }
-                }.thenBy { it.isDirectory },
+            deleteJobRepository.resetRunningFiles(operationId)
+            deleteJobRepository.updateStatus(
+                operationId = operationId,
+                status = OperationRepository.OperationStatus.RUNNING,
+                workerId = id.toString(),
             )
-
-            var completedFiles = allFiles.count { it.completed && !it.isDirectory }
-            var completedBytes = allFiles.filter { it.completed && !it.isDirectory }.sumOf { it.fileSize }
-            var failedFiles = 0
-
-            for (file in sortedFiles) {
-                if (isStopped) {
-                    return@withContext Result.retry()
-                }
-
-                val currentFileName = file.displayPath()
-                deleteJobRepository.updateProgress(
-                    operationId = operationId,
-                    completedFiles = completedFiles,
-                    completedBytes = completedBytes,
-                    failedFiles = failedFiles,
-                    currentFileName = currentFileName,
-                )
-
-                val storageId = file.sourceFileId.storageId
-                val repo = storageRepository.getFileRepository(storageId)
-
-                if (repo == null) {
-                    deleteJobRepository.markFileFailed(file.id, "ストレージが見つかりません: $storageId")
-                    failedFiles++
-                    deleteJobRepository.updateProgress(
-                        operationId = operationId,
-                        completedFiles = completedFiles,
-                        completedBytes = completedBytes,
-                        failedFiles = failedFiles,
-                        currentFileName = currentFileName,
-                    )
-                    continue
-                }
-
-                try {
-                    if (file.isDirectory) {
-                        repo.deleteDirectory(file.sourceFileId)
-                    } else {
-                        repo.deleteFile(file.sourceFileId)
-                    }
-                    deleteJobRepository.markFileCompleted(file.id)
-                    if (!file.isDirectory) {
-                        completedFiles++
-                        completedBytes += file.fileSize
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Throwable) {
-                    deleteJobRepository.markFileFailed(file.id, e.message ?: e.toString())
-                    failedFiles++
-                }
-
-                deleteJobRepository.updateProgress(
-                    operationId = operationId,
-                    completedFiles = completedFiles,
-                    completedBytes = completedBytes,
-                    failedFiles = failedFiles,
-                    currentFileName = currentFileName,
-                )
-                updateNotification(notificationId, completedFiles, job.totalFiles, currentFileName)
-            }
-
-            if (failedFiles > 0) {
-                deleteJobRepository.updateStatus(operationId, OperationRepository.OperationStatus.FAILED)
-                notifyFailed(operationId, "$failedFiles 件のファイルが失敗しました")
-            } else {
-                deleteJobRepository.updateStatus(operationId, OperationRepository.OperationStatus.COMPLETED)
-                notifyCompleted(operationId, job.totalFiles)
-            }
-            Result.success()
+            executeJob(operationId)
         } catch (e: CancellationException) {
+            withContext(NonCancellable) {
+                deleteJobRepository.cancelJob(operationId)
+            }
             throw e
         } catch (e: Throwable) {
             e.printStackTrace()
@@ -168,6 +83,81 @@ internal class FileDeleteWorker @AssistedInject constructor(
             ),
             contentIntent = operationNotificationIntentFactory.createDeleteDetailIntent(operationId),
         )
+    }
+
+    private suspend fun executeJob(operationId: Long): Result {
+        val notificationId = DELETE_NOTIFICATION_BASE_ID + operationId.toInt()
+        val allFiles = deleteJobRepository.getFiles(operationId)
+        val totalFiles = allFiles.count { !it.isDirectory }
+        setForeground(createForegroundInfo(notificationId, 0, totalFiles, null))
+
+        val pendingFiles = deleteJobRepository.getPendingFiles(operationId)
+        if (pendingFiles.isEmpty()) {
+            finishJob(operationId, totalFiles)
+            return Result.success()
+        }
+
+        val sortedFiles = pendingFiles.sortedWith(
+            compareByDescending<DeleteJobRepository.DeleteFile> { file ->
+                file.displayPath().count { c -> c == '/' }
+            }.thenBy { it.isDirectory },
+        )
+
+        var completedCount = allFiles.count {
+            !it.isDirectory && it.status == OperationRepository.FileStatus.COMPLETED
+        }
+
+        sortedFiles.forEachIndexed { index, file ->
+            if (isStopped) {
+                deleteJobRepository.resetRunningFiles(operationId)
+                return Result.retry()
+            }
+            if (index == 0) {
+                deleteJobRepository.finishFileAndStartNext(finish = null, nextFileId = file.id)
+            }
+            val finish = deleteFile(file)
+            deleteJobRepository.finishFileAndStartNext(
+                finish = finish,
+                nextFileId = sortedFiles.getOrNull(index + 1)?.id,
+            )
+            if (finish is DeleteJobRepository.FileFinish.Completed && !file.isDirectory) {
+                completedCount++
+            }
+            updateNotification(notificationId, completedCount, totalFiles, file.displayPath())
+        }
+
+        finishJob(operationId, totalFiles)
+        return Result.success()
+    }
+
+    private suspend fun finishJob(operationId: Long, totalFiles: Int) {
+        val failedCount = deleteJobRepository.countFailedFiles(operationId)
+        if (failedCount > 0) {
+            deleteJobRepository.updateStatus(operationId, OperationRepository.OperationStatus.FAILED)
+            notifyFailed(operationId, "$failedCount 件のファイルが失敗しました")
+        } else {
+            deleteJobRepository.updateStatus(operationId, OperationRepository.OperationStatus.COMPLETED)
+            notifyCompleted(operationId, totalFiles)
+        }
+    }
+
+    private suspend fun deleteFile(file: DeleteJobRepository.DeleteFile): DeleteJobRepository.FileFinish {
+        val storageId = file.sourceFileId.storageId
+        val repo = storageRepository.getFileRepository(storageId)
+            ?: return DeleteJobRepository.FileFinish.Failed(file.id, "ストレージが見つかりません: $storageId")
+
+        return try {
+            if (file.isDirectory) {
+                repo.deleteDirectory(file.sourceFileId)
+            } else {
+                repo.deleteFile(file.sourceFileId)
+            }
+            DeleteJobRepository.FileFinish.Completed(file.id)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Throwable) {
+            DeleteJobRepository.FileFinish.Failed(file.id, e.message ?: e.toString())
+        }
     }
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
@@ -239,10 +229,10 @@ internal class FileDeleteWorker @AssistedInject constructor(
     }
 
     private fun DeleteJobRepository.DeleteFile.displayPath(): String {
-        return if (parentRelativePath.isEmpty()) {
+        return if (relativePath.isEmpty()) {
             fileName
         } else {
-            "$parentRelativePath/$fileName"
+            "$relativePath/$fileName"
         }
     }
 

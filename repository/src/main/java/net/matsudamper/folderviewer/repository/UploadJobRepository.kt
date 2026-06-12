@@ -1,7 +1,5 @@
 package net.matsudamper.folderviewer.repository
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
@@ -10,6 +8,8 @@ import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.db.AppDatabase
 import net.matsudamper.folderviewer.repository.db.OperationDao
 import net.matsudamper.folderviewer.repository.db.OperationEntity
+import net.matsudamper.folderviewer.repository.db.OperationFileDao
+import net.matsudamper.folderviewer.repository.db.OperationFileEntity
 import net.matsudamper.folderviewer.repository.db.UploadOperationDao
 import net.matsudamper.folderviewer.repository.db.UploadOperationEntity
 
@@ -18,29 +18,9 @@ class UploadJobRepository @Inject internal constructor(
     private val database: AppDatabase,
     private val operationDao: OperationDao,
     private val uploadOperationDao: UploadOperationDao,
+    private val operationFileDao: OperationFileDao,
 ) {
-    // TODO: paste/delete が多い場合に UPLOAD の件数が 500 件未満でも欠けるリスクがある。
-    //       また toUploadJob() が per-item で uploadOperationDao を呼ぶため 1+N クエリになっている。
-    //       DAO に type 条件と JOIN を含む専用クエリを追加して置き換える。
-    fun getAllJobs(): Flow<List<UploadJob>> {
-        return operationDao.observeAll(limit = 500).map { entities ->
-            entities
-                .filter {
-                    it.type == OperationRepository.OperationType.UPLOAD_FILE.name ||
-                        it.type == OperationRepository.OperationType.UPLOAD_FOLDER.name
-                }
-                .mapNotNull { entity ->
-                    runCatching { entity.toUploadJob(uploadOperationDao) }.getOrNull()
-                }
-        }
-    }
-
-    suspend fun getJob(workerId: String): UploadJob? {
-        val entity = operationDao.getByWorkerId(workerId) ?: return null
-        return runCatching { entity.toUploadJob(uploadOperationDao) }.getOrNull()
-    }
-
-    suspend fun saveJob(job: UploadJob) {
+    suspend fun createJob(job: NewUploadJob) {
         database.withTransaction {
             val type = if (job.isFolder) {
                 OperationRepository.OperationType.UPLOAD_FOLDER
@@ -52,9 +32,9 @@ class UploadJobRepository @Inject internal constructor(
                     type = type.name,
                     workerId = job.workerId,
                     name = job.name,
+                    description = job.name,
                     status = OperationRepository.OperationStatus.ENQUEUED.name,
                     createdAt = System.currentTimeMillis(),
-                    totalFiles = job.totalFiles,
                 ),
             )
             uploadOperationDao.insert(
@@ -66,56 +46,152 @@ class UploadJobRepository @Inject internal constructor(
                     displayPath = job.displayPath,
                 ),
             )
+            operationFileDao.insertAll(
+                job.files.map { file ->
+                    OperationFileEntity(
+                        operationId = operationId,
+                        fileName = file.fileName,
+                        relativePath = file.relativePath,
+                        fileSize = file.fileSize,
+                    )
+                },
+            )
         }
     }
 
-    suspend fun deleteJob(workerId: String) {
-        val entity = operationDao.getByWorkerId(workerId) ?: return
-        operationDao.deleteById(entity.id)
-    }
-
-    suspend fun updateError(workerId: String, errorMessage: String?, errorCause: String?) {
-        val entity = operationDao.getByWorkerId(workerId) ?: return
-        operationDao.updateError(
-            id = entity.id,
-            status = OperationRepository.OperationStatus.FAILED.name,
-            errorMessage = errorMessage,
-            errorCause = errorCause,
+    suspend fun getJob(workerId: String): UploadJob? {
+        val operation = operationDao.getByWorkerId(workerId) ?: return null
+        val uploadDetail = uploadOperationDao.getByOperationId(operation.id) ?: return null
+        val fileObjectId = runCatching {
+            Json.decodeFromString<FileObjectId>(uploadDetail.fileObjectId)
+        }.getOrNull() ?: return null
+        return UploadJob(
+            operationId = operation.id,
+            workerId = workerId,
+            name = operation.name,
+            isFolder = uploadDetail.isFolder,
+            fileObjectId = fileObjectId,
+            displayPath = uploadDetail.displayPath,
         )
     }
 
+    suspend fun getFiles(operationId: Long): List<UploadFile> {
+        return operationFileDao.getByOperationId(operationId).map { entity ->
+            UploadFile(
+                id = entity.id,
+                fileName = entity.fileName,
+                relativePath = entity.relativePath,
+                fileSize = entity.fileSize,
+                status = OperationRepository.FileStatus.entries.firstOrNull { it.name == entity.status }
+                    ?: OperationRepository.FileStatus.FAILED,
+            )
+        }
+    }
+
+    suspend fun startFile(fileId: Long, fileSize: Long?) {
+        database.withTransaction {
+            if (fileSize != null) {
+                operationFileDao.updateFileSize(fileId, fileSize)
+            }
+            operationFileDao.markRunning(fileId)
+        }
+    }
+
+    suspend fun updateFileSize(fileId: Long, fileSize: Long) {
+        operationFileDao.updateFileSize(fileId, fileSize)
+    }
+
+    suspend fun updateFileTransferred(fileId: Long, bytes: Long) {
+        operationFileDao.updateTransferredBytes(fileId, bytes)
+    }
+
+    suspend fun applyFolderProgress(completedFileIds: List<Long>, runningFileId: Long?, transferredBytes: Long) {
+        database.withTransaction {
+            completedFileIds.forEach { fileId ->
+                operationFileDao.markCompleted(fileId)
+            }
+            if (runningFileId != null) {
+                operationFileDao.markRunning(runningFileId)
+                operationFileDao.updateTransferredBytes(runningFileId, transferredBytes)
+            }
+        }
+    }
+
+    suspend fun completeJob(workerId: String) {
+        database.withTransaction {
+            val operation = operationDao.getByWorkerId(workerId) ?: return@withTransaction
+            operationFileDao.markAllCompleted(operation.id)
+            operationDao.updateStatusAndWorkerId(
+                id = operation.id,
+                status = OperationRepository.OperationStatus.COMPLETED.name,
+                workerId = workerId,
+            )
+        }
+    }
+
+    suspend fun cancelJob(workerId: String) {
+        database.withTransaction {
+            val operation = operationDao.getByWorkerId(workerId) ?: return@withTransaction
+            operationFileDao.resetRunningToPending(operation.id)
+            operationDao.updateStatusAndWorkerId(
+                id = operation.id,
+                status = OperationRepository.OperationStatus.CANCELLED.name,
+                workerId = workerId,
+            )
+        }
+    }
+
+    suspend fun updateError(workerId: String, errorMessage: String?, errorCause: String?) {
+        database.withTransaction {
+            val operation = operationDao.getByWorkerId(workerId) ?: return@withTransaction
+            operationFileDao.resetRunningToPending(operation.id)
+            operationDao.updateError(
+                id = operation.id,
+                status = OperationRepository.OperationStatus.FAILED.name,
+                errorMessage = errorMessage,
+                errorCause = errorCause,
+            )
+        }
+    }
+
     suspend fun updateStatus(workerId: String, status: OperationRepository.OperationStatus) {
-        val entity = operationDao.getByWorkerId(workerId) ?: return
+        val operation = operationDao.getByWorkerId(workerId) ?: return
         operationDao.updateStatusAndWorkerId(
-            id = entity.id,
+            id = operation.id,
             status = status.name,
             workerId = workerId,
         )
     }
 
-    private suspend fun OperationEntity.toUploadJob(uploadOperationDao: UploadOperationDao): UploadJob {
-        val uploadDetail = uploadOperationDao.getByOperationId(id)
-            ?: error("UploadOperationEntity not found for operationId=$id")
-        return UploadJob(
-            workerId = requireNotNull(workerId),
-            name = name,
-            isFolder = uploadDetail.isFolder,
-            fileObjectId = Json.decodeFromString<FileObjectId>(uploadDetail.fileObjectId),
-            displayPath = uploadDetail.displayPath,
-            totalFiles = totalFiles,
-            errorMessage = errorMessage,
-            errorCause = errorCause,
-        )
-    }
-
-    data class UploadJob(
+    data class NewUploadJob(
         val workerId: String,
         val name: String,
         val isFolder: Boolean,
         val fileObjectId: FileObjectId,
         val displayPath: String,
-        val totalFiles: Int = 1,
-        val errorMessage: String? = null,
-        val errorCause: String? = null,
+        val files: List<NewUploadFile>,
+    )
+
+    data class NewUploadFile(
+        val fileName: String,
+        val relativePath: String = "",
+        val fileSize: Long? = null,
+    )
+
+    data class UploadJob(
+        val operationId: Long,
+        val workerId: String,
+        val name: String,
+        val isFolder: Boolean,
+        val fileObjectId: FileObjectId,
+        val displayPath: String,
+    )
+
+    data class UploadFile(
+        val id: Long,
+        val fileName: String,
+        val relativePath: String,
+        val fileSize: Long?,
+        val status: OperationRepository.FileStatus,
     )
 }
