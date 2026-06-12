@@ -35,7 +35,11 @@ internal fun StorageItem(
             .fillMaxWidth()
             .combinedClickable(
                 onClick = onClick,
-                onLongClick = { showMenu = true },
+                onLongClick = if (storage is UiStorageConfiguration.External) {
+                    null
+                } else {
+                    { showMenu = true }
+                },
             ),
     ) {
         Box {
@@ -79,6 +83,7 @@ internal fun StorageItemContent(
         val type = when (storage) {
             is UiStorageConfiguration.Smb -> "SMB: ${storage.ip}"
             is UiStorageConfiguration.Local -> "ローカル: ${storage.rootPath}"
+            is UiStorageConfiguration.External -> "外部ストレージ: ${storage.rootPath}"
             is UiStorageConfiguration.SharePoint -> storage.objectId
         }
         Text(text = type, style = MaterialTheme.typography.bodyMedium)
@@ -126,6 +131,8 @@ private fun StorageItemMenu(
                     onClick = onDeleteClick,
                 )
             }
+
+            is UiStorageConfiguration.External -> Unit
         }
     }
 }

@@ -498,13 +498,18 @@ class FileBrowserViewModel @AssistedInject constructor(
     private fun loadStorageName() {
         viewModelScope.launch {
             val storage = storageRepository.storageList.first().find { it.id == fileObjectId.storageId }
+            val localRootPath = when (storage) {
+                is StorageConfiguration.Local -> storage.rootPath
+                is StorageConfiguration.External -> storage.rootPath
+                else -> null
+            }
             viewModelStateFlow.update { state ->
                 state.copy(
                     storageName = storage?.name ?: state.storageName,
-                    localFolderPath = if (storage is StorageConfiguration.Local) {
+                    localFolderPath = if (localRootPath != null) {
                         when (fileObjectId) {
-                            is FileObjectId.Root -> storage.rootPath
-                            is FileObjectId.Item -> "${storage.rootPath}/${fileObjectId.id}"
+                            is FileObjectId.Root -> localRootPath
+                            is FileObjectId.Item -> "$localRootPath/${fileObjectId.id}"
                         }
                     } else {
                         state.localFolderPath
