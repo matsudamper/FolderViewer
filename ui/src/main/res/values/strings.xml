@@ -32,6 +32,7 @@
     <string name="storages">ストレージ</string>
     <string name="favorites">お気に入り</string>
     <string name="cancel_selection">選択をキャンセル</string>
+    <string name="select_all">すべて選択</string>
     <string name="share">共有</string>
     <string name="upload_progress">操作状況</string>
     <string name="upload_state_enqueued">待機中</string>

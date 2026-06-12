@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlinCompose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.daggerHilt)
+    alias(libs.plugins.paparazzi)
 }
 
 android {
@@ -28,6 +29,20 @@ kotlin {
     }
 }
 
+tasks.withType<Test>().configureEach {
+    val hasPaparazziTask = gradle.startParameter.taskNames.any {
+        it.lowercase().contains("paparazzi")
+    }
+    useJUnit {
+        if (hasPaparazziTask) {
+            includeCategories("net.matsudamper.folderviewer.ui.PaparazziTestCategory")
+        } else {
+            excludeCategories("net.matsudamper.folderviewer.ui.PaparazziTestCategory")
+        }
+    }
+    systemProperty("paparazzi.filter", System.getProperty("paparazzi.filter", ""))
+}
+
 dependencies {
     implementation(project(":common"))
     implementation(project(":navigation"))
@@ -50,4 +65,6 @@ dependencies {
     implementation(libs.zoomable)
     debugImplementation(libs.androidxComposeUiTooling)
     debugImplementation(libs.androidxComposeUiTestManifest)
+    testImplementation(libs.junit)
+    testImplementation(libs.composablePreviewScanner)
 }
