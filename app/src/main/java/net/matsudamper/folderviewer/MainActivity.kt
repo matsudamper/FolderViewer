@@ -243,7 +243,7 @@ internal class PageViewModelStoreHostViewModel @Inject constructor() : ViewModel
     }
 }
 
-private fun entryProvider(navigator: Navigator): (NavKey) -> NavEntry<NavKey> {
+internal fun entryProvider(navigator: Navigator): (NavKey) -> NavEntry<NavKey> {
     return entryProvider {
         homeEntry(navigator)
         settingsEntry(navigator)
