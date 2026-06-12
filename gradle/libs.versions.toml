@@ -33,6 +33,8 @@ microsoftGraph = "6.61.0"
 azureIdentity = "1.18.2"
 workManager = "2.11.2"
 room = "2.8.4"
+paparazzi = "2.0.0-alpha05"
+composablePreviewScanner = "0.9.0"
 
 [libraries]
 androidxCoreKtx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -82,6 +84,7 @@ androidxHiltCompiler = { group = "androidx.hilt", name = "hilt-compiler", versio
 androidxRoomRuntime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidxRoomKtx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidxRoomCompiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+composablePreviewScanner = { group = "io.github.sergio-sastre.ComposablePreviewScanner", name = "android", version.ref = "composablePreviewScanner" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
@@ -94,3 +97,4 @@ daggerHilt = { id = "com.google.dagger.hilt.android", version.ref = "daggerHilt"
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlintGradle" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 protobuf = { id = "com.google.protobuf", version.ref = "protobufPlugin" }
+paparazzi = { id = "app.cash.paparazzi", version.ref = "paparazzi" }
