@@ -21,6 +21,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import net.matsudamper.folderviewer.ui.R
 import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
 
@@ -124,9 +125,11 @@ internal fun FileBrowserTopBar(
 @Composable
 internal fun FileBrowserSelectionTopBar(
     selectedCount: Int,
+    visibleCompressMenu: Boolean,
     onCancelSelection: () -> Unit,
     onSelectAllClick: () -> Unit,
     onShareClick: () -> Unit,
+    onCompressClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     TopAppBar(
@@ -152,13 +155,60 @@ internal fun FileBrowserSelectionTopBar(
                     contentDescription = stringResource(R.string.select_all),
                 )
             }
-            IconButton(onClick = onShareClick) {
+            var showMoreMenu by remember { mutableStateOf(false) }
+            IconButton(onClick = { showMoreMenu = true }) {
                 Icon(
-                    painter = painterResource(id = R.drawable.ic_share),
-                    contentDescription = stringResource(R.string.share),
+                    painter = painterResource(id = R.drawable.ic_more_vert),
+                    contentDescription = stringResource(R.string.more_options),
                 )
             }
+            DropdownMenu(
+                expanded = showMoreMenu,
+                onDismissRequest = { showMoreMenu = false },
+            ) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.share)) },
+                    onClick = {
+                        showMoreMenu = false
+                        onShareClick()
+                    },
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_share),
+                            contentDescription = null,
+                        )
+                    },
+                )
+                if (visibleCompressMenu) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.compress)) },
+                        onClick = {
+                            showMoreMenu = false
+                            onCompressClick()
+                        },
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_folder_zip),
+                                contentDescription = null,
+                            )
+                        },
+                    )
+                }
+            }
         },
+    )
+}
+
+@Composable
+@Preview
+private fun SelectionTopBarPreview() {
+    FileBrowserSelectionTopBar(
+        selectedCount = 3,
+        visibleCompressMenu = true,
+        onCancelSelection = {},
+        onSelectAllClick = {},
+        onShareClick = {},
+        onCompressClick = {},
     )
 }
 
