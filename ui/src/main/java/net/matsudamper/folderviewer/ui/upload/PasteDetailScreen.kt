@@ -412,27 +412,6 @@ private fun DuplicateFileCard(
                 val isKeepSelected = item.resolution == PasteDetailUiState.Resolution.KEEP_DESTINATION
                 val isOverwriteSelected = item.resolution == PasteDetailUiState.Resolution.OVERWRITE_WITH_SOURCE
 
-                if (isKeepSelected) {
-                    Button(
-                        onClick = { item.onKeepDestination() },
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_check),
-                            contentDescription = null,
-                            modifier = Modifier.padding(end = 4.dp),
-                        )
-                        Text(stringResource(R.string.paste_detail_keep_destination))
-                    }
-                } else {
-                    OutlinedButton(
-                        onClick = { item.onKeepDestination() },
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(stringResource(R.string.paste_detail_keep_destination))
-                    }
-                }
-
                 if (isOverwriteSelected) {
                     Button(
                         onClick = { item.onOverwriteWithSource() },
@@ -451,6 +430,27 @@ private fun DuplicateFileCard(
                         modifier = Modifier.weight(1f),
                     ) {
                         Text(stringResource(R.string.paste_detail_overwrite_with_source))
+                    }
+                }
+
+                if (isKeepSelected) {
+                    Button(
+                        onClick = { item.onKeepDestination() },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_check),
+                            contentDescription = null,
+                            modifier = Modifier.padding(end = 4.dp),
+                        )
+                        Text(stringResource(R.string.paste_detail_keep_destination))
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = { item.onKeepDestination() },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(stringResource(R.string.paste_detail_keep_destination))
                     }
                 }
             }
@@ -498,6 +498,61 @@ private fun FileInfoColumn(
             style = MaterialTheme.typography.bodySmall,
         )
     }
+}
+
+private val previewPasteCallbacks = object : PasteDetailUiState.Callbacks {
+    override fun onBackClick() = Unit
+    override fun onApplyResolutions() = Unit
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun PasteDetailScreenDuplicatePreview() {
+    PasteDetailScreen(
+        uiState = PasteDetailUiState(
+            jobName = "テストジョブ",
+            statusText = "重複ファイルの解決を待っています",
+            status = Status.WAITING_RESOLUTION,
+            errorMessage = null,
+            errorCause = null,
+            duplicateFiles = listOf(
+                PasteDetailUiState.DuplicateFileItem(
+                    fileId = 1L,
+                    fileName = "photo.jpg",
+                    sourcePath = "/sdcard/DCIM/photo.jpg",
+                    sourceSize = 1024L * 512,
+                    sourceSizeText = "512 KB",
+                    destinationPath = "/sdcard/Photos/photo.jpg",
+                    destinationSize = 1024L * 256,
+                    destinationSizeText = "256 KB",
+                    resolution = null,
+                    onKeepDestination = {},
+                    onOverwriteWithSource = {},
+                ),
+                PasteDetailUiState.DuplicateFileItem(
+                    fileId = 2L,
+                    fileName = "document.pdf",
+                    sourcePath = "/sdcard/Downloads/document.pdf",
+                    sourceSize = 1024L * 1024 * 2,
+                    sourceSizeText = "2 MB",
+                    destinationPath = "/sdcard/Documents/document.pdf",
+                    destinationSize = 1024L * 1024,
+                    destinationSizeText = "1 MB",
+                    resolution = PasteDetailUiState.Resolution.KEEP_DESTINATION,
+                    onKeepDestination = {},
+                    onOverwriteWithSource = {},
+                ),
+            ),
+            completedFiles = emptyList(),
+            canApply = false,
+            progress = null,
+            fileCountText = null,
+            sizeProgressText = null,
+            currentFileName = null,
+            currentFileProgress = null,
+            callbacks = previewPasteCallbacks,
+        ),
+    )
 }
 
 @Composable
