@@ -129,8 +129,8 @@ internal class FilePasteWorker @AssistedInject constructor(
                             completedFiles = completedFiles,
                             completedBytes = completedBytes,
                             currentFileName = currentFileName,
-                            currentFileBytes = 0L,
-                            currentFileTotalBytes = 0L,
+                            currentFileBytes = file.fileSize,
+                            currentFileTotalBytes = file.fileSize,
                         ),
                     )
                     updateNotification(notificationId, completedFiles, job.totalFiles, currentFileName)
@@ -145,8 +145,8 @@ internal class FilePasteWorker @AssistedInject constructor(
                                 completedFiles = completedFiles,
                                 completedBytes = completedBytes,
                                 currentFileName = currentFileName,
-                                currentFileBytes = 0L,
-                                currentFileTotalBytes = 0L,
+                                currentFileBytes = file.fileSize,
+                                currentFileTotalBytes = file.fileSize,
                             ),
                         )
                         updateNotification(notificationId, completedFiles, job.totalFiles, currentFileName)
