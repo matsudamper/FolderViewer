@@ -23,6 +23,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.ClipboardRepository
+import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.PasteJobRepository
@@ -288,8 +289,7 @@ internal class FilePasteWorker @AssistedInject constructor(
             )
 
             if (file.resolution == null) {
-                val destFiles = jobContext.destRepo.getFiles(destDirId)
-                val existing = destFiles.find { !it.isDirectory && it.displayPath == file.fileName }
+                val existing = getDestinationFiles(jobContext, destDirId)[file.fileName]
                 if (existing != null) {
                     return@coroutineScope PasteJobRepository.FileFinish.Duplicated(
                         fileId = file.id,
@@ -324,6 +324,17 @@ internal class FilePasteWorker @AssistedInject constructor(
             PasteJobRepository.FileFinish.Completed(file.id)
         } finally {
             progressJob.cancel()
+        }
+    }
+
+    private suspend fun getDestinationFiles(
+        jobContext: JobContext,
+        destDirId: FileObjectId,
+    ): Map<String, FileItem> {
+        return jobContext.destinationFilesCache.getOrPut(destDirId) {
+            jobContext.destRepo.getFiles(destDirId)
+                .filterNot { it.isDirectory }
+                .associateBy { it.displayPath }
         }
     }
 
@@ -460,6 +471,7 @@ internal class FilePasteWorker @AssistedInject constructor(
         val totalFiles: Int,
         var completedCount: Int,
         val directoryCache: MutableMap<String, FileObjectId> = mutableMapOf(),
+        val destinationFilesCache: MutableMap<FileObjectId, Map<String, FileItem>> = mutableMapOf(),
     )
 
     companion object {
