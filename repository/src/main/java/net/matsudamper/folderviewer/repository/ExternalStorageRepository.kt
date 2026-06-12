@@ -4,8 +4,10 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Build
 import android.os.Environment
 import android.os.storage.StorageManager
+import android.os.storage.StorageVolume
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
@@ -35,8 +37,26 @@ class ExternalStorageRepository @Inject constructor(
             addDataScheme("file")
         }
         ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        val volumeCallback = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val storageManager = context.getSystemService(StorageManager::class.java)
+            val callback = object : StorageManager.StorageVolumeCallback() {
+                override fun onStateChanged(volume: StorageVolume) {
+                    trySend(loadExternalStorages())
+                }
+            }
+            storageManager?.registerStorageVolumeCallback(context.mainExecutor, callback)
+            callback
+        } else {
+            null
+        }
         trySend(loadExternalStorages())
-        awaitClose { context.unregisterReceiver(receiver) }
+        awaitClose {
+            context.unregisterReceiver(receiver)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && volumeCallback != null) {
+                context.getSystemService(StorageManager::class.java)
+                    ?.unregisterStorageVolumeCallback(volumeCallback)
+            }
+        }
     }.distinctUntilChanged()
 
     fun findExternalStorage(id: StorageId): StorageConfiguration.External? {
@@ -46,20 +66,35 @@ class ExternalStorageRepository @Inject constructor(
     private fun loadExternalStorages(): List<StorageConfiguration.External> {
         val storageManager = context.getSystemService(StorageManager::class.java)
             ?: return emptyList()
-        return context.getExternalFilesDirs(null)
-            .filterNotNull()
-            .mapNotNull { filesDir ->
-                val volume = storageManager.getStorageVolume(filesDir) ?: return@mapNotNull null
+        return storageManager.storageVolumes
+            .mapNotNull { volume ->
                 if (!volume.isRemovable) return@mapNotNull null
-                if (volume.state != Environment.MEDIA_MOUNTED) return@mapNotNull null
+                if (volume.state != Environment.MEDIA_MOUNTED &&
+                    volume.state != Environment.MEDIA_MOUNTED_READ_ONLY
+                ) {
+                    return@mapNotNull null
+                }
                 val uuid = volume.uuid ?: return@mapNotNull null
+                val rootPath = getVolumeRootPath(storageManager, volume) ?: return@mapNotNull null
                 StorageConfiguration.External(
                     id = StorageId("$ExternalStorageIdPrefix$uuid"),
                     name = volume.getDescription(context) ?: DefaultExternalStorageName,
-                    rootPath = filesDir.absolutePath.substringBefore("/Android/"),
+                    rootPath = rootPath,
                 )
             }
             .distinctBy { it.id }
+    }
+
+    private fun getVolumeRootPath(storageManager: StorageManager, volume: StorageVolume): String? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            volume.directory?.absolutePath
+        } else {
+            context.getExternalFilesDirs(null)
+                .filterNotNull()
+                .firstOrNull { storageManager.getStorageVolume(it) == volume }
+                ?.absolutePath
+                ?.substringBefore("/Android/")
+        }
     }
 
     companion object {
