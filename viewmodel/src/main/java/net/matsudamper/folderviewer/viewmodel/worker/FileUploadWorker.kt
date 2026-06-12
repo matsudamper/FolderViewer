@@ -21,7 +21,6 @@ import kotlinx.serialization.json.Json
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import net.matsudamper.folderviewer.common.FileObjectId
-import net.matsudamper.folderviewer.navigation.UploadDetail
 import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.UploadJobRepository
@@ -104,7 +103,7 @@ internal class FileUploadWorker @AssistedInject constructor(
                         text = fileName,
                         smallIcon = android.R.drawable.stat_sys_upload_done,
                     ),
-                    destination = UploadDetail(workerId = id.toString()),
+                    contentIntent = operationNotificationIntentFactory.createUploadDetailIntent(id.toString()),
                 )
                 Result.success()
             } catch (e: Throwable) {
@@ -122,7 +121,7 @@ internal class FileUploadWorker @AssistedInject constructor(
                         text = e.message ?: e.toString(),
                         smallIcon = android.R.drawable.stat_notify_error,
                     ),
-                    destination = UploadDetail(workerId = id.toString()),
+                    contentIntent = operationNotificationIntentFactory.createUploadDetailIntent(id.toString()),
                 )
                 Result.failure()
             }

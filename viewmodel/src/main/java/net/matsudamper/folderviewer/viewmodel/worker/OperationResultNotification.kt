@@ -4,10 +4,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
 import androidx.core.app.NotificationCompat
-import androidx.navigation3.runtime.NavKey
-import net.matsudamper.folderviewer.navigation.NotificationDestination
 
 internal object OperationResultNotification {
     private const val CHANNEL_ID = "operation_result_channel"
@@ -22,26 +19,16 @@ internal object OperationResultNotification {
         context: Context,
         notificationId: Int,
         content: Content,
-        destination: NavKey,
+        contentIntent: PendingIntent,
     ) {
         createNotificationChannel(context)
-
-        val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName) ?: return
-        launchIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
-        NotificationDestination.putExtras(launchIntent, destination)
-        val pendingIntent = PendingIntent.getActivity(
-            context,
-            notificationId,
-            launchIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setContentTitle(content.title)
             .setContentText(content.text)
             .setTicker(content.title)
             .setSmallIcon(content.smallIcon)
-            .setContentIntent(pendingIntent)
+            .setContentIntent(contentIntent)
             .setAutoCancel(true)
             .build()
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

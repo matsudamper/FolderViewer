@@ -16,7 +16,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
-import net.matsudamper.folderviewer.navigation.DeleteDetail
 import net.matsudamper.folderviewer.repository.DeleteJobRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
@@ -154,7 +153,7 @@ internal class FileDeleteWorker @AssistedInject constructor(
                 text = "$totalFiles ファイル",
                 smallIcon = android.R.drawable.ic_menu_delete,
             ),
-            destination = DeleteDetail(operationId = operationId),
+            contentIntent = operationNotificationIntentFactory.createDeleteDetailIntent(operationId),
         )
     }
 
@@ -167,7 +166,7 @@ internal class FileDeleteWorker @AssistedInject constructor(
                 text = text,
                 smallIcon = android.R.drawable.stat_notify_error,
             ),
-            destination = DeleteDetail(operationId = operationId),
+            contentIntent = operationNotificationIntentFactory.createDeleteDetailIntent(operationId),
         )
     }
 

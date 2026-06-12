@@ -24,7 +24,6 @@ import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.PasteJobRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.common.FileObjectId
-import net.matsudamper.folderviewer.navigation.PasteDetail
 
 @HiltWorker
 internal class FilePasteWorker @AssistedInject constructor(
@@ -268,7 +267,7 @@ internal class FilePasteWorker @AssistedInject constructor(
                         text = "重複ファイルが $unresolvedCount 件あります",
                         smallIcon = android.R.drawable.stat_notify_error,
                     ),
-                    destination = PasteDetail(jobId = jobId),
+                    contentIntent = operationNotificationIntentFactory.createPasteDetailIntent(jobId),
                 )
                 return@withContext Result.success()
             }
@@ -309,7 +308,7 @@ internal class FilePasteWorker @AssistedInject constructor(
                 text = "$totalFiles ファイル",
                 smallIcon = android.R.drawable.stat_sys_upload_done,
             ),
-            destination = PasteDetail(jobId = jobId),
+            contentIntent = operationNotificationIntentFactory.createPasteDetailIntent(jobId),
         )
     }
 
@@ -322,7 +321,7 @@ internal class FilePasteWorker @AssistedInject constructor(
                 text = text,
                 smallIcon = android.R.drawable.stat_notify_error,
             ),
-            destination = PasteDetail(jobId = jobId),
+            contentIntent = operationNotificationIntentFactory.createPasteDetailIntent(jobId),
         )
     }
 

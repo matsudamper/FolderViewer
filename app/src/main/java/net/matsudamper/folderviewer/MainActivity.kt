@@ -62,8 +62,6 @@ import androidx.navigation3.ui.NavDisplay
 import java.io.File
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import coil.Coil
 import coil.ImageLoader
@@ -76,7 +74,6 @@ import net.matsudamper.folderviewer.navigation.FolderBrowser
 import net.matsudamper.folderviewer.navigation.Home
 import net.matsudamper.folderviewer.navigation.ImageViewer
 import net.matsudamper.folderviewer.navigation.Navigator
-import net.matsudamper.folderviewer.navigation.NotificationDestination
 import net.matsudamper.folderviewer.navigation.PermissionRequest
 import net.matsudamper.folderviewer.navigation.Settings
 import net.matsudamper.folderviewer.navigation.SharePointAdd
@@ -123,35 +120,21 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var imageLoader: ImageLoader
 
-    private val notificationDestinationFlow = MutableStateFlow<NavKey?>(null)
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         Coil.setImageLoader(imageLoader)
-        notificationDestinationFlow.value = NotificationDestination.fromIntent(intent)
 
         setContent {
             FolderViewerTheme {
-                AppContent(
-                    notificationDestinationFlow = notificationDestinationFlow,
-                    onNotificationDestinationConsumed = { notificationDestinationFlow.value = null },
-                )
+                AppContent()
             }
         }
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        val destination = NotificationDestination.fromIntent(intent) ?: return
-        notificationDestinationFlow.value = destination
     }
 }
 
 @Composable
 private fun AppContent(
-    notificationDestinationFlow: StateFlow<NavKey?>,
-    onNotificationDestinationConsumed: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val pagerState = rememberPagerState { 2 }
@@ -173,15 +156,6 @@ private fun AppContent(
                 )
                 val navigator = remember(navigationState) { Navigator(navigationState) }
                 val entryProvider = remember(navigator) { entryProvider(navigator) }
-
-                if (pageIndex == pagerState.settledPage) {
-                    val notificationDestination by notificationDestinationFlow.collectAsState()
-                    LaunchedEffect(notificationDestination) {
-                        val destination = notificationDestination ?: return@LaunchedEffect
-                        onNotificationDestinationConsumed()
-                        navigator.navigate(destination)
-                    }
-                }
 
                 NavDisplay(
                     modifier = Modifier.fillMaxSize(),
