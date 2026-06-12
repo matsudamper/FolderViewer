@@ -21,7 +21,7 @@ internal object DatabaseModule {
             "folder_viewer_db",
         ).fallbackToDestructiveMigrationFrom(
             dropAllTables = true,
-            startVersions = intArrayOf(3, 4, 5, 6, 7),
+            startVersions = intArrayOf(3, 4, 5, 6, 7, 8),
         ).build()
     }
 
@@ -41,12 +41,7 @@ internal object DatabaseModule {
     }
 
     @Provides
-    fun providePasteFileDao(database: AppDatabase): PasteFileDao {
-        return database.pasteFileDao()
-    }
-
-    @Provides
-    fun provideDeleteFileDao(database: AppDatabase): DeleteFileDao {
-        return database.deleteFileDao()
+    fun provideOperationFileDao(database: AppDatabase): OperationFileDao {
+        return database.operationFileDao()
     }
 }

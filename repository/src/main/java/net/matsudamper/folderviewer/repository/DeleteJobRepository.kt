@@ -8,41 +8,47 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.db.AppDatabase
-import net.matsudamper.folderviewer.repository.db.DeleteFileDao
-import net.matsudamper.folderviewer.repository.db.DeleteFileEntity
 import net.matsudamper.folderviewer.repository.db.OperationDao
 import net.matsudamper.folderviewer.repository.db.OperationEntity
+import net.matsudamper.folderviewer.repository.db.OperationFileDao
+import net.matsudamper.folderviewer.repository.db.OperationFileEntity
 
 @Singleton
 class DeleteJobRepository @Inject internal constructor(
     private val database: AppDatabase,
     private val operationDao: OperationDao,
-    private val deleteFileDao: DeleteFileDao,
+    private val operationFileDao: OperationFileDao,
 ) {
-    suspend fun saveJob(name: String, files: List<DeleteFile>): Long {
+    suspend fun createJob(name: String, files: List<NewDeleteFile>): Long {
+        val description = OperationDescription.build(
+            files = files.map {
+                OperationDescription.File(
+                    path = OperationDescription.joinPath(it.relativePath, it.fileName),
+                    isDirectory = it.isDirectory,
+                )
+            },
+            fallback = name,
+        )
         return database.withTransaction {
-            val totalFiles = files.count { !it.isDirectory }
-            val totalBytes = files.sumOf { it.fileSize }
             val operationId = operationDao.insert(
                 OperationEntity(
                     type = OperationRepository.OperationType.DELETE.name,
                     workerId = null,
                     name = name,
+                    description = description,
                     status = OperationRepository.OperationStatus.ENQUEUED.name,
                     createdAt = System.currentTimeMillis(),
-                    totalFiles = totalFiles,
-                    totalBytes = totalBytes,
                 ),
             )
-            deleteFileDao.insertAll(
+            operationFileDao.insertAll(
                 files.map { file ->
-                    DeleteFileEntity(
+                    OperationFileEntity(
                         operationId = operationId,
-                        sourceFileId = Json.encodeToString(file.sourceFileId),
                         fileName = file.fileName,
-                        fileSize = file.fileSize,
+                        relativePath = file.relativePath,
                         isDirectory = file.isDirectory,
-                        parentRelativePath = file.parentRelativePath,
+                        fileSize = file.fileSize,
+                        sourceFileId = Json.encodeToString(file.sourceFileId),
                     )
                 },
             )
@@ -50,137 +56,108 @@ class DeleteJobRepository @Inject internal constructor(
         }
     }
 
-    suspend fun getJobById(id: Long): DeleteJob? {
-        val entity = operationDao.getById(id) ?: return null
-        return entity.toDeleteJob()
-    }
-
-    fun observeJob(id: Long): Flow<DeleteJob?> {
-        return operationDao.observeById(id).map { entity ->
-            entity?.toDeleteJob()
-        }
-    }
-
-    fun observeFiles(operationId: Long): Flow<List<DeleteFile>> {
-        return deleteFileDao.observeByOperationId(operationId).map { entities ->
-            entities.mapNotNull { runCatching { it.toDomain() }.getOrNull() }
-        }
-    }
-
     suspend fun getFiles(operationId: Long): List<DeleteFile> {
-        return deleteFileDao.getByOperationId(operationId).mapNotNull { entity ->
-            runCatching { entity.toDomain() }.getOrNull()
-        }
+        return operationFileDao.getByOperationId(operationId).mapNotNull { it.toDeleteFile() }
     }
 
     suspend fun getPendingFiles(operationId: Long): List<DeleteFile> {
-        return deleteFileDao.getPendingByOperationId(operationId).mapNotNull { entity ->
-            runCatching { entity.toDomain() }.getOrNull()
+        return operationFileDao.getPendingByOperationId(operationId).mapNotNull { it.toDeleteFile() }
+    }
+
+    fun observeFiles(operationId: Long): Flow<List<DeleteFile>> {
+        return operationFileDao.observeByOperationId(operationId).map { entities ->
+            entities.mapNotNull { it.toDeleteFile() }
         }
     }
 
-    suspend fun markFileCompleted(fileId: Long) {
-        deleteFileDao.markCompleted(fileId)
+    suspend fun finishFileAndStartNext(finish: FileFinish?, nextFileId: Long?) {
+        database.withTransaction {
+            when (finish) {
+                is FileFinish.Completed -> operationFileDao.markCompleted(finish.fileId)
+                is FileFinish.Failed -> operationFileDao.markFailed(finish.fileId, finish.errorMessage)
+                null -> Unit
+            }
+            if (nextFileId != null) {
+                operationFileDao.markRunning(nextFileId)
+            }
+        }
     }
 
-    suspend fun markFileFailed(fileId: Long, errorMessage: String?) {
-        deleteFileDao.markFailed(fileId, errorMessage)
+    suspend fun countFailedFiles(operationId: Long): Int {
+        return operationFileDao.countFailed(operationId)
     }
 
-    suspend fun updateProgress(
-        operationId: Long,
-        completedFiles: Int,
-        completedBytes: Long,
-        failedFiles: Int,
-        currentFileName: String?,
-    ) {
-        operationDao.updateCompletedProgress(
-            id = operationId,
-            completedFiles = completedFiles,
-            completedBytes = completedBytes,
-            failedFiles = failedFiles,
-        )
-        operationDao.updateCurrentFile(
-            id = operationId,
-            currentFileName = currentFileName,
-            currentFileBytes = 0L,
-            currentFileTotalBytes = 0L,
-        )
+    suspend fun resetRunningFiles(operationId: Long) {
+        operationFileDao.resetRunningToPending(operationId)
     }
 
     suspend fun updateStatus(operationId: Long, status: OperationRepository.OperationStatus, workerId: String? = null) {
         operationDao.updateStatusAndWorkerId(id = operationId, status = status.name, workerId = workerId)
     }
 
+    suspend fun cancelJob(operationId: Long) {
+        database.withTransaction {
+            operationFileDao.resetRunningToPending(operationId)
+            operationDao.updateStatusAndWorkerId(
+                id = operationId,
+                status = OperationRepository.OperationStatus.CANCELLED.name,
+                workerId = null,
+            )
+        }
+    }
+
     suspend fun updateError(operationId: Long, errorMessage: String?, errorCause: String?) {
-        operationDao.updateError(
-            id = operationId,
-            status = OperationRepository.OperationStatus.FAILED.name,
-            errorMessage = errorMessage,
-            errorCause = errorCause,
-        )
+        database.withTransaction {
+            operationFileDao.resetRunningToPending(operationId)
+            operationDao.updateError(
+                id = operationId,
+                status = OperationRepository.OperationStatus.FAILED.name,
+                errorMessage = errorMessage,
+                errorCause = errorCause,
+            )
+        }
     }
 
-    suspend fun deleteJob(operationId: Long) {
-        operationDao.deleteById(operationId)
-    }
-
-    private fun OperationEntity.toDeleteJob(): DeleteJob {
-        return DeleteJob(
-            id = id,
-            workerId = workerId,
-            name = name,
-            status = runCatching { OperationRepository.OperationStatus.valueOf(status) }
-                .getOrDefault(OperationRepository.OperationStatus.FAILED),
-            totalFiles = totalFiles,
-            completedFiles = completedFiles,
-            failedFiles = failedFiles,
-            totalBytes = totalBytes,
-            completedBytes = completedBytes,
-            currentFileName = currentFileName,
-            errorMessage = errorMessage,
-            errorCause = errorCause,
-        )
-    }
-
-    private fun DeleteFileEntity.toDomain(): DeleteFile {
+    private fun OperationFileEntity.toDeleteFile(): DeleteFile? {
+        val source = sourceFileId?.let {
+            runCatching { Json.decodeFromString<FileObjectId.Item>(it) }.getOrNull()
+        } ?: return null
         return DeleteFile(
             id = id,
             operationId = operationId,
-            sourceFileId = Json.decodeFromString<FileObjectId.Item>(sourceFileId),
+            sourceFileId = source,
             fileName = fileName,
-            fileSize = fileSize,
+            fileSize = fileSize ?: 0,
             isDirectory = isDirectory,
-            parentRelativePath = parentRelativePath,
-            completed = completed,
+            relativePath = relativePath,
+            status = OperationRepository.FileStatus.entries.firstOrNull { it.name == status }
+                ?: OperationRepository.FileStatus.FAILED,
             errorMessage = errorMessage,
         )
     }
 
-    data class DeleteJob(
-        val id: Long,
-        val workerId: String?,
-        val name: String,
-        val status: OperationRepository.OperationStatus,
-        val totalFiles: Int,
-        val completedFiles: Int,
-        val failedFiles: Int,
-        val totalBytes: Long,
-        val completedBytes: Long,
-        val currentFileName: String?,
-        val errorMessage: String?,
-        val errorCause: String?,
+    sealed interface FileFinish {
+        data class Completed(val fileId: Long) : FileFinish
+        data class Failed(val fileId: Long, val errorMessage: String?) : FileFinish
+    }
+
+    data class NewDeleteFile(
+        val sourceFileId: FileObjectId.Item,
+        val fileName: String,
+        val fileSize: Long,
+        val isDirectory: Boolean,
+        val relativePath: String = "",
     )
 
     data class DeleteFile(
-        val id: Long = 0,
+        val id: Long,
         val operationId: Long,
         val sourceFileId: FileObjectId.Item,
         val fileName: String,
         val fileSize: Long,
         val isDirectory: Boolean,
-        val parentRelativePath: String = "",
-        val completed: Boolean = false,
-        val errorMessage: String? = null,
+        val relativePath: String,
+        val status: OperationRepository.FileStatus,
+        val errorMessage: String?,
     )
 }

@@ -7,11 +7,14 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 internal interface OperationDao {
-    @Query("SELECT * FROM operations ORDER BY createdAt DESC LIMIT :limit")
-    fun observeAll(limit: Int): Flow<List<OperationEntity>>
+    @Query("$PROGRESS_QUERY GROUP BY op.id ORDER BY op.createdAt DESC, op.id DESC LIMIT :limit")
+    fun observeProgress(limit: Int): Flow<List<OperationProgressRow>>
 
-    @Query("SELECT * FROM operations WHERE id = :id")
-    fun observeById(id: Long): Flow<OperationEntity?>
+    @Query("$PROGRESS_QUERY WHERE op.id = :id GROUP BY op.id")
+    fun observeProgressById(id: Long): Flow<OperationProgressRow?>
+
+    @Query("$PROGRESS_QUERY WHERE op.workerId = :workerId GROUP BY op.id ORDER BY op.createdAt DESC LIMIT 1")
+    fun observeProgressByWorkerId(workerId: String): Flow<OperationProgressRow?>
 
     @Query("SELECT * FROM operations WHERE id = :id")
     suspend fun getById(id: Long): OperationEntity?
@@ -31,31 +34,28 @@ internal interface OperationDao {
     suspend fun updateError(id: Long, status: String, errorMessage: String?, errorCause: String?)
 
     @Query(
-        "UPDATE operations SET completedFiles = :completedFiles, completedBytes = :completedBytes, " +
-            "failedFiles = :failedFiles WHERE id = :id",
-    )
-    suspend fun updateCompletedProgress(id: Long, completedFiles: Int, completedBytes: Long, failedFiles: Int)
-
-    @Query(
-        "UPDATE operations SET currentFileName = :currentFileName, currentFileBytes = :currentFileBytes, " +
-            "currentFileTotalBytes = :currentFileTotalBytes WHERE id = :id",
-    )
-    suspend fun updateCurrentFile(id: Long, currentFileName: String?, currentFileBytes: Long, currentFileTotalBytes: Long)
-
-    @Query("UPDATE operations SET duplicateFiles = :duplicateFiles WHERE id = :id")
-    suspend fun updateDuplicateCount(id: Long, duplicateFiles: Int)
-
-    @Query("UPDATE operations SET resolvedFiles = :resolvedFiles WHERE id = :id")
-    suspend fun updateResolvedCount(id: Long, resolvedFiles: Int)
-
-    @Query("UPDATE operations SET failedFiles = :failedFiles WHERE id = :id")
-    suspend fun updateFailedCount(id: Long, failedFiles: Int)
-
-    @Query("DELETE FROM operations WHERE id = :id")
-    suspend fun deleteById(id: Long)
-
-    @Query(
         "DELETE FROM operations WHERE status NOT IN ('RUNNING', 'ENQUEUED', 'PAUSED', 'WAITING_RESOLUTION')",
     )
     suspend fun deleteNonActive()
+
+    companion object {
+        private const val PROGRESS_QUERY =
+            "SELECT op.*, po.mode AS pasteMode, " +
+                "COUNT(CASE WHEN f.isDirectory = 0 THEN 1 END) AS totalFiles, " +
+                "COUNT(CASE WHEN f.isDirectory = 0 AND f.status = 'COMPLETED' THEN 1 END) AS completedFiles, " +
+                "COUNT(CASE WHEN f.status = 'FAILED' THEN 1 END) AS failedFiles, " +
+                "COUNT(CASE WHEN f.resolution = 'PENDING' THEN 1 END) AS unresolvedDuplicateFiles, " +
+                "COALESCE(SUM(CASE WHEN f.isDirectory = 0 THEN COALESCE(f.fileSize, 0) END), 0) AS totalBytes, " +
+                "COALESCE(SUM(CASE WHEN f.isDirectory = 0 THEN " +
+                "CASE WHEN f.status = 'COMPLETED' THEN COALESCE(f.fileSize, f.transferredBytes) " +
+                "ELSE f.transferredBytes END END), 0) AS completedBytes, " +
+                "MAX(CASE WHEN f.status = 'RUNNING' THEN " +
+                "CASE WHEN f.relativePath = '' THEN f.fileName " +
+                "ELSE f.relativePath || '/' || f.fileName END END) AS currentFileName, " +
+                "MAX(CASE WHEN f.status = 'RUNNING' THEN f.transferredBytes END) AS currentFileBytes, " +
+                "MAX(CASE WHEN f.status = 'RUNNING' THEN f.fileSize END) AS currentFileTotalBytes " +
+                "FROM operations AS op " +
+                "LEFT JOIN paste_operations AS po ON po.operationId = op.id " +
+                "LEFT JOIN operation_files AS f ON f.operationId = op.id"
+    }
 }

@@ -3,29 +3,25 @@ package net.matsudamper.folderviewer.viewmodel.upload
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.work.WorkInfo
-import androidx.work.WorkManager
 import java.util.Locale
-import java.util.UUID
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
 import net.matsudamper.folderviewer.common.FileObjectId
+import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.UploadJobRepository
 import net.matsudamper.folderviewer.ui.upload.UploadDetailUiState
-import net.matsudamper.folderviewer.viewmodel.worker.FolderUploadWorker
 
 @HiltViewModel
 class UploadDetailViewModel @Inject internal constructor(
     application: Application,
+    private val operationRepository: OperationRepository,
     private val uploadJobRepository: UploadJobRepository,
     private val storageRepository: StorageRepository,
 ) : AndroidViewModel(application) {
@@ -66,134 +62,85 @@ class UploadDetailViewModel @Inject internal constructor(
             fileObjectId = job.fileObjectId
             displayPath = job.displayPath
 
-            val storageName = storageRepository.storageList.first().find { it.id == job.fileObjectId.storageId }?.name ?: ""
+            val storageName = storageRepository.storageList.first()
+                .find { it.id == job.fileObjectId.storageId }?.name ?: ""
 
-            val workManager = WorkManager.getInstance(getApplication())
-            val uuid = runCatching { UUID.fromString(workerId) }.getOrNull()
-
-            if (uuid != null) {
-                workManager.getWorkInfoByIdFlow(uuid).collectLatest { workInfo ->
-                    val uploadStatus = when (workInfo?.state) {
-                        WorkInfo.State.ENQUEUED,
-                        WorkInfo.State.RUNNING,
-                        WorkInfo.State.BLOCKED,
-                            -> UploadDetailUiState.UploadStatus.UPLOADING
-
-                        WorkInfo.State.SUCCEEDED -> UploadDetailUiState.UploadStatus.SUCCEEDED
-                        WorkInfo.State.FAILED,
-                        WorkInfo.State.CANCELLED,
-                            -> UploadDetailUiState.UploadStatus.FAILED
-
-                        null -> UploadDetailUiState.UploadStatus.SUCCEEDED
-                    }
-
-                    val currentUploadFile = extractCurrentUploadFile(workInfo, uploadStatus)
-                    val progressText = extractProgressText(workInfo, uploadStatus)
-                    val progress = extractProgress(workInfo, uploadStatus)
-
-                    _uiState.value = UploadDetailUiState(
-                        name = job.name,
-                        isFolder = job.isFolder,
-                        displayPath = job.displayPath,
-                        storageName = storageName,
-                        uploadStatus = uploadStatus,
-                        errorMessage = job.errorMessage,
-                        errorCause = job.errorCause,
-                        progressText = progressText,
-                        progress = progress,
-                        currentUploadFile = currentUploadFile,
-                        callbacks = callbacks,
-                    )
-                }
-            } else {
-                val hasError = job.errorMessage != null || job.errorCause != null
-                _uiState.value = UploadDetailUiState(
-                    name = job.name,
-                    isFolder = job.isFolder,
-                    displayPath = job.displayPath,
-                    storageName = storageName,
-                    uploadStatus = if (hasError) {
-                        UploadDetailUiState.UploadStatus.FAILED
-                    } else {
-                        UploadDetailUiState.UploadStatus.SUCCEEDED
-                    },
-                    errorMessage = job.errorMessage,
-                    errorCause = job.errorCause,
-                    progressText = null,
-                    progress = null,
-                    currentUploadFile = null,
-                    callbacks = callbacks,
-                )
+            operationRepository.observeProgressByWorkerId(workerId).collect { progress ->
+                if (progress == null) return@collect
+                _uiState.value = createUiState(job, storageName, progress)
             }
         }
     }
 
-    private fun extractCurrentUploadFile(
-        workInfo: WorkInfo?,
-        uploadStatus: UploadDetailUiState.UploadStatus,
-    ): UploadDetailUiState.CurrentUploadFile? {
-        if (uploadStatus != UploadDetailUiState.UploadStatus.UPLOADING) return null
+    private fun createUiState(
+        job: UploadJobRepository.UploadJob,
+        storageName: String,
+        progress: OperationRepository.OperationProgress,
+    ): UploadDetailUiState {
+        val uploadStatus = when (progress.status) {
+            OperationRepository.OperationStatus.ENQUEUED,
+            OperationRepository.OperationStatus.RUNNING,
+            OperationRepository.OperationStatus.PAUSED,
+            OperationRepository.OperationStatus.WAITING_RESOLUTION,
+            -> UploadDetailUiState.UploadStatus.UPLOADING
 
-        val fileNamesJson = workInfo?.progress?.getString(FolderUploadWorker.KEY_FILE_NAMES)
-            ?: return null
-        val fileSizesJson = workInfo.progress.getString(FolderUploadWorker.KEY_FILE_SIZES)
-            ?: return null
+            OperationRepository.OperationStatus.COMPLETED -> UploadDetailUiState.UploadStatus.SUCCEEDED
 
-        val fileNames = runCatching {
-            Json.decodeFromString<List<String>>(fileNamesJson)
-        }.getOrNull() ?: return null
-        val fileSizes = runCatching {
-            Json.decodeFromString<List<Long?>>(fileSizesJson)
-        }.getOrNull() ?: return null
+            OperationRepository.OperationStatus.FAILED,
+            OperationRepository.OperationStatus.CANCELLED,
+            -> UploadDetailUiState.UploadStatus.FAILED
+        }
 
-        val currentBytes = workInfo.progress.getLong(FolderUploadWorker.KEY_CURRENT_BYTES, 0L)
-        val completedFiles = workInfo.progress.getInt(FolderUploadWorker.KEY_COMPLETED_FILES, 0)
-
-        val cumulativeSize = fileSizes.take(completedFiles).sumOf { it ?: 0L }
-
-        val currentFileName = fileNames.getOrNull(completedFiles) ?: return null
-        val currentFileSize = fileSizes.getOrNull(completedFiles)
-        val currentFileUploadedBytes = currentBytes - cumulativeSize
-
-        val progress = if (currentFileSize != null && currentFileSize > 0L) {
-            (currentFileUploadedBytes.toFloat() / currentFileSize.toFloat()).coerceIn(0f, 1f)
+        val isUploading = uploadStatus == UploadDetailUiState.UploadStatus.UPLOADING
+        val hasTotalBytes = progress.totalBytes > 0
+        val progressText = if (isUploading && hasTotalBytes) {
+            "${formatFileSize(progress.completedBytes)}/${formatFileSize(progress.totalBytes)}"
+        } else {
+            null
+        }
+        val overallProgress = if (isUploading && hasTotalBytes) {
+            (progress.completedBytes.toFloat() / progress.totalBytes.toFloat()).coerceIn(0f, 1f)
         } else {
             null
         }
 
-        val progressText = if (currentFileSize != null && currentFileSize > 0L) {
-            "${formatFileSize(currentFileUploadedBytes)}/${formatFileSize(currentFileSize)}"
-        } else {
-            null
-        }
-
-        return UploadDetailUiState.CurrentUploadFile(
-            name = currentFileName,
+        return UploadDetailUiState(
+            name = job.name,
+            isFolder = job.isFolder,
+            displayPath = job.displayPath,
+            storageName = storageName,
+            uploadStatus = uploadStatus,
+            errorMessage = progress.errorMessage,
+            errorCause = progress.errorCause,
             progressText = progressText,
-            progress = progress,
+            progress = overallProgress,
+            currentUploadFile = createCurrentUploadFile(isUploading, progress),
+            callbacks = callbacks,
         )
     }
 
-    private fun extractProgressText(
-        workInfo: WorkInfo?,
-        uploadStatus: UploadDetailUiState.UploadStatus,
-    ): String? {
-        if (uploadStatus != UploadDetailUiState.UploadStatus.UPLOADING) return null
-        val currentBytes = workInfo?.progress?.getLong(FolderUploadWorker.KEY_CURRENT_BYTES, 0L) ?: return null
-        val totalBytes = workInfo.progress.getLong("TotalBytes", 0L)
-        if (totalBytes <= 0L) return null
-        return "${formatFileSize(currentBytes)}/${formatFileSize(totalBytes)}"
-    }
+    private fun createCurrentUploadFile(
+        isUploading: Boolean,
+        progress: OperationRepository.OperationProgress,
+    ): UploadDetailUiState.CurrentUploadFile? {
+        if (!isUploading) return null
+        val currentFileName = progress.currentFileName ?: return null
 
-    private fun extractProgress(
-        workInfo: WorkInfo?,
-        uploadStatus: UploadDetailUiState.UploadStatus,
-    ): Float? {
-        if (uploadStatus != UploadDetailUiState.UploadStatus.UPLOADING) return null
-        val currentBytes = workInfo?.progress?.getLong(FolderUploadWorker.KEY_CURRENT_BYTES, 0L) ?: return null
-        val totalBytes = workInfo.progress.getLong("TotalBytes", 0L)
-        if (totalBytes <= 0L) return null
-        return (currentBytes.toFloat() / totalBytes.toFloat()).coerceIn(0f, 1f)
+        val currentFileBytes = progress.currentFileBytes ?: 0L
+        val currentFileTotalBytes = progress.currentFileTotalBytes
+        return if (currentFileTotalBytes != null && currentFileTotalBytes > 0) {
+            UploadDetailUiState.CurrentUploadFile(
+                name = currentFileName,
+                progressText = "${formatFileSize(currentFileBytes)}/${formatFileSize(currentFileTotalBytes)}",
+                progress = (currentFileBytes.toFloat() / currentFileTotalBytes.toFloat()).coerceIn(0f, 1f),
+            )
+        } else {
+            UploadDetailUiState.CurrentUploadFile(
+                name = currentFileName,
+                progressText = null,
+                progress = null,
+            )
+        }
     }
 
     private fun formatFileSize(bytes: Long): String {

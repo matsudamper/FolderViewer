@@ -11,7 +11,9 @@ import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -41,13 +43,6 @@ internal class FolderUploadWorker @AssistedInject constructor(
             val folderName = inputData.getString(KEY_FOLDER_NAME) ?: return@withContext Result.failure()
             val uriDataListJson = inputData.getString(KEY_URI_DATA_LIST) ?: return@withContext Result.failure()
 
-            setProgress(
-                androidx.work.Data.Builder()
-                    .putString(KEY_FILE_OBJECT_ID, fileObjectIdString)
-                    .putString(KEY_FOLDER_NAME, folderName)
-                    .build(),
-            )
-
             setForeground(createForegroundInfo())
             uploadJobRepository.updateStatus(
                 workerId = id.toString(),
@@ -60,32 +55,30 @@ internal class FolderUploadWorker @AssistedInject constructor(
                 ?: throw IllegalStateException("ストレージが見つかりません: ${fileObjectId.storageId}")
 
             val filesToUpload = getFilesToUpload(uriDataList)
-            val totalSize = filesToUpload.fold<FileToUpload, Long?>(0L) { acc, file ->
-                val size = file.size
-                if (acc != null && size != null) acc + size else null
-            }
+            val uploadEntries = buildUploadEntries(filesToUpload)
 
-            val fileNamesJson = Json.encodeToString(
-                uriDataList.map { it.relativePath },
-            )
-            val fileSizesJson = Json.encodeToString(
-                filesToUpload.map { it.size },
-            )
+            uploadEntries.forEach { entry ->
+                val size = entry.file.size
+                if (entry.fileRowId != null && size != null) {
+                    uploadJobRepository.updateFileSize(entry.fileRowId, size)
+                }
+            }
 
             val progressFlow = MutableStateFlow(UploadProgress(0L, 0))
             val progressJob = launch {
+                var appliedCompletedCount = 0
                 progressFlow.collectLatest { progress ->
-                    val builder = androidx.work.Data.Builder()
-                        .putString(KEY_FILE_OBJECT_ID, fileObjectIdString)
-                        .putString(KEY_FOLDER_NAME, folderName)
-                        .putLong(KEY_CURRENT_BYTES, progress.uploadedBytes)
-                        .putInt(KEY_COMPLETED_FILES, progress.completedFiles)
-                        .putString(KEY_FILE_NAMES, fileNamesJson)
-                        .putString(KEY_FILE_SIZES, fileSizesJson)
-                    if (totalSize != null) {
-                        builder.putLong("TotalBytes", totalSize)
-                    }
-                    setProgress(builder.build())
+                    val completedCount = progress.completedFiles.coerceAtMost(uploadEntries.size)
+                    val newlyCompletedIds = uploadEntries.subList(appliedCompletedCount, completedCount)
+                        .mapNotNull { it.fileRowId }
+                    val runningEntry = uploadEntries.getOrNull(completedCount)
+                    val completedSize = uploadEntries.take(completedCount).sumOf { it.file.size ?: 0L }
+                    uploadJobRepository.applyFolderProgress(
+                        completedFileIds = newlyCompletedIds,
+                        runningFileId = runningEntry?.fileRowId,
+                        transferredBytes = (progress.uploadedBytes - completedSize).coerceAtLeast(0L),
+                    )
+                    appliedCompletedCount = completedCount
                 }
             }
 
@@ -100,12 +93,14 @@ internal class FolderUploadWorker @AssistedInject constructor(
                 progressJob.cancel()
             }
 
-            uploadJobRepository.updateStatus(
-                workerId = id.toString(),
-                status = OperationRepository.OperationStatus.COMPLETED,
-            )
+            uploadJobRepository.completeJob(id.toString())
             Result.success()
-        } catch (e: Exception) {
+        } catch (e: CancellationException) {
+            withContext(NonCancellable) {
+                uploadJobRepository.cancelJob(id.toString())
+            }
+            throw e
+        } catch (e: Throwable) {
             e.printStackTrace()
             uploadJobRepository.updateError(
                 workerId = id.toString(),
@@ -113,6 +108,18 @@ internal class FolderUploadWorker @AssistedInject constructor(
                 errorCause = e.cause?.toString(),
             )
             Result.failure()
+        }
+    }
+
+    private suspend fun buildUploadEntries(filesToUpload: List<FileToUpload>): List<UploadEntry> {
+        val job = uploadJobRepository.getJob(id.toString()) ?: return filesToUpload.map { UploadEntry(it, null) }
+        val fileRows = uploadJobRepository.getFiles(job.operationId)
+        val rowIdByPath = fileRows.associate { row ->
+            val path = if (row.relativePath.isEmpty()) row.fileName else "${row.relativePath}/${row.fileName}"
+            path to row.id
+        }
+        return filesToUpload.map { file ->
+            UploadEntry(file = file, fileRowId = rowIdByPath[file.relativePath])
         }
     }
 
@@ -187,6 +194,11 @@ internal class FolderUploadWorker @AssistedInject constructor(
         }
     }
 
+    private data class UploadEntry(
+        val file: FileToUpload,
+        val fileRowId: Long?,
+    )
+
     @Serializable
     data class UriData(
         val uri: String,
@@ -201,9 +213,5 @@ internal class FolderUploadWorker @AssistedInject constructor(
         const val KEY_FILE_OBJECT_ID = "file_object_id"
         const val KEY_FOLDER_NAME = "folder_name"
         const val KEY_URI_DATA_LIST = "uri_data_list"
-        const val KEY_FILE_NAMES = "file_names"
-        const val KEY_FILE_SIZES = "file_sizes"
-        const val KEY_CURRENT_BYTES = "current_bytes"
-        const val KEY_COMPLETED_FILES = "completed_files"
     }
 }

@@ -6,13 +6,14 @@ import android.content.Context
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.provider.OpenableColumns
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -24,7 +25,6 @@ import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.UploadJobRepository
-import net.matsudamper.folderviewer.viewmodel.worker.FolderUploadWorker.Companion.KEY_CURRENT_BYTES
 
 @HiltWorker
 internal class FileUploadWorker @AssistedInject constructor(
@@ -34,78 +34,73 @@ internal class FileUploadWorker @AssistedInject constructor(
     private val uploadJobRepository: UploadJobRepository,
 ) : CoroutineWorker(context, params) {
 
-    override suspend fun doWork(): Result {
-        Log.d("LOG", "doWork")
-        return withContext(Dispatchers.IO) {
-            try {
-                val fileObjectIdString = inputData.getString(KEY_FILE_OBJECT_ID) ?: return@withContext Result.failure()
-                val uriString = inputData.getString(KEY_URI) ?: return@withContext Result.failure()
-                val fileName = inputData.getString(KEY_FILE_NAME) ?: return@withContext Result.failure()
+    override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
+        try {
+            val fileObjectIdString = inputData.getString(KEY_FILE_OBJECT_ID) ?: return@withContext Result.failure()
+            val uriString = inputData.getString(KEY_URI) ?: return@withContext Result.failure()
+            val fileName = inputData.getString(KEY_FILE_NAME) ?: return@withContext Result.failure()
 
-                setProgress(
-                    androidx.work.Data.Builder()
-                        .putString(KEY_FILE_OBJECT_ID, fileObjectIdString)
-                        .putString(KEY_FILE_NAME, fileName)
-                        .build(),
-                )
+            setForeground(createForegroundInfo())
+            uploadJobRepository.updateStatus(
+                workerId = id.toString(),
+                status = OperationRepository.OperationStatus.RUNNING,
+            )
 
-                setForeground(createForegroundInfo())
-                uploadJobRepository.updateStatus(
-                    workerId = id.toString(),
-                    status = OperationRepository.OperationStatus.RUNNING,
-                )
+            val fileObjectId = Json.decodeFromString<FileObjectId>(fileObjectIdString)
+            val repository = storageRepository.getFileRepository(fileObjectId.storageId)
+                ?: throw IllegalStateException("ストレージが見つかりません: ${fileObjectId.storageId}")
 
-                val fileObjectId = Json.decodeFromString<FileObjectId>(fileObjectIdString)
-                val repository = storageRepository.getFileRepository(fileObjectId.storageId)
-                    ?: throw IllegalStateException("ストレージが見つかりません: ${fileObjectId.storageId}")
+            val job = uploadJobRepository.getJob(id.toString())
+            val fileRow = job?.let { uploadJobRepository.getFiles(it.operationId).firstOrNull() }
 
-                val uri = android.net.Uri.parse(uriString)
-                val fileSize = getFileSize(uri)
+            val uri = android.net.Uri.parse(uriString)
+            val fileSize = getFileSize(uri)
 
-                val progressFlow = MutableStateFlow(0L)
-                val progressJob = launch {
-                    progressFlow.collectLatest { uploadedBytes ->
-                        val builder = androidx.work.Data.Builder()
-                            .putString(KEY_FILE_OBJECT_ID, fileObjectIdString)
-                            .putString(KEY_FILE_NAME, fileName)
-                            .putLong(KEY_CURRENT_BYTES, uploadedBytes)
-                        if (fileSize != null) {
-                            builder.putLong("TotalBytes", fileSize)
-                        }
-                        setProgress(builder.build())
-                    }
-                }
-
-                try {
-                    context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                        repository.uploadFile(
-                            id = fileObjectId,
-                            fileName = fileName,
-                            inputStream = inputStream,
-                            size = requireNotNull(fileSize) { "File size is required" },
-                            onRead = progressFlow,
-                        )
-                    }
-                } finally {
-                    progressJob.cancel()
-                }
-
-                uploadJobRepository.updateStatus(
-                    workerId = id.toString(),
-                    status = OperationRepository.OperationStatus.COMPLETED,
-                )
-                Result.success()
-            } catch (e: Throwable) {
-                e.printStackTrace()
-                uploadJobRepository.updateError(
-                    workerId = id.toString(),
-                    errorMessage = e.message,
-                    errorCause = e.cause?.toString(),
-                )
-                Result.failure()
+            if (fileRow != null) {
+                uploadJobRepository.startFile(fileRow.id, fileSize)
             }
+
+            val progressFlow = MutableStateFlow(0L)
+            val progressJob = launch {
+                progressFlow.collectLatest { uploadedBytes ->
+                    if (fileRow != null) {
+                        uploadJobRepository.updateFileTransferred(fileRow.id, uploadedBytes)
+                    }
+                }
+            }
+
+            try {
+                context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    repository.uploadFile(
+                        id = fileObjectId,
+                        fileName = fileName,
+                        inputStream = inputStream,
+                        size = requireNotNull(fileSize) { "File size is required" },
+                        onRead = progressFlow,
+                    )
+                }
+            } finally {
+                progressJob.cancel()
+            }
+
+            uploadJobRepository.completeJob(id.toString())
+            Result.success()
+        } catch (e: CancellationException) {
+            withContext(NonCancellable) {
+                uploadJobRepository.cancelJob(id.toString())
+            }
+            throw e
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            uploadJobRepository.updateError(
+                workerId = id.toString(),
+                errorMessage = e.message,
+                errorCause = e.cause?.toString(),
+            )
+            Result.failure()
         }
     }
+
     override suspend fun getForegroundInfo(): ForegroundInfo {
         return createForegroundInfo()
     }

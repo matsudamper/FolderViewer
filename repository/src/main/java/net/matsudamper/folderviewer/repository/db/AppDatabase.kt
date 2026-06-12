@@ -8,16 +8,14 @@ import androidx.room.RoomDatabase
         OperationEntity::class,
         UploadOperationEntity::class,
         PasteOperationEntity::class,
-        PasteFileEntity::class,
-        DeleteFileEntity::class,
+        OperationFileEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = false,
 )
 internal abstract class AppDatabase : RoomDatabase() {
     abstract fun operationDao(): OperationDao
     abstract fun uploadOperationDao(): UploadOperationDao
     abstract fun pasteOperationDao(): PasteOperationDao
-    abstract fun pasteFileDao(): PasteFileDao
-    abstract fun deleteFileDao(): DeleteFileDao
+    abstract fun operationFileDao(): OperationFileDao
 }
