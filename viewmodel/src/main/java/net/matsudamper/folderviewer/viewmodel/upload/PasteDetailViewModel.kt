@@ -18,8 +18,10 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
+import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.repository.PasteJobRepository
 import net.matsudamper.folderviewer.ui.upload.PasteDetailUiState
+import net.matsudamper.folderviewer.viewmodel.util.FileUtil
 import net.matsudamper.folderviewer.viewmodel.worker.FilePasteWorker
 
 @HiltViewModel
@@ -84,6 +86,8 @@ class PasteDetailViewModel @Inject constructor(
                         PasteJobRepository.DuplicateResolution.PENDING, null -> null
                     }
 
+                    val isImage = !file.isDirectory && FileUtil.isImage(file.fileName)
+
                     PasteDetailUiState.DuplicateFileItem(
                         fileId = file.id,
                         fileName = file.fileName,
@@ -93,6 +97,16 @@ class PasteDetailViewModel @Inject constructor(
                         destinationPath = destinationPath,
                         destinationSize = file.destinationFileSize,
                         destinationSizeText = formatFileSize(file.destinationFileSize),
+                        sourceThumbnail = if (isImage) {
+                            FileImageSource.Thumbnail(fileId = file.sourceFileId)
+                        } else {
+                            null
+                        },
+                        destinationThumbnail = if (isImage) {
+                            file.destinationFileId?.let { FileImageSource.Thumbnail(fileId = it) }
+                        } else {
+                            null
+                        },
                         resolution = uiResolution,
                         onKeepDestination = {
                             resolveFile(file.id, PasteJobRepository.DuplicateResolution.KEEP_DESTINATION, jobId)
