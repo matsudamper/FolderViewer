@@ -19,6 +19,12 @@ public sealed interface UiStorageConfiguration {
         val rootPath: String,
     ) : UiStorageConfiguration
 
+    public data class External(
+        override val id: StorageId,
+        override val name: String,
+        val rootPath: String,
+    ) : UiStorageConfiguration
+
     public data class SharePoint(
         override val id: StorageId,
         override val name: String,

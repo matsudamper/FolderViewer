@@ -111,6 +111,8 @@ public fun PasteDetailScreen(
                     ProgressCard(
                         modifier = Modifier.fillMaxWidth(),
                         progress = uiState.progress,
+                        fileCountText = uiState.fileCountText,
+                        sizeProgressText = uiState.sizeProgressText,
                         currentFileName = uiState.currentFileName,
                         currentFileProgress = uiState.currentFileProgress,
                     )
@@ -236,6 +238,8 @@ public fun PasteDetailScreen(
 @Composable
 private fun ProgressCard(
     progress: Float?,
+    fileCountText: String?,
+    sizeProgressText: String?,
     currentFileName: String?,
     currentFileProgress: Float?,
     modifier: Modifier = Modifier,
@@ -250,6 +254,29 @@ private fun ProgressCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            if (fileCountText != null || sizeProgressText != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = if (fileCountText != null) {
+                            stringResource(R.string.paste_detail_file_count_format, fileCountText)
+                        } else {
+                            ""
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (sizeProgressText != null) {
+                        Text(
+                            text = sizeProgressText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
             if (progress != null) {
                 LinearProgressIndicator(
                     progress = { progress },
