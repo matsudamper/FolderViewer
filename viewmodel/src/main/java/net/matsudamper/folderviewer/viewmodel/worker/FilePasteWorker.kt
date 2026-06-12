@@ -23,6 +23,7 @@ import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.PasteJobRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.common.FileObjectId
+import net.matsudamper.folderviewer.navigation.PasteDetail
 
 @HiltWorker
 internal class FilePasteWorker @AssistedInject constructor(
@@ -50,6 +51,7 @@ internal class FilePasteWorker @AssistedInject constructor(
 
             if (pendingFiles.isEmpty()) {
                 pasteJobRepository.updateStatus(jobId, PasteJobRepository.PasteJobStatus.COMPLETED)
+                notifyCompleted(jobId, job.totalFiles)
                 return@withContext Result.success()
             }
 
@@ -256,6 +258,16 @@ internal class FilePasteWorker @AssistedInject constructor(
             if (unresolvedCount > 0) {
                 pasteJobRepository.updateDuplicateCount(jobId, unresolvedCount)
                 pasteJobRepository.updateStatus(jobId, PasteJobRepository.PasteJobStatus.WAITING_RESOLUTION, workerId = null)
+                OperationResultNotification.notify(
+                    context = context,
+                    notificationId = PASTE_RESULT_NOTIFICATION_BASE_ID + jobId.toInt(),
+                    content = OperationResultNotification.Content(
+                        title = "ファイルペーストの操作が必要です",
+                        text = "重複ファイルが $unresolvedCount 件あります",
+                        smallIcon = android.R.drawable.stat_notify_error,
+                    ),
+                    destination = PasteDetail(jobId = jobId),
+                )
                 return@withContext Result.success()
             }
 
@@ -263,12 +275,14 @@ internal class FilePasteWorker @AssistedInject constructor(
                 deleteSourceDirectories(files, sourceRepo)
             }
 
-            val finalStatus = if (pasteJobRepository.countFailedFiles(jobId) > 0) {
-                PasteJobRepository.PasteJobStatus.FAILED
+            val failedCount = pasteJobRepository.countFailedFiles(jobId)
+            if (failedCount > 0) {
+                pasteJobRepository.updateStatus(jobId, PasteJobRepository.PasteJobStatus.FAILED)
+                notifyFailed(jobId, "$failedCount 件のファイルが失敗しました")
             } else {
-                PasteJobRepository.PasteJobStatus.COMPLETED
+                pasteJobRepository.updateStatus(jobId, PasteJobRepository.PasteJobStatus.COMPLETED)
+                notifyCompleted(jobId, job.totalFiles)
             }
-            pasteJobRepository.updateStatus(jobId, finalStatus)
             Result.success()
         } catch (e: CancellationException) {
             throw e
@@ -279,8 +293,35 @@ internal class FilePasteWorker @AssistedInject constructor(
                 errorMessage = e.message,
                 errorCause = e.cause?.toString(),
             )
+            notifyFailed(jobId, e.message ?: e.toString())
             Result.failure()
         }
+    }
+
+    private fun notifyCompleted(jobId: Long, totalFiles: Int) {
+        OperationResultNotification.notify(
+            context = context,
+            notificationId = PASTE_RESULT_NOTIFICATION_BASE_ID + jobId.toInt(),
+            content = OperationResultNotification.Content(
+                title = "ファイルペーストが完了しました",
+                text = "$totalFiles ファイル",
+                smallIcon = android.R.drawable.stat_sys_upload_done,
+            ),
+            destination = PasteDetail(jobId = jobId),
+        )
+    }
+
+    private fun notifyFailed(jobId: Long, text: String) {
+        OperationResultNotification.notify(
+            context = context,
+            notificationId = PASTE_RESULT_NOTIFICATION_BASE_ID + jobId.toInt(),
+            content = OperationResultNotification.Content(
+                title = "ファイルペーストに失敗しました",
+                text = text,
+                smallIcon = android.R.drawable.stat_notify_error,
+            ),
+            destination = PasteDetail(jobId = jobId),
+        )
     }
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
@@ -415,6 +456,7 @@ internal class FilePasteWorker @AssistedInject constructor(
     companion object {
         private const val CHANNEL_ID = "paste_channel"
         private const val PASTE_NOTIFICATION_BASE_ID = 1000
+        private const val PASTE_RESULT_NOTIFICATION_BASE_ID = 5000
 
         const val TAG_PASTE = "paste"
         const val KEY_PASTE_JOB_ID = "paste_job_id"

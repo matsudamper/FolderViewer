@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import net.matsudamper.folderviewer.navigation.DeleteDetail
 import net.matsudamper.folderviewer.repository.DeleteJobRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
@@ -43,6 +44,7 @@ internal class FileDeleteWorker @AssistedInject constructor(
 
             if (pendingFiles.isEmpty()) {
                 deleteJobRepository.updateStatus(operationId, OperationRepository.OperationStatus.COMPLETED)
+                notifyCompleted(operationId, job.totalFiles)
                 return@withContext Result.success()
             }
 
@@ -119,12 +121,13 @@ internal class FileDeleteWorker @AssistedInject constructor(
                 updateNotification(notificationId, completedFiles, job.totalFiles, currentFileName)
             }
 
-            val finalStatus = if (failedFiles > 0) {
-                OperationRepository.OperationStatus.FAILED
+            if (failedFiles > 0) {
+                deleteJobRepository.updateStatus(operationId, OperationRepository.OperationStatus.FAILED)
+                notifyFailed(operationId, "$failedFiles 件のファイルが失敗しました")
             } else {
-                OperationRepository.OperationStatus.COMPLETED
+                deleteJobRepository.updateStatus(operationId, OperationRepository.OperationStatus.COMPLETED)
+                notifyCompleted(operationId, job.totalFiles)
             }
-            deleteJobRepository.updateStatus(operationId, finalStatus)
             Result.success()
         } catch (e: CancellationException) {
             throw e
@@ -135,8 +138,35 @@ internal class FileDeleteWorker @AssistedInject constructor(
                 errorMessage = e.message,
                 errorCause = e.cause?.toString(),
             )
+            notifyFailed(operationId, e.message ?: e.toString())
             Result.failure()
         }
+    }
+
+    private fun notifyCompleted(operationId: Long, totalFiles: Int) {
+        OperationResultNotification.notify(
+            context = context,
+            notificationId = DELETE_RESULT_NOTIFICATION_BASE_ID + operationId.toInt(),
+            content = OperationResultNotification.Content(
+                title = "ファイル削除が完了しました",
+                text = "$totalFiles ファイル",
+                smallIcon = android.R.drawable.ic_menu_delete,
+            ),
+            destination = DeleteDetail(operationId = operationId),
+        )
+    }
+
+    private fun notifyFailed(operationId: Long, text: String) {
+        OperationResultNotification.notify(
+            context = context,
+            notificationId = DELETE_RESULT_NOTIFICATION_BASE_ID + operationId.toInt(),
+            content = OperationResultNotification.Content(
+                title = "ファイル削除に失敗しました",
+                text = text,
+                smallIcon = android.R.drawable.stat_notify_error,
+            ),
+            destination = DeleteDetail(operationId = operationId),
+        )
     }
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
@@ -223,6 +253,7 @@ internal class FileDeleteWorker @AssistedInject constructor(
     companion object {
         private const val CHANNEL_ID = "delete_channel"
         private const val DELETE_NOTIFICATION_BASE_ID = 2000
+        private const val DELETE_RESULT_NOTIFICATION_BASE_ID = 6000
 
         const val TAG_DELETE = "delete"
         const val KEY_DELETE_OPERATION_ID = "delete_operation_id"

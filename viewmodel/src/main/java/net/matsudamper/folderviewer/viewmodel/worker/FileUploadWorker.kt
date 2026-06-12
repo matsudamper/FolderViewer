@@ -21,6 +21,7 @@ import kotlinx.serialization.json.Json
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import net.matsudamper.folderviewer.common.FileObjectId
+import net.matsudamper.folderviewer.navigation.UploadDetail
 import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.UploadJobRepository
@@ -94,6 +95,16 @@ internal class FileUploadWorker @AssistedInject constructor(
                     workerId = id.toString(),
                     status = OperationRepository.OperationStatus.COMPLETED,
                 )
+                OperationResultNotification.notify(
+                    context = context,
+                    notificationId = RESULT_NOTIFICATION_BASE_ID + id.hashCode(),
+                    content = OperationResultNotification.Content(
+                        title = "ファイルアップロードが完了しました",
+                        text = fileName,
+                        smallIcon = android.R.drawable.stat_sys_upload_done,
+                    ),
+                    destination = UploadDetail(workerId = id.toString()),
+                )
                 Result.success()
             } catch (e: Throwable) {
                 e.printStackTrace()
@@ -101,6 +112,16 @@ internal class FileUploadWorker @AssistedInject constructor(
                     workerId = id.toString(),
                     errorMessage = e.message,
                     errorCause = e.cause?.toString(),
+                )
+                OperationResultNotification.notify(
+                    context = context,
+                    notificationId = RESULT_NOTIFICATION_BASE_ID + id.hashCode(),
+                    content = OperationResultNotification.Content(
+                        title = "ファイルアップロードに失敗しました",
+                        text = e.message ?: e.toString(),
+                        smallIcon = android.R.drawable.stat_notify_error,
+                    ),
+                    destination = UploadDetail(workerId = id.toString()),
                 )
                 Result.failure()
             }
@@ -161,6 +182,7 @@ internal class FileUploadWorker @AssistedInject constructor(
     companion object {
         private const val CHANNEL_ID = "file_upload_channel"
         private const val NOTIFICATION_ID = 1
+        private const val RESULT_NOTIFICATION_BASE_ID = 7000
 
         const val TAG_UPLOAD = "upload"
         const val KEY_FILE_OBJECT_ID = "file_object_id"
