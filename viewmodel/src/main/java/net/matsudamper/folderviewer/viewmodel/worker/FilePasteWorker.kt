@@ -62,6 +62,7 @@ internal class FilePasteWorker @AssistedInject constructor(
                 errorMessage = e.message,
                 errorCause = e.cause?.toString(),
             )
+            notifyFailed(jobId, e.message ?: e.toString())
             Result.failure()
         }
     }
@@ -75,7 +76,7 @@ internal class FilePasteWorker @AssistedInject constructor(
 
         val pendingFiles = pasteJobRepository.getPendingFiles(jobId)
         if (pendingFiles.isEmpty()) {
-            return finishJob(meta, sourceRepo = null)
+            return finishJob(meta, sourceRepo = null, totalFiles = totalFiles)
         }
 
         val sourceStorageId = pendingFiles.first().sourceFileId.storageId
@@ -106,16 +107,31 @@ internal class FilePasteWorker @AssistedInject constructor(
         if (!processFileEntries(jobContext, pendingFiles.filter { !it.isDirectory })) {
             return Result.success()
         }
-        return finishJob(meta, sourceRepo)
+        return finishJob(meta, sourceRepo, totalFiles)
     }
 
-    private suspend fun finishJob(meta: PasteJobRepository.PasteJobMeta, sourceRepo: FileRepository?): Result {
+    private suspend fun finishJob(
+        meta: PasteJobRepository.PasteJobMeta,
+        sourceRepo: FileRepository?,
+        totalFiles: Int,
+    ): Result {
         val jobId = meta.id
-        if (pasteJobRepository.countUnresolvedDuplicates(jobId) > 0) {
+        val unresolvedCount = pasteJobRepository.countUnresolvedDuplicates(jobId)
+        if (unresolvedCount > 0) {
             pasteJobRepository.updateStatus(
                 jobId = jobId,
                 status = OperationRepository.OperationStatus.WAITING_RESOLUTION,
                 workerId = null,
+            )
+            OperationResultNotification.notify(
+                context = context,
+                notificationId = PASTE_RESULT_NOTIFICATION_BASE_ID + jobId.toInt(),
+                content = OperationResultNotification.Content(
+                    title = "ファイルペーストの操作が必要です",
+                    text = "重複ファイルが $unresolvedCount 件あります",
+                    smallIcon = android.R.drawable.stat_notify_error,
+                ),
+                contentIntent = operationNotificationIntentFactory.createPasteDetailIntent(jobId),
             )
             return Result.success()
         }
@@ -124,13 +140,41 @@ internal class FilePasteWorker @AssistedInject constructor(
             deleteSourceDirectories(jobId, sourceRepo)
         }
 
-        val finalStatus = if (pasteJobRepository.countFailedFiles(jobId) > 0) {
-            OperationRepository.OperationStatus.FAILED
+        val failedCount = pasteJobRepository.countFailedFiles(jobId)
+        if (failedCount > 0) {
+            pasteJobRepository.updateStatus(jobId, OperationRepository.OperationStatus.FAILED)
+            notifyFailed(jobId, "$failedCount 件のファイルが失敗しました")
         } else {
-            OperationRepository.OperationStatus.COMPLETED
+            pasteJobRepository.updateStatus(jobId, OperationRepository.OperationStatus.COMPLETED)
+            notifyCompleted(jobId, totalFiles)
         }
-        pasteJobRepository.updateStatus(jobId, finalStatus)
         return Result.success()
+    }
+
+    private fun notifyCompleted(jobId: Long, totalFiles: Int) {
+        OperationResultNotification.notify(
+            context = context,
+            notificationId = PASTE_RESULT_NOTIFICATION_BASE_ID + jobId.toInt(),
+            content = OperationResultNotification.Content(
+                title = "ファイルペーストが完了しました",
+                text = "$totalFiles ファイル",
+                smallIcon = android.R.drawable.stat_sys_upload_done,
+            ),
+            contentIntent = operationNotificationIntentFactory.createPasteDetailIntent(jobId),
+        )
+    }
+
+    private fun notifyFailed(jobId: Long, text: String) {
+        OperationResultNotification.notify(
+            context = context,
+            notificationId = PASTE_RESULT_NOTIFICATION_BASE_ID + jobId.toInt(),
+            content = OperationResultNotification.Content(
+                title = "ファイルペーストに失敗しました",
+                text = text,
+                smallIcon = android.R.drawable.stat_notify_error,
+            ),
+            contentIntent = operationNotificationIntentFactory.createPasteDetailIntent(jobId),
+        )
     }
 
     private suspend fun processDirectories(
@@ -421,6 +465,7 @@ internal class FilePasteWorker @AssistedInject constructor(
     companion object {
         private const val CHANNEL_ID = "paste_channel"
         private const val PASTE_NOTIFICATION_BASE_ID = 1000
+        private const val PASTE_RESULT_NOTIFICATION_BASE_ID = 5000
 
         const val TAG_PASTE = "paste"
         const val KEY_PASTE_JOB_ID = "paste_job_id"

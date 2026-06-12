@@ -54,8 +54,35 @@ internal class FileDeleteWorker @AssistedInject constructor(
                 errorMessage = e.message,
                 errorCause = e.cause?.toString(),
             )
+            notifyFailed(operationId, e.message ?: e.toString())
             Result.failure()
         }
+    }
+
+    private fun notifyCompleted(operationId: Long, totalFiles: Int) {
+        OperationResultNotification.notify(
+            context = context,
+            notificationId = DELETE_RESULT_NOTIFICATION_BASE_ID + operationId.toInt(),
+            content = OperationResultNotification.Content(
+                title = "ファイル削除が完了しました",
+                text = "$totalFiles ファイル",
+                smallIcon = android.R.drawable.ic_menu_delete,
+            ),
+            contentIntent = operationNotificationIntentFactory.createDeleteDetailIntent(operationId),
+        )
+    }
+
+    private fun notifyFailed(operationId: Long, text: String) {
+        OperationResultNotification.notify(
+            context = context,
+            notificationId = DELETE_RESULT_NOTIFICATION_BASE_ID + operationId.toInt(),
+            content = OperationResultNotification.Content(
+                title = "ファイル削除に失敗しました",
+                text = text,
+                smallIcon = android.R.drawable.stat_notify_error,
+            ),
+            contentIntent = operationNotificationIntentFactory.createDeleteDetailIntent(operationId),
+        )
     }
 
     private suspend fun executeJob(operationId: Long): Result {
@@ -67,6 +94,7 @@ internal class FileDeleteWorker @AssistedInject constructor(
         val pendingFiles = deleteJobRepository.getPendingFiles(operationId)
         if (pendingFiles.isEmpty()) {
             deleteJobRepository.updateStatus(operationId, OperationRepository.OperationStatus.COMPLETED)
+            notifyCompleted(operationId, totalFiles)
             return Result.success()
         }
 
@@ -99,12 +127,14 @@ internal class FileDeleteWorker @AssistedInject constructor(
             updateNotification(notificationId, completedCount, totalFiles, file.displayPath())
         }
 
-        val finalStatus = if (deleteJobRepository.countFailedFiles(operationId) > 0) {
-            OperationRepository.OperationStatus.FAILED
+        val failedCount = deleteJobRepository.countFailedFiles(operationId)
+        if (failedCount > 0) {
+            deleteJobRepository.updateStatus(operationId, OperationRepository.OperationStatus.FAILED)
+            notifyFailed(operationId, "$failedCount 件のファイルが失敗しました")
         } else {
-            OperationRepository.OperationStatus.COMPLETED
+            deleteJobRepository.updateStatus(operationId, OperationRepository.OperationStatus.COMPLETED)
+            notifyCompleted(operationId, totalFiles)
         }
-        deleteJobRepository.updateStatus(operationId, finalStatus)
         return Result.success()
     }
 
@@ -218,6 +248,7 @@ internal class FileDeleteWorker @AssistedInject constructor(
     companion object {
         private const val CHANNEL_ID = "delete_channel"
         private const val DELETE_NOTIFICATION_BASE_ID = 2000
+        private const val DELETE_RESULT_NOTIFICATION_BASE_ID = 6000
 
         const val TAG_DELETE = "delete"
         const val KEY_DELETE_OPERATION_ID = "delete_operation_id"

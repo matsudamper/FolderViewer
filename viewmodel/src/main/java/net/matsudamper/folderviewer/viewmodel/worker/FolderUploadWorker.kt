@@ -95,6 +95,16 @@ internal class FolderUploadWorker @AssistedInject constructor(
             }
 
             uploadJobRepository.completeJob(id.toString())
+            OperationResultNotification.notify(
+                context = context,
+                notificationId = RESULT_NOTIFICATION_BASE_ID + id.hashCode(),
+                content = OperationResultNotification.Content(
+                    title = "フォルダアップロードが完了しました",
+                    text = folderName,
+                    smallIcon = android.R.drawable.stat_sys_upload_done,
+                ),
+                contentIntent = operationNotificationIntentFactory.createUploadDetailIntent(id.toString()),
+            )
             Result.success()
         } catch (e: CancellationException) {
             withContext(NonCancellable) {
@@ -107,6 +117,16 @@ internal class FolderUploadWorker @AssistedInject constructor(
                 workerId = id.toString(),
                 errorMessage = e.message,
                 errorCause = e.cause?.toString(),
+            )
+            OperationResultNotification.notify(
+                context = context,
+                notificationId = RESULT_NOTIFICATION_BASE_ID + id.hashCode(),
+                content = OperationResultNotification.Content(
+                    title = "フォルダアップロードに失敗しました",
+                    text = e.message ?: e.toString(),
+                    smallIcon = android.R.drawable.stat_notify_error,
+                ),
+                contentIntent = operationNotificationIntentFactory.createUploadDetailIntent(id.toString()),
             )
             Result.failure()
         }
@@ -210,6 +230,7 @@ internal class FolderUploadWorker @AssistedInject constructor(
     companion object {
         private const val CHANNEL_ID = "folder_upload_channel"
         private const val NOTIFICATION_ID = 2
+        private const val RESULT_NOTIFICATION_BASE_ID = 8000
 
         const val TAG_UPLOAD = "upload"
         const val KEY_FILE_OBJECT_ID = "file_object_id"
