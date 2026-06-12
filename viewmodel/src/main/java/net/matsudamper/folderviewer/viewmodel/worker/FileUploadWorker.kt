@@ -95,6 +95,16 @@ internal class FileUploadWorker @AssistedInject constructor(
                     workerId = id.toString(),
                     status = OperationRepository.OperationStatus.COMPLETED,
                 )
+                OperationResultNotification.notify(
+                    context = context,
+                    notificationId = RESULT_NOTIFICATION_BASE_ID + id.hashCode(),
+                    content = OperationResultNotification.Content(
+                        title = "ファイルアップロードが完了しました",
+                        text = fileName,
+                        smallIcon = android.R.drawable.stat_sys_upload_done,
+                    ),
+                    contentIntent = operationNotificationIntentFactory.createUploadDetailIntent(id.toString()),
+                )
                 Result.success()
             } catch (e: Throwable) {
                 e.printStackTrace()
@@ -102,6 +112,16 @@ internal class FileUploadWorker @AssistedInject constructor(
                     workerId = id.toString(),
                     errorMessage = e.message,
                     errorCause = e.cause?.toString(),
+                )
+                OperationResultNotification.notify(
+                    context = context,
+                    notificationId = RESULT_NOTIFICATION_BASE_ID + id.hashCode(),
+                    content = OperationResultNotification.Content(
+                        title = "ファイルアップロードに失敗しました",
+                        text = e.message ?: e.toString(),
+                        smallIcon = android.R.drawable.stat_notify_error,
+                    ),
+                    contentIntent = operationNotificationIntentFactory.createUploadDetailIntent(id.toString()),
                 )
                 Result.failure()
             }
@@ -163,6 +183,7 @@ internal class FileUploadWorker @AssistedInject constructor(
     companion object {
         private const val CHANNEL_ID = "file_upload_channel"
         private const val NOTIFICATION_ID = 1
+        private const val RESULT_NOTIFICATION_BASE_ID = 7000
 
         const val TAG_UPLOAD = "upload"
         const val KEY_FILE_OBJECT_ID = "file_object_id"
