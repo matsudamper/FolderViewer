@@ -14,6 +14,7 @@ data class FileBrowserUiState(
     val displayConfig: UiDisplayConfig,
     val isSelectionMode: Boolean,
     val selectedCount: Int,
+    val visibleCompressMenu: Boolean,
     val isPasteMode: Boolean,
     val callbacks: Callbacks,
     val contentState: ContentState,
@@ -78,9 +79,12 @@ data class FileBrowserUiState(
         fun onOpenFolderWithExternalAppClick()
         fun onConfirmCreateDirectory(directoryName: String)
         fun onCancelSelection()
+        fun onSelectAllClick()
         fun onCopyClick()
         fun onCutClick()
         fun onShareClick()
+        fun onCompressClick()
+        fun onConfirmCompress(fileName: String)
         fun onDeleteClick()
         fun onConfirmDelete()
         fun onPasteClick()

@@ -21,6 +21,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import net.matsudamper.folderviewer.ui.R
 import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
 
@@ -65,33 +66,98 @@ internal fun FileBrowserTopBar(
             }
         },
         actions = {
-            if (visibleFavoriteButton) {
-                IconButton(onClick = onFavoriteClick) {
-                    Icon(
-                        painter = painterResource(
-                            id = if (isFavorite) R.drawable.ic_star else R.drawable.ic_star_border,
-                        ),
-                        contentDescription = stringResource(R.string.add_to_favorites),
-                        tint = if (isFavorite) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            LocalContentColor.current
+            var showMoreMenu by remember { mutableStateOf(false) }
+            var showDisplayMenu by remember { mutableStateOf(false) }
+            var showSortMenu by remember { mutableStateOf(false) }
+            IconButton(onClick = {
+                showDisplayMenu = false
+                showSortMenu = false
+                showMoreMenu = true
+            }) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_more_vert),
+                    contentDescription = stringResource(R.string.more_options),
+                )
+            }
+            DropdownMenu(
+                expanded = showMoreMenu,
+                onDismissRequest = { showMoreMenu = false },
+            ) {
+                if (visibleFavoriteButton) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                stringResource(
+                                    if (isFavorite) {
+                                        R.string.remove_from_favorites
+                                    } else {
+                                        R.string.add_to_favorites
+                                    },
+                                ),
+                            )
+                        },
+                        onClick = {
+                            showMoreMenu = false
+                            onFavoriteClick()
+                        },
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(
+                                    id = if (isFavorite) R.drawable.ic_star else R.drawable.ic_star_border,
+                                ),
+                                contentDescription = null,
+                                tint = if (isFavorite) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    LocalContentColor.current
+                                },
+                            )
                         },
                     )
                 }
-            }
-
-            var showDisplayMenu by remember { mutableStateOf(false) }
-            IconButton(onClick = { showDisplayMenu = true }) {
-                Icon(
-                    painter = painterResource(
-                        id = if (displayConfig.displayMode == UiDisplayConfig.DisplayMode.Grid) {
-                            R.drawable.ic_grid_view
-                        } else {
-                            R.drawable.ic_view_list
-                        },
-                    ),
-                    contentDescription = stringResource(R.string.display_mode),
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.display_mode)) },
+                    onClick = {
+                        showMoreMenu = false
+                        showDisplayMenu = true
+                    },
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(
+                                id = if (displayConfig.displayMode == UiDisplayConfig.DisplayMode.Grid) {
+                                    R.drawable.ic_grid_view
+                                } else {
+                                    R.drawable.ic_view_list
+                                },
+                            ),
+                            contentDescription = null,
+                        )
+                    },
+                    trailingIcon = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_chevron_right),
+                            contentDescription = null,
+                        )
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.sort_by)) },
+                    onClick = {
+                        showMoreMenu = false
+                        showSortMenu = true
+                    },
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_sort),
+                            contentDescription = null,
+                        )
+                    },
+                    trailingIcon = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_chevron_right),
+                            contentDescription = null,
+                        )
+                    },
                 )
             }
 
@@ -101,14 +167,6 @@ internal fun FileBrowserTopBar(
                 displayConfig = displayConfig,
                 onDisplayConfigChange = onDisplayConfigChange,
             )
-
-            var showSortMenu by remember { mutableStateOf(false) }
-            IconButton(onClick = { showSortMenu = true }) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_sort),
-                    contentDescription = stringResource(R.string.sort_by),
-                )
-            }
 
             FileBrowserSortDropDownMenu(
                 showSortMenu = showSortMenu,
@@ -124,8 +182,11 @@ internal fun FileBrowserTopBar(
 @Composable
 internal fun FileBrowserSelectionTopBar(
     selectedCount: Int,
+    visibleCompressMenu: Boolean,
     onCancelSelection: () -> Unit,
+    onSelectAllClick: () -> Unit,
     onShareClick: () -> Unit,
+    onCompressClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     TopAppBar(
@@ -145,13 +206,88 @@ internal fun FileBrowserSelectionTopBar(
             }
         },
         actions = {
-            IconButton(onClick = onShareClick) {
+            IconButton(onClick = onSelectAllClick) {
                 Icon(
-                    painter = painterResource(id = R.drawable.ic_share),
-                    contentDescription = stringResource(R.string.share),
+                    painter = painterResource(id = R.drawable.ic_select_all),
+                    contentDescription = stringResource(R.string.select_all),
                 )
             }
+            var showMoreMenu by remember { mutableStateOf(false) }
+            IconButton(onClick = { showMoreMenu = true }) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_more_vert),
+                    contentDescription = stringResource(R.string.more_options),
+                )
+            }
+            DropdownMenu(
+                expanded = showMoreMenu,
+                onDismissRequest = { showMoreMenu = false },
+            ) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.share)) },
+                    onClick = {
+                        showMoreMenu = false
+                        onShareClick()
+                    },
+                    leadingIcon = {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_share),
+                            contentDescription = null,
+                        )
+                    },
+                )
+                if (visibleCompressMenu) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.compress)) },
+                        onClick = {
+                            showMoreMenu = false
+                            onCompressClick()
+                        },
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_folder_zip),
+                                contentDescription = null,
+                            )
+                        },
+                    )
+                }
+            }
         },
+    )
+}
+
+@Composable
+@Preview
+private fun FileBrowserTopBarPreview() {
+    FileBrowserTopBar(
+        title = "フォルダ名",
+        isFavorite = true,
+        visibleFavoriteButton = true,
+        onBack = {},
+        sortConfig = FileBrowserUiState.FileSortConfig(
+            key = FileBrowserUiState.FileSortKey.Name,
+            isAscending = true,
+        ),
+        onSortConfigChange = {},
+        displayConfig = UiDisplayConfig(
+            displayMode = UiDisplayConfig.DisplayMode.List,
+            displaySize = UiDisplayConfig.DisplaySize.Medium,
+        ),
+        onDisplayConfigChange = {},
+        onFavoriteClick = {},
+    )
+}
+
+@Composable
+@Preview
+private fun SelectionTopBarPreview() {
+    FileBrowserSelectionTopBar(
+        selectedCount = 3,
+        visibleCompressMenu = true,
+        onCancelSelection = {},
+        onSelectAllClick = {},
+        onShareClick = {},
+        onCompressClick = {},
     )
 }
 

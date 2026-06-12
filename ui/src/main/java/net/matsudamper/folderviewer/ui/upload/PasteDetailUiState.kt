@@ -1,6 +1,7 @@
 package net.matsudamper.folderviewer.ui.upload
 
 import androidx.compose.runtime.Immutable
+import net.matsudamper.folderviewer.coil.FileImageSource
 
 data class PasteDetailUiState(
     val jobName: String,
@@ -13,6 +14,8 @@ data class PasteDetailUiState(
     val failedFiles: List<FailedFileItem> = emptyList(),
     val canApply: Boolean,
     val progress: Float?,
+    val fileCountText: String?,
+    val sizeProgressText: String?,
     val currentFileName: String?,
     val currentFileProgress: Float?,
     val callbacks: Callbacks,
@@ -35,6 +38,8 @@ data class PasteDetailUiState(
         val destinationPath: String,
         val destinationSize: Long,
         val destinationSizeText: String,
+        val sourceThumbnail: FileImageSource.Thumbnail?,
+        val destinationThumbnail: FileImageSource.Thumbnail?,
         val resolution: Resolution?,
         val onKeepDestination: () -> Unit,
         val onOverwriteWithSource: () -> Unit,
