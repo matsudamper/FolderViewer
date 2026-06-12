@@ -529,10 +529,16 @@ private fun FileBrowserEventHandler(
                 }
 
                 is FileBrowserViewModel.ViewModelEvent.OpenFolderWithExternalApp -> {
-                    val uri = android.net.Uri.fromFile(File(event.path))
+                    val relativePath = File(event.path)
+                        .relativeToOrNull(android.os.Environment.getExternalStorageDirectory())
+                        ?.path
+                        .orEmpty()
+                    val uri = android.provider.DocumentsContract.buildDocumentUri(
+                        "com.android.externalstorage.documents",
+                        "primary:$relativePath",
+                    )
                     val intent = Intent(Intent.ACTION_VIEW).apply {
-                        setDataAndType(uri, "resource/folder")
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        setDataAndType(uri, android.provider.DocumentsContract.Document.MIME_TYPE_DIR)
                     }
                     runCatching {
                         context.startActivity(intent)
