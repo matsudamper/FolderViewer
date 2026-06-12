@@ -13,6 +13,8 @@ data class PasteDetailUiState(
     val failedFiles: List<FailedFileItem> = emptyList(),
     val canApply: Boolean,
     val progress: Float?,
+    val fileCountText: String?,
+    val sizeProgressText: String?,
     val currentFileName: String?,
     val currentFileProgress: Float?,
     val callbacks: Callbacks,

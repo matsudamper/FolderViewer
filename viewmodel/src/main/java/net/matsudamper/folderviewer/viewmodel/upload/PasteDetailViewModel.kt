@@ -133,6 +133,16 @@ class PasteDetailViewModel @Inject constructor(
                 } else {
                     null
                 }
+                val fileCountText = if (isActive) {
+                    "${job.completedFiles}/${job.totalFiles}"
+                } else {
+                    null
+                }
+                val sizeProgressText = if (isActive && job.totalBytes > 0) {
+                    "${formatFileSize(job.completedBytes + job.currentFileBytes)} / ${formatFileSize(job.totalBytes)}"
+                } else {
+                    null
+                }
                 val currentFileName = if (isRunning) job.currentFileName else null
                 val currentFileProgress = if (isRunning && job.currentFileTotalBytes > 0) {
                     job.currentFileBytes.toFloat() / job.currentFileTotalBytes.toFloat()
@@ -176,6 +186,8 @@ class PasteDetailViewModel @Inject constructor(
                     failedFiles = failedItems,
                     canApply = canApply,
                     progress = progress,
+                    fileCountText = fileCountText,
+                    sizeProgressText = sizeProgressText,
                     currentFileName = currentFileName,
                     currentFileProgress = currentFileProgress,
                     callbacks = callbacks,
