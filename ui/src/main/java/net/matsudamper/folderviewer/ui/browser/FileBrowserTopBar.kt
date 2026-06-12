@@ -85,7 +85,17 @@ internal fun FileBrowserTopBar(
             ) {
                 if (visibleFavoriteButton) {
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.add_to_favorites)) },
+                        text = {
+                            Text(
+                                stringResource(
+                                    if (isFavorite) {
+                                        R.string.remove_from_favorites
+                                    } else {
+                                        R.string.add_to_favorites
+                                    },
+                                ),
+                            )
+                        },
                         onClick = {
                             showMoreMenu = false
                             onFavoriteClick()
