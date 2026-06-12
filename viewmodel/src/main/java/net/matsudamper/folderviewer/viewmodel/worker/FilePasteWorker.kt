@@ -2,6 +2,7 @@ package net.matsudamper.folderviewer.viewmodel.worker
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.pm.ServiceInfo
 import android.os.Build
@@ -31,6 +32,7 @@ internal class FilePasteWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val storageRepository: StorageRepository,
     private val pasteJobRepository: PasteJobRepository,
+    private val operationNotificationIntentFactory: OperationNotificationIntentFactory,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
@@ -352,6 +354,7 @@ internal class FilePasteWorker @AssistedInject constructor(
             .setSmallIcon(android.R.drawable.stat_sys_upload)
             .setProgress(totalFiles, completedFiles, totalFiles == 0)
             .setOngoing(true)
+            .setContentIntent(createContentIntent())
             .build()
 
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -384,9 +387,15 @@ internal class FilePasteWorker @AssistedInject constructor(
             .setSmallIcon(android.R.drawable.stat_sys_upload)
             .setProgress(totalFiles, completedFiles, false)
             .setOngoing(true)
+            .setContentIntent(createContentIntent())
             .build()
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(notificationId, notification)
+    }
+
+    private fun createContentIntent(): PendingIntent {
+        val jobId = inputData.getLong(KEY_PASTE_JOB_ID, -1L)
+        return operationNotificationIntentFactory.createPasteDetailIntent(jobId)
     }
 
     private fun PasteJobRepository.PasteFile.displayPath(): String {

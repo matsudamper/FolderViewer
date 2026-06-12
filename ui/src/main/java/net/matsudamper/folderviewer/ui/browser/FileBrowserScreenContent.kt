@@ -51,6 +51,9 @@ internal fun FileBrowserScreenContent(
     showCreateDirectoryDialog: Boolean = false,
     onCreateDirectoryDialogDismiss: () -> Unit = {},
     onConfirmCreateDirectory: (String) -> Unit = {},
+    showCompressDialog: Boolean = false,
+    onCompressDialogDismiss: () -> Unit = {},
+    onConfirmCompress: (String) -> Unit = {},
     deleteConfirmCount: Int? = null,
     onDeleteConfirmDialogDismiss: () -> Unit = {},
     onConfirmDelete: () -> Unit = {},
@@ -69,9 +72,11 @@ internal fun FileBrowserScreenContent(
             if (uiState.isSelectionMode) {
                 FileBrowserSelectionTopBar(
                     selectedCount = uiState.selectedCount,
+                    visibleCompressMenu = uiState.visibleCompressMenu,
                     onCancelSelection = callbacks::onCancelSelection,
                     onSelectAllClick = callbacks::onSelectAllClick,
                     onShareClick = callbacks::onShareClick,
+                    onCompressClick = callbacks::onCompressClick,
                 )
             } else {
                 FileBrowserTopBar(
@@ -243,6 +248,46 @@ internal fun FileBrowserScreenContent(
         )
     }
 
+    if (showCompressDialog) {
+        var compressFileNameInput by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = {
+                onCompressDialogDismiss()
+            },
+            title = { Text("zipに圧縮") },
+            text = {
+                TextField(
+                    value = compressFileNameInput,
+                    onValueChange = { compressFileNameInput = it },
+                    label = { Text("ファイル名") },
+                    suffix = { Text(".zip") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (compressFileNameInput.isNotBlank()) {
+                            onConfirmCompress(compressFileNameInput)
+                        }
+                    },
+                    enabled = compressFileNameInput.isNotBlank(),
+                ) {
+                    Text("圧縮")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        onCompressDialogDismiss()
+                    },
+                ) {
+                    Text("キャンセル")
+                }
+            },
+        )
+    }
+
     if (deleteConfirmCount != null) {
         AlertDialog(
             onDismissRequest = { onDeleteConfirmDialogDismiss() },
@@ -283,6 +328,7 @@ private fun Preview() {
             ),
             isSelectionMode = false,
             selectedCount = 0,
+            visibleCompressMenu = true,
             isPasteMode = false,
             callbacks = object : FileBrowserUiState.Callbacks {
                 override fun onRefresh() = Unit
@@ -301,6 +347,8 @@ private fun Preview() {
                 override fun onCopyClick() = Unit
                 override fun onCutClick() = Unit
                 override fun onShareClick() = Unit
+                override fun onCompressClick() = Unit
+                override fun onConfirmCompress(fileName: String) = Unit
                 override fun onDeleteClick() = Unit
                 override fun onConfirmDelete() = Unit
                 override fun onPasteClick() = Unit

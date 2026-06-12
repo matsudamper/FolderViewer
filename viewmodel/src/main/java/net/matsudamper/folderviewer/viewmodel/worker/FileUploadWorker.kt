@@ -33,6 +33,7 @@ internal class FileUploadWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val storageRepository: StorageRepository,
     private val uploadJobRepository: UploadJobRepository,
+    private val operationNotificationIntentFactory: OperationNotificationIntentFactory,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
@@ -142,6 +143,7 @@ internal class FileUploadWorker @AssistedInject constructor(
             .setTicker(title)
             .setSmallIcon(android.R.drawable.stat_sys_upload)
             .setOngoing(true)
+            .setContentIntent(operationNotificationIntentFactory.createUploadDetailIntent(id.toString()))
             .build()
 
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

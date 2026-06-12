@@ -1,12 +1,16 @@
 package net.matsudamper.folderviewer.ui.upload
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
@@ -24,9 +28,18 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImagePainter
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
+import net.matsudamper.folderviewer.coil.FileImageSource
+import net.matsudamper.folderviewer.common.FileObjectId
+import net.matsudamper.folderviewer.common.StorageId
 import net.matsudamper.folderviewer.ui.R
 import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
 import net.matsudamper.folderviewer.ui.upload.PasteDetailUiState.Status
@@ -98,6 +111,8 @@ public fun PasteDetailScreen(
                     ProgressCard(
                         modifier = Modifier.fillMaxWidth(),
                         progress = uiState.progress,
+                        fileCountText = uiState.fileCountText,
+                        sizeProgressText = uiState.sizeProgressText,
                         currentFileName = uiState.currentFileName,
                         currentFileProgress = uiState.currentFileProgress,
                     )
@@ -223,6 +238,8 @@ public fun PasteDetailScreen(
 @Composable
 private fun ProgressCard(
     progress: Float?,
+    fileCountText: String?,
+    sizeProgressText: String?,
     currentFileName: String?,
     currentFileProgress: Float?,
     modifier: Modifier = Modifier,
@@ -237,6 +254,29 @@ private fun ProgressCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            if (fileCountText != null || sizeProgressText != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        text = if (fileCountText != null) {
+                            stringResource(R.string.paste_detail_file_count_format, fileCountText)
+                        } else {
+                            ""
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (sizeProgressText != null) {
+                        Text(
+                            text = sizeProgressText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
             if (progress != null) {
                 LinearProgressIndicator(
                     progress = { progress },
@@ -346,17 +386,22 @@ private fun DuplicateFileCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                val hasAnyThumbnail = item.sourceThumbnail != null || item.destinationThumbnail != null
                 FileInfoColumn(
                     modifier = Modifier.weight(1f),
                     label = stringResource(R.string.paste_detail_source_label),
                     path = item.sourcePath,
                     size = item.sourceSizeText,
+                    thumbnail = item.sourceThumbnail,
+                    showPreviewArea = hasAnyThumbnail,
                 )
                 FileInfoColumn(
                     modifier = Modifier.weight(1f),
                     label = stringResource(R.string.paste_detail_destination_label),
                     path = item.destinationPath,
                     size = item.destinationSizeText,
+                    thumbnail = item.destinationThumbnail,
+                    showPreviewArea = hasAnyThumbnail,
                 )
             }
 
@@ -366,27 +411,6 @@ private fun DuplicateFileCard(
             ) {
                 val isKeepSelected = item.resolution == PasteDetailUiState.Resolution.KEEP_DESTINATION
                 val isOverwriteSelected = item.resolution == PasteDetailUiState.Resolution.OVERWRITE_WITH_SOURCE
-
-                if (isKeepSelected) {
-                    Button(
-                        onClick = { item.onKeepDestination() },
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_check),
-                            contentDescription = null,
-                            modifier = Modifier.padding(end = 4.dp),
-                        )
-                        Text(stringResource(R.string.paste_detail_keep_destination))
-                    }
-                } else {
-                    OutlinedButton(
-                        onClick = { item.onKeepDestination() },
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Text(stringResource(R.string.paste_detail_keep_destination))
-                    }
-                }
 
                 if (isOverwriteSelected) {
                     Button(
@@ -408,6 +432,27 @@ private fun DuplicateFileCard(
                         Text(stringResource(R.string.paste_detail_overwrite_with_source))
                     }
                 }
+
+                if (isKeepSelected) {
+                    Button(
+                        onClick = { item.onKeepDestination() },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_check),
+                            contentDescription = null,
+                            modifier = Modifier.padding(end = 4.dp),
+                        )
+                        Text(stringResource(R.string.paste_detail_keep_destination))
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = { item.onKeepDestination() },
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Text(stringResource(R.string.paste_detail_keep_destination))
+                    }
+                }
             }
         }
     }
@@ -418,6 +463,8 @@ private fun FileInfoColumn(
     label: String,
     path: String,
     size: String,
+    thumbnail: FileImageSource.Thumbnail?,
+    showPreviewArea: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -429,6 +476,17 @@ private fun FileInfoColumn(
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.primary,
         )
+        if (showPreviewArea) {
+            FilePreview(
+                thumbnail = thumbnail,
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .widthIn(max = 160.dp)
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .clip(MaterialTheme.shapes.small),
+            )
+        }
         Text(
             text = path,
             style = MaterialTheme.typography.bodySmall,
@@ -439,6 +497,112 @@ private fun FileInfoColumn(
             text = size,
             style = MaterialTheme.typography.bodySmall,
         )
+    }
+}
+
+private val previewPasteCallbacks = object : PasteDetailUiState.Callbacks {
+    override fun onBackClick() = Unit
+    override fun onApplyResolutions() = Unit
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun PasteDetailScreenDuplicatePreview() {
+    PasteDetailScreen(
+        uiState = PasteDetailUiState(
+            jobName = "テストジョブ",
+            statusText = "重複ファイルの解決を待っています",
+            status = Status.WAITING_RESOLUTION,
+            errorMessage = null,
+            errorCause = null,
+            duplicateFiles = listOf(
+                PasteDetailUiState.DuplicateFileItem(
+                    fileId = 1L,
+                    fileName = "photo.jpg",
+                    sourcePath = "/sdcard/DCIM/photo.jpg",
+                    sourceSize = 1024L * 512,
+                    sourceSizeText = "512 KB",
+                    destinationPath = "/sdcard/Photos/photo.jpg",
+                    destinationSize = 1024L * 256,
+                    destinationSizeText = "256 KB",
+                    sourceThumbnail = null,
+                    destinationThumbnail = null,
+                    resolution = null,
+                    onKeepDestination = {},
+                    onOverwriteWithSource = {},
+                ),
+                PasteDetailUiState.DuplicateFileItem(
+                    fileId = 2L,
+                    fileName = "document.pdf",
+                    sourcePath = "/sdcard/Downloads/document.pdf",
+                    sourceSize = 1024L * 1024 * 2,
+                    sourceSizeText = "2 MB",
+                    destinationPath = "/sdcard/Documents/document.pdf",
+                    destinationSize = 1024L * 1024,
+                    destinationSizeText = "1 MB",
+                    sourceThumbnail = null,
+                    destinationThumbnail = null,
+                    resolution = PasteDetailUiState.Resolution.KEEP_DESTINATION,
+                    onKeepDestination = {},
+                    onOverwriteWithSource = {},
+                ),
+            ),
+            completedFiles = emptyList(),
+            canApply = false,
+            progress = null,
+            fileCountText = null,
+            sizeProgressText = null,
+            currentFileName = null,
+            currentFileProgress = null,
+            callbacks = previewPasteCallbacks,
+        ),
+    )
+}
+
+@Composable
+private fun FilePreview(
+    thumbnail: FileImageSource.Thumbnail?,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier.background(MaterialTheme.colorScheme.surface),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (thumbnail != null) {
+            SubcomposeAsyncImage(
+                model = thumbnail,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            ) {
+                when (painter.state) {
+                    is AsyncImagePainter.State.Loading,
+                    is AsyncImagePainter.State.Error,
+                    -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_file),
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+
+                    else -> {
+                        SubcomposeAsyncImageContent()
+                    }
+                }
+            }
+        } else {
+            Text(
+                text = stringResource(R.string.paste_detail_no_preview),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -488,6 +652,81 @@ private fun CompletedFileRow(
             painter = painterResource(id = R.drawable.ic_check),
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
+        )
+    }
+}
+
+private fun previewDuplicateFileItem(
+    sourceThumbnail: FileImageSource.Thumbnail?,
+    destinationThumbnail: FileImageSource.Thumbnail?,
+) = PasteDetailUiState.DuplicateFileItem(
+    fileId = 1L,
+    fileName = "photo.jpg",
+    sourcePath = "storage/source/photo.jpg",
+    sourceSize = 1024L * 1024,
+    sourceSizeText = "1.0MB",
+    destinationPath = "storage/destination/photo.jpg",
+    destinationSize = 2048L * 1024,
+    destinationSizeText = "2.0MB",
+    sourceThumbnail = sourceThumbnail,
+    destinationThumbnail = destinationThumbnail,
+    resolution = null,
+    onKeepDestination = {},
+    onOverwriteWithSource = {},
+)
+
+private fun previewThumbnail(id: String) = FileImageSource.Thumbnail(
+    fileId = FileObjectId.Item(storageId = StorageId("preview"), id = id),
+)
+
+@Preview(showBackground = true)
+@Composable
+private fun PreviewDuplicateFileCardBothPreviewable() {
+    MaterialTheme {
+        DuplicateFileCard(
+            item = previewDuplicateFileItem(
+                sourceThumbnail = previewThumbnail("source"),
+                destinationThumbnail = previewThumbnail("destination"),
+            ),
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun PreviewDuplicateFileCardSourceOnlyPreviewable() {
+    MaterialTheme {
+        DuplicateFileCard(
+            item = previewDuplicateFileItem(
+                sourceThumbnail = previewThumbnail("source"),
+                destinationThumbnail = null,
+            ),
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun PreviewDuplicateFileCardNotPreviewable() {
+    MaterialTheme {
+        DuplicateFileCard(
+            item = previewDuplicateFileItem(
+                sourceThumbnail = null,
+                destinationThumbnail = null,
+            ),
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 1280, heightDp = 800)
+@Composable
+private fun PreviewDuplicateFileCardTablet() {
+    MaterialTheme {
+        DuplicateFileCard(
+            item = previewDuplicateFileItem(
+                sourceThumbnail = previewThumbnail("source"),
+                destinationThumbnail = null,
+            ),
         )
     }
 }

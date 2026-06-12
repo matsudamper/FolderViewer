@@ -25,6 +25,13 @@ sealed interface StorageConfiguration {
     ) : StorageConfiguration
 
     @Serializable
+    data class External(
+        override val id: StorageId,
+        override val name: String,
+        val rootPath: String,
+    ) : StorageConfiguration
+
+    @Serializable
     data class SharePoint(
         override val id: StorageId,
         override val name: String,
