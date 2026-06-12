@@ -11,6 +11,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import com.hierynomus.msdtyp.AccessMask
 import com.hierynomus.msfscc.FileAttributes
@@ -218,71 +220,95 @@ class SmbFileRepository(
         share.setFileInformation(path, basicInfo)
     }
 
-    override suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream = withContext(Dispatchers.IO) {
-        try {
-            client.connect(config.ip).use { connection ->
-                connection.authenticate(
-                    AuthenticationContext(
-                        config.username,
-                        config.password.toCharArray(),
-                        null,
-                    ),
-                ).use { session ->
-                    val parts = fileId.id.split("/", limit = PATH_SPLIT_LIMIT)
-                    val shareName = parts[0]
-                    val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+    private val thumbnailSemaphore = Semaphore(MAX_CONCURRENT_THUMBNAIL_LOADS)
 
-                    val share = session.connectShare(shareName) as? DiskShare
-                        ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+    override suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream = thumbnailSemaphore.withPermit {
+        withContext(Dispatchers.IO) {
+            try {
+                client.connect(config.ip).use { connection ->
+                    connection.authenticate(
+                        AuthenticationContext(
+                            config.username,
+                            config.password.toCharArray(),
+                            null,
+                        ),
+                    ).use { session ->
+                        val parts = fileId.id.split("/", limit = PATH_SPLIT_LIMIT)
+                        val shareName = parts[0]
+                        val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
 
-                    share.use { diskShare ->
-                        diskShare.openFile(
-                            subPath,
-                            EnumSet.of(AccessMask.GENERIC_READ),
-                            null,
-                            SMB2ShareAccess.ALL,
-                            SMB2CreateDisposition.FILE_OPEN,
-                            null,
-                        ).use { file ->
-                            createThumbnailStream(file, thumbnailSize)
+                        val share = session.connectShare(shareName) as? DiskShare
+                            ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+
+                        share.use { diskShare ->
+                            diskShare.openFile(
+                                subPath,
+                                EnumSet.of(AccessMask.GENERIC_READ),
+                                null,
+                                SMB2ShareAccess.ALL,
+                                SMB2CreateDisposition.FILE_OPEN,
+                                null,
+                            ).use { file ->
+                                createThumbnailStream(file, thumbnailSize)
+                            }
                         }
                     }
                 }
-            } ?: getFileContentInternal(fileId.id, maxReadSize = MAX_THUMBNAIL_READ_SIZE.toLong())
-        } catch (e: IOException) {
-            throw e
-        } catch (e: Exception) {
-            e.printStackTrace()
-            getFileContentInternal(fileId.id, maxReadSize = MAX_THUMBNAIL_READ_SIZE.toLong())
+            } catch (e: IOException) {
+                throw e
+            } catch (e: Exception) {
+                e.printStackTrace()
+                throw IOException("Failed to load thumbnail: ${fileId.id}", e)
+            }
         }
     }
 
-    private fun createThumbnailStream(file: com.hierynomus.smbj.share.File, thumbnailSize: Int): InputStream? {
-        val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        file.inputStream.use { inputStream ->
-            BitmapFactory.decodeStream(inputStream, null, options)
+    /**
+     * 1つのストリームから mark/reset を使ってサイズ判定と本デコードを行い、
+     * SMBリソースをこの関数内で完結させた縮小画像のメモリ上ストリームを返す。
+     * デコードできない場合は読み込み済みの先頭バイト列を返す。
+     */
+    private fun createThumbnailStream(file: com.hierynomus.smbj.share.File, thumbnailSize: Int): InputStream {
+        java.io.BufferedInputStream(file.inputStream, DECODE_BUFFER_SIZE).use { input ->
+            input.mark(MAX_THUMBNAIL_READ_SIZE)
+            val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeStream(input, null, options)
+
+            val width = options.outWidth
+            val height = options.outHeight
+
+            input.reset()
+
+            if (width <= 0 || height <= 0) {
+                return ByteArrayInputStream(readHeadBytes(input))
+            }
+
+            val decodeOptions = BitmapFactory.Options().apply {
+                inSampleSize = calculateInSampleSize(minOf(width, height), thumbnailSize)
+            }
+
+            val bitmap = BitmapFactory.decodeStream(input, null, decodeOptions)
+                ?: throw IOException("Failed to decode thumbnail")
+
+            val bos = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, bos)
+            bitmap.recycle()
+
+            return ByteArrayInputStream(bos.toByteArray())
         }
+    }
 
-        val width = options.outWidth
-        val height = options.outHeight
-
-        if (width <= 0 || height <= 0) {
-            return null
-        }
-
-        val decodeOptions = BitmapFactory.Options().apply {
-            inSampleSize = calculateInSampleSize(minOf(width, height), thumbnailSize)
-        }
-
-        val bitmap = file.inputStream.use { inputStream ->
-            BitmapFactory.decodeStream(inputStream, null, decodeOptions)
-        } ?: return null
-
+    private fun readHeadBytes(input: InputStream): ByteArray {
         val bos = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, bos)
-        bitmap.recycle()
-
-        return ByteArrayInputStream(bos.toByteArray())
+        val buffer = ByteArray(DECODE_BUFFER_SIZE)
+        var total = 0
+        while (total < MAX_THUMBNAIL_READ_SIZE) {
+            val read = input.read(buffer, 0, minOf(buffer.size, MAX_THUMBNAIL_READ_SIZE - total))
+            if (read == -1) break
+            bos.write(buffer, 0, read)
+            total += read
+        }
+        return bos.toByteArray()
     }
 
     private fun calculateInSampleSize(size: Int, reqSize: Int): Int {
@@ -753,5 +779,7 @@ class SmbFileRepository(
     companion object {
         private const val PATH_SPLIT_LIMIT = 2
         private const val MAX_THUMBNAIL_READ_SIZE = 1024 * 1024 // 1MB
+        private const val MAX_CONCURRENT_THUMBNAIL_LOADS = 3
+        private const val DECODE_BUFFER_SIZE = 16 * 1024
     }
 }
