@@ -34,6 +34,8 @@
     <string name="cancel_selection">選択をキャンセル</string>
     <string name="select_all">すべて選択</string>
     <string name="share">共有</string>
+    <string name="compress">圧縮</string>
+    <string name="more_options">その他</string>
     <string name="upload_progress">操作状況</string>
     <string name="upload_state_enqueued">待機中</string>
     <string name="upload_state_running">アップロード中</string>
@@ -77,10 +79,12 @@
     <string name="paste_detail_overwrite_with_source">上書き</string>
     <string name="paste_detail_apply_resolutions">適用</string>
     <string name="paste_detail_no_duplicates">重複ファイルはありません</string>
+    <string name="paste_detail_no_preview">プレビューなし</string>
     <string name="paste_detail_failed">失敗しました</string>
     <string name="paste_detail_failed_files_section">失敗ファイル</string>
     <string name="paste_detail_resolution_keep">既存を保持</string>
     <string name="paste_detail_resolution_overwrite">上書き済み</string>
+    <string name="paste_detail_file_count_format">%1$sファイル</string>
     <string name="delete_detail_title">削除詳細</string>
     <string name="delete_detail_failed">削除に失敗しました</string>
     <string name="delete_detail_info">削除情報</string>

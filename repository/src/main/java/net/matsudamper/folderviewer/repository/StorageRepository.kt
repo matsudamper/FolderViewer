@@ -9,6 +9,7 @@ import jakarta.inject.Inject
 import jakarta.inject.Singleton
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import net.matsudamper.folderviewer.common.FileObjectId
@@ -31,11 +32,16 @@ private val Context.dataStore: DataStore<StorageListProto> by dataStore(
 @Singleton
 class StorageRepository @Inject constructor(
     @param:ApplicationContext private val context: Context,
+    private val externalStorageRepository: ExternalStorageRepository,
 ) {
-    val storageList: Flow<List<StorageConfiguration>> =
+    val storageList: Flow<List<StorageConfiguration>> = combine(
         context.dataStore.data.map { storageProto ->
             storageProto.listList.mapNotNull { it.toDomain() }
-        }
+        },
+        externalStorageRepository.externalStorages,
+    ) { storages, externalStorages ->
+        storages + externalStorages
+    }
 
     val favorites: Flow<List<FavoriteConfiguration>> = context.dataStore.data
         .map { proto ->
@@ -205,26 +211,42 @@ class StorageRepository @Inject constructor(
 
     suspend fun isRootWritable(fileObjectId: FileObjectId): Boolean {
         if (fileObjectId is FileObjectId.Item) return true
+        if (externalStorageRepository.findExternalStorage(fileObjectId.storageId) != null) return true
         val proto = context.dataStore.data.first()
         val configProto = proto.listList.find { it.id == fileObjectId.storageId.id } ?: return false
         return when (configProto.toDomain()) {
             is StorageConfiguration.Smb -> false
             is StorageConfiguration.Local -> true
+            is StorageConfiguration.External -> true
             is StorageConfiguration.SharePoint -> true
             null -> false
         }
     }
 
     suspend fun getFileRepository(id: StorageId): FileRepository? {
+        val externalStorage = externalStorageRepository.findExternalStorage(id)
+        if (externalStorage != null) {
+            return LocalFileRepository(externalStorage.toLocalConfiguration(), context)
+        }
+
         val proto = context.dataStore.data.first()
         val configProto = proto.listList.find { it.id == id.id } ?: return null
 
         return when (val config = configProto.toDomain()) {
             is StorageConfiguration.Smb -> SmbFileRepository(config)
             is StorageConfiguration.Local -> LocalFileRepository(config, context)
+            is StorageConfiguration.External -> LocalFileRepository(config.toLocalConfiguration(), context)
             is StorageConfiguration.SharePoint -> SharePointFileRepository(config)
             null -> null
         }
+    }
+
+    private fun StorageConfiguration.External.toLocalConfiguration(): StorageConfiguration.Local {
+        return StorageConfiguration.Local(
+            id = id,
+            name = name,
+            rootPath = rootPath,
+        )
     }
 
     private fun StorageConfigurationProto.toDomain(): StorageConfiguration? {

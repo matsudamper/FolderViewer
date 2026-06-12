@@ -59,6 +59,12 @@ class StoragePickerViewModel @Inject constructor(
                 rootPath = rootPath,
             )
 
+            is StorageConfiguration.External -> UiStorageConfiguration.External(
+                id = id,
+                name = name,
+                rootPath = rootPath,
+            )
+
             is StorageConfiguration.SharePoint -> UiStorageConfiguration.SharePoint(
                 id = id,
                 name = name,
