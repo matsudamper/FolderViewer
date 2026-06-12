@@ -77,6 +77,7 @@
     <string name="paste_detail_overwrite_with_source">上書き</string>
     <string name="paste_detail_apply_resolutions">適用</string>
     <string name="paste_detail_no_duplicates">重複ファイルはありません</string>
+    <string name="paste_detail_no_preview">プレビューなし</string>
     <string name="paste_detail_failed">失敗しました</string>
     <string name="paste_detail_failed_files_section">失敗ファイル</string>
     <string name="paste_detail_resolution_keep">既存を保持</string>
