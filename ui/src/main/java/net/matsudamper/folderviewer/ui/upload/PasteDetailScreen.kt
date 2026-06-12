@@ -453,6 +453,7 @@ private fun FileInfoColumn(
             FilePreview(
                 thumbnail = thumbnail,
                 modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
                     .widthIn(max = 160.dp)
                     .fillMaxWidth()
                     .aspectRatio(1f)
