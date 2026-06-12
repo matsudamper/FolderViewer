@@ -77,7 +77,10 @@ internal class FilePasteWorker @AssistedInject constructor(
 
         val pendingFiles = pasteJobRepository.getPendingFiles(jobId)
         if (pendingFiles.isEmpty()) {
-            return finishJob(meta, sourceRepo = null, totalFiles = totalFiles)
+            val sourceRepo = allFiles.firstOrNull()?.let { file ->
+                storageRepository.getFileRepository(file.sourceFileId.storageId)
+            }
+            return finishJob(meta, sourceRepo = sourceRepo, totalFiles = totalFiles)
         }
 
         val sourceStorageId = pendingFiles.first().sourceFileId.storageId
@@ -289,6 +292,10 @@ internal class FilePasteWorker @AssistedInject constructor(
             )
 
             if (file.resolution == null) {
+                if (jobContext.uploadedNames[destDirId]?.contains(file.fileName) == true) {
+                    jobContext.destinationFilesCache.remove(destDirId)
+                    jobContext.uploadedNames.remove(destDirId)
+                }
                 val existing = getDestinationFiles(jobContext, destDirId)[file.fileName]
                 if (existing != null) {
                     return@coroutineScope PasteJobRepository.FileFinish.Duplicated(
@@ -309,6 +316,7 @@ internal class FilePasteWorker @AssistedInject constructor(
                     overwrite = file.resolution == PasteJobRepository.DuplicateResolution.OVERWRITE_WITH_SOURCE,
                 )
             }
+            jobContext.uploadedNames.getOrPut(destDirId) { mutableSetOf() }.add(file.fileName)
 
             if (jobContext.meta.mode == ClipboardRepository.ClipboardMode.Cut && !file.sourceDeleted) {
                 try {
@@ -472,6 +480,7 @@ internal class FilePasteWorker @AssistedInject constructor(
         var completedCount: Int,
         val directoryCache: MutableMap<String, FileObjectId> = mutableMapOf(),
         val destinationFilesCache: MutableMap<FileObjectId, Map<String, FileItem>> = mutableMapOf(),
+        val uploadedNames: MutableMap<FileObjectId, MutableSet<String>> = mutableMapOf(),
     )
 
     companion object {

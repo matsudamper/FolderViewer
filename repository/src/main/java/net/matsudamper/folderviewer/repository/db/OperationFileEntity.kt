@@ -15,7 +15,11 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE,
         ),
     ],
-    indices = [Index("operationId")],
+    indices = [
+        Index("operationId"),
+        Index(value = ["operationId", "status"]),
+        Index(value = ["operationId", "resolution"]),
+    ],
 )
 internal data class OperationFileEntity(
     @PrimaryKey(autoGenerate = true)

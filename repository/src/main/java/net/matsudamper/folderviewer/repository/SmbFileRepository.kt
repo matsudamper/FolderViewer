@@ -559,10 +559,12 @@ class SmbFileRepository(
             var uploadedSize = 0L
             var completedFiles = 0
             files.forEach { fileToUpload ->
+                var lastReadSize = 0L
                 uploadFolderEntry(diskShare, basePath, fileToUpload) { fileReadSize ->
+                    lastReadSize = fileReadSize
                     onRead.emit(UploadProgress(uploadedSize + fileReadSize, completedFiles))
                 }
-                uploadedSize += fileToUpload.size ?: 0L
+                uploadedSize += fileToUpload.size ?: lastReadSize
                 completedFiles++
             }
         }
@@ -650,7 +652,7 @@ class SmbFileRepository(
                     share.use { diskShare ->
                         val fullPath = if (subPath.isEmpty()) directoryName else "$subPath\\$directoryName"
                         when {
-                            diskShare.folderExists(fullPath) -> { /* 既にディレクトリが存在 */ }
+                            diskShare.folderExists(fullPath) -> Unit
                             diskShare.fileExists(fullPath) -> throw IllegalStateException("同名のファイルが既に存在します: $fullPath")
                             else -> diskShare.mkdir(fullPath)
                         }

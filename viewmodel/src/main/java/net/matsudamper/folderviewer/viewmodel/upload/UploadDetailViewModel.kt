@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import java.util.Locale
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -55,8 +56,11 @@ class UploadDetailViewModel @Inject internal constructor(
     private val viewModelEventChannel = Channel<ViewModelEvent>(Channel.BUFFERED)
     val viewModelEventFlow = viewModelEventChannel.receiveAsFlow()
 
+    private var initJob: Job? = null
+
     fun init(workerId: String) {
-        viewModelScope.launch {
+        if (initJob?.isActive == true) return
+        initJob = viewModelScope.launch {
             val job = uploadJobRepository.getJob(workerId) ?: return@launch
 
             fileObjectId = job.fileObjectId

@@ -71,11 +71,13 @@ internal class FileUploadWorker @AssistedInject constructor(
             }
 
             try {
-                context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                val inputStream = context.contentResolver.openInputStream(uri)
+                    ?: throw IllegalStateException("ファイルを開けませんでした: $fileName")
+                inputStream.use {
                     repository.uploadFile(
                         id = fileObjectId,
                         fileName = fileName,
-                        inputStream = inputStream,
+                        inputStream = it,
                         size = requireNotNull(fileSize) { "File size is required" },
                         onRead = progressFlow,
                     )

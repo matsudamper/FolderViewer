@@ -198,21 +198,18 @@ internal class FolderUploadWorker @AssistedInject constructor(
     }
 
     private fun getFilesToUpload(uriDataList: List<UriData>): List<FileToUpload> {
-        return uriDataList.mapNotNull { uriData ->
+        return uriDataList.map { uriData ->
             val uri = android.net.Uri.parse(uriData.uri)
 
             val fileSize = getFileSize(uri)
 
             val inputStream = context.contentResolver.openInputStream(uri)
-            if (inputStream != null) {
-                FileToUpload(
-                    relativePath = uriData.relativePath,
-                    inputStream = inputStream,
-                    size = fileSize,
-                )
-            } else {
-                null
-            }
+                ?: throw IllegalStateException("ファイルを開けませんでした: ${uriData.relativePath}")
+            FileToUpload(
+                relativePath = uriData.relativePath,
+                inputStream = inputStream,
+                size = fileSize,
+            )
         }
     }
 

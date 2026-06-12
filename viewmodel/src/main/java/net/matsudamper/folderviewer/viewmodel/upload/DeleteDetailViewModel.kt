@@ -51,7 +51,9 @@ class DeleteDetailViewModel @Inject constructor(
 
                 val uiStatus = when (progress.status) {
                     OperationRepository.OperationStatus.COMPLETED -> DeleteDetailUiState.Status.COMPLETED
-                    OperationRepository.OperationStatus.FAILED -> DeleteDetailUiState.Status.FAILED
+                    OperationRepository.OperationStatus.FAILED,
+                    OperationRepository.OperationStatus.CANCELLED,
+                    -> DeleteDetailUiState.Status.FAILED
                     else -> DeleteDetailUiState.Status.RUNNING
                 }
 

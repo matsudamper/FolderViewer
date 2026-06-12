@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import java.util.Locale
@@ -304,7 +305,11 @@ class UploadProgressViewModel @Inject constructor(
                 workerId = workRequest.id.toString(),
             )
 
-            WorkManager.getInstance(getApplication()).enqueue(workRequest)
+            WorkManager.getInstance(getApplication()).enqueueUniqueWork(
+                "paste_job_${op.id}",
+                ExistingWorkPolicy.KEEP,
+                workRequest,
+            )
         }
     }
 

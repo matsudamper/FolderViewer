@@ -93,8 +93,7 @@ internal class FileDeleteWorker @AssistedInject constructor(
 
         val pendingFiles = deleteJobRepository.getPendingFiles(operationId)
         if (pendingFiles.isEmpty()) {
-            deleteJobRepository.updateStatus(operationId, OperationRepository.OperationStatus.COMPLETED)
-            notifyCompleted(operationId, totalFiles)
+            finishJob(operationId, totalFiles)
             return Result.success()
         }
 
@@ -127,6 +126,11 @@ internal class FileDeleteWorker @AssistedInject constructor(
             updateNotification(notificationId, completedCount, totalFiles, file.displayPath())
         }
 
+        finishJob(operationId, totalFiles)
+        return Result.success()
+    }
+
+    private suspend fun finishJob(operationId: Long, totalFiles: Int) {
         val failedCount = deleteJobRepository.countFailedFiles(operationId)
         if (failedCount > 0) {
             deleteJobRepository.updateStatus(operationId, OperationRepository.OperationStatus.FAILED)
@@ -135,7 +139,6 @@ internal class FileDeleteWorker @AssistedInject constructor(
             deleteJobRepository.updateStatus(operationId, OperationRepository.OperationStatus.COMPLETED)
             notifyCompleted(operationId, totalFiles)
         }
-        return Result.success()
     }
 
     private suspend fun deleteFile(file: DeleteJobRepository.DeleteFile): DeleteJobRepository.FileFinish {
