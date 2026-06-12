@@ -46,19 +46,19 @@ class SmbFileRepository(
             is FileObjectId.Item -> id.id
         }
         client.connect(config.ip).use { connection ->
-            val session = connection.authenticate(
+            connection.authenticate(
                 AuthenticationContext(
                     config.username,
                     config.password.toCharArray(),
                     null,
                 ),
-            )
+            ).use { session ->
+                if (path.isEmpty()) {
+                    return@withContext enumerateShares(session)
+                }
 
-            if (path.isEmpty()) {
-                return@withContext enumerateShares(session)
+                listShareItems(session, path)
             }
-
-            listShareItems(session, path)
         }
     }
 
@@ -66,32 +66,32 @@ class SmbFileRepository(
 
     override suspend fun getFileSize(fileId: FileObjectId.Item): Long = withContext(Dispatchers.IO) {
         client.connect(config.ip).use { connection ->
-            val session = connection.authenticate(
+            connection.authenticate(
                 AuthenticationContext(
                     config.username,
                     config.password.toCharArray(),
                     null,
                 ),
-            )
+            ).use { session ->
+                val parts = fileId.id.split("/", limit = PATH_SPLIT_LIMIT)
+                val shareName = parts[0]
+                val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+                require(subPath.isNotEmpty()) { "Cannot get size of share root: $shareName" }
 
-            val parts = fileId.id.split("/", limit = PATH_SPLIT_LIMIT)
-            val shareName = parts[0]
-            val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
-            require(subPath.isNotEmpty()) { "Cannot get size of share root: $shareName" }
+                val share = session.connectShare(shareName) as? DiskShare
+                    ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
 
-            val share = session.connectShare(shareName) as? DiskShare
-                ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
-
-            share.use { diskShare ->
-                diskShare.openFile(
-                    subPath,
-                    EnumSet.of(AccessMask.GENERIC_READ),
-                    null,
-                    SMB2ShareAccess.ALL,
-                    SMB2CreateDisposition.FILE_OPEN,
-                    null,
-                ).use { file ->
-                    file.fileInformation.standardInformation.endOfFile
+                share.use { diskShare ->
+                    diskShare.openFile(
+                        subPath,
+                        EnumSet.of(AccessMask.GENERIC_READ),
+                        null,
+                        SMB2ShareAccess.ALL,
+                        SMB2CreateDisposition.FILE_OPEN,
+                        null,
+                    ).use { file ->
+                        file.fileInformation.standardInformation.endOfFile
+                    }
                 }
             }
         }
@@ -105,65 +105,67 @@ class SmbFileRepository(
         require(subPath.isNotEmpty()) { "Cannot get info of share root: $shareName" }
 
         client.connect(config.ip).use { connection ->
-            val session = connection.authenticate(
+            connection.authenticate(
                 AuthenticationContext(config.username, config.password.toCharArray(), null),
-            )
-            val share = session.connectShare(shareName) as? DiskShare
-                ?: throw IllegalArgumentException("Share not found: $shareName")
-            share.use { diskShare ->
-                val isDirectory = diskShare.folderExists(subPath)
-                val size: Long
-                val lastModified: Long
-                if (isDirectory) {
-                    size = 0L
-                    lastModified = diskShare.getFileInformation(subPath).basicInformation.changeTime.toEpochMillis()
-                } else {
-                    val fileInfo = diskShare.openFile(
-                        subPath,
-                        EnumSet.of(AccessMask.GENERIC_READ),
-                        null,
-                        SMB2ShareAccess.ALL,
-                        SMB2CreateDisposition.FILE_OPEN,
-                        null,
-                    ).use { it.fileInformation }
-                    size = fileInfo.standardInformation.endOfFile
-                    lastModified = fileInfo.basicInformation.changeTime.toEpochMillis()
+            ).use { session ->
+                val share = session.connectShare(shareName) as? DiskShare
+                    ?: throw IllegalArgumentException("Share not found: $shareName")
+                share.use { diskShare ->
+                    val isDirectory = diskShare.folderExists(subPath)
+                    val size: Long
+                    val lastModified: Long
+                    if (isDirectory) {
+                        size = 0L
+                        lastModified = diskShare.getFileInformation(subPath).basicInformation.changeTime.toEpochMillis()
+                    } else {
+                        val fileInfo = diskShare.openFile(
+                            subPath,
+                            EnumSet.of(AccessMask.GENERIC_READ),
+                            null,
+                            SMB2ShareAccess.ALL,
+                            SMB2CreateDisposition.FILE_OPEN,
+                            null,
+                        ).use { it.fileInformation }
+                        size = fileInfo.standardInformation.endOfFile
+                        lastModified = fileInfo.basicInformation.changeTime.toEpochMillis()
+                    }
+                    FileItem(
+                        id = fileId,
+                        displayPath = fileName,
+                        isDirectory = isDirectory,
+                        size = size,
+                        lastModified = lastModified,
+                    )
                 }
-                FileItem(
-                    id = fileId,
-                    displayPath = fileName,
-                    isDirectory = isDirectory,
-                    size = size,
-                    lastModified = lastModified,
-                )
             }
         }
     }
 
     override suspend fun deleteFile(fileId: FileObjectId.Item): Unit = withContext(Dispatchers.IO) {
         client.connect(config.ip).use { connection ->
-            val session = connection.authenticate(
+            connection.authenticate(
                 AuthenticationContext(
                     config.username,
                     config.password.toCharArray(),
                     null,
                 ),
-            )
-            val parts = fileId.id.split("/", limit = PATH_SPLIT_LIMIT)
-            val shareName = parts[0]
-            val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
-            require(subPath.isNotEmpty()) { "Cannot delete share root: $shareName" }
-            val share = session.connectShare(shareName) as? DiskShare
-                ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
-            share.use { diskShare ->
-                try {
-                    diskShare.rm(subPath)
-                } catch (e: SMBApiException) {
-                    if (e.statusCode == NtStatus.STATUS_CANNOT_DELETE.value) {
-                        clearReadOnlyAttribute(diskShare, subPath)
+            ).use { session ->
+                val parts = fileId.id.split("/", limit = PATH_SPLIT_LIMIT)
+                val shareName = parts[0]
+                val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+                require(subPath.isNotEmpty()) { "Cannot delete share root: $shareName" }
+                val share = session.connectShare(shareName) as? DiskShare
+                    ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+                share.use { diskShare ->
+                    try {
                         diskShare.rm(subPath)
-                    } else {
-                        throw e
+                    } catch (e: SMBApiException) {
+                        if (e.statusCode == NtStatus.STATUS_CANNOT_DELETE.value) {
+                            clearReadOnlyAttribute(diskShare, subPath)
+                            diskShare.rm(subPath)
+                        } else {
+                            throw e
+                        }
                     }
                 }
             }
@@ -172,28 +174,29 @@ class SmbFileRepository(
 
     override suspend fun deleteDirectory(dirId: FileObjectId.Item): Unit = withContext(Dispatchers.IO) {
         client.connect(config.ip).use { connection ->
-            val session = connection.authenticate(
+            connection.authenticate(
                 AuthenticationContext(
                     config.username,
                     config.password.toCharArray(),
                     null,
                 ),
-            )
-            val parts = dirId.id.split("/", limit = PATH_SPLIT_LIMIT)
-            val shareName = parts[0]
-            val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
-            require(subPath.isNotEmpty()) { "Cannot delete share root: $shareName" }
-            val share = session.connectShare(shareName) as? DiskShare
-                ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
-            share.use { diskShare ->
-                try {
-                    diskShare.rmdir(subPath, false)
-                } catch (e: SMBApiException) {
-                    if (e.statusCode == NtStatus.STATUS_CANNOT_DELETE.value) {
-                        clearReadOnlyAttribute(diskShare, subPath)
+            ).use { session ->
+                val parts = dirId.id.split("/", limit = PATH_SPLIT_LIMIT)
+                val shareName = parts[0]
+                val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+                require(subPath.isNotEmpty()) { "Cannot delete share root: $shareName" }
+                val share = session.connectShare(shareName) as? DiskShare
+                    ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+                share.use { diskShare ->
+                    try {
                         diskShare.rmdir(subPath, false)
-                    } else {
-                        throw e
+                    } catch (e: SMBApiException) {
+                        if (e.statusCode == NtStatus.STATUS_CANNOT_DELETE.value) {
+                            clearReadOnlyAttribute(diskShare, subPath)
+                            diskShare.rmdir(subPath, false)
+                        } else {
+                            throw e
+                        }
                     }
                 }
             }
@@ -216,65 +219,70 @@ class SmbFileRepository(
     }
 
     override suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream = withContext(Dispatchers.IO) {
-        val connection = client.connect(config.ip)
         try {
-            val session = connection.authenticate(
-                AuthenticationContext(
-                    config.username,
-                    config.password.toCharArray(),
-                    null,
-                ),
-            )
+            client.connect(config.ip).use { connection ->
+                connection.authenticate(
+                    AuthenticationContext(
+                        config.username,
+                        config.password.toCharArray(),
+                        null,
+                    ),
+                ).use { session ->
+                    val parts = fileId.id.split("/", limit = PATH_SPLIT_LIMIT)
+                    val shareName = parts[0]
+                    val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
 
-            val parts = fileId.id.split("/", limit = PATH_SPLIT_LIMIT)
-            val shareName = parts[0]
-            val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+                    val share = session.connectShare(shareName) as? DiskShare
+                        ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
 
-            val share = session.connectShare(shareName) as? DiskShare
-                ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
-
-            share.openFile(
-                subPath,
-                EnumSet.of(AccessMask.GENERIC_READ),
-                null,
-                SMB2ShareAccess.ALL,
-                SMB2CreateDisposition.FILE_OPEN,
-                null,
-            ).use { file ->
-                val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                file.inputStream.use { inputStream ->
-                    BitmapFactory.decodeStream(inputStream, null, options)
+                    share.use { diskShare ->
+                        diskShare.openFile(
+                            subPath,
+                            EnumSet.of(AccessMask.GENERIC_READ),
+                            null,
+                            SMB2ShareAccess.ALL,
+                            SMB2CreateDisposition.FILE_OPEN,
+                            null,
+                        ).use { file ->
+                            createThumbnailStream(file, thumbnailSize)
+                        }
+                    }
                 }
-
-                val width = options.outWidth
-                val height = options.outHeight
-
-                if (width <= 0 || height <= 0) {
-                    return@withContext getFileContentInternal(fileId.id, maxReadSize = MAX_THUMBNAIL_READ_SIZE.toLong())
-                }
-
-                val decodeOptions = BitmapFactory.Options().apply {
-                    inSampleSize = calculateInSampleSize(minOf(width, height), thumbnailSize)
-                }
-
-                val bitmap = file.inputStream.use { inputStream ->
-                    BitmapFactory.decodeStream(inputStream, null, decodeOptions)
-                } ?: return@withContext getFileContentInternal(fileId.id, maxReadSize = MAX_THUMBNAIL_READ_SIZE.toLong())
-
-                val bos = ByteArrayOutputStream()
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 80, bos)
-                bitmap.recycle()
-
-                ByteArrayInputStream(bos.toByteArray())
-            }
+            } ?: getFileContentInternal(fileId.id, maxReadSize = MAX_THUMBNAIL_READ_SIZE.toLong())
         } catch (e: IOException) {
             throw e
         } catch (e: Exception) {
             e.printStackTrace()
             getFileContentInternal(fileId.id, maxReadSize = MAX_THUMBNAIL_READ_SIZE.toLong())
-        } finally {
-            connection.close()
         }
+    }
+
+    private fun createThumbnailStream(file: com.hierynomus.smbj.share.File, thumbnailSize: Int): InputStream? {
+        val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        file.inputStream.use { inputStream ->
+            BitmapFactory.decodeStream(inputStream, null, options)
+        }
+
+        val width = options.outWidth
+        val height = options.outHeight
+
+        if (width <= 0 || height <= 0) {
+            return null
+        }
+
+        val decodeOptions = BitmapFactory.Options().apply {
+            inSampleSize = calculateInSampleSize(minOf(width, height), thumbnailSize)
+        }
+
+        val bitmap = file.inputStream.use { inputStream ->
+            BitmapFactory.decodeStream(inputStream, null, decodeOptions)
+        } ?: return null
+
+        val bos = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, bos)
+        bitmap.recycle()
+
+        return ByteArrayInputStream(bos.toByteArray())
     }
 
     private fun calculateInSampleSize(size: Int, reqSize: Int): Int {
@@ -461,41 +469,41 @@ class SmbFileRepository(
         }
         withContext(Dispatchers.IO) {
             client.connect(config.ip).use { connection ->
-                val session = connection.authenticate(
+                connection.authenticate(
                     AuthenticationContext(
                         config.username,
                         config.password.toCharArray(),
                         null,
                     ),
-                )
+                ).use { session ->
+                    val parts = path.split("/", limit = PATH_SPLIT_LIMIT)
+                    val shareName = parts[0]
+                    val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
 
-                val parts = path.split("/", limit = PATH_SPLIT_LIMIT)
-                val shareName = parts[0]
-                val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+                    val share = session.connectShare(shareName) as? DiskShare
+                        ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
 
-                val share = session.connectShare(shareName) as? DiskShare
-                    ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+                    share.use { diskShare ->
+                        val fullPath = if (subPath.isEmpty()) fileName else "$subPath\\$fileName"
 
-                share.use { diskShare ->
-                    val fullPath = if (subPath.isEmpty()) fileName else "$subPath\\$fileName"
+                        diskShare.openFile(
+                            fullPath,
+                            EnumSet.of(AccessMask.GENERIC_WRITE),
+                            null,
+                            SMB2ShareAccess.ALL,
+                            if (overwrite) SMB2CreateDisposition.FILE_OVERWRITE_IF else SMB2CreateDisposition.FILE_CREATE,
+                            null,
+                        ).use { file ->
+                            file.outputStream.use { outputStream ->
+                                coroutineScope {
+                                    val progressInputStream = ProgressInputStream(inputStream)
+                                    val job = launch {
+                                        progressInputStream.onRead.collect(onRead)
+                                    }
 
-                    diskShare.openFile(
-                        fullPath,
-                        EnumSet.of(AccessMask.GENERIC_WRITE),
-                        null,
-                        SMB2ShareAccess.ALL,
-                        if (overwrite) SMB2CreateDisposition.FILE_OVERWRITE_IF else SMB2CreateDisposition.FILE_CREATE,
-                        null,
-                    ).use { file ->
-                        file.outputStream.use { outputStream ->
-                            coroutineScope {
-                                val progressInputStream = ProgressInputStream(inputStream)
-                                val job = launch {
-                                    progressInputStream.onRead.collect(onRead)
+                                    progressInputStream.copyTo(outputStream)
+                                    job.cancel()
                                 }
-
-                                progressInputStream.copyTo(outputStream)
-                                job.cancel()
                             }
                         }
                     }
@@ -516,63 +524,84 @@ class SmbFileRepository(
         }
         withContext(Dispatchers.IO) {
             client.connect(config.ip).use { connection ->
-                val session = connection.authenticate(
+                connection.authenticate(
                     AuthenticationContext(
                         config.username,
                         config.password.toCharArray(),
                         null,
                     ),
-                )
+                ).use { session ->
+                    uploadFolderInternal(session, path = path, folderName = folderName, files = files, onRead = onRead)
+                }
+            }
+        }
+    }
 
-                val parts = path.split("/", limit = PATH_SPLIT_LIMIT)
-                val shareName = parts[0]
-                val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+    private suspend fun uploadFolderInternal(
+        session: Session,
+        path: String,
+        folderName: String,
+        files: List<FileToUpload>,
+        onRead: FlowCollector<UploadProgress>,
+    ) {
+        val parts = path.split("/", limit = PATH_SPLIT_LIMIT)
+        val shareName = parts[0]
+        val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
 
-                val share = session.connectShare(shareName) as? DiskShare
-                    ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+        val share = session.connectShare(shareName) as? DiskShare
+            ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
 
-                share.use { diskShare ->
-                    val basePath = if (subPath.isEmpty()) folderName else "$subPath\\$folderName"
+        share.use { diskShare ->
+            val basePath = if (subPath.isEmpty()) folderName else "$subPath\\$folderName"
 
-                    diskShare.mkdir(basePath)
+            diskShare.mkdir(basePath)
 
-                    var uploadedSize = 0L
-                    var completedFiles = 0
-                    files.forEach { fileToUpload ->
-                        val fullPath = "$basePath\\${fileToUpload.relativePath.replace("/", "\\")}"
+            var uploadedSize = 0L
+            var completedFiles = 0
+            files.forEach { fileToUpload ->
+                uploadFolderEntry(diskShare, basePath, fileToUpload) { fileReadSize ->
+                    onRead.emit(UploadProgress(uploadedSize + fileReadSize, completedFiles))
+                }
+                uploadedSize += fileToUpload.size ?: 0L
+                completedFiles++
+            }
+        }
+    }
 
-                        val parentPath = fullPath.substringBeforeLast("\\", "")
-                        if (parentPath.isNotEmpty() && parentPath != basePath) {
-                            createDirectoryRecursively(diskShare, parentPath)
+    private suspend fun uploadFolderEntry(
+        diskShare: DiskShare,
+        basePath: String,
+        fileToUpload: FileToUpload,
+        onRead: suspend (Long) -> Unit,
+    ) {
+        val fullPath = "$basePath\\${fileToUpload.relativePath.replace("/", "\\")}"
+
+        val parentPath = fullPath.substringBeforeLast("\\", "")
+        if (parentPath.isNotEmpty() && parentPath != basePath) {
+            createDirectoryRecursively(diskShare, parentPath)
+        }
+
+        diskShare.openFile(
+            fullPath,
+            EnumSet.of(AccessMask.GENERIC_WRITE),
+            null,
+            SMB2ShareAccess.ALL,
+            SMB2CreateDisposition.FILE_OVERWRITE_IF,
+            null,
+        ).use { file ->
+            file.outputStream.use { outputStream ->
+                coroutineScope {
+                    val progressInputStream = ProgressInputStream(fileToUpload.inputStream)
+                    val job = launch {
+                        progressInputStream.onRead.collect { fileReadSize ->
+                            onRead(fileReadSize)
                         }
-
-                        diskShare.openFile(
-                            fullPath,
-                            EnumSet.of(AccessMask.GENERIC_WRITE),
-                            null,
-                            SMB2ShareAccess.ALL,
-                            SMB2CreateDisposition.FILE_OVERWRITE_IF,
-                            null,
-                        ).use { file ->
-                            file.outputStream.use { outputStream ->
-                                coroutineScope {
-                                    val progressInputStream = ProgressInputStream(fileToUpload.inputStream)
-                                    val job = launch {
-                                        progressInputStream.onRead.collect { fileReadSize ->
-                                            onRead.emit(UploadProgress(uploadedSize + fileReadSize, completedFiles))
-                                        }
-                                    }
-
-                                    progressInputStream.use { input ->
-                                        input.copyTo(outputStream)
-                                    }
-                                    job.cancel()
-                                }
-                            }
-                        }
-                        uploadedSize += fileToUpload.size ?: 0L
-                        completedFiles++
                     }
+
+                    progressInputStream.use { input ->
+                        input.copyTo(outputStream)
+                    }
+                    job.cancel()
                 }
             }
         }
@@ -604,27 +633,27 @@ class SmbFileRepository(
         }
         return withContext(Dispatchers.IO) {
             client.connect(config.ip).use { connection ->
-                val session = connection.authenticate(
+                connection.authenticate(
                     AuthenticationContext(
                         config.username,
                         config.password.toCharArray(),
                         null,
                     ),
-                )
+                ).use { session ->
+                    val parts = path.split("/", limit = PATH_SPLIT_LIMIT)
+                    val shareName = parts[0]
+                    val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
 
-                val parts = path.split("/", limit = PATH_SPLIT_LIMIT)
-                val shareName = parts[0]
-                val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+                    val share = session.connectShare(shareName) as? DiskShare
+                        ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
 
-                val share = session.connectShare(shareName) as? DiskShare
-                    ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
-
-                share.use { diskShare ->
-                    val fullPath = if (subPath.isEmpty()) directoryName else "$subPath\\$directoryName"
-                    when {
-                        diskShare.folderExists(fullPath) -> { /* 既にディレクトリが存在 */ }
-                        diskShare.fileExists(fullPath) -> throw IllegalStateException("同名のファイルが既に存在します: $fullPath")
-                        else -> diskShare.mkdir(fullPath)
+                    share.use { diskShare ->
+                        val fullPath = if (subPath.isEmpty()) directoryName else "$subPath\\$directoryName"
+                        when {
+                            diskShare.folderExists(fullPath) -> { /* 既にディレクトリが存在 */ }
+                            diskShare.fileExists(fullPath) -> throw IllegalStateException("同名のファイルが既に存在します: $fullPath")
+                            else -> diskShare.mkdir(fullPath)
+                        }
                     }
                 }
             }
