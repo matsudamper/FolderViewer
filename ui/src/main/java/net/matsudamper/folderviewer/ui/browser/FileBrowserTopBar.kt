@@ -1,5 +1,7 @@
 package net.matsudamper.folderviewer.ui.browser
 
+import android.content.ClipData
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.DropdownMenu
@@ -16,11 +18,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import kotlinx.coroutines.launch
 import net.matsudamper.folderviewer.ui.R
 import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
 
@@ -45,13 +52,27 @@ internal fun FileBrowserTopBar(
                 scrollState.scrollTo(maxValue)
             }
     }
+    val clipboard = LocalClipboard.current
+    val coroutineScope = rememberCoroutineScope()
 
     TopAppBar(
         modifier = modifier,
         colors = MyTopAppBarDefaults.topAppBarColors(),
         title = {
             Text(
-                modifier = Modifier.horizontalScroll(scrollState),
+                modifier = Modifier
+                    .horizontalScroll(scrollState)
+                    .pointerInput(title) {
+                        detectTapGestures(
+                            onLongPress = {
+                                coroutineScope.launch {
+                                    clipboard.setClipEntry(
+                                        ClipEntry(ClipData.newPlainText(title, title)),
+                                    )
+                                }
+                            },
+                        )
+                    },
                 text = title,
                 maxLines = 1,
             )
