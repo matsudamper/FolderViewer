@@ -69,7 +69,11 @@ internal fun FileBrowserTopBar(
             var showMoreMenu by remember { mutableStateOf(false) }
             var showDisplayMenu by remember { mutableStateOf(false) }
             var showSortMenu by remember { mutableStateOf(false) }
-            IconButton(onClick = { showMoreMenu = true }) {
+            IconButton(onClick = {
+                showDisplayMenu = false
+                showSortMenu = false
+                showMoreMenu = true
+            }) {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_more_vert),
                     contentDescription = stringResource(R.string.more_options),
