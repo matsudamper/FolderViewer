@@ -8,6 +8,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,7 +24,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularWavyProgressIndicator
@@ -55,7 +55,9 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.Flow
 import net.matsudamper.folderviewer.common.FileObjectId
@@ -69,6 +71,10 @@ import net.matsudamper.folderviewer.ui.browser.FileMediumListItem
 import net.matsudamper.folderviewer.ui.browser.FileSmallGridItem
 import net.matsudamper.folderviewer.ui.browser.FileSmallListItem
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
+import net.matsudamper.folderviewer.ui.component.FullWidthDialog
+import net.matsudamper.folderviewer.ui.component.FullWidthDialogContent
+import net.matsudamper.folderviewer.ui.component.FullWidthDialogTextItem
+import net.matsudamper.folderviewer.ui.component.FullWidthDialogTitle
 import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
 import net.matsudamper.folderviewer.ui.util.formatBytes
 import net.matsudamper.folderviewer.ui.util.plus
@@ -502,44 +508,63 @@ private fun FilePropertiesDialog(
     onPreview: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    FullWidthDialog(
+        onDismissRequest = onDismiss,
+        modifier = modifier,
+    ) {
+        FilePropertiesContent(
+            name = event.name,
+            size = event.size,
+            lastModified = event.lastModified,
+            isPreviewable = event.isPreviewable,
+            onDismiss = onDismiss,
+            onPreview = onPreview,
+        )
+    }
+}
+
+@Composable
+private fun ColumnScope.FilePropertiesContent(
+    name: String,
+    size: Long,
+    lastModified: Long,
+    isPreviewable: Boolean,
+    onDismiss: () -> Unit,
+    onPreview: () -> Unit,
+) {
     val dateFormatter = remember {
         DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm")
             .withZone(ZoneId.systemDefault())
     }
-    AlertDialog(
-        modifier = modifier,
-        onDismissRequest = onDismiss,
-        title = { Text(text = stringResource(R.string.external_picker_properties_title)) },
-        text = {
-            Column {
-                Text(
-                    text = event.name,
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                PropertiesRow(
-                    label = stringResource(R.string.external_picker_file_size),
-                    value = formatBytes(event.size),
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                PropertiesRow(
-                    label = stringResource(R.string.external_picker_last_modified),
-                    value = dateFormatter.format(Instant.ofEpochMilli(event.lastModified)),
-                )
-            }
-        },
-        confirmButton = {
-            if (event.isPreviewable) {
-                TextButton(onClick = onPreview) {
-                    Text(text = stringResource(R.string.external_picker_preview))
-                }
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(text = stringResource(R.string.cancel))
-            }
-        },
+    FullWidthDialogTitle(text = stringResource(R.string.external_picker_properties_title))
+    Text(
+        text = name,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        style = MaterialTheme.typography.titleMedium,
+        textAlign = TextAlign.Center,
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    PropertiesRow(
+        label = stringResource(R.string.external_picker_file_size),
+        value = formatBytes(size),
+    )
+    Spacer(modifier = Modifier.height(4.dp))
+    PropertiesRow(
+        label = stringResource(R.string.external_picker_last_modified),
+        value = dateFormatter.format(Instant.ofEpochMilli(lastModified)),
+    )
+    Spacer(modifier = Modifier.height(8.dp))
+    if (isPreviewable) {
+        FullWidthDialogTextItem(
+            text = stringResource(R.string.external_picker_preview),
+            onClick = onPreview,
+        )
+    }
+    FullWidthDialogTextItem(
+        text = stringResource(R.string.cancel),
+        onClick = onDismiss,
     )
 }
 
@@ -549,15 +574,37 @@ private fun PropertiesRow(
     value: String,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.Center,
         )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun PreviewFilePropertiesContent() {
+    MaterialTheme {
+        FullWidthDialogContent {
+            FilePropertiesContent(
+                name = "FileName.txt",
+                size = 1024L * 1024L,
+                lastModified = 0L,
+                isPreviewable = true,
+                onDismiss = {},
+                onPreview = {},
+            )
+        }
     }
 }
