@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
@@ -452,6 +453,7 @@ private fun FileInfoColumn(
             FilePreview(
                 thumbnail = thumbnail,
                 modifier = Modifier
+                    .widthIn(max = 160.dp)
                     .fillMaxWidth()
                     .aspectRatio(1f)
                     .clip(MaterialTheme.shapes.small),
@@ -623,6 +625,19 @@ private fun PreviewDuplicateFileCardNotPreviewable() {
         DuplicateFileCard(
             item = previewDuplicateFileItem(
                 sourceThumbnail = null,
+                destinationThumbnail = null,
+            ),
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 1280, heightDp = 800)
+@Composable
+private fun PreviewDuplicateFileCardTablet() {
+    MaterialTheme {
+        DuplicateFileCard(
+            item = previewDuplicateFileItem(
+                sourceThumbnail = previewThumbnail("source"),
                 destinationThumbnail = null,
             ),
         )
