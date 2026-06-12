@@ -12,6 +12,7 @@ internal data class OperationEntity(
     val name: String,
     val description: String,
     val status: String,
+    val pauseRequested: Boolean = false,
     val createdAt: Long,
     val errorMessage: String? = null,
     val errorCause: String? = null,

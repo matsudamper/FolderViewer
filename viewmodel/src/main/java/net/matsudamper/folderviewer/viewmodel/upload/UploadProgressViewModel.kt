@@ -189,15 +189,20 @@ class UploadProgressViewModel @Inject constructor(
             currentFileProgress = currentFileProgress,
             progress = overallProgress,
             progressText = progressText,
-            isPausable = state == UploadProgressUiState.UploadState.RUNNING,
+            isPausable = state == UploadProgressUiState.UploadState.RUNNING && !op.pauseRequested,
             isResumable = state == UploadProgressUiState.UploadState.PAUSED,
+            isCancelable = state == UploadProgressUiState.UploadState.RUNNING,
             pasteCallbacks = object : UploadProgressUiState.PasteCallbacks {
                 override fun onPauseClick() {
-                    pausePasteJob(op)
+                    requestPausePasteJob(op)
                 }
 
                 override fun onResumeClick() {
                     resumePasteJob(op)
+                }
+
+                override fun onCancelClick() {
+                    cancelPasteJob(op)
                 }
             },
         )
@@ -280,7 +285,13 @@ class UploadProgressViewModel @Inject constructor(
         }
     }
 
-    private fun pausePasteJob(op: OperationRepository.OperationProgress) {
+    private fun requestPausePasteJob(op: OperationRepository.OperationProgress) {
+        viewModelScope.launch {
+            operationRepository.requestPause(op.id)
+        }
+    }
+
+    private fun cancelPasteJob(op: OperationRepository.OperationProgress) {
         viewModelScope.launch {
             val workerId = op.workerId ?: return@launch
             val uuid = runCatching { UUID.fromString(workerId) }.getOrNull() ?: return@launch

@@ -186,7 +186,7 @@ internal class FilePasteWorker @AssistedInject constructor(
         directories: List<PasteJobRepository.PasteFile>,
     ): Boolean {
         for (dir in directories) {
-            if (isStopped) {
+            if (shouldPause(jobContext.meta.id)) {
                 pasteJobRepository.pauseJob(jobContext.meta.id)
                 return false
             }
@@ -213,7 +213,7 @@ internal class FilePasteWorker @AssistedInject constructor(
         files: List<PasteJobRepository.PasteFile>,
     ): Boolean {
         files.forEachIndexed { index, file ->
-            if (isStopped) {
+            if (shouldPause(jobContext.meta.id)) {
                 pasteJobRepository.pauseJob(jobContext.meta.id)
                 return false
             }
@@ -236,6 +236,10 @@ internal class FilePasteWorker @AssistedInject constructor(
             )
         }
         return true
+    }
+
+    private suspend fun shouldPause(jobId: Long): Boolean {
+        return isStopped || pasteJobRepository.isPauseRequested(jobId)
     }
 
     private suspend fun processFile(

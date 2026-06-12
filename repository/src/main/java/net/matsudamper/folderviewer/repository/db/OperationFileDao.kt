@@ -68,6 +68,13 @@ internal interface OperationFileDao {
     )
     suspend fun resetRunningToPending(operationId: Long)
 
+    @Query(
+        "UPDATE operation_files SET resolution = 'OVERWRITE_WITH_SOURCE' " +
+            "WHERE operationId = :operationId AND status = 'RUNNING' " +
+            "AND isDirectory = 0 AND transferredBytes > 0 AND resolution IS NULL",
+    )
+    suspend fun markRunningPartialAsOverwrite(operationId: Long)
+
     @Query("SELECT COUNT(*) FROM operation_files WHERE operationId = :operationId AND resolution = 'PENDING'")
     suspend fun countUnresolvedDuplicates(operationId: Long): Int
 

@@ -33,6 +33,10 @@ class OperationRepository @Inject internal constructor(
         operationDao.updateStatusAndWorkerId(id = id, status = status.name, workerId = workerId)
     }
 
+    suspend fun requestPause(id: Long) {
+        operationDao.requestPause(id)
+    }
+
     private fun OperationProgressRow.toDomain(): OperationProgress {
         return OperationProgress(
             id = operation.id,
@@ -42,6 +46,7 @@ class OperationRepository @Inject internal constructor(
             description = operation.description,
             status = OperationStatus.entries.firstOrNull { it.name == operation.status }
                 ?: OperationStatus.FAILED,
+            pauseRequested = operation.pauseRequested,
             createdAt = operation.createdAt,
             errorMessage = operation.errorMessage,
             errorCause = operation.errorCause,
@@ -79,6 +84,7 @@ class OperationRepository @Inject internal constructor(
         val name: String,
         val description: String,
         val status: OperationStatus,
+        val pauseRequested: Boolean,
         val createdAt: Long,
         val errorMessage: String?,
         val errorCause: String?,

@@ -21,7 +21,7 @@ internal object DatabaseModule {
             "folder_viewer_db",
         ).fallbackToDestructiveMigrationFrom(
             dropAllTables = true,
-            startVersions = intArrayOf(3, 4, 5, 6, 7, 8),
+            startVersions = intArrayOf(3, 4, 5, 6, 7, 8, 9),
         ).build()
     }
 

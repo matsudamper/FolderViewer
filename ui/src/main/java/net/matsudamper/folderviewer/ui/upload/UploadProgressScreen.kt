@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import net.matsudamper.folderviewer.ui.R
 import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
@@ -238,37 +239,46 @@ private fun PasteItemRow(
                     maxLines = 1,
                 )
             }
-            when {
-                item.isPausable -> {
-                    IconButton(onClick = { item.pasteCallbacks.onPauseClick() }) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_pause),
-                            contentDescription = stringResource(R.string.paste_pause),
-                        )
-                    }
+            if (item.isPausable) {
+                IconButton(onClick = { item.pasteCallbacks.onPauseClick() }) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_pause),
+                        contentDescription = stringResource(R.string.paste_pause),
+                    )
                 }
-                item.isResumable -> {
-                    IconButton(onClick = { item.pasteCallbacks.onResumeClick() }) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_play),
-                            contentDescription = stringResource(R.string.paste_resume),
-                        )
-                    }
+            }
+            if (item.isResumable) {
+                IconButton(onClick = { item.pasteCallbacks.onResumeClick() }) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_play),
+                        contentDescription = stringResource(R.string.paste_resume),
+                    )
                 }
-                item.state == UploadProgressUiState.UploadState.SUCCEEDED -> {
+            }
+            if (item.isCancelable) {
+                IconButton(onClick = { item.pasteCallbacks.onCancelClick() }) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_close),
+                        contentDescription = stringResource(R.string.paste_cancel),
+                    )
+                }
+            }
+            when (item.state) {
+                UploadProgressUiState.UploadState.SUCCEEDED -> {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_check),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                     )
                 }
-                item.state == UploadProgressUiState.UploadState.FAILED -> {
+                UploadProgressUiState.UploadState.FAILED -> {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_close),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.error,
                     )
                 }
+                else -> {}
             }
         }
 
@@ -422,6 +432,61 @@ private fun UploadProgressTopBar(
                 )
             }
         },
+    )
+}
+
+private val previewCallbacks = object : UploadProgressUiState.Callbacks {
+    override fun onBackClick() = Unit
+    override fun onItemClick(item: UploadProgressUiState.UploadItem) = Unit
+    override fun onClearHistoryClick() = Unit
+    override fun onClearHistoryConfirm() = Unit
+    override fun onClearHistoryDismiss() = Unit
+}
+
+private val previewPasteCallbacks = object : UploadProgressUiState.PasteCallbacks {
+    override fun onPauseClick() = Unit
+    override fun onResumeClick() = Unit
+    override fun onCancelClick() = Unit
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun UploadProgressScreenPastePreview() {
+    UploadProgressScreen(
+        uiState = UploadProgressUiState(
+            uploadItems = listOf(
+                UploadProgressUiState.UploadItem.Paste(
+                    id = "1",
+                    name = "コピー 10件",
+                    description = "folder/file1.txt",
+                    state = UploadProgressUiState.UploadState.RUNNING,
+                    canNavigate = true,
+                    currentFileProgress = 0.3f,
+                    progress = 0.5f,
+                    progressText = "コピー 10件 - 5完了 5未完了 (50.0MB/100.0MB)",
+                    isPausable = true,
+                    isResumable = false,
+                    isCancelable = true,
+                    pasteCallbacks = previewPasteCallbacks,
+                ),
+                UploadProgressUiState.UploadItem.Paste(
+                    id = "2",
+                    name = "カット 3件",
+                    description = "folder/file2.txt",
+                    state = UploadProgressUiState.UploadState.PAUSED,
+                    canNavigate = true,
+                    currentFileProgress = null,
+                    progress = 0.2f,
+                    progressText = "カット 3件",
+                    isPausable = false,
+                    isResumable = true,
+                    isCancelable = false,
+                    pasteCallbacks = previewPasteCallbacks,
+                ),
+            ),
+            showClearConfirmDialog = false,
+            callbacks = previewCallbacks,
+        ),
     )
 }
 
