@@ -242,9 +242,9 @@ internal class FilePasteWorker @AssistedInject constructor(
                             progress = PasteJobRepository.ProgressUpdate(
                                 completedFiles = completedFiles,
                                 completedBytes = completedBytes,
-                                currentFileName = null,
-                                currentFileBytes = 0L,
-                                currentFileTotalBytes = 0L,
+                                currentFileName = currentFileName,
+                                currentFileBytes = file.fileSize,
+                                currentFileTotalBytes = file.fileSize,
                             ),
                         )
                         updateNotification(notificationId, completedFiles, job.totalFiles, null)

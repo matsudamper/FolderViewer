@@ -239,8 +239,12 @@ class UploadProgressViewModel @Inject constructor(
             null
         }
 
-        val currentFileProgress = if (isActive && op.currentFileTotalBytes > 0) {
-            op.currentFileBytes.toFloat() / op.currentFileTotalBytes.toFloat()
+        val currentFileProgress = if (isActive) {
+            if (op.currentFileTotalBytes > 0) {
+                op.currentFileBytes.toFloat() / op.currentFileTotalBytes.toFloat()
+            } else {
+                0f
+            }
         } else {
             null
         }
