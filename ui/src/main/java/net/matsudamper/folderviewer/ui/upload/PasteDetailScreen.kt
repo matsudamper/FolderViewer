@@ -559,6 +559,45 @@ private fun PasteDetailScreenDuplicatePreview() {
     )
 }
 
+@Preview(showBackground = true)
+@Composable
+private fun PasteDetailScreenCompletedWithPendingResolutionPreview() {
+    PasteDetailScreen(
+        uiState = PasteDetailUiState(
+            jobName = "テストジョブ",
+            statusText = "完了",
+            status = Status.COMPLETED,
+            errorMessage = null,
+            errorCause = null,
+            duplicateFiles = listOf(
+                PasteDetailUiState.DuplicateFileItem(
+                    fileId = 1L,
+                    fileName = "photo.jpg",
+                    sourcePath = "/sdcard/DCIM/photo.jpg",
+                    sourceSize = 1024L * 512,
+                    sourceSizeText = "512 KB",
+                    destinationPath = "/sdcard/Photos/photo.jpg",
+                    destinationSize = 1024L * 256,
+                    destinationSizeText = "256 KB",
+                    sourceThumbnail = null,
+                    destinationThumbnail = null,
+                    resolution = PasteDetailUiState.Resolution.OVERWRITE_WITH_SOURCE,
+                    onKeepDestination = {},
+                    onOverwriteWithSource = {},
+                ),
+            ),
+            completedFiles = emptyList(),
+            canApply = true,
+            progress = null,
+            fileCountText = null,
+            sizeProgressText = null,
+            currentFileName = null,
+            currentFileProgress = null,
+            callbacks = previewPasteCallbacks,
+        ),
+    )
+}
+
 @Composable
 private fun FilePreview(
     thumbnail: FileImageSource.Thumbnail?,
