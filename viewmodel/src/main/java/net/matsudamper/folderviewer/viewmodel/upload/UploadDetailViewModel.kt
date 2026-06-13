@@ -10,13 +10,18 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.UploadJobRepository
+import net.matsudamper.folderviewer.ui.upload.OperationFileFilter
+import net.matsudamper.folderviewer.ui.upload.OperationFileRow
+import net.matsudamper.folderviewer.ui.upload.OperationFileStatus
 import net.matsudamper.folderviewer.ui.upload.UploadDetailUiState
 
 @HiltViewModel
@@ -56,22 +61,29 @@ class UploadDetailViewModel @Inject internal constructor(
     private val viewModelEventChannel = Channel<ViewModelEvent>(Channel.BUFFERED)
     val viewModelEventFlow = viewModelEventChannel.receiveAsFlow()
 
+    private val filterState = MutableStateFlow(FileFilterState())
+
     private var initJob: Job? = null
 
     fun init(workerId: String) {
         if (initJob?.isActive == true) return
         initJob = viewModelScope.launch {
             val job = uploadJobRepository.getJob(workerId) ?: return@launch
-
             fileObjectId = job.fileObjectId
             displayPath = job.displayPath
 
             val storageName = storageRepository.storageList.first()
                 .find { it.id == job.fileObjectId.storageId }?.name ?: ""
 
-            operationRepository.observeProgressByWorkerId(workerId).collect { progress ->
-                if (progress == null) return@collect
-                _uiState.value = createUiState(job, storageName, progress)
+            combine(
+                operationRepository.observeProgressById(job.operationId),
+                uploadJobRepository.observeFiles(job.operationId),
+                filterState,
+            ) { progress, files, filter ->
+                if (progress == null) return@combine null
+                createUiState(job, storageName, progress, files, filter)
+            }.collect { state ->
+                _uiState.value = state
             }
         }
     }
@@ -80,6 +92,8 @@ class UploadDetailViewModel @Inject internal constructor(
         job: UploadJobRepository.UploadJob,
         storageName: String,
         progress: OperationRepository.OperationProgress,
+        files: List<UploadJobRepository.UploadFile>,
+        filter: FileFilterState,
     ): UploadDetailUiState {
         val uploadStatus = when (progress.status) {
             OperationRepository.OperationStatus.ENQUEUED,
@@ -108,6 +122,22 @@ class UploadDetailViewModel @Inject internal constructor(
             null
         }
 
+        val fileRows = files.map { file ->
+            val path = if (file.relativePath.isEmpty()) {
+                "${job.displayPath}/${file.fileName}"
+            } else {
+                "${job.displayPath}/${file.relativePath}/${file.fileName}"
+            }
+            OperationFileRow(
+                key = file.id.toString(),
+                fileName = file.fileName,
+                sourcePath = null,
+                destinationPath = path,
+                status = file.status.toFileStatus(),
+                errorMessage = file.errorMessage,
+            )
+        }
+
         return UploadDetailUiState(
             name = job.name,
             isFolder = job.isFolder,
@@ -119,6 +149,8 @@ class UploadDetailViewModel @Inject internal constructor(
             progressText = progressText,
             progress = overallProgress,
             currentUploadFile = createCurrentUploadFile(isUploading, progress),
+            files = fileRows,
+            fileFilter = filter.toUiFilter(),
             callbacks = callbacks,
         )
     }
@@ -147,6 +179,27 @@ class UploadDetailViewModel @Inject internal constructor(
         }
     }
 
+    private fun OperationRepository.FileStatus.toFileStatus(): OperationFileStatus {
+        return when (this) {
+            OperationRepository.FileStatus.COMPLETED -> OperationFileStatus.COMPLETED
+            OperationRepository.FileStatus.FAILED -> OperationFileStatus.FAILED
+            OperationRepository.FileStatus.PENDING,
+            OperationRepository.FileStatus.RUNNING,
+            -> OperationFileStatus.PENDING
+        }
+    }
+
+    private fun FileFilterState.toUiFilter(): OperationFileFilter {
+        return OperationFileFilter(
+            showCompleted = showCompleted,
+            showPending = showPending,
+            showFailed = showFailed,
+            onToggleCompleted = { filterState.update { it.copy(showCompleted = !it.showCompleted) } },
+            onTogglePending = { filterState.update { it.copy(showPending = !it.showPending) } },
+            onToggleFailed = { filterState.update { it.copy(showFailed = !it.showFailed) } },
+        )
+    }
+
     private fun formatFileSize(bytes: Long): String {
         val kb = 1024.0
         val mb = kb * 1024
@@ -158,6 +211,12 @@ class UploadDetailViewModel @Inject internal constructor(
             else -> String.format(Locale.ROOT, "%.1fKB", bytes / kb)
         }
     }
+
+    private data class FileFilterState(
+        val showCompleted: Boolean = true,
+        val showPending: Boolean = true,
+        val showFailed: Boolean = true,
+    )
 
     sealed interface ViewModelEvent {
         data object NavigateBack : ViewModelEvent

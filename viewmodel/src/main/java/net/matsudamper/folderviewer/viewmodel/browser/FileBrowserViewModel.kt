@@ -233,7 +233,11 @@ class FileBrowserViewModel @AssistedInject constructor(
             val rawFiles = viewModelStateFlow.value.rawFiles
             val selectedFileItems = selectedIds.mapNotNull { id -> rawFiles.find { it.id == id } }.toSet()
             if (selectedFileItems.isEmpty()) return
-            clipboardRepository.setClipboard(ClipboardRepository.ClipboardMode.Copy, selectedFileItems)
+            clipboardRepository.setClipboard(
+                ClipboardRepository.ClipboardMode.Copy,
+                selectedFileItems,
+                arg.displayPath.orEmpty(),
+            )
             viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
             selectionModeRepository.setSelectionMode(false)
         }
@@ -246,7 +250,11 @@ class FileBrowserViewModel @AssistedInject constructor(
             val rawFiles = viewModelStateFlow.value.rawFiles
             val selectedFileItems = selectedIds.mapNotNull { id -> rawFiles.find { it.id == id } }.toSet()
             if (selectedFileItems.isEmpty()) return
-            clipboardRepository.setClipboard(ClipboardRepository.ClipboardMode.Cut, selectedFileItems)
+            clipboardRepository.setClipboard(
+                ClipboardRepository.ClipboardMode.Cut,
+                selectedFileItems,
+                arg.displayPath.orEmpty(),
+            )
             viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
             selectionModeRepository.setSelectionMode(false)
         }
@@ -701,6 +709,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                 mode = clipboardState.mode,
                 destinationFileObjectId = fileObjectId,
                 destinationDisplayPath = arg.displayPath.orEmpty(),
+                sourceDisplayPath = clipboardState.sourceDisplayPath,
                 files = files,
             )
 

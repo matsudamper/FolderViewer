@@ -26,6 +26,7 @@ class PasteJobRepository @Inject internal constructor(
         mode: ClipboardRepository.ClipboardMode,
         destinationFileObjectId: FileObjectId,
         destinationDisplayPath: String,
+        sourceDisplayPath: String,
         files: List<NewPasteFile>,
     ): Long {
         val modeText = when (mode) {
@@ -59,6 +60,7 @@ class PasteJobRepository @Inject internal constructor(
                     mode = mode.name,
                     destinationFileObjectId = Json.encodeToString(destinationFileObjectId),
                     destinationDisplayPath = destinationDisplayPath,
+                    sourceDisplayPath = sourceDisplayPath,
                 ),
             )
             operationFileDao.insertAll(
@@ -90,6 +92,7 @@ class PasteJobRepository @Inject internal constructor(
             mode = mode,
             destinationFileObjectId = destination,
             destinationDisplayPath = pasteDetail.destinationDisplayPath,
+            sourceDisplayPath = pasteDetail.sourceDisplayPath,
         )
     }
 
@@ -99,6 +102,19 @@ class PasteJobRepository @Inject internal constructor(
 
     suspend fun getPendingFiles(jobId: Long): List<PasteFile> {
         return operationFileDao.getPendingByOperationId(jobId).mapNotNull { it.toPasteFile() }
+    }
+
+    fun observeFiles(jobId: Long): Flow<List<PasteFile>> {
+        return operationFileDao.observeByOperationId(jobId).map { entities ->
+            entities.mapNotNull { it.toPasteFile() }
+        }
+    }
+
+    suspend fun retryJob(jobId: Long) {
+        database.withTransaction {
+            operationFileDao.resetRunningToPending(jobId)
+            operationFileDao.resetFailedToPending(jobId)
+        }
     }
 
     fun observeDuplicateFiles(jobId: Long): Flow<List<PasteFile>> {
@@ -245,6 +261,7 @@ class PasteJobRepository @Inject internal constructor(
         val mode: ClipboardRepository.ClipboardMode,
         val destinationFileObjectId: FileObjectId,
         val destinationDisplayPath: String,
+        val sourceDisplayPath: String,
     )
 
     data class NewPasteFile(

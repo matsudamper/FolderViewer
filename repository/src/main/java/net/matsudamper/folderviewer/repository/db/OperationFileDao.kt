@@ -68,6 +68,12 @@ internal interface OperationFileDao {
     )
     suspend fun resetRunningToPending(operationId: Long)
 
+    @Query(
+        "UPDATE operation_files SET status = 'PENDING', transferredBytes = 0, errorMessage = NULL " +
+            "WHERE operationId = :operationId AND status = 'FAILED'",
+    )
+    suspend fun resetFailedToPending(operationId: Long)
+
     @Query("SELECT COUNT(*) FROM operation_files WHERE operationId = :operationId AND resolution = 'PENDING'")
     suspend fun countUnresolvedDuplicates(operationId: Long): Int
 

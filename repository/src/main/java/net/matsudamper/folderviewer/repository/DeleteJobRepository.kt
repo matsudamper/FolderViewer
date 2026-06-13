@@ -91,6 +91,13 @@ class DeleteJobRepository @Inject internal constructor(
         operationFileDao.resetRunningToPending(operationId)
     }
 
+    suspend fun retryJob(operationId: Long) {
+        database.withTransaction {
+            operationFileDao.resetRunningToPending(operationId)
+            operationFileDao.resetFailedToPending(operationId)
+        }
+    }
+
     suspend fun updateStatus(operationId: Long, status: OperationRepository.OperationStatus, workerId: String? = null) {
         operationDao.updateStatusAndWorkerId(id = operationId, status = status.name, workerId = workerId)
     }
