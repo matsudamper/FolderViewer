@@ -190,6 +190,7 @@ class UploadProgressViewModel @Inject constructor(
             progress = overallProgress,
             progressText = progressText,
             isPausable = state == UploadProgressUiState.UploadState.RUNNING && !op.pauseRequested,
+            isPausePending = state == UploadProgressUiState.UploadState.RUNNING && op.pauseRequested,
             isResumable = state == UploadProgressUiState.UploadState.PAUSED,
             isCancelable = state == UploadProgressUiState.UploadState.RUNNING,
             pasteCallbacks = object : UploadProgressUiState.PasteCallbacks {

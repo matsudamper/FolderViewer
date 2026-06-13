@@ -247,6 +247,20 @@ private fun PasteItemRow(
                     )
                 }
             }
+            if (item.isPausePending) {
+                Box(contentAlignment = Alignment.Center) {
+                    CircularWavyProgressIndicator(modifier = Modifier.size(40.dp))
+                    IconButton(
+                        onClick = {},
+                        enabled = false,
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_pause),
+                            contentDescription = stringResource(R.string.paste_pause),
+                        )
+                    }
+                }
+            }
             if (item.isResumable) {
                 IconButton(onClick = { item.pasteCallbacks.onResumeClick() }) {
                     Icon(
@@ -465,20 +479,37 @@ private fun UploadProgressScreenPastePreview() {
                     progress = 0.5f,
                     progressText = "コピー 10件 - 5完了 5未完了 (50.0MB/100.0MB)",
                     isPausable = true,
+                    isPausePending = false,
                     isResumable = false,
                     isCancelable = true,
                     pasteCallbacks = previewPasteCallbacks,
                 ),
                 UploadProgressUiState.UploadItem.Paste(
                     id = "2",
-                    name = "カット 3件",
+                    name = "コピー 8件",
                     description = "folder/file2.txt",
+                    state = UploadProgressUiState.UploadState.RUNNING,
+                    canNavigate = true,
+                    currentFileProgress = 0.6f,
+                    progress = 0.4f,
+                    progressText = "コピー 8件 - 一時停止中",
+                    isPausable = false,
+                    isPausePending = true,
+                    isResumable = false,
+                    isCancelable = true,
+                    pasteCallbacks = previewPasteCallbacks,
+                ),
+                UploadProgressUiState.UploadItem.Paste(
+                    id = "3",
+                    name = "カット 3件",
+                    description = "folder/file3.txt",
                     state = UploadProgressUiState.UploadState.PAUSED,
                     canNavigate = true,
                     currentFileProgress = null,
                     progress = 0.2f,
                     progressText = "カット 3件",
                     isPausable = false,
+                    isPausePending = false,
                     isResumable = true,
                     isCancelable = false,
                     pasteCallbacks = previewPasteCallbacks,
