@@ -129,12 +129,12 @@ class PasteDetailViewModel @Inject constructor(
             )
         }
 
-        val canApply = duplicateItems.isNotEmpty() &&
-            duplicateItems.all { it.resolution != null } &&
-            progress.status == OperationRepository.OperationStatus.WAITING_RESOLUTION
-
         val isRunning = progress.status == OperationRepository.OperationStatus.RUNNING
         val isActive = isRunning || progress.status == OperationRepository.OperationStatus.ENQUEUED
+
+        val canApply = duplicateItems.isNotEmpty() &&
+            duplicateItems.all { it.resolution != null } &&
+            !isActive
         val overallProgress = if (isActive && progress.totalBytes > 0) {
             progress.completedBytes.toFloat() / progress.totalBytes.toFloat()
         } else {
