@@ -1,5 +1,6 @@
 package net.matsudamper.folderviewer.repository.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -12,6 +13,7 @@ internal data class OperationEntity(
     val name: String,
     val description: String,
     val status: String,
+    @ColumnInfo(defaultValue = "0")
     val pauseRequested: Boolean = false,
     val createdAt: Long,
     val errorMessage: String? = null,

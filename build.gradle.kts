@@ -32,6 +32,7 @@ subprojects {
         buildUponDefaultConfig = true
     }
     tasks.withType<Detekt>().configureEach {
+        jvmTarget = "22"
         reports {
             html.required.set(false)
             txt.required.set(true)
