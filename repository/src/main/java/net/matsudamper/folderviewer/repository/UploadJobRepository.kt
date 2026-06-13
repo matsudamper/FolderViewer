@@ -1,5 +1,7 @@
 package net.matsudamper.folderviewer.repository
 
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
@@ -76,16 +78,25 @@ class UploadJobRepository @Inject internal constructor(
     }
 
     suspend fun getFiles(operationId: Long): List<UploadFile> {
-        return operationFileDao.getByOperationId(operationId).map { entity ->
-            UploadFile(
-                id = entity.id,
-                fileName = entity.fileName,
-                relativePath = entity.relativePath,
-                fileSize = entity.fileSize,
-                status = OperationRepository.FileStatus.entries.firstOrNull { it.name == entity.status }
-                    ?: OperationRepository.FileStatus.FAILED,
-            )
+        return operationFileDao.getByOperationId(operationId).map { it.toUploadFile() }
+    }
+
+    fun observeFiles(operationId: Long): Flow<List<UploadFile>> {
+        return operationFileDao.observeByOperationId(operationId).map { entities ->
+            entities.map { it.toUploadFile() }
         }
+    }
+
+    private fun OperationFileEntity.toUploadFile(): UploadFile {
+        return UploadFile(
+            id = id,
+            fileName = fileName,
+            relativePath = relativePath,
+            fileSize = fileSize,
+            status = OperationRepository.FileStatus.entries.firstOrNull { it.name == status }
+                ?: OperationRepository.FileStatus.FAILED,
+            errorMessage = errorMessage,
+        )
     }
 
     suspend fun startFile(fileId: Long, fileSize: Long?) {
@@ -193,5 +204,6 @@ class UploadJobRepository @Inject internal constructor(
         val relativePath: String,
         val fileSize: Long?,
         val status: OperationRepository.FileStatus,
+        val errorMessage: String?,
     )
 }

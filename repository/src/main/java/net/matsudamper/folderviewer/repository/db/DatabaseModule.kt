@@ -22,7 +22,7 @@ internal object DatabaseModule {
         ).fallbackToDestructiveMigrationFrom(
             dropAllTables = true,
             startVersions = intArrayOf(3, 4, 5, 6, 7, 8),
-        ).addMigrations(Migration9To10)
+        ).addMigrations(Migration9To10, Migration10To11)
             .build()
     }
 

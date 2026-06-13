@@ -15,3 +15,11 @@ internal val Migration9To10 = object : Migration(9, 10) {
         )
     }
 }
+
+internal val Migration10To11 = object : Migration(10, 11) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "ALTER TABLE `paste_operations` ADD COLUMN `sourceDisplayPath` TEXT NOT NULL DEFAULT ''",
+        )
+    }
+}

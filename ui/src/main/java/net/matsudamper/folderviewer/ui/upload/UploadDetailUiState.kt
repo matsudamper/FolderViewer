@@ -13,6 +13,8 @@ data class UploadDetailUiState(
     val progressText: String?,
     val progress: Float?,
     val currentUploadFile: CurrentUploadFile?,
+    val files: List<OperationFileRow>,
+    val fileFilter: OperationFileFilter,
     val callbacks: Callbacks,
 ) {
     enum class UploadStatus {
