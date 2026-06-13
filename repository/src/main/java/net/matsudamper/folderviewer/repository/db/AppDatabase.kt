@@ -11,7 +11,7 @@ import androidx.room.RoomDatabase
         OperationFileEntity::class,
     ],
     version = 10,
-    exportSchema = false,
+    exportSchema = true,
 )
 internal abstract class AppDatabase : RoomDatabase() {
     abstract fun operationDao(): OperationDao

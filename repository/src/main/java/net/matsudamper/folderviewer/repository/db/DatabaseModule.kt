@@ -2,8 +2,6 @@ package net.matsudamper.folderviewer.repository.db
 
 import android.content.Context
 import androidx.room.Room
-import androidx.room.migration.Migration
-import androidx.sqlite.db.SupportSQLiteDatabase
 import javax.inject.Singleton
 import dagger.Module
 import dagger.Provides
@@ -14,19 +12,6 @@ import dagger.hilt.components.SingletonComponent
 @Module
 @InstallIn(SingletonComponent::class)
 internal object DatabaseModule {
-    private val migration9To10 = object : Migration(9, 10) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL(
-                "CREATE INDEX IF NOT EXISTS `index_operation_files_operationId_status` " +
-                    "ON `operation_files` (`operationId`, `status`)",
-            )
-            db.execSQL(
-                "CREATE INDEX IF NOT EXISTS `index_operation_files_operationId_resolution` " +
-                    "ON `operation_files` (`operationId`, `resolution`)",
-            )
-        }
-    }
-
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase {
@@ -37,7 +22,7 @@ internal object DatabaseModule {
         ).fallbackToDestructiveMigrationFrom(
             dropAllTables = true,
             startVersions = intArrayOf(3, 4, 5, 6, 7, 8),
-        ).addMigrations(migration9To10)
+        ).addMigrations(Migration9To10)
             .build()
     }
 

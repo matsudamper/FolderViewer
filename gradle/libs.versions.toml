@@ -85,6 +85,7 @@ androidxHiltCompiler = { group = "androidx.hilt", name = "hilt-compiler", versio
 androidxRoomRuntime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidxRoomKtx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidxRoomCompiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+androidxRoomTesting = { group = "androidx.room", name = "room-testing", version.ref = "room" }
 composablePreviewScanner = { group = "io.github.sergio-sastre.ComposablePreviewScanner", name = "android", version.ref = "composablePreviewScanner" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 
@@ -100,3 +101,4 @@ ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlintGradle" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 protobuf = { id = "com.google.protobuf", version.ref = "protobufPlugin" }
 paparazzi = { id = "app.cash.paparazzi", version.ref = "paparazzi" }
+room = { id = "androidx.room", version.ref = "room" }

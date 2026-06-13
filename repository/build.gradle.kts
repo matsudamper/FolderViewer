@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.protobuf)
     alias(libs.plugins.ksp)
     alias(libs.plugins.daggerHilt)
+    alias(libs.plugins.room)
 }
 
 android {
@@ -24,6 +25,16 @@ android {
             isIncludeAndroidResources = true
         }
     }
+
+    sourceSets {
+        getByName("test") {
+            assets.srcDir("$projectDir/schemas")
+        }
+    }
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
 }
 
 kotlin {
@@ -52,6 +63,7 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.androidxJunit)
     testImplementation(libs.robolectric)
+    testImplementation(libs.androidxRoomTesting)
 }
 
 protobuf {
