@@ -15,15 +15,16 @@ internal object DatabaseModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase {
-        return Room.databaseBuilder(
+        val builder = Room.databaseBuilder(
             context,
             AppDatabase::class.java,
             "folder_viewer_db",
         ).fallbackToDestructiveMigrationFrom(
             dropAllTables = true,
             startVersions = intArrayOf(3, 4, 5, 6, 7, 8),
-        ).addMigrations(Migration9To10)
-            .build()
+        )
+        AppDatabaseMigrations.forEach { builder.addMigrations(it) }
+        return builder.build()
     }
 
     @Provides
