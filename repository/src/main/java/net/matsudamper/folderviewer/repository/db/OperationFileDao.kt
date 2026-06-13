@@ -83,6 +83,7 @@ internal interface OperationFileDao {
 
     @Query(
         "SELECT * FROM operation_files WHERE operationId = :operationId " +
+            "AND destinationFileId IS NOT NULL " +
             "AND resolution IS NOT NULL AND status != 'COMPLETED' ORDER BY id ASC",
     )
     fun observeDuplicatesByOperationId(operationId: Long): Flow<List<OperationFileEntity>>
