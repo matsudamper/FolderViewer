@@ -23,3 +23,5 @@ internal val Migration10To11 = object : Migration(10, 11) {
         )
     }
 }
+
+internal val AppDatabaseMigrations = arrayOf(Migration9To10, Migration10To11)

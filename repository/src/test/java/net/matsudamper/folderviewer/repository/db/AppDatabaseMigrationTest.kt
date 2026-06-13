@@ -36,8 +36,7 @@ internal class AppDatabaseMigrationTest {
             TestDbName,
             latestSchemaVersion(),
             true,
-            Migration9To10,
-            Migration10To11,
+            *AppDatabaseMigrations,
         )
 
         migrated.query("SELECT COUNT(*) FROM operation_files").use { cursor ->
