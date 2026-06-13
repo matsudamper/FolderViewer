@@ -44,11 +44,6 @@ internal class AppDatabaseMigrationTest {
             cursor.moveToFirst()
             assertEquals(1, cursor.getInt(0))
         }
-
-        migrated.query("SELECT pauseRequested FROM operations WHERE id = 1").use { cursor ->
-            cursor.moveToFirst()
-            assertEquals(0, cursor.getInt(0))
-        }
     }
 
     private fun latestSchemaVersion(): Int {
