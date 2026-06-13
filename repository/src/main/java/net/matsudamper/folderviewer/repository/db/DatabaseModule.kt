@@ -22,7 +22,8 @@ internal object DatabaseModule {
         ).fallbackToDestructiveMigrationFrom(
             dropAllTables = true,
             startVersions = intArrayOf(3, 4, 5, 6, 7, 8),
-        ).build()
+        ).addMigrations(Migration9To10)
+            .build()
     }
 
     @Provides
