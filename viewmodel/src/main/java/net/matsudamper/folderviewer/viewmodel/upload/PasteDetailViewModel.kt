@@ -8,6 +8,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import java.util.Locale
+import java.util.UUID
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -167,6 +168,22 @@ class PasteDetailViewModel @Inject constructor(
             override fun onApplyResolutions() {
                 applyResolutions(jobId)
             }
+
+            override fun onPauseClick() {
+                viewModelScope.launch {
+                    operationRepository.requestPause(jobId)
+                }
+            }
+
+            override fun onResumeClick() {
+                viewModelScope.launch {
+                    enqueuePasteWork(jobId)
+                }
+            }
+
+            override fun onCancelClick() {
+                cancelPasteJob(progress.workerId)
+            }
         }
 
         return PasteDetailUiState(
@@ -184,6 +201,10 @@ class PasteDetailViewModel @Inject constructor(
             sizeProgressText = sizeProgressText,
             currentFileName = if (isRunning) progress.currentFileName else null,
             currentFileProgress = currentFileProgress,
+            isPausable = isRunning && !progress.pauseRequested,
+            isPausePending = isRunning && progress.pauseRequested,
+            isResumable = progress.status == OperationRepository.OperationStatus.PAUSED,
+            isCancelable = isRunning,
             callbacks = callbacks,
         )
     }
@@ -250,27 +271,37 @@ class PasteDetailViewModel @Inject constructor(
         viewModelScope.launch {
             val unresolvedCount = pasteJobRepository.countUnresolvedDuplicates(jobId)
             if (unresolvedCount > 0) return@launch
+            enqueuePasteWork(jobId)
+        }
+    }
 
-            val inputData = Data.Builder()
-                .putLong(FilePasteWorker.KEY_PASTE_JOB_ID, jobId)
-                .build()
+    private suspend fun enqueuePasteWork(jobId: Long) {
+        val inputData = Data.Builder()
+            .putLong(FilePasteWorker.KEY_PASTE_JOB_ID, jobId)
+            .build()
 
-            val workRequest = OneTimeWorkRequestBuilder<FilePasteWorker>()
-                .setInputData(inputData)
-                .addTag(FilePasteWorker.TAG_PASTE)
-                .build()
+        val workRequest = OneTimeWorkRequestBuilder<FilePasteWorker>()
+            .setInputData(inputData)
+            .addTag(FilePasteWorker.TAG_PASTE)
+            .build()
 
-            pasteJobRepository.updateStatus(
-                jobId = jobId,
-                status = OperationRepository.OperationStatus.ENQUEUED,
-                workerId = workRequest.id.toString(),
-            )
+        pasteJobRepository.updateStatus(
+            jobId = jobId,
+            status = OperationRepository.OperationStatus.ENQUEUED,
+            workerId = workRequest.id.toString(),
+        )
 
-            WorkManager.getInstance(getApplication()).enqueueUniqueWork(
-                "paste_job_$jobId",
-                ExistingWorkPolicy.KEEP,
-                workRequest,
-            )
+        WorkManager.getInstance(getApplication()).enqueueUniqueWork(
+            "paste_job_$jobId",
+            ExistingWorkPolicy.KEEP,
+            workRequest,
+        )
+    }
+
+    private fun cancelPasteJob(workerId: String?) {
+        viewModelScope.launch {
+            val uuid = runCatching { UUID.fromString(workerId) }.getOrNull() ?: return@launch
+            WorkManager.getInstance(getApplication()).cancelWorkById(uuid)
         }
     }
 
