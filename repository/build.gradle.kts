@@ -18,6 +18,12 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
 }
 
 kotlin {
@@ -43,6 +49,9 @@ dependencies {
     implementation(libs.androidxRoomRuntime)
     implementation(libs.androidxRoomKtx)
     ksp(libs.androidxRoomCompiler)
+    testImplementation(libs.junit)
+    testImplementation(libs.androidxJunit)
+    testImplementation(libs.robolectric)
 }
 
 protobuf {
