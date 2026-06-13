@@ -161,6 +161,10 @@ class PasteJobRepository @Inject internal constructor(
         return operationFileDao.countUnresolvedDuplicates(jobId)
     }
 
+    suspend fun countPendingDuplicates(jobId: Long): Int {
+        return operationFileDao.countPendingDuplicates(jobId)
+    }
+
     suspend fun countFailedFiles(jobId: Long): Int {
         return operationFileDao.countFailed(jobId)
     }

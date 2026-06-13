@@ -120,8 +120,9 @@ internal class FilePasteWorker @AssistedInject constructor(
         totalFiles: Int,
     ): Result {
         val jobId = meta.id
-        val unresolvedCount = pasteJobRepository.countUnresolvedDuplicates(jobId)
-        if (unresolvedCount > 0) {
+        val pendingDuplicateCount = pasteJobRepository.countPendingDuplicates(jobId)
+        if (pendingDuplicateCount > 0) {
+            val unresolvedCount = pasteJobRepository.countUnresolvedDuplicates(jobId)
             pasteJobRepository.updateStatus(
                 jobId = jobId,
                 status = OperationRepository.OperationStatus.WAITING_RESOLUTION,
@@ -132,7 +133,11 @@ internal class FilePasteWorker @AssistedInject constructor(
                 notificationId = PASTE_RESULT_NOTIFICATION_BASE_ID + jobId.toInt(),
                 content = OperationResultNotification.Content(
                     title = "ファイルペーストの操作が必要です",
-                    text = "重複ファイルが $unresolvedCount 件あります",
+                    text = if (unresolvedCount > 0) {
+                        "重複ファイルが $unresolvedCount 件あります"
+                    } else {
+                        "重複ファイル $pendingDuplicateCount 件の解決を適用してください"
+                    },
                     smallIcon = android.R.drawable.stat_notify_error,
                 ),
                 contentIntent = operationNotificationIntentFactory.createPasteDetailIntent(jobId),

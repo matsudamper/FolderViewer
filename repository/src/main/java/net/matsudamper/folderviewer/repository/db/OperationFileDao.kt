@@ -78,6 +78,12 @@ internal interface OperationFileDao {
     @Query("SELECT COUNT(*) FROM operation_files WHERE operationId = :operationId AND resolution = 'PENDING'")
     suspend fun countUnresolvedDuplicates(operationId: Long): Int
 
+    @Query(
+        "SELECT COUNT(*) FROM operation_files WHERE operationId = :operationId " +
+            "AND status IN ('PENDING', 'RUNNING') AND resolution IS NOT NULL",
+    )
+    suspend fun countPendingDuplicates(operationId: Long): Int
+
     @Query("SELECT COUNT(*) FROM operation_files WHERE operationId = :operationId AND status = 'FAILED'")
     suspend fun countFailed(operationId: Long): Int
 
