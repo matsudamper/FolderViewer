@@ -75,7 +75,7 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
         override fun onSortConfigChanged(config: FileBrowserUiState.FileSortConfig) {
             viewModelStateFlow.update { it.copy(sortConfig = config) }
             viewModelScope.launch {
-                preferencesRepository.saveFileBrowserSortConfig(
+                preferencesRepository.saveExternalPickerSortConfig(
                     PreferencesRepository.FileSortConfig(
                         key = when (config.key) {
                             FileBrowserUiState.FileSortKey.Name -> PreferencesRepository.FileSortKey.Name
@@ -91,7 +91,7 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
         override fun onDisplayModeChanged(config: UiDisplayConfig) {
             viewModelStateFlow.update { it.copy(displayConfig = config) }
             viewModelScope.launch {
-                preferencesRepository.saveFileBrowserDisplayMode(
+                preferencesRepository.saveExternalPickerDisplayMode(
                     when (config.displayMode) {
                         UiDisplayConfig.DisplayMode.List -> PreferencesRepository.DisplayMode.List
                         UiDisplayConfig.DisplayMode.Grid -> PreferencesRepository.DisplayMode.Grid
@@ -251,7 +251,7 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
     }
 
     private suspend fun loadSortConfig() {
-        preferencesRepository.fileBrowserSortConfig.collect { config ->
+        preferencesRepository.externalPickerSortConfig.collect { config ->
             viewModelStateFlow.update {
                 it.copy(
                     sortConfig = FileBrowserUiState.FileSortConfig(
@@ -268,7 +268,7 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
     }
 
     private suspend fun loadDisplayMode() {
-        preferencesRepository.fileBrowserDisplayMode.collect { displayMode ->
+        preferencesRepository.externalPickerDisplayMode.collect { displayMode ->
             viewModelStateFlow.update {
                 it.copy(
                     displayConfig = UiDisplayConfig(

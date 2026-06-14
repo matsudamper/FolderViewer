@@ -15,6 +15,7 @@ import jakarta.inject.Inject
 import jakarta.inject.Singleton
 import net.matsudamper.folderviewer.repository.proto.BrowserDisplayMode
 import net.matsudamper.folderviewer.repository.proto.BrowserPreferencesProto
+import net.matsudamper.folderviewer.repository.proto.ExternalPickerDisplayConfig
 import net.matsudamper.folderviewer.repository.proto.FileBrowserDisplayConfig
 import net.matsudamper.folderviewer.repository.proto.FolderBrowserDisplayConfig
 import net.matsudamper.folderviewer.repository.proto.SortConfigProto
@@ -53,6 +54,16 @@ class PreferencesRepository @Inject constructor(
     val fileBrowserDisplayMode: Flow<DisplayMode> = context.browserPreferencesDataStore.data
         .map { proto ->
             proto.fileBrowserDisplayConfig.displayMode.toDisplayMode()
+        }
+
+    val externalPickerSortConfig: Flow<FileSortConfig> = context.browserPreferencesDataStore.data
+        .map { proto ->
+            proto.externalPickerDisplayConfig.sortConfig.toDomain()
+        }
+
+    val externalPickerDisplayMode: Flow<DisplayMode> = context.browserPreferencesDataStore.data
+        .map { proto ->
+            proto.externalPickerDisplayConfig.displayMode.toDisplayMode()
         }
 
     suspend fun saveFolderBrowserFolderSortConfig(config: FileSortConfig) {
@@ -108,6 +119,30 @@ class PreferencesRepository @Inject constructor(
             currentPrefs.toBuilder()
                 .setFileBrowserDisplayConfig(
                     currentPrefs.fileBrowserDisplayConfig.toBuilder()
+                        .setDisplayMode(mode.toProto())
+                        .build(),
+                )
+                .build()
+        }
+    }
+
+    suspend fun saveExternalPickerSortConfig(config: FileSortConfig) {
+        context.browserPreferencesDataStore.updateData { currentPrefs ->
+            currentPrefs.toBuilder()
+                .setExternalPickerDisplayConfig(
+                    currentPrefs.externalPickerDisplayConfig.toBuilder()
+                        .setSortConfig(config.toProto())
+                        .build(),
+                )
+                .build()
+        }
+    }
+
+    suspend fun saveExternalPickerDisplayMode(mode: DisplayMode) {
+        context.browserPreferencesDataStore.updateData { currentPrefs ->
+            currentPrefs.toBuilder()
+                .setExternalPickerDisplayConfig(
+                    currentPrefs.externalPickerDisplayConfig.toBuilder()
                         .setDisplayMode(mode.toProto())
                         .build(),
                 )
@@ -193,6 +228,17 @@ internal object BrowserPreferencesSerializer : Serializer<BrowserPreferencesProt
         )
         .setFileBrowserDisplayConfig(
             FileBrowserDisplayConfig.newBuilder()
+                .setSortConfig(
+                    SortConfigProto.newBuilder()
+                        .setKey(SortConfigProto.SortKey.NAME)
+                        .setIsAscending(true)
+                        .build(),
+                )
+                .setDisplayMode(BrowserDisplayMode.LIST)
+                .build(),
+        )
+        .setExternalPickerDisplayConfig(
+            ExternalPickerDisplayConfig.newBuilder()
                 .setSortConfig(
                     SortConfigProto.newBuilder()
                         .setKey(SortConfigProto.SortKey.NAME)

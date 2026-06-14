@@ -6,6 +6,12 @@ option java_multiple_files = true;
 message BrowserPreferencesProto {
   FolderBrowserDisplayConfig folder_browser_display_config = 1;
   FileBrowserDisplayConfig file_browser_display_config = 2;
+  ExternalPickerDisplayConfig external_picker_display_config = 3;
+}
+
+message ExternalPickerDisplayConfig {
+  SortConfigProto sort_config = 1;
+  BrowserDisplayMode display_mode = 2;
 }
 
 message FolderBrowserDisplayConfig {
