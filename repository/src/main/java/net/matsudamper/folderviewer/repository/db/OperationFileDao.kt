@@ -86,7 +86,8 @@ internal interface OperationFileDao {
 
     @Query(
         "SELECT COUNT(*) FROM operation_files WHERE operationId = :operationId " +
-            "AND status IN ('PENDING', 'RUNNING') AND resolution IS NOT NULL",
+            "AND status IN ('PENDING', 'RUNNING') AND resolution IS NOT NULL " +
+            "AND destinationFileId IS NOT NULL",
     )
     suspend fun countPendingDuplicates(operationId: Long): Int
 
