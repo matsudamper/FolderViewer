@@ -50,6 +50,9 @@ subprojects {
             showStackTraces = true
         }
     }
+    plugins.withType<org.jetbrains.kotlin.gradle.plugin.KotlinBasePluginWrapper> {
+        the<org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension>().jvmToolchain(24)
+    }
     tasks.withType<KotlinJvmCompile> {
         compilerOptions {
             allWarningsAsErrors.set(true)
