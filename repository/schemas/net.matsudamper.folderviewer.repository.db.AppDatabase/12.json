@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 11,
-    "identityHash": "e5a37f7cd78b31de84d29d5f7eba7300",
+    "version": 12,
+    "identityHash": "dee02af04cdd6acc67ab62b93c5ae7e7",
     "entities": [
       {
         "tableName": "operations",
@@ -142,7 +142,7 @@
       },
       {
         "tableName": "paste_operations",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`operationId` INTEGER NOT NULL, `mode` TEXT NOT NULL, `destinationFileObjectId` TEXT NOT NULL, `destinationDisplayPath` TEXT NOT NULL, PRIMARY KEY(`operationId`), FOREIGN KEY(`operationId`) REFERENCES `operations`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`operationId` INTEGER NOT NULL, `mode` TEXT NOT NULL, `destinationFileObjectId` TEXT NOT NULL, `destinationDisplayPath` TEXT NOT NULL, `sourceDisplayPath` TEXT NOT NULL, PRIMARY KEY(`operationId`), FOREIGN KEY(`operationId`) REFERENCES `operations`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "operationId",
@@ -165,6 +165,12 @@
           {
             "fieldPath": "destinationDisplayPath",
             "columnName": "destinationDisplayPath",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceDisplayPath",
+            "columnName": "sourceDisplayPath",
             "affinity": "TEXT",
             "notNull": true
           }
@@ -337,7 +343,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e5a37f7cd78b31de84d29d5f7eba7300')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'dee02af04cdd6acc67ab62b93c5ae7e7')"
     ]
   }
 }

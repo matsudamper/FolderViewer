@@ -10,7 +10,7 @@ import androidx.room.RoomDatabase
         PasteOperationEntity::class,
         OperationFileEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = true,
 )
 internal abstract class AppDatabase : RoomDatabase() {

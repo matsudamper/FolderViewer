@@ -21,10 +21,15 @@ internal val Migration10To11 = object : Migration(10, 11) {
         db.execSQL(
             "ALTER TABLE `operations` ADD COLUMN `pauseRequested` INTEGER NOT NULL DEFAULT 0",
         )
+    }
+}
+
+internal val Migration11To12 = object : Migration(11, 12) {
+    override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL(
             "ALTER TABLE `paste_operations` ADD COLUMN `sourceDisplayPath` TEXT NOT NULL DEFAULT ''",
         )
     }
 }
 
-internal val AppDatabaseMigrations = arrayOf(Migration9To10, Migration10To11)
+internal val AppDatabaseMigrations = arrayOf(Migration9To10, Migration10To11, Migration11To12)
