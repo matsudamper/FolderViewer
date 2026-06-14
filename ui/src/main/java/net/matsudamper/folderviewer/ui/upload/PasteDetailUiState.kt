@@ -10,8 +10,9 @@ data class PasteDetailUiState(
     val errorMessage: String?,
     val errorCause: String?,
     val duplicateFiles: List<DuplicateFileItem>,
-    val completedFiles: List<CompletedFileItem>,
-    val failedFiles: List<FailedFileItem> = emptyList(),
+    val files: List<OperationFileRow>,
+    val fileFilter: OperationFileFilter,
+    val canRetry: Boolean,
     val canApply: Boolean,
     val progress: Float?,
     val fileCountText: String?,
@@ -58,23 +59,11 @@ data class PasteDetailUiState(
         OVERWRITE_WITH_SOURCE,
     }
 
-    data class CompletedFileItem(
-        val fileName: String,
-        val path: String,
-        val sizeText: String,
-        val resolution: Resolution,
-    )
-
-    data class FailedFileItem(
-        val fileName: String,
-        val path: String,
-        val errorMessage: String,
-    )
-
     @Immutable
     interface Callbacks {
         fun onBackClick()
         fun onApplyResolutions()
+        fun onRetryClick()
         fun onPauseClick()
         fun onResumeClick()
         fun onCancelClick()

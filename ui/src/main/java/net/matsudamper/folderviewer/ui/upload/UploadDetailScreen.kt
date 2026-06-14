@@ -242,6 +242,17 @@ fun UploadDetailScreen(uiState: UploadDetailUiState) {
                 }
             }
 
+            Text(
+                text = stringResource(R.string.operation_file_list_section),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            OperationFileListColumn(
+                modifier = Modifier.fillMaxWidth(),
+                files = uiState.files,
+                filter = uiState.fileFilter,
+            )
+
             Button(
                 onClick = { uiState.callbacks.onNavigateToDirectoryClick() },
                 modifier = Modifier.fillMaxWidth(),
@@ -258,6 +269,34 @@ private val previewCallbacks = object : UploadDetailUiState.Callbacks {
     override fun onNavigateToDirectoryClick() = Unit
 }
 
+private val previewUploadFileFilter = OperationFileFilter(
+    showCompleted = true,
+    showPending = true,
+    showFailed = true,
+    onToggleCompleted = {},
+    onTogglePending = {},
+    onToggleFailed = {},
+)
+
+private val previewUploadFiles = listOf(
+    OperationFileRow(
+        key = "1",
+        fileName = "photo1.jpg",
+        sourcePath = null,
+        destinationPath = "/storage/smb/backup/photo1.jpg",
+        status = OperationFileStatus.COMPLETED,
+        errorMessage = null,
+    ),
+    OperationFileRow(
+        key = "2",
+        fileName = "photo2.jpg",
+        sourcePath = null,
+        destinationPath = "/storage/smb/backup/photo2.jpg",
+        status = OperationFileStatus.FAILED,
+        errorMessage = "Connection timed out",
+    ),
+)
+
 @Preview(showBackground = true)
 @Composable
 private fun UploadDetailScreenUploadingPreview() {
@@ -273,6 +312,8 @@ private fun UploadDetailScreenUploadingPreview() {
             progressText = null,
             progress = null,
             currentUploadFile = null,
+            files = previewUploadFiles,
+            fileFilter = previewUploadFileFilter,
             callbacks = previewCallbacks,
         ),
     )
@@ -297,6 +338,8 @@ private fun UploadDetailScreenFolderUploadingPreview() {
                 progressText = "25.0MB/75.0MB",
                 progress = 0.33f,
             ),
+            files = previewUploadFiles,
+            fileFilter = previewUploadFileFilter,
             callbacks = previewCallbacks,
         ),
     )
@@ -317,6 +360,8 @@ private fun UploadDetailScreenErrorPreview() {
             progressText = null,
             progress = null,
             currentUploadFile = null,
+            files = previewUploadFiles,
+            fileFilter = previewUploadFileFilter,
             callbacks = previewCallbacks,
         ),
     )
@@ -337,6 +382,8 @@ private fun UploadDetailScreenSuccessPreview() {
             progressText = null,
             progress = null,
             currentUploadFile = null,
+            files = previewUploadFiles,
+            fileFilter = previewUploadFileFilter,
             callbacks = previewCallbacks,
         ),
     )

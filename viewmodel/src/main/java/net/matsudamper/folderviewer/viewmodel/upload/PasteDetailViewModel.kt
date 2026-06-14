@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
@@ -23,6 +24,9 @@ import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.repository.ClipboardRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.PasteJobRepository
+import net.matsudamper.folderviewer.ui.upload.OperationFileFilter
+import net.matsudamper.folderviewer.ui.upload.OperationFileRow
+import net.matsudamper.folderviewer.ui.upload.OperationFileStatus
 import net.matsudamper.folderviewer.ui.upload.PasteDetailUiState
 import net.matsudamper.folderviewer.viewmodel.util.FileUtil
 import net.matsudamper.folderviewer.viewmodel.worker.FilePasteWorker
@@ -40,6 +44,8 @@ class PasteDetailViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<PasteDetailUiState?>(null)
     val uiState: StateFlow<PasteDetailUiState?> = _uiState.asStateFlow()
 
+    private val filterState = MutableStateFlow(FileFilterState())
+
     private var initJob: Job? = null
 
     fun init(jobId: Long) {
@@ -49,17 +55,17 @@ class PasteDetailViewModel @Inject constructor(
             combine(
                 operationRepository.observeProgressById(jobId),
                 pasteJobRepository.observeDuplicateFiles(jobId),
-                pasteJobRepository.observeCompletedFiles(jobId),
-                pasteJobRepository.observeFailedFiles(jobId),
-            ) { progress, duplicates, completed, failedFiles ->
+                pasteJobRepository.observeFiles(jobId),
+                filterState,
+            ) { progress, duplicates, allFiles, filter ->
                 if (progress == null) return@combine null
                 createUiState(
                     jobId = jobId,
                     meta = meta,
                     progress = progress,
                     duplicates = duplicates,
-                    completed = completed,
-                    failedFiles = failedFiles,
+                    allFiles = allFiles,
+                    filter = filter,
                 )
             }.collect { state ->
                 _uiState.value = state
@@ -72,8 +78,8 @@ class PasteDetailViewModel @Inject constructor(
         meta: PasteJobRepository.PasteJobMeta,
         progress: OperationRepository.OperationProgress,
         duplicates: List<PasteJobRepository.PasteFile>,
-        completed: List<PasteJobRepository.PasteFile>,
-        failedFiles: List<PasteJobRepository.PasteFile>,
+        allFiles: List<PasteJobRepository.PasteFile>,
+        filter: FileFilterState,
     ): PasteDetailUiState {
         val modeText = when (meta.mode) {
             ClipboardRepository.ClipboardMode.Copy -> "コピー"
@@ -106,29 +112,18 @@ class PasteDetailViewModel @Inject constructor(
             createDuplicateItem(meta = meta, file = file)
         }
 
-        val completedItems = completed.map { file ->
-            val uiResolution = when (file.resolution) {
-                PasteJobRepository.DuplicateResolution.KEEP_DESTINATION ->
-                    PasteDetailUiState.Resolution.KEEP_DESTINATION
-                PasteJobRepository.DuplicateResolution.OVERWRITE_WITH_SOURCE ->
-                    PasteDetailUiState.Resolution.OVERWRITE_WITH_SOURCE
-                else -> PasteDetailUiState.Resolution.NONE
+        val fileRows = allFiles
+            .filterNot { it.isDirectory }
+            .map { file ->
+                OperationFileRow(
+                    key = file.id.toString(),
+                    fileName = file.fileName,
+                    sourcePath = sourcePath(meta, file),
+                    destinationPath = destinationPath(meta, file),
+                    status = file.status.toFileStatus(),
+                    errorMessage = file.errorMessage,
+                )
             }
-            PasteDetailUiState.CompletedFileItem(
-                fileName = file.fileName,
-                path = destinationPath(meta, file),
-                sizeText = formatFileSize(file.fileSize),
-                resolution = uiResolution,
-            )
-        }
-
-        val failedItems = failedFiles.map { file ->
-            PasteDetailUiState.FailedFileItem(
-                fileName = file.fileName,
-                path = destinationPath(meta, file),
-                errorMessage = file.errorMessage ?: "",
-            )
-        }
 
         val isRunning = progress.status == OperationRepository.OperationStatus.RUNNING
         val isActive = isRunning || progress.status == OperationRepository.OperationStatus.ENQUEUED
@@ -169,6 +164,10 @@ class PasteDetailViewModel @Inject constructor(
                 applyResolutions(jobId)
             }
 
+            override fun onRetryClick() {
+                retry(jobId)
+            }
+
             override fun onPauseClick() {
                 viewModelScope.launch {
                     operationRepository.requestPause(jobId)
@@ -186,6 +185,8 @@ class PasteDetailViewModel @Inject constructor(
             }
         }
 
+        val canRetry = uiStatus == PasteDetailUiState.Status.FAILED && progress.failedFiles > 0
+
         return PasteDetailUiState(
             jobName = "${progress.totalFiles}ファイルを$modeText",
             statusText = statusText,
@@ -193,8 +194,9 @@ class PasteDetailViewModel @Inject constructor(
             errorMessage = progress.errorMessage,
             errorCause = progress.errorCause,
             duplicateFiles = duplicateItems,
-            completedFiles = completedItems,
-            failedFiles = failedItems,
+            files = fileRows,
+            fileFilter = filter.toUiFilter(),
+            canRetry = canRetry,
             canApply = canApply,
             progress = overallProgress,
             fileCountText = fileCountText,
@@ -261,6 +263,70 @@ class PasteDetailViewModel @Inject constructor(
             "${meta.destinationDisplayPath}/${file.relativePath}/${file.fileName}"
         }
     }
+
+    private fun sourcePath(
+        meta: PasteJobRepository.PasteJobMeta,
+        file: PasteJobRepository.PasteFile,
+    ): String {
+        return if (file.relativePath.isEmpty()) {
+            "${meta.sourceDisplayPath}/${file.fileName}"
+        } else {
+            "${meta.sourceDisplayPath}/${file.relativePath}/${file.fileName}"
+        }
+    }
+
+    private fun retry(jobId: Long) {
+        viewModelScope.launch {
+            pasteJobRepository.retryJob(jobId)
+
+            val inputData = Data.Builder()
+                .putLong(FilePasteWorker.KEY_PASTE_JOB_ID, jobId)
+                .build()
+            val workRequest = OneTimeWorkRequestBuilder<FilePasteWorker>()
+                .setInputData(inputData)
+                .addTag(FilePasteWorker.TAG_PASTE)
+                .build()
+
+            pasteJobRepository.updateStatus(
+                jobId = jobId,
+                status = OperationRepository.OperationStatus.ENQUEUED,
+                workerId = workRequest.id.toString(),
+            )
+
+            WorkManager.getInstance(getApplication()).enqueueUniqueWork(
+                "paste_job_$jobId",
+                ExistingWorkPolicy.KEEP,
+                workRequest,
+            )
+        }
+    }
+
+    private fun OperationRepository.FileStatus.toFileStatus(): OperationFileStatus {
+        return when (this) {
+            OperationRepository.FileStatus.COMPLETED -> OperationFileStatus.COMPLETED
+            OperationRepository.FileStatus.FAILED -> OperationFileStatus.FAILED
+            OperationRepository.FileStatus.PENDING,
+            OperationRepository.FileStatus.RUNNING,
+            -> OperationFileStatus.PENDING
+        }
+    }
+
+    private fun FileFilterState.toUiFilter(): OperationFileFilter {
+        return OperationFileFilter(
+            showCompleted = showCompleted,
+            showPending = showPending,
+            showFailed = showFailed,
+            onToggleCompleted = { filterState.update { it.copy(showCompleted = !it.showCompleted) } },
+            onTogglePending = { filterState.update { it.copy(showPending = !it.showPending) } },
+            onToggleFailed = { filterState.update { it.copy(showFailed = !it.showFailed) } },
+        )
+    }
+
+    private data class FileFilterState(
+        val showCompleted: Boolean = true,
+        val showPending: Boolean = true,
+        val showFailed: Boolean = true,
+    )
 
     private fun resolveFile(fileId: Long, resolution: PasteJobRepository.DuplicateResolution) {
         viewModelScope.launch {

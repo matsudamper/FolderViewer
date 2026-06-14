@@ -23,4 +23,5 @@ internal data class PasteOperationEntity(
     val mode: String,
     val destinationFileObjectId: String,
     val destinationDisplayPath: String,
+    val sourceDisplayPath: String = "",
 )

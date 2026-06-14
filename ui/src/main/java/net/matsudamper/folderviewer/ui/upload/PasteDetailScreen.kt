@@ -82,18 +82,26 @@ public fun PasteDetailScreen(
             )
         },
         bottomBar = {
-            if (uiState.duplicateFiles.isNotEmpty()) {
+            if (uiState.duplicateFiles.isNotEmpty() || uiState.canRetry) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.End,
                 ) {
-                    Button(
-                        onClick = { uiState.callbacks.onApplyResolutions() },
-                        enabled = uiState.canApply,
-                    ) {
-                        Text(stringResource(R.string.paste_detail_apply_resolutions))
+                    if (uiState.canRetry) {
+                        Button(onClick = { uiState.callbacks.onRetryClick() }) {
+                            Text(stringResource(R.string.operation_detail_retry))
+                        }
+                    }
+                    if (uiState.duplicateFiles.isNotEmpty()) {
+                        Button(
+                            onClick = { uiState.callbacks.onApplyResolutions() },
+                            enabled = uiState.canApply,
+                            modifier = Modifier.padding(start = 8.dp),
+                        ) {
+                            Text(stringResource(R.string.paste_detail_apply_resolutions))
+                        }
                     }
                 }
             }
@@ -189,38 +197,13 @@ public fun PasteDetailScreen(
                 }
             }
 
-            if (uiState.failedFiles.isNotEmpty()) {
+            if (uiState.duplicateFiles.isNotEmpty()) {
                 item {
                     SectionHeader(
-                        text = stringResource(R.string.paste_detail_failed_files_section) +
-                                " (${uiState.failedFiles.size})",
+                        text = stringResource(R.string.paste_detail_duplicate_files_section) +
+                                " (${uiState.duplicateFiles.size})",
                     )
                 }
-                items(
-                    items = uiState.failedFiles,
-                    key = { it.path },
-                ) { item ->
-                    PasteFailedFileRow(item = item)
-                }
-            }
-
-            item {
-                SectionHeader(
-                    text = stringResource(R.string.paste_detail_duplicate_files_section) +
-                            " (${uiState.duplicateFiles.size})",
-                )
-            }
-
-            if (uiState.duplicateFiles.isEmpty()) {
-                item {
-                    Text(
-                        text = stringResource(R.string.paste_detail_no_duplicates),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 8.dp),
-                    )
-                }
-            } else {
                 items(
                     items = uiState.duplicateFiles,
                     key = { it.fileId },
@@ -231,18 +214,11 @@ public fun PasteDetailScreen(
 
             item {
                 SectionHeader(
-                    text = stringResource(R.string.paste_detail_completed_files_section) +
-                            " (${uiState.completedFiles.size})",
+                    text = stringResource(R.string.operation_file_list_section),
                     modifier = Modifier.padding(top = 8.dp),
                 )
             }
-
-            items(
-                items = uiState.completedFiles,
-                key = { it.path },
-            ) { item ->
-                CompletedFileRow(item = item)
-            }
+            operationFileList(files = uiState.files, filter = uiState.fileFilter)
         }
     }
 }
@@ -369,42 +345,6 @@ private fun ProgressCard(
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun PasteFailedFileRow(
-    item: PasteDetailUiState.FailedFileItem,
-    modifier: Modifier = Modifier,
-) {
-    androidx.compose.material3.Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-        ),
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(
-                text = item.fileName,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                maxLines = 1,
-            )
-            Text(
-                text = item.path,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                maxLines = 1,
-            )
-            Text(
-                text = item.errorMessage,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-            )
         }
     }
 }
@@ -567,6 +507,7 @@ private fun FileInfoColumn(
 private val previewPasteCallbacks = object : PasteDetailUiState.Callbacks {
     override fun onBackClick() = Unit
     override fun onApplyResolutions() = Unit
+    override fun onRetryClick() = Unit
     override fun onPauseClick() = Unit
     override fun onResumeClick() = Unit
     override fun onCancelClick() = Unit
@@ -583,7 +524,9 @@ private fun PasteDetailScreenRunningPreview() {
             errorMessage = null,
             errorCause = null,
             duplicateFiles = emptyList(),
-            completedFiles = emptyList(),
+            files = emptyList(),
+            fileFilter = previewPasteFileFilter,
+            canRetry = false,
             canApply = false,
             progress = 0.4f,
             fileCountText = "4/10",
@@ -610,7 +553,9 @@ private fun PasteDetailScreenPausedPreview() {
             errorMessage = null,
             errorCause = null,
             duplicateFiles = emptyList(),
-            completedFiles = emptyList(),
+            files = emptyList(),
+            fileFilter = previewPasteFileFilter,
+            canRetry = false,
             canApply = false,
             progress = null,
             fileCountText = null,
@@ -625,6 +570,15 @@ private fun PasteDetailScreenPausedPreview() {
         ),
     )
 }
+
+private val previewPasteFileFilter = OperationFileFilter(
+    showCompleted = true,
+    showPending = true,
+    showFailed = true,
+    onToggleCompleted = {},
+    onTogglePending = {},
+    onToggleFailed = {},
+)
 
 @Preview(showBackground = true)
 @Composable
@@ -668,7 +622,9 @@ private fun PasteDetailScreenDuplicatePreview() {
                     onOverwriteWithSource = {},
                 ),
             ),
-            completedFiles = emptyList(),
+            files = emptyList(),
+            fileFilter = previewPasteFileFilter,
+            canRetry = false,
             canApply = false,
             progress = null,
             fileCountText = null,
@@ -707,7 +663,26 @@ private fun PasteDetailScreenCompletedWithPendingResolutionPreview() {
                     onOverwriteWithSource = {},
                 ),
             ),
-            completedFiles = emptyList(),
+            files = listOf(
+                OperationFileRow(
+                    key = "1",
+                    fileName = "photo.jpg",
+                    sourcePath = "/sdcard/DCIM/photo.jpg",
+                    destinationPath = "/sdcard/Photos/photo.jpg",
+                    status = OperationFileStatus.COMPLETED,
+                    errorMessage = null,
+                ),
+                OperationFileRow(
+                    key = "2",
+                    fileName = "video.mp4",
+                    sourcePath = "/sdcard/DCIM/video.mp4",
+                    destinationPath = "/sdcard/Photos/video.mp4",
+                    status = OperationFileStatus.FAILED,
+                    errorMessage = "ネットワークエラー",
+                ),
+            ),
+            fileFilter = previewPasteFileFilter,
+            canRetry = true,
             canApply = true,
             progress = null,
             fileCountText = null,
@@ -763,56 +738,6 @@ private fun FilePreview(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-    }
-}
-
-@Composable
-private fun CompletedFileRow(
-    item: PasteDetailUiState.CompletedFileItem,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Icon(
-            painter = painterResource(id = R.drawable.ic_file),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = item.fileName,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-            )
-            Text(
-                text = "${item.path} · ${item.sizeText}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-            )
-            val resolutionText = when (item.resolution) {
-                PasteDetailUiState.Resolution.KEEP_DESTINATION -> stringResource(R.string.paste_detail_resolution_keep)
-                PasteDetailUiState.Resolution.OVERWRITE_WITH_SOURCE -> stringResource(R.string.paste_detail_resolution_overwrite)
-                PasteDetailUiState.Resolution.NONE -> null
-            }
-            if (resolutionText != null) {
-                Text(
-                    text = resolutionText,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-        }
-        Icon(
-            painter = painterResource(id = R.drawable.ic_check),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-        )
     }
 }
 

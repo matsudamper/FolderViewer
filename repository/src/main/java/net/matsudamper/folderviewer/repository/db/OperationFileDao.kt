@@ -81,6 +81,7 @@ internal interface OperationFileDao {
     )
     suspend fun markRunningPartialAsOverwrite(operationId: Long)
 
+
     @Query("SELECT COUNT(*) FROM operation_files WHERE operationId = :operationId AND resolution = 'PENDING'")
     suspend fun countUnresolvedDuplicates(operationId: Long): Int
 

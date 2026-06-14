@@ -11,8 +11,9 @@ data class DeleteDetailUiState(
     val failedFiles: Int,
     val errorMessage: String?,
     val errorCause: String?,
-    val failedFileItems: List<FailedFileItem>,
-    val completedFileItems: List<CompletedFileItem>,
+    val files: List<OperationFileRow>,
+    val fileFilter: OperationFileFilter,
+    val canRetry: Boolean,
     val callbacks: Callbacks,
 ) {
     enum class Status {
@@ -21,19 +22,9 @@ data class DeleteDetailUiState(
         FAILED,
     }
 
-    data class FailedFileItem(
-        val fileName: String,
-        val path: String,
-        val errorMessage: String,
-    )
-
-    data class CompletedFileItem(
-        val fileName: String,
-        val path: String,
-    )
-
     @Immutable
     interface Callbacks {
         fun onBackClick()
+        fun onRetryClick()
     }
 }

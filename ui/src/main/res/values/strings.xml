@@ -95,6 +95,17 @@
     <string name="delete_detail_failed_files">失敗ファイル数</string>
     <string name="delete_detail_failed_section">失敗ファイル</string>
     <string name="delete_detail_completed_section">削除済みファイル</string>
+    <string name="operation_file_list_section">ファイル一覧</string>
+    <string name="operation_file_list_empty">表示する対象がありません</string>
+    <string name="operation_file_filter_completed">完了 %1$d</string>
+    <string name="operation_file_filter_pending">未完了 %1$d</string>
+    <string name="operation_file_filter_failed">エラー %1$d</string>
+    <string name="operation_file_status_completed">完了</string>
+    <string name="operation_file_status_pending">未完了</string>
+    <string name="operation_file_status_failed">エラー</string>
+    <string name="operation_file_source_format">元: %1$s</string>
+    <string name="operation_file_destination_format">先: %1$s</string>
+    <string name="operation_detail_retry">続きから再開</string>
     <string name="delete_state_running">削除中</string>
     <string name="open_folder_with_external_app">外部アプリで開く</string>
     <string name="external_picker_title">FolderViewer</string>

@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import net.matsudamper.folderviewer.ui.R
 import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
@@ -60,6 +61,20 @@ public fun DeleteDetailScreen(
                     }
                 },
             )
+        },
+        bottomBar = {
+            if (uiState.canRetry) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    Button(onClick = { uiState.callbacks.onRetryClick() }) {
+                        Text(stringResource(R.string.operation_detail_retry))
+                    }
+                }
+            }
         },
     ) { innerPadding ->
         LazyColumn(
@@ -146,115 +161,75 @@ public fun DeleteDetailScreen(
                 }
             }
 
-            if (uiState.failedFileItems.isNotEmpty()) {
-                item {
-                    Text(
-                        text = stringResource(R.string.delete_detail_failed_section) +
-                            " (${uiState.failedFileItems.size})",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(vertical = 4.dp),
-                    )
-                }
-                items(
-                    items = uiState.failedFileItems,
-                    key = { it.path },
-                ) { item ->
-                    FailedFileRow(item = item)
-                }
+            item {
+                Text(
+                    text = stringResource(R.string.operation_file_list_section),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(vertical = 4.dp),
+                )
             }
-
-            if (uiState.completedFileItems.isNotEmpty()) {
-                item {
-                    Text(
-                        text = stringResource(R.string.delete_detail_completed_section) +
-                            " (${uiState.completedFileItems.size})",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(vertical = 4.dp, horizontal = 0.dp),
-                    )
-                }
-                items(
-                    items = uiState.completedFileItems,
-                    key = { it.path },
-                ) { item ->
-                    DeletedFileRow(item = item)
-                }
-            }
+            operationFileList(files = uiState.files, filter = uiState.fileFilter)
         }
     }
 }
 
-@Composable
-private fun FailedFileRow(
-    item: DeleteDetailUiState.FailedFileItem,
-    modifier: Modifier = Modifier,
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer,
-        ),
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(
-                text = item.fileName,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                maxLines = 1,
-            )
-            Text(
-                text = item.path,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                maxLines = 1,
-            )
-            Text(
-                text = item.errorMessage,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-            )
-        }
-    }
+private val previewDeleteCallbacks = object : DeleteDetailUiState.Callbacks {
+    override fun onBackClick() = Unit
+    override fun onRetryClick() = Unit
 }
 
+@Preview(showBackground = true)
 @Composable
-private fun DeletedFileRow(
-    item: DeleteDetailUiState.CompletedFileItem,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Icon(
-            painter = painterResource(id = R.drawable.ic_file),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = item.fileName,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1,
-            )
-            Text(
-                text = item.path,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-            )
-        }
-        Icon(
-            painter = painterResource(id = R.drawable.ic_check),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
+private fun DeleteDetailScreenPreview() {
+    MaterialTheme {
+        DeleteDetailScreen(
+            uiState = DeleteDetailUiState(
+                jobName = "3件を削除",
+                statusText = "失敗",
+                status = DeleteDetailUiState.Status.FAILED,
+                totalFiles = 3,
+                completedFiles = 1,
+                failedFiles = 1,
+                errorMessage = "1 件のファイルが失敗しました",
+                errorCause = null,
+                files = listOf(
+                    OperationFileRow(
+                        key = "1",
+                        fileName = "photo.jpg",
+                        sourcePath = null,
+                        destinationPath = "/sdcard/DCIM/photo.jpg",
+                        status = OperationFileStatus.COMPLETED,
+                        errorMessage = null,
+                    ),
+                    OperationFileRow(
+                        key = "2",
+                        fileName = "document.pdf",
+                        sourcePath = null,
+                        destinationPath = "/sdcard/Downloads/document.pdf",
+                        status = OperationFileStatus.FAILED,
+                        errorMessage = "アクセスできません",
+                    ),
+                    OperationFileRow(
+                        key = "3",
+                        fileName = "movie.mp4",
+                        sourcePath = null,
+                        destinationPath = "/sdcard/Movies/movie.mp4",
+                        status = OperationFileStatus.PENDING,
+                        errorMessage = null,
+                    ),
+                ),
+                fileFilter = OperationFileFilter(
+                    showCompleted = true,
+                    showPending = true,
+                    showFailed = true,
+                    onToggleCompleted = {},
+                    onTogglePending = {},
+                    onToggleFailed = {},
+                ),
+                canRetry = true,
+                callbacks = previewDeleteCallbacks,
+            ),
         )
     }
 }
