@@ -55,10 +55,6 @@ android {
             )
         }
     }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_24
-        targetCompatibility = JavaVersion.VERSION_24
-    }
     buildFeatures {
         compose = true
     }
@@ -69,12 +65,6 @@ android {
             excludes += "META-INF/*.md"
             excludes += "META-INF/*.properties"
         }
-    }
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_24)
     }
 }
 

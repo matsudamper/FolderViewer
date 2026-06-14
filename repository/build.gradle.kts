@@ -15,11 +15,6 @@ android {
         minSdk = 28
     }
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_24
-        targetCompatibility = JavaVersion.VERSION_24
-    }
-
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
@@ -35,12 +30,6 @@ android {
 
 room {
     schemaDirectory("$projectDir/schemas")
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_24)
-    }
 }
 
 dependencies {
