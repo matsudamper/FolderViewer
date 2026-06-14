@@ -37,8 +37,8 @@ import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import coil.size.Size
-import net.engawapg.lib.zoomable.rememberZoomState
-import net.engawapg.lib.zoomable.zoomable
+import me.saket.telephoto.zoomable.rememberZoomableState
+import me.saket.telephoto.zoomable.zoomable
 import net.matsudamper.folderviewer.ui.R
 import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
 
@@ -100,15 +100,15 @@ private fun ImageContent(
     onTap: () -> Unit,
 ) {
     val context = LocalContext.current
-    val zoomState = rememberZoomState()
+    val zoomState = rememberZoomableState()
     var imageState: AsyncImagePainter.State by remember { mutableStateOf(AsyncImagePainter.State.Empty) }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .zoomable(
-                zoomState = zoomState,
-                onTap = { onTap() },
+                state = zoomState,
+                onClick = { onTap() },
             ),
         contentAlignment = Alignment.Center,
     ) {

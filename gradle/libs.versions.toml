@@ -27,7 +27,7 @@ androidxDocumentfile = "1.1.0"
 protobuf = "4.35.1"
 protobufPlugin = "0.10.0"
 coil = "2.7.0"
-zoomable = "2.12.0"
+telephoto = "0.18.0"
 jakartaInject = "2.0.1"
 microsoftGraph = "6.61.0"
 azureIdentity = "1.18.2"
@@ -75,7 +75,7 @@ androidxDocumentfile = { group = "androidx.documentfile", name = "documentfile",
 protobufKotlinLite = { group = "com.google.protobuf", name = "protobuf-kotlin-lite", version.ref = "protobuf" }
 protobufProtoc = { group = "com.google.protobuf", name = "protoc", version.ref = "protobuf" }
 coilCompose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
-zoomable = { group = "net.engawapg.lib", name = "zoomable", version.ref = "zoomable" }
+telephotoZoomable = { group = "me.saket.telephoto", name = "zoomable", version.ref = "telephoto" }
 jakartaInject = { group = "jakarta.inject", name = "jakarta.inject-api", version.ref = "jakartaInject" }
 microsoftGraph = { group = "com.microsoft.graph", name = "microsoft-graph", version.ref = "microsoftGraph" }
 azureIdentity = { group = "com.azure", name = "azure-identity", version.ref = "azureIdentity" }

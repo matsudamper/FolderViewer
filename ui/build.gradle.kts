@@ -62,7 +62,7 @@ dependencies {
     implementation(libs.hiltAndroid)
     ksp(libs.hiltCompiler)
     implementation(libs.coilCompose)
-    implementation(libs.zoomable)
+    implementation(libs.telephotoZoomable)
     debugImplementation(libs.androidxComposeUiTooling)
     debugImplementation(libs.androidxComposeUiTestManifest)
     testImplementation(libs.junit)
