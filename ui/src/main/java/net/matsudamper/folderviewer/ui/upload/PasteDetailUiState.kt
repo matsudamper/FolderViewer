@@ -19,8 +19,15 @@ data class PasteDetailUiState(
     val sizeProgressText: String?,
     val currentFileName: String?,
     val currentFileProgress: Float?,
+    val isPausable: Boolean = false,
+    val isPausePending: Boolean = false,
+    val isResumable: Boolean = false,
+    val isCancelable: Boolean = false,
     val callbacks: Callbacks,
 ) {
+    val hasControls: Boolean
+        get() = isPausable || isPausePending || isResumable || isCancelable
+
     enum class Status {
         ENQUEUED,
         RUNNING,
@@ -57,5 +64,8 @@ data class PasteDetailUiState(
         fun onBackClick()
         fun onApplyResolutions()
         fun onRetryClick()
+        fun onPauseClick()
+        fun onResumeClick()
+        fun onCancelClick()
     }
 }

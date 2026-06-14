@@ -186,7 +186,13 @@ class PasteJobRepository @Inject internal constructor(
     }
 
     suspend fun resetRunningFiles(jobId: Long) {
-        operationFileDao.resetRunningToPending(jobId)
+        database.withTransaction {
+            resetRunningFilesInTransaction(jobId)
+        }
+    }
+
+    suspend fun isPauseRequested(jobId: Long): Boolean {
+        return operationDao.isPauseRequested(jobId)
     }
 
     suspend fun updateStatus(jobId: Long, status: OperationRepository.OperationStatus, workerId: String? = null) {
@@ -195,7 +201,7 @@ class PasteJobRepository @Inject internal constructor(
 
     suspend fun pauseJob(jobId: Long) {
         database.withTransaction {
-            operationFileDao.resetRunningToPending(jobId)
+            resetRunningFilesInTransaction(jobId)
             operationDao.updateStatusAndWorkerId(
                 id = jobId,
                 status = OperationRepository.OperationStatus.PAUSED.name,
@@ -204,9 +210,29 @@ class PasteJobRepository @Inject internal constructor(
         }
     }
 
+    suspend fun cancelJob(jobId: Long) {
+        database.withTransaction {
+            resetRunningFilesInTransaction(jobId)
+            operationDao.updateStatusAndWorkerId(
+                id = jobId,
+                status = OperationRepository.OperationStatus.PAUSED.name,
+                workerId = null,
+            )
+        }
+    }
+
+    suspend fun resetFailedFiles(jobId: Long) {
+        operationFileDao.resetFailedToPending(jobId)
+    }
+
+    private suspend fun resetRunningFilesInTransaction(jobId: Long) {
+        operationFileDao.markRunningPartialAsOverwrite(jobId)
+        operationFileDao.resetRunningToPending(jobId)
+    }
+
     suspend fun updateError(jobId: Long, errorMessage: String?, errorCause: String?) {
         database.withTransaction {
-            operationFileDao.resetRunningToPending(jobId)
+            resetRunningFilesInTransaction(jobId)
             operationDao.updateError(
                 id = jobId,
                 status = OperationRepository.OperationStatus.FAILED.name,

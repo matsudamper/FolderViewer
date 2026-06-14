@@ -55,7 +55,9 @@ data class UploadProgressUiState(
             override val progress: Float?,
             override val progressText: String?,
             val isPausable: Boolean,
+            val isPausePending: Boolean,
             val isResumable: Boolean,
+            val isCancelable: Boolean,
             val pasteCallbacks: PasteCallbacks,
         ) : UploadItem
 
@@ -74,6 +76,7 @@ data class UploadProgressUiState(
     interface PasteCallbacks {
         fun onPauseClick()
         fun onResumeClick()
+        fun onCancelClick()
     }
 
     enum class UploadState {

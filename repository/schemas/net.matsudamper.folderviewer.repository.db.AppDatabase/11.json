@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 11,
-    "identityHash": "101b2be2323b100a3bd38d812616a852",
+    "identityHash": "dee02af04cdd6acc67ab62b93c5ae7e7",
     "entities": [
       {
         "tableName": "operations",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `type` TEXT NOT NULL, `workerId` TEXT, `name` TEXT NOT NULL, `description` TEXT NOT NULL, `status` TEXT NOT NULL, `createdAt` INTEGER NOT NULL, `errorMessage` TEXT, `errorCause` TEXT)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `type` TEXT NOT NULL, `workerId` TEXT, `name` TEXT NOT NULL, `description` TEXT NOT NULL, `status` TEXT NOT NULL, `pauseRequested` INTEGER NOT NULL DEFAULT 0, `createdAt` INTEGER NOT NULL, `errorMessage` TEXT, `errorCause` TEXT)",
         "fields": [
           {
             "fieldPath": "id",
@@ -42,6 +42,13 @@
             "columnName": "status",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "pauseRequested",
+            "columnName": "pauseRequested",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
           },
           {
             "fieldPath": "createdAt",
@@ -336,7 +343,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '101b2be2323b100a3bd38d812616a852')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'dee02af04cdd6acc67ab62b93c5ae7e7')"
     ]
   }
 }
