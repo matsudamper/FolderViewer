@@ -10,13 +10,16 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -106,6 +109,15 @@ public fun PasteDetailScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            if (uiState.hasControls) {
+                item {
+                    PasteControlRow(
+                        uiState = uiState,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+
             if (uiState.status == Status.ENQUEUED || uiState.status == Status.RUNNING) {
                 item {
                     ProgressCard(
@@ -230,6 +242,58 @@ public fun PasteDetailScreen(
                 key = { it.path },
             ) { item ->
                 CompletedFileRow(item = item)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun PasteControlRow(
+    uiState: PasteDetailUiState,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (uiState.isPausable) {
+            IconButton(onClick = { uiState.callbacks.onPauseClick() }) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_pause),
+                    contentDescription = stringResource(R.string.paste_pause),
+                )
+            }
+        }
+        if (uiState.isPausePending) {
+            Box(contentAlignment = Alignment.Center) {
+                CircularWavyProgressIndicator(modifier = Modifier.size(40.dp))
+                IconButton(
+                    onClick = {},
+                    enabled = false,
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_pause),
+                        contentDescription = stringResource(R.string.paste_pause),
+                    )
+                }
+            }
+        }
+        if (uiState.isResumable) {
+            IconButton(onClick = { uiState.callbacks.onResumeClick() }) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_play),
+                    contentDescription = stringResource(R.string.paste_resume),
+                )
+            }
+        }
+        if (uiState.isCancelable) {
+            IconButton(onClick = { uiState.callbacks.onCancelClick() }) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_close),
+                    contentDescription = stringResource(R.string.paste_cancel),
+                )
             }
         }
     }
@@ -503,6 +567,63 @@ private fun FileInfoColumn(
 private val previewPasteCallbacks = object : PasteDetailUiState.Callbacks {
     override fun onBackClick() = Unit
     override fun onApplyResolutions() = Unit
+    override fun onPauseClick() = Unit
+    override fun onResumeClick() = Unit
+    override fun onCancelClick() = Unit
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun PasteDetailScreenRunningPreview() {
+    PasteDetailScreen(
+        uiState = PasteDetailUiState(
+            jobName = "10ファイルをコピー",
+            statusText = "実行中",
+            status = Status.RUNNING,
+            errorMessage = null,
+            errorCause = null,
+            duplicateFiles = emptyList(),
+            completedFiles = emptyList(),
+            canApply = false,
+            progress = 0.4f,
+            fileCountText = "4/10",
+            sizeProgressText = "40.0MB / 100.0MB",
+            currentFileName = "folder/file.txt",
+            currentFileProgress = 0.6f,
+            isPausable = true,
+            isPausePending = false,
+            isResumable = false,
+            isCancelable = true,
+            callbacks = previewPasteCallbacks,
+        ),
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun PasteDetailScreenPausedPreview() {
+    PasteDetailScreen(
+        uiState = PasteDetailUiState(
+            jobName = "10ファイルをコピー",
+            statusText = "一時停止",
+            status = Status.PAUSED,
+            errorMessage = null,
+            errorCause = null,
+            duplicateFiles = emptyList(),
+            completedFiles = emptyList(),
+            canApply = false,
+            progress = null,
+            fileCountText = null,
+            sizeProgressText = null,
+            currentFileName = null,
+            currentFileProgress = null,
+            isPausable = false,
+            isPausePending = false,
+            isResumable = true,
+            isCancelable = false,
+            callbacks = previewPasteCallbacks,
+        ),
+    )
 }
 
 @Preview(showBackground = true)

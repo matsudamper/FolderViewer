@@ -68,12 +68,26 @@ internal interface OperationFileDao {
     )
     suspend fun resetRunningToPending(operationId: Long)
 
+    @Query(
+        "UPDATE operation_files SET status = 'PENDING', transferredBytes = 0, errorMessage = NULL " +
+            "WHERE operationId = :operationId AND status = 'FAILED'",
+    )
+    suspend fun resetFailedToPending(operationId: Long)
+
+    @Query(
+        "UPDATE operation_files SET resolution = 'OVERWRITE_WITH_SOURCE' " +
+            "WHERE operationId = :operationId AND status = 'RUNNING' " +
+            "AND isDirectory = 0 AND transferredBytes > 0 AND resolution IS NULL",
+    )
+    suspend fun markRunningPartialAsOverwrite(operationId: Long)
+
     @Query("SELECT COUNT(*) FROM operation_files WHERE operationId = :operationId AND resolution = 'PENDING'")
     suspend fun countUnresolvedDuplicates(operationId: Long): Int
 
     @Query(
         "SELECT COUNT(*) FROM operation_files WHERE operationId = :operationId " +
-            "AND status IN ('PENDING', 'RUNNING') AND resolution IS NOT NULL",
+            "AND status IN ('PENDING', 'RUNNING') AND resolution IS NOT NULL " +
+            "AND destinationFileId IS NOT NULL",
     )
     suspend fun countPendingDuplicates(operationId: Long): Int
 
@@ -82,6 +96,7 @@ internal interface OperationFileDao {
 
     @Query(
         "SELECT * FROM operation_files WHERE operationId = :operationId " +
+            "AND destinationFileId IS NOT NULL " +
             "AND resolution IS NOT NULL AND status != 'COMPLETED' ORDER BY id ASC",
     )
     fun observeDuplicatesByOperationId(operationId: Long): Flow<List<OperationFileEntity>>
