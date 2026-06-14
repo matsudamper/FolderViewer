@@ -18,11 +18,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemGestures
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -42,7 +44,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
@@ -60,6 +66,7 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import java.io.File
+import kotlin.math.abs
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -145,7 +152,9 @@ private fun AppContent(
     ) {
         val holder = rememberSaveableStateHolder()
         HorizontalPager(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .edgeSwipeGuard(),
             state = pagerState,
         ) { pageIndex ->
             holder.SaveableStateProvider("Root_$pageIndex") {
@@ -188,6 +197,46 @@ private fun AppContent(
             ) {
                 IndicatorItem(isActive = pagerState.currentPage == 0)
                 IndicatorItem(isActive = pagerState.currentPage == 1)
+            }
+        }
+    }
+}
+
+@Composable
+private fun Modifier.edgeSwipeGuard(): Modifier {
+    val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
+    val leftEdgePx = WindowInsets.systemGestures.getLeft(density, layoutDirection)
+    val rightEdgePx = WindowInsets.systemGestures.getRight(density, layoutDirection)
+
+    if (leftEdgePx == 0 && rightEdgePx == 0) return this
+
+    return pointerInput(leftEdgePx, rightEdgePx) {
+        awaitEachGesture {
+            val downEvent = awaitPointerEvent(PointerEventPass.Initial)
+            val down = downEvent.changes.firstOrNull { it.pressed }
+                ?: return@awaitEachGesture
+
+            val isEdge = down.position.x < leftEdgePx ||
+                down.position.x > size.width - rightEdgePx
+            if (!isEdge) return@awaitEachGesture
+
+            var totalDragX = 0f
+            var exceededSlop = false
+
+            while (true) {
+                val event = awaitPointerEvent(PointerEventPass.Initial)
+                if (event.changes.none { it.pressed }) break
+
+                if (!exceededSlop) {
+                    event.changes.forEach { change ->
+                        totalDragX += abs(change.position.x - change.previousPosition.x)
+                    }
+                    exceededSlop = totalDragX > viewConfiguration.touchSlop
+                }
+                if (exceededSlop) {
+                    event.changes.forEach { it.consume() }
+                }
             }
         }
     }
