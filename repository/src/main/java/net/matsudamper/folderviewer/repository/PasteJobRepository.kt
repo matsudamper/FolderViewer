@@ -194,6 +194,21 @@ class PasteJobRepository @Inject internal constructor(
         }
     }
 
+    suspend fun cancelJob(jobId: Long) {
+        database.withTransaction {
+            resetRunningFilesInTransaction(jobId)
+            operationDao.updateStatusAndWorkerId(
+                id = jobId,
+                status = OperationRepository.OperationStatus.PAUSED.name,
+                workerId = null,
+            )
+        }
+    }
+
+    suspend fun resetFailedFiles(jobId: Long) {
+        operationFileDao.resetFailedToPending(jobId)
+    }
+
     private suspend fun resetRunningFilesInTransaction(jobId: Long) {
         operationFileDao.markRunningPartialAsOverwrite(jobId)
         operationFileDao.resetRunningToPending(jobId)

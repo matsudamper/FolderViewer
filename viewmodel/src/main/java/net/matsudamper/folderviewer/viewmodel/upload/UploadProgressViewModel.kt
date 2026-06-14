@@ -20,6 +20,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import net.matsudamper.folderviewer.repository.ClipboardRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
+import net.matsudamper.folderviewer.repository.PasteJobRepository
 import net.matsudamper.folderviewer.ui.upload.UploadProgressUiState
 import net.matsudamper.folderviewer.viewmodel.worker.FilePasteWorker
 
@@ -27,6 +28,7 @@ import net.matsudamper.folderviewer.viewmodel.worker.FilePasteWorker
 class UploadProgressViewModel @Inject constructor(
     application: Application,
     private val operationRepository: OperationRepository,
+    private val pasteJobRepository: PasteJobRepository,
 ) : AndroidViewModel(application) {
 
     private val viewModelEventChannel = Channel<ViewModelEvent>(Channel.UNLIMITED)
@@ -191,7 +193,8 @@ class UploadProgressViewModel @Inject constructor(
             progressText = progressText,
             isPausable = state == UploadProgressUiState.UploadState.RUNNING && !op.pauseRequested,
             isPausePending = state == UploadProgressUiState.UploadState.RUNNING && op.pauseRequested,
-            isResumable = state == UploadProgressUiState.UploadState.PAUSED,
+            isResumable = state == UploadProgressUiState.UploadState.PAUSED ||
+                state == UploadProgressUiState.UploadState.FAILED,
             isCancelable = state == UploadProgressUiState.UploadState.RUNNING,
             pasteCallbacks = object : UploadProgressUiState.PasteCallbacks {
                 override fun onPauseClick() {
@@ -294,6 +297,7 @@ class UploadProgressViewModel @Inject constructor(
 
     private fun cancelPasteJob(op: OperationRepository.OperationProgress) {
         viewModelScope.launch {
+            pasteJobRepository.cancelJob(op.id)
             val workerId = op.workerId ?: return@launch
             val uuid = runCatching { UUID.fromString(workerId) }.getOrNull() ?: return@launch
             WorkManager.getInstance(getApplication()).cancelWorkById(uuid)
@@ -302,6 +306,8 @@ class UploadProgressViewModel @Inject constructor(
 
     private fun resumePasteJob(op: OperationRepository.OperationProgress) {
         viewModelScope.launch {
+            pasteJobRepository.resetFailedFiles(op.id)
+
             val inputData = Data.Builder()
                 .putLong(FilePasteWorker.KEY_PASTE_JOB_ID, op.id)
                 .build()
@@ -319,7 +325,7 @@ class UploadProgressViewModel @Inject constructor(
 
             WorkManager.getInstance(getApplication()).enqueueUniqueWork(
                 "paste_job_${op.id}",
-                ExistingWorkPolicy.KEEP,
+                ExistingWorkPolicy.REPLACE,
                 workRequest,
             )
         }

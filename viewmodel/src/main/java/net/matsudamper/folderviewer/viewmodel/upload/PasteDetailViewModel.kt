@@ -182,7 +182,7 @@ class PasteDetailViewModel @Inject constructor(
             }
 
             override fun onCancelClick() {
-                cancelPasteJob(progress.workerId)
+                cancelPasteJob(jobId, progress.workerId)
             }
         }
 
@@ -203,7 +203,8 @@ class PasteDetailViewModel @Inject constructor(
             currentFileProgress = currentFileProgress,
             isPausable = isRunning && !progress.pauseRequested,
             isPausePending = isRunning && progress.pauseRequested,
-            isResumable = progress.status == OperationRepository.OperationStatus.PAUSED,
+            isResumable = progress.status == OperationRepository.OperationStatus.PAUSED ||
+                progress.status == OperationRepository.OperationStatus.FAILED,
             isCancelable = isRunning,
             callbacks = callbacks,
         )
@@ -276,6 +277,8 @@ class PasteDetailViewModel @Inject constructor(
     }
 
     private suspend fun enqueuePasteWork(jobId: Long) {
+        pasteJobRepository.resetFailedFiles(jobId)
+
         val inputData = Data.Builder()
             .putLong(FilePasteWorker.KEY_PASTE_JOB_ID, jobId)
             .build()
@@ -293,13 +296,14 @@ class PasteDetailViewModel @Inject constructor(
 
         WorkManager.getInstance(getApplication()).enqueueUniqueWork(
             "paste_job_$jobId",
-            ExistingWorkPolicy.KEEP,
+            ExistingWorkPolicy.REPLACE,
             workRequest,
         )
     }
 
-    private fun cancelPasteJob(workerId: String?) {
+    private fun cancelPasteJob(jobId: Long, workerId: String?) {
         viewModelScope.launch {
+            pasteJobRepository.cancelJob(jobId)
             val uuid = runCatching { UUID.fromString(workerId) }.getOrNull() ?: return@launch
             WorkManager.getInstance(getApplication()).cancelWorkById(uuid)
         }

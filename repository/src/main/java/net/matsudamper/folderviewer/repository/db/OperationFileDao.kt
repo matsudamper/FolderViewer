@@ -69,6 +69,12 @@ internal interface OperationFileDao {
     suspend fun resetRunningToPending(operationId: Long)
 
     @Query(
+        "UPDATE operation_files SET status = 'PENDING', transferredBytes = 0, errorMessage = NULL " +
+            "WHERE operationId = :operationId AND status = 'FAILED'",
+    )
+    suspend fun resetFailedToPending(operationId: Long)
+
+    @Query(
         "UPDATE operation_files SET resolution = 'OVERWRITE_WITH_SOURCE' " +
             "WHERE operationId = :operationId AND status = 'RUNNING' " +
             "AND isDirectory = 0 AND transferredBytes > 0 AND resolution IS NULL",
