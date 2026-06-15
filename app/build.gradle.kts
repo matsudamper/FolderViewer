@@ -15,7 +15,7 @@ android {
         minSdk = 28
         targetSdk = 36
         val ciVersion = System.getenv("VERSION")?.toIntOrNull()
-        versionCode = ciVersion ?: 1
+        versionCode = 1
         versionName = if (ciVersion != null) "Release-$ciVersion" else "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
