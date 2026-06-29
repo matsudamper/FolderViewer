@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -145,6 +146,15 @@ private fun AppContent(
     modifier: Modifier = Modifier,
 ) {
     val pagerState = rememberPagerState { 2 }
+    var isPredictiveBackInProgress by remember { mutableStateOf(false) }
+    PredictiveBackHandler(enabled = true) { progress ->
+        isPredictiveBackInProgress = true
+        try {
+            progress.collect { }
+        } finally {
+            isPredictiveBackInProgress = false
+        }
+    }
 
     Box(
         modifier = modifier.fillMaxSize(),
@@ -156,6 +166,7 @@ private fun AppContent(
                 .fillMaxSize()
                 .edgeSwipeGuard(),
             state = pagerState,
+            userScrollEnabled = !isPredictiveBackInProgress,
         ) { pageIndex ->
             holder.SaveableStateProvider("Root_$pageIndex") {
                 val pageViewModelStoreOwner = rememberPageViewModelStoreOwner(pageIndex = pageIndex)
