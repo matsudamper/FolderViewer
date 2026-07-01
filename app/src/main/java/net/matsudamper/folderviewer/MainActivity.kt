@@ -3,7 +3,10 @@ package net.matsudamper.folderviewer
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import androidx.activity.BackEventCompat
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -32,6 +35,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
@@ -57,6 +61,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -145,6 +150,31 @@ private fun AppContent(
     modifier: Modifier = Modifier,
 ) {
     val pagerState = rememberPagerState { 2 }
+    var isPredictiveBackInProgress by remember { mutableStateOf(false) }
+    val backDispatcherOwner = LocalOnBackPressedDispatcherOwner.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(backDispatcherOwner, lifecycleOwner) {
+        if (backDispatcherOwner == null) return@DisposableEffect onDispose { }
+        val dispatcher = backDispatcherOwner.onBackPressedDispatcher
+        val callback = object : OnBackPressedCallback(true) {
+            override fun handleOnBackStarted(backEvent: BackEventCompat) {
+                isPredictiveBackInProgress = true
+            }
+
+            override fun handleOnBackCancelled() {
+                isPredictiveBackInProgress = false
+            }
+
+            override fun handleOnBackPressed() {
+                isPredictiveBackInProgress = false
+                isEnabled = false
+                dispatcher.onBackPressed()
+                isEnabled = true
+            }
+        }
+        dispatcher.addCallback(lifecycleOwner, callback)
+        onDispose { callback.remove() }
+    }
 
     Box(
         modifier = modifier.fillMaxSize(),
@@ -156,6 +186,7 @@ private fun AppContent(
                 .fillMaxSize()
                 .edgeSwipeGuard(),
             state = pagerState,
+            userScrollEnabled = !isPredictiveBackInProgress,
         ) { pageIndex ->
             holder.SaveableStateProvider("Root_$pageIndex") {
                 val pageViewModelStoreOwner = rememberPageViewModelStoreOwner(pageIndex = pageIndex)
