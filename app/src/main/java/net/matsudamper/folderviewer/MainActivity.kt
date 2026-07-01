@@ -3,8 +3,10 @@ package net.matsudamper.folderviewer
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import androidx.activity.BackEventCompat
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.PredictiveBackHandler
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -33,6 +35,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
@@ -50,6 +53,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
@@ -147,13 +151,29 @@ private fun AppContent(
 ) {
     val pagerState = rememberPagerState { 2 }
     var isPredictiveBackInProgress by remember { mutableStateOf(false) }
-    PredictiveBackHandler(enabled = true) { progress ->
-        isPredictiveBackInProgress = true
-        try {
-            progress.collect { }
-        } finally {
-            isPredictiveBackInProgress = false
+    val backDispatcherOwner = LocalOnBackPressedDispatcherOwner.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(backDispatcherOwner, lifecycleOwner) {
+        if (backDispatcherOwner == null) return@DisposableEffect onDispose { }
+        val dispatcher = backDispatcherOwner.onBackPressedDispatcher
+        val callback = object : OnBackPressedCallback(true) {
+            override fun handleOnBackStarted(backEvent: BackEventCompat) {
+                isPredictiveBackInProgress = true
+            }
+
+            override fun handleOnBackCancelled() {
+                isPredictiveBackInProgress = false
+            }
+
+            override fun handleOnBackPressed() {
+                isPredictiveBackInProgress = false
+                isEnabled = false
+                dispatcher.onBackPressed()
+                isEnabled = true
+            }
         }
+        dispatcher.addCallback(lifecycleOwner, callback)
+        onDispose { callback.remove() }
     }
 
     Box(
