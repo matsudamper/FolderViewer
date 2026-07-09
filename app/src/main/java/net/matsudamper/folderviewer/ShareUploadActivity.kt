@@ -14,6 +14,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.FileProvider
 import androidx.core.content.IntentCompat
 import androidx.documentfile.provider.DocumentFile
@@ -109,6 +110,11 @@ class ShareUploadActivity : ComponentActivity() {
             val pendingFiles = withContext(Dispatchers.IO) {
                 uris.mapNotNull { uri -> runCatching { copyToCache(uri) }.getOrNull() }
             }
+            if (pendingFiles.isEmpty()) {
+                Toast.makeText(this@ShareUploadActivity, "ファイルの読み込みに失敗しました", Toast.LENGTH_SHORT).show()
+                finish()
+                return@launch
+            }
             shareUploadRepository.setPendingFiles(pendingFiles)
         }
     }
@@ -119,7 +125,11 @@ class ShareUploadActivity : ComponentActivity() {
      * FileProvider URIを渡すことでWorker側の権限失効を回避する。
      */
     private fun copyToCache(uri: Uri): ShareUploadRepository.PendingFile {
-        val fileName = DocumentFile.fromSingleUri(this, uri)?.name ?: "shared_file"
+        val fileName = DocumentFile.fromSingleUri(this, uri)?.name
+            ?.substringAfterLast('/')
+            ?.substringAfterLast('\\')
+            ?.takeIf { it.isNotBlank() && it != "." && it != ".." }
+            ?: "shared_file"
         val directory = File(cacheDir, "share_upload/${UUID.randomUUID()}").apply { mkdirs() }
         val cacheFile = File(directory, fileName)
         val inputStream = contentResolver.openInputStream(uri)
@@ -217,6 +227,7 @@ private fun EntryProviderScope<NavKey>.shareUploadDestinationEntry(
             )
         val uiState = viewModel.uiState.collectAsStateWithLifecycle(initialValue = null)
         val uiStateValue = uiState.value ?: return@entry
+        val context = LocalContext.current
 
         LaunchedEffect(viewModel.viewModelEventFlow) {
             viewModel.viewModelEventFlow.collect { event ->
@@ -234,6 +245,10 @@ private fun EntryProviderScope<NavKey>.shareUploadDestinationEntry(
 
                     is ShareUploadDestinationViewModel.ViewModelEvent.FinishWithMessage -> {
                         onFinish(event.message)
+                    }
+
+                    is ShareUploadDestinationViewModel.ViewModelEvent.ShowMessage -> {
+                        Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
                     }
                 }
             }

@@ -66,19 +66,26 @@ class ShareUploadDestinationViewModel @AssistedInject constructor(
             val files = shareUploadRepository.pendingFiles.value.orEmpty()
             if (files.isEmpty()) return
             viewModelScope.launch {
-                runCatching {
-                    files.forEach { file -> enqueueFileUpload(file.uri, file.fileName) }
-                }.onSuccess {
+                val failed = mutableListOf<ShareUploadRepository.PendingFile>()
+                var enqueuedCount = 0
+                files.forEach { file ->
+                    runCatching { enqueueFileUpload(file.uri, file.fileName) }
+                        .onSuccess { enqueuedCount++ }
+                        .onFailure { e ->
+                            if (e is CancellationException) throw e
+                            e.printStackTrace()
+                            failed.add(file)
+                        }
+                }
+                if (failed.isEmpty()) {
                     shareUploadRepository.clear()
                     viewModelEventChannel.send(
-                        ViewModelEvent.FinishWithMessage("${files.size}件のアップロードを開始しました"),
+                        ViewModelEvent.FinishWithMessage("${enqueuedCount}件のアップロードを開始しました"),
                     )
-                }.onFailure { e ->
-                    if (e is CancellationException) throw e
-                    e.printStackTrace()
-                    shareUploadRepository.clear()
+                } else {
+                    shareUploadRepository.setPendingFiles(failed)
                     viewModelEventChannel.send(
-                        ViewModelEvent.FinishWithMessage("アップロードの開始に失敗しました: ${e.message}"),
+                        ViewModelEvent.ShowMessage("${failed.size}件の開始に失敗しました。再試行してください"),
                     )
                 }
             }
@@ -216,6 +223,7 @@ class ShareUploadDestinationViewModel @AssistedInject constructor(
             val fileId: FileObjectId.Item,
         ) : ViewModelEvent
         data class FinishWithMessage(val message: String) : ViewModelEvent
+        data class ShowMessage(val message: String) : ViewModelEvent
     }
 
     private data class ViewModelState(

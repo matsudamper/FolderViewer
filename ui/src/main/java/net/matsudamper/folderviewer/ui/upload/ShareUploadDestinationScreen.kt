@@ -165,17 +165,59 @@ private fun FolderRow(
 @Composable
 @Preview
 private fun Preview() {
-    PreviewContent(canUpload = true)
+    PreviewContent(contentState = previewContentState())
 }
 
 @Composable
 @Preview
 private fun PreviewCannotUpload() {
-    PreviewContent(canUpload = false)
+    PreviewContent(canUpload = false, contentState = previewContentState())
 }
 
 @Composable
-private fun PreviewContent(canUpload: Boolean) {
+@Preview
+private fun PreviewLoading() {
+    PreviewContent(contentState = ShareUploadDestinationUiState.ContentState.Loading)
+}
+
+@Composable
+@Preview
+private fun PreviewError() {
+    PreviewContent(contentState = ShareUploadDestinationUiState.ContentState.Error)
+}
+
+@Composable
+@Preview
+private fun PreviewEmpty() {
+    PreviewContent(contentState = ShareUploadDestinationUiState.ContentState.Empty)
+}
+
+private fun previewContentState(): ShareUploadDestinationUiState.ContentState {
+    return ShareUploadDestinationUiState.ContentState.Content(
+        folders = listOf(
+            ShareUploadDestinationUiState.Folder(
+                name = "ドキュメント",
+                key = "doc",
+                callbacks = object : ShareUploadDestinationUiState.Folder.Callbacks {
+                    override fun onClick() = Unit
+                },
+            ),
+            ShareUploadDestinationUiState.Folder(
+                name = "画像",
+                key = "images",
+                callbacks = object : ShareUploadDestinationUiState.Folder.Callbacks {
+                    override fun onClick() = Unit
+                },
+            ),
+        ),
+    )
+}
+
+@Composable
+private fun PreviewContent(
+    contentState: ShareUploadDestinationUiState.ContentState,
+    canUpload: Boolean = true,
+) {
     FolderViewerTheme {
         ShareUploadDestinationScreen(
             uiState = ShareUploadDestinationUiState(
@@ -183,24 +225,7 @@ private fun PreviewContent(canUpload: Boolean) {
                 pendingCount = 3,
                 canUpload = canUpload,
                 isRefreshing = false,
-                contentState = ShareUploadDestinationUiState.ContentState.Content(
-                    folders = listOf(
-                        ShareUploadDestinationUiState.Folder(
-                            name = "ドキュメント",
-                            key = "doc",
-                            callbacks = object : ShareUploadDestinationUiState.Folder.Callbacks {
-                                override fun onClick() = Unit
-                            },
-                        ),
-                        ShareUploadDestinationUiState.Folder(
-                            name = "画像",
-                            key = "images",
-                            callbacks = object : ShareUploadDestinationUiState.Folder.Callbacks {
-                                override fun onClick() = Unit
-                            },
-                        ),
-                    ),
-                ),
+                contentState = contentState,
                 callbacks = object : ShareUploadDestinationUiState.Callbacks {
                     override fun onBack() = Unit
                     override fun onRefresh() = Unit
