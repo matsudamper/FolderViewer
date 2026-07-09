@@ -92,13 +92,24 @@ class ShareUploadDestinationViewModel @AssistedInject constructor(
         }
 
         override fun onCreateDirectory(name: String) {
-            if (name.isBlank()) return
+            val directoryName = name.trim()
+            if (directoryName.isBlank()) return
+            if (directoryName.contains('/') ||
+                directoryName.contains('\\') ||
+                directoryName == "." ||
+                directoryName == ".."
+            ) {
+                viewModelScope.launch {
+                    viewModelEventChannel.send(ViewModelEvent.ShowMessage("使用できないディレクトリ名です"))
+                }
+                return
+            }
             viewModelScope.launch {
                 runCatching {
-                    getRepository().createDirectory(fileObjectId, name)
+                    getRepository().createDirectory(fileObjectId, directoryName)
                     fetchFilesInternal()
                 }.onSuccess {
-                    viewModelEventChannel.send(ViewModelEvent.ShowMessage("${name}を作成しました"))
+                    viewModelEventChannel.send(ViewModelEvent.ShowMessage("${directoryName}を作成しました"))
                 }.onFailure { e ->
                     if (e is CancellationException) throw e
                     e.printStackTrace()
