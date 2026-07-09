@@ -97,7 +97,24 @@ internal fun FileBrowserScreenContent(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButtonPosition = FabPosition.Center,
         floatingActionButton = {
-            if (uiState.isPasteMode) {
+            if (uiState.isShareUploadMode) {
+                HorizontalFloatingToolbar(
+                    modifier = Modifier.onSizeChanged { fabHeight = it.height },
+                    expanded = true,
+                    contentPadding = PaddingValues(0.dp),
+                    colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors(),
+                ) {
+                    TextButton(onClick = { callbacks.onCancelSharedFiles() }) {
+                        Text("キャンセル")
+                    }
+                    TextButton(
+                        onClick = { callbacks.onUploadSharedFilesClick() },
+                        enabled = uiState.visibleFolderBrowserButton,
+                    ) {
+                        Text("ここにアップロード (${uiState.pendingShareCount})")
+                    }
+                }
+            } else if (uiState.isPasteMode) {
                 HorizontalFloatingToolbar(
                     modifier = Modifier.onSizeChanged { fabHeight = it.height },
                     expanded = true,
@@ -186,7 +203,7 @@ internal fun FileBrowserScreenContent(
             }
         },
     ) { innerPadding ->
-        val showFab = uiState.isPasteMode || uiState.isSelectionMode || uiState.visibleFolderBrowserButton
+        val showFab = uiState.isShareUploadMode || uiState.isPasteMode || uiState.isSelectionMode || uiState.visibleFolderBrowserButton
         val contentPadding = if (showFab && fabHeight > 0) {
             innerPadding.plus(
                 PaddingValues(bottom = with(LocalDensity.current) { fabHeight.toDp() } + 16.dp),
@@ -304,6 +321,20 @@ internal fun FileBrowserScreenContent(
 @Composable
 @Preview
 private fun Preview() {
+    PreviewContent()
+}
+
+@Composable
+@Preview
+private fun PreviewShareUploadMode() {
+    PreviewContent(isShareUploadMode = true, pendingShareCount = 3)
+}
+
+@Composable
+private fun PreviewContent(
+    isShareUploadMode: Boolean = false,
+    pendingShareCount: Int = 0,
+) {
     FileBrowserScreenContent(
         uiState = FileBrowserUiState(
             visibleFolderBrowserButton = true,
@@ -324,6 +355,8 @@ private fun Preview() {
             selectedCount = 0,
             visibleCompressMenu = true,
             isPasteMode = false,
+            isShareUploadMode = isShareUploadMode,
+            pendingShareCount = pendingShareCount,
             callbacks = object : FileBrowserUiState.Callbacks {
                 override fun onRefresh() = Unit
                 override fun onBack() = Unit
@@ -349,6 +382,8 @@ private fun Preview() {
                 override fun onPastePermissionResult() = Unit
                 override fun onDeletePermissionResult() = Unit
                 override fun onCancelPaste() = Unit
+                override fun onUploadSharedFilesClick() = Unit
+                override fun onCancelSharedFiles() = Unit
             },
             contentState = FileBrowserUiState.ContentState.Content(
                 files = listOf(

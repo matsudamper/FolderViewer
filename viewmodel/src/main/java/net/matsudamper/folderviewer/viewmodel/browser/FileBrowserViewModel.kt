@@ -44,6 +44,7 @@ import net.matsudamper.folderviewer.repository.PasteJobRepository
 import net.matsudamper.folderviewer.repository.PreferencesRepository
 import net.matsudamper.folderviewer.repository.ClipboardRepository
 import net.matsudamper.folderviewer.repository.SelectionModeRepository
+import net.matsudamper.folderviewer.repository.ShareUploadRepository
 import net.matsudamper.folderviewer.repository.StorageConfiguration
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.UploadJobRepository
@@ -67,6 +68,7 @@ class FileBrowserViewModel @AssistedInject constructor(
     private val deleteJobRepository: DeleteJobRepository,
     private val selectionModeRepository: SelectionModeRepository,
     private val clipboardRepository: ClipboardRepository,
+    private val shareUploadRepository: ShareUploadRepository,
     application: Application,
     @Assisted private val arg: FileBrowser,
 ) : AndroidViewModel(application) {
@@ -380,13 +382,30 @@ class FileBrowserViewModel @AssistedInject constructor(
         override fun onCancelPaste() {
             clipboardRepository.clearClipboard()
         }
+
+        override fun onUploadSharedFilesClick() {
+            val files = shareUploadRepository.pendingFiles.value.orEmpty()
+            if (files.isEmpty()) return
+            viewModelScope.launch {
+                files.forEach { file -> enqueueFileUpload(file.uri, file.fileName) }
+                shareUploadRepository.clear()
+                uiChannelEvent.send(
+                    FileBrowserUiEvent.ShowSnackbar("${files.size}件のアップロードを開始しました", showAction = true),
+                )
+            }
+        }
+
+        override fun onCancelSharedFiles() {
+            shareUploadRepository.clear()
+        }
     }
 
     val uiState: Flow<FileBrowserUiState> = combine(
         viewModelStateFlow,
         selectionModeRepository.isSelectionMode,
         clipboardRepository.clipboardState,
-    ) { viewModelState, isSelectionMode, clipboardState ->
+        shareUploadRepository.pendingFiles,
+    ) { viewModelState, isSelectionMode, clipboardState, pendingShareFiles ->
         val sortedFiles = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig))
         val selectedItems = when (viewModelState.selectedState) {
             is ViewModelState.SelectionState.NonSelected -> setOf()
@@ -458,6 +477,8 @@ class FileBrowserViewModel @AssistedInject constructor(
             selectedCount = selectedItems.size,
             visibleCompressMenu = viewModelState.localFolderPath != null,
             isPasteMode = clipboardState != null,
+            isShareUploadMode = !pendingShareFiles.isNullOrEmpty(),
+            pendingShareCount = pendingShareFiles?.size ?: 0,
             contentState = contentState,
         )
     }
@@ -666,6 +687,11 @@ class FileBrowserViewModel @AssistedInject constructor(
     }
 
     suspend fun handleFileUpload(uri: android.net.Uri, fileName: String) {
+        enqueueFileUpload(uri, fileName)
+        uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ファイルのアップロードを開始しました", showAction = true))
+    }
+
+    private suspend fun enqueueFileUpload(uri: android.net.Uri, fileName: String) {
         val inputData = Data.Builder()
             .putString(FileUploadWorker.KEY_FILE_OBJECT_ID, Json.encodeToString(fileObjectId))
             .putString(FileUploadWorker.KEY_URI, uri.toString())
@@ -689,7 +715,6 @@ class FileBrowserViewModel @AssistedInject constructor(
         )
 
         WorkManager.getInstance(getApplication()).enqueue(workRequest)
-        uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ファイルのアップロードを開始しました", showAction = true))
     }
 
     private suspend fun handlePaste(clipboardState: ClipboardRepository.ClipboardState) {

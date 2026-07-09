@@ -16,6 +16,8 @@ data class FileBrowserUiState(
     val selectedCount: Int,
     val visibleCompressMenu: Boolean,
     val isPasteMode: Boolean,
+    val isShareUploadMode: Boolean,
+    val pendingShareCount: Int,
     val callbacks: Callbacks,
     val contentState: ContentState,
 ) {
@@ -91,5 +93,7 @@ data class FileBrowserUiState(
         fun onPastePermissionResult()
         fun onDeletePermissionResult()
         fun onCancelPaste()
+        fun onUploadSharedFilesClick()
+        fun onCancelSharedFiles()
     }
 }

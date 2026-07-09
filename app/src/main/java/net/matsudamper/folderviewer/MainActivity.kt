@@ -55,6 +55,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import androidx.core.content.IntentCompat
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -98,6 +99,7 @@ import net.matsudamper.folderviewer.navigation.UploadProgress
 import net.matsudamper.folderviewer.navigation.rememberNavigationState
 import net.matsudamper.folderviewer.navigation.toEntries
 import net.matsudamper.folderviewer.repository.PermissionUtil
+import net.matsudamper.folderviewer.repository.ShareUploadRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.FileBrowserScreen
 import net.matsudamper.folderviewer.ui.browser.ImageViewerScreen
@@ -132,16 +134,51 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var imageLoader: ImageLoader
 
+    @Inject
+    lateinit var shareUploadRepository: ShareUploadRepository
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         Coil.setImageLoader(imageLoader)
+        handleShareIntent(intent)
 
         setContent {
             FolderViewerTheme {
                 AppContent()
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleShareIntent(intent)
+    }
+
+    private fun handleShareIntent(intent: Intent) {
+        val uris = when (intent.action) {
+            Intent.ACTION_SEND -> {
+                IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, android.net.Uri::class.java)
+                    ?.let { listOf(it) }
+                    .orEmpty()
+            }
+
+            Intent.ACTION_SEND_MULTIPLE -> {
+                IntentCompat.getParcelableArrayListExtra(intent, Intent.EXTRA_STREAM, android.net.Uri::class.java)
+                    .orEmpty()
+            }
+
+            else -> emptyList()
+        }
+        if (uris.isEmpty()) return
+
+        shareUploadRepository.setPendingFiles(
+            uris.map { uri ->
+                val fileName = DocumentFile.fromSingleUri(this, uri)?.name ?: "shared_file"
+                ShareUploadRepository.PendingFile(uri = uri, fileName = fileName)
+            },
+        )
     }
 }
 
