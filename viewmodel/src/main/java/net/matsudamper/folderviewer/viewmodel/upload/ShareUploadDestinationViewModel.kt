@@ -90,6 +90,22 @@ class ShareUploadDestinationViewModel @AssistedInject constructor(
                 }
             }
         }
+
+        override fun onCreateDirectory(name: String) {
+            if (name.isBlank()) return
+            viewModelScope.launch {
+                runCatching {
+                    getRepository().createDirectory(fileObjectId, name)
+                    fetchFilesInternal()
+                }.onSuccess {
+                    viewModelEventChannel.send(ViewModelEvent.ShowMessage("${name}を作成しました"))
+                }.onFailure { e ->
+                    if (e is CancellationException) throw e
+                    e.printStackTrace()
+                    viewModelEventChannel.send(ViewModelEvent.ShowMessage("ディレクトリの作成に失敗しました"))
+                }
+            }
+        }
     }
 
     val uiState: Flow<ShareUploadDestinationUiState> = combine(
@@ -119,6 +135,7 @@ class ShareUploadDestinationViewModel @AssistedInject constructor(
             title = arg.displayPath ?: viewModelState.storageName ?: "アップロード先を選択",
             pendingCount = pendingCount,
             canUpload = viewModelState.rootWritable && pendingCount > 0,
+            canCreateDirectory = viewModelState.rootWritable,
             isRefreshing = viewModelState.isRefreshing,
             contentState = contentState,
             callbacks = callbacks,

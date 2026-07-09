@@ -6,6 +6,7 @@ data class ShareUploadDestinationUiState(
     val title: String,
     val pendingCount: Int,
     val canUpload: Boolean,
+    val canCreateDirectory: Boolean,
     val isRefreshing: Boolean,
     val contentState: ContentState,
     val callbacks: Callbacks,
@@ -34,5 +35,6 @@ data class ShareUploadDestinationUiState(
         fun onBack()
         fun onRefresh()
         fun onUploadHere()
+        fun onCreateDirectory(name: String)
     }
 }

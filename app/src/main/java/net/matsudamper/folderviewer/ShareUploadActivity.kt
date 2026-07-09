@@ -212,7 +212,7 @@ private fun EntryProviderScope<NavKey>.storagePickerEntry(navigator: Navigator) 
             }
         }
 
-        StoragePickerScreen(uiState = uiState)
+        StoragePickerScreen(uiState = uiState, title = "アップロード先を選択")
     }
 }
 
