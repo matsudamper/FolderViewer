@@ -14,6 +14,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.core.content.FileProvider
 import androidx.core.content.IntentCompat
 import androidx.documentfile.provider.DocumentFile
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -25,6 +26,8 @@ import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
+import java.io.File
+import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -104,14 +107,28 @@ class ShareUploadActivity : ComponentActivity() {
     private fun loadPendingFiles(uris: List<Uri>) {
         lifecycleScope.launch {
             val pendingFiles = withContext(Dispatchers.IO) {
-                uris.map { uri ->
-                    val fileName = DocumentFile.fromSingleUri(this@ShareUploadActivity, uri)?.name
-                        ?: "shared_file"
-                    ShareUploadRepository.PendingFile(uri = uri, fileName = fileName)
-                }
+                uris.mapNotNull { uri -> runCatching { copyToCache(uri) }.getOrNull() }
             }
             shareUploadRepository.setPendingFiles(pendingFiles)
         }
+    }
+
+    /**
+     * ACTION_SENDで付与される読み取り権限は受信アクティビティの生存期間に紐づくため、
+     * Worker実行までに失効する恐れがある。受信時にキャッシュへコピーし、自アプリの
+     * FileProvider URIを渡すことでWorker側の権限失効を回避する。
+     */
+    private fun copyToCache(uri: Uri): ShareUploadRepository.PendingFile {
+        val fileName = DocumentFile.fromSingleUri(this, uri)?.name ?: "shared_file"
+        val directory = File(cacheDir, "share_upload/${UUID.randomUUID()}").apply { mkdirs() }
+        val cacheFile = File(directory, fileName)
+        val inputStream = contentResolver.openInputStream(uri)
+            ?: error("共有ファイルを開けませんでした: $uri")
+        inputStream.use { input ->
+            cacheFile.outputStream().use { output -> input.copyTo(output) }
+        }
+        val cacheUri = FileProvider.getUriForFile(this, "$packageName.fileprovider", cacheFile)
+        return ShareUploadRepository.PendingFile(uri = cacheUri, fileName = fileName)
     }
 
     private fun requestNotificationPermissionIfNeeded() {
