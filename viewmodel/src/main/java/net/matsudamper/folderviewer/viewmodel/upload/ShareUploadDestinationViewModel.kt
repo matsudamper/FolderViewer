@@ -94,11 +94,9 @@ class ShareUploadDestinationViewModel @AssistedInject constructor(
         override fun onCreateDirectory(name: String) {
             val directoryName = name.trim()
             if (directoryName.isBlank()) return
-            if (directoryName.contains('/') ||
-                directoryName.contains('\\') ||
-                directoryName == "." ||
-                directoryName == ".."
-            ) {
+            val hasPathSeparator = directoryName.contains('/') || directoryName.contains('\\')
+            val isParentReference = directoryName == "." || directoryName == ".."
+            if (hasPathSeparator || isParentReference) {
                 viewModelScope.launch {
                     viewModelEventChannel.send(ViewModelEvent.ShowMessage("使用できないディレクトリ名です"))
                 }
