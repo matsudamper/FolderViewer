@@ -20,10 +20,11 @@ import net.matsudamper.folderviewer.ui.util.plus
 @Composable
 public fun StoragePickerScreen(
     uiState: StoragePickerUiState,
+    title: String = "ファイルを選択",
 ) {
     Scaffold(
         topBar = {
-            StoragePickerTopBar()
+            StoragePickerTopBar(title = title)
         },
     ) { innerPadding ->
         LazyColumn(
@@ -46,9 +47,9 @@ public fun StoragePickerScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun StoragePickerTopBar() {
+private fun StoragePickerTopBar(title: String) {
     TopAppBar(
         colors = MyTopAppBarDefaults.topAppBarColors(),
-        title = { Text("ファイルを選択") },
+        title = { Text(title) },
     )
 }
