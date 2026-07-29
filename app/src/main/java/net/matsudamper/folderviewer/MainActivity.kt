@@ -668,49 +668,63 @@ private fun FileBrowserEventHandler(
                 }
 
                 is FileBrowserViewModel.ViewModelEvent.OpenWithExternalPlayer -> {
-                    val uri = when (val externalUri = event.viewSourceUri) {
-                        is ViewSourceUri.LocalFile -> {
-                            FileProvider.getUriForFile(
-                                context,
-                                "${context.packageName}.fileprovider",
-                                File(externalUri.path),
-                            )
-                        }
-
-                        is ViewSourceUri.RemoteUrl -> {
-                            externalUri.url.toUri()
-                        }
-
-                        is ViewSourceUri.StreamProvider -> {
-                            StreamingContentProvider.buildUri(
-                                fileId = externalUri.fileId,
-                                fileName = event.fileName,
-                            )
-                        }
-                    }
-                    val isApk = event.mimeType == "application/vnd.android.package-archive"
-                    if (isApk && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O &&
-                        !context.packageManager.canRequestPackageInstalls()
-                    ) {
-                        runCatching {
-                            context.startActivity(
-                                Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
-                                    data = android.net.Uri.parse("package:${context.packageName}")
-                                },
-                            )
-                        }
-                        return@collect
-                    }
-                    val intent = Intent(Intent.ACTION_VIEW).apply {
-                        setDataAndType(uri, event.mimeType ?: "*/*")
-                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    }
-                    runCatching {
-                        context.startActivity(intent)
-                    }
+                    openWithExternalApp(
+                        context = context,
+                        viewSourceUri = event.viewSourceUri,
+                        fileName = event.fileName,
+                        mimeType = event.mimeType,
+                    )
                 }
             }
         }
+    }
+}
+
+private fun openWithExternalApp(
+    context: android.content.Context,
+    viewSourceUri: ViewSourceUri,
+    fileName: String,
+    mimeType: String?,
+) {
+    val uri = when (viewSourceUri) {
+        is ViewSourceUri.LocalFile -> {
+            FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                File(viewSourceUri.path),
+            )
+        }
+
+        is ViewSourceUri.RemoteUrl -> {
+            viewSourceUri.url.toUri()
+        }
+
+        is ViewSourceUri.StreamProvider -> {
+            StreamingContentProvider.buildUri(
+                fileId = viewSourceUri.fileId,
+                fileName = fileName,
+            )
+        }
+    }
+    val isApk = mimeType == "application/vnd.android.package-archive"
+    if (isApk && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O &&
+        !context.packageManager.canRequestPackageInstalls()
+    ) {
+        runCatching {
+            context.startActivity(
+                Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                    data = android.net.Uri.parse("package:${context.packageName}")
+                },
+            )
+        }
+        return
+    }
+    val intent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(uri, mimeType ?: "*/*")
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    runCatching {
+        context.startActivity(intent)
     }
 }
 
@@ -812,6 +826,7 @@ private fun EntryProviderScope<NavKey>.folderBrowserEntry(navigator: Navigator) 
         )
         val uiState = viewModel.uiState.collectAsStateWithLifecycle(initialValue = null)
         val uiStateValue = uiState.value ?: return@entry
+        val context = LocalContext.current
 
         LaunchedEffect(viewModel.viewModelEventFlow) {
             viewModel.viewModelEventFlow.collect { event ->
@@ -844,6 +859,15 @@ private fun EntryProviderScope<NavKey>.folderBrowserEntry(navigator: Navigator) 
                                 fileId = event.fileId,
                                 displayPath = event.displayPath,
                             ),
+                        )
+                    }
+
+                    is FolderBrowserViewModel.ViewModelEvent.OpenWithExternalPlayer -> {
+                        openWithExternalApp(
+                            context = context,
+                            viewSourceUri = event.viewSourceUri,
+                            fileName = event.fileName,
+                            mimeType = event.mimeType,
                         )
                     }
                 }
