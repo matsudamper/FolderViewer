@@ -18,6 +18,7 @@ class FolderBrowserUiStateCreator(
     private val fileObjectId: FileObjectId,
     private val viewModelEventChannel: Channel<ViewModelEvent>,
     private val displayPath: String?,
+    private val onOpenWithExternalPlayer: (FileItem) -> Unit,
 ) {
     fun create(
         viewModelState: FolderBrowserViewModel.ViewModelState,
@@ -156,23 +157,31 @@ class FolderBrowserUiStateCreator(
         private val allImagePaths: List<FileObjectId.Item>,
     ) : FolderBrowserUiState.UiFileItem.File.Callbacks {
         override fun onClick() {
-            viewModelScope.launch {
-                val isImage = FileUtil.isImage(file.displayPath)
-                if (file.isDirectory) {
-                    viewModelEventChannel.send(
-                        ViewModelEvent.NavigateToFolderBrowser(
-                            fileId = file.id,
-                            displayPath = file.displayPath,
-                        ),
-                    )
-                } else if (isImage) {
-                    viewModelEventChannel.send(
-                        ViewModelEvent.NavigateToImageViewer(
-                            fileId = file.id,
-                            allPaths = allImagePaths,
-                        ),
-                    )
+            val isImage = FileUtil.isImage(file.displayPath)
+            when {
+                file.isDirectory -> {
+                    viewModelScope.launch {
+                        viewModelEventChannel.send(
+                            ViewModelEvent.NavigateToFolderBrowser(
+                                fileId = file.id,
+                                displayPath = file.displayPath,
+                            ),
+                        )
+                    }
                 }
+
+                isImage -> {
+                    viewModelScope.launch {
+                        viewModelEventChannel.send(
+                            ViewModelEvent.NavigateToImageViewer(
+                                fileId = file.id,
+                                allPaths = allImagePaths,
+                            ),
+                        )
+                    }
+                }
+
+                else -> onOpenWithExternalPlayer(file)
             }
         }
     }

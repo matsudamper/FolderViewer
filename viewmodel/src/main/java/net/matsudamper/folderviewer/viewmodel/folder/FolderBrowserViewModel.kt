@@ -29,10 +29,12 @@ import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.PreferencesRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
+import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiEvent
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiState
 import net.matsudamper.folderviewer.viewmodel.util.FileSortComparator
+import net.matsudamper.folderviewer.viewmodel.util.FileUtil
 
 @HiltViewModel(assistedFactory = FolderBrowserViewModel.Companion.Factory::class)
 class FolderBrowserViewModel @AssistedInject constructor(
@@ -128,6 +130,7 @@ class FolderBrowserViewModel @AssistedInject constructor(
         fileObjectId = arg.fileId,
         displayPath = arg.displayPath,
         viewModelEventChannel = viewModelEventChannel,
+        onOpenWithExternalPlayer = { fileItem -> openWithExternalPlayer(fileItem) },
     )
 
     val uiState: Flow<FolderBrowserUiState> = channelFlow {
@@ -250,6 +253,31 @@ class FolderBrowserViewModel @AssistedInject constructor(
         return newRepo
     }
 
+    private fun openWithExternalPlayer(fileItem: FileItem) {
+        viewModelScope.launch {
+            runCatching {
+                val repository = getRepository()
+                viewModelEventChannel.send(
+                    ViewModelEvent.OpenWithExternalPlayer(
+                        viewSourceUri = repository.getViewSourceUri(fileItem.id),
+                        fileId = fileItem.id,
+                        fileName = fileItem.displayPath,
+                        mimeType = FileUtil.getMimeType(fileItem.displayPath),
+                    ),
+                )
+            }.onFailure { e ->
+                when (e) {
+                    is CancellationException -> throw e
+
+                    else -> {
+                        e.printStackTrace()
+                        uiChannelEvent.trySend(FolderBrowserUiEvent.ShowSnackbar("外部プレイヤーで開けませんでした: ${e.message}"))
+                    }
+                }
+            }
+        }
+    }
+
     private fun refresh() {
         fetchJob?.cancel()
         fetchJob = viewModelScope.launch {
@@ -350,6 +378,13 @@ class FolderBrowserViewModel @AssistedInject constructor(
         data class NavigateToFolderBrowser(
             val fileId: FileObjectId.Item,
             val displayPath: String?,
+        ) : ViewModelEvent
+
+        data class OpenWithExternalPlayer(
+            val viewSourceUri: ViewSourceUri,
+            val fileId: FileObjectId.Item,
+            val fileName: String,
+            val mimeType: String?,
         ) : ViewModelEvent
     }
 
