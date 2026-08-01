@@ -54,3 +54,6 @@ data class ExternalFilePicker(
 
 @Serializable
 object ExternalFilePickerSelectedList : NavKey
+
+@Serializable
+data class ShareUploadDestination(val displayPath: String?, val fileId: FileObjectId) : NavKey
