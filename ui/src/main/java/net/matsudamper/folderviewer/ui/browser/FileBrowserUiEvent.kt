@@ -1,7 +1,11 @@
 package net.matsudamper.folderviewer.ui.browser
 
 sealed interface FileBrowserUiEvent {
-    data class ShowSnackbar(val message: String, val showAction: Boolean = false) : FileBrowserUiEvent
+    data class ShowSnackbar(
+        val message: String,
+        val showAction: Boolean = false,
+        val openExtractJobId: Long? = null,
+    ) : FileBrowserUiEvent
     data object ShowCreateDirectoryDialog : FileBrowserUiEvent
     data object ShowCompressDialog : FileBrowserUiEvent
     data class ShowExtractDialog(

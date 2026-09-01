@@ -43,6 +43,11 @@ internal object DatabaseModule {
     }
 
     @Provides
+    fun provideExtractOperationDao(database: AppDatabase): ExtractOperationDao {
+        return database.extractOperationDao()
+    }
+
+    @Provides
     fun provideOperationFileDao(database: AppDatabase): OperationFileDao {
         return database.operationFileDao()
     }

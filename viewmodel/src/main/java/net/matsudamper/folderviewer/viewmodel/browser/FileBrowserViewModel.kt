@@ -32,6 +32,7 @@ import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.navigation.FileBrowser
 import net.matsudamper.folderviewer.repository.DeleteJobRepository
+import net.matsudamper.folderviewer.repository.ExtractJobRepository
 import net.matsudamper.folderviewer.repository.FavoriteConfiguration
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
@@ -63,6 +64,8 @@ class FileBrowserViewModel @AssistedInject constructor(
     private val uploadJobRepository: UploadJobRepository,
     private val pasteJobRepository: PasteJobRepository,
     private val deleteJobRepository: DeleteJobRepository,
+    private val extractJobRepository: ExtractJobRepository,
+    private val operationRepository: OperationRepository,
     private val selectionModeRepository: SelectionModeRepository,
     private val clipboardRepository: ClipboardRepository,
     application: Application,
@@ -82,9 +85,35 @@ class FileBrowserViewModel @AssistedInject constructor(
     private var pendingPasteClipboardState: ClipboardRepository.ClipboardState? = null
     private var pendingDeleteItems: List<FileItem>? = null
     private var pendingExtractFileItem: FileItem? = null
+    private var pendingExtractRequest: PendingExtractRequest? = null
 
     private val displayName get() = arg.displayPath ?: viewModelStateFlow.value.storageName ?: "null"
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> = MutableStateFlow(ViewModelState())
+
+    private val extractCoordinator by lazy {
+        FileBrowserExtractCoordinator(
+            dependencies = FileBrowserExtractCoordinator.Dependencies(
+                application = getApplication(),
+                extractJobRepository = extractJobRepository,
+                operationRepository = operationRepository,
+                selectionModeRepository = selectionModeRepository,
+                viewModelScope = viewModelScope,
+                uiChannelEvent = uiChannelEvent,
+                viewModelEventChannel = viewModelEventChannel,
+                fileObjectId = fileObjectId,
+                displayPath = arg.displayPath,
+                getLocalFolderPath = { viewModelStateFlow.value.localFolderPath },
+                clearSelection = {
+                    viewModelStateFlow.update {
+                        it.copy(selectedState = ViewModelState.SelectionState.NonSelected)
+                    }
+                },
+                refreshFiles = { fetchFilesInternal() },
+                getRepository = { getRepository() },
+                openWithExternalPlayer = { fileItem -> openWithExternalPlayer(fileItem) },
+            ),
+        )
+    }
 
     private val callbacks: FileBrowserUiState.Callbacks = object : FileBrowserUiState.Callbacks {
         override fun onRefresh() {
@@ -346,7 +375,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             }
         }
 
-        override fun onConfirmExtract(folderName: String) {
+        override fun onConfirmExtract(folderName: String, openOnComplete: Boolean) {
             val rawFiles = viewModelStateFlow.value.rawFiles
             val fileItem = pendingExtractFileItem
                 ?: run {
@@ -357,20 +386,36 @@ class FileBrowserViewModel @AssistedInject constructor(
                     if (selectedIds.size != 1) return
                     selectedIds.firstNotNullOfOrNull { id -> rawFiles.find { it.id == id } } ?: return
                 }
+            val extractType = zipHandler.getExtractableFileType(fileItem) ?: return
             pendingExtractFileItem = null
-            when (val extractType = zipHandler.getExtractableFileType(fileItem) ?: return) {
-                ExtractableFileType.Zip -> viewModelScope.launch {
-                    handleExtractZip(fileItem, folderName)
-                }
-
-                is ExtractableFileType.Compressed -> viewModelScope.launch {
-                    handleExtractCompressed(fileItem, folderName, extractType.format)
-                }
+            pendingExtractRequest = PendingExtractRequest(
+                fileItem = fileItem,
+                outputName = folderName,
+                extractType = extractType,
+                openOnComplete = openOnComplete,
+            )
+            viewModelScope.launch {
+                viewModelEventChannel.send(ViewModelEvent.RequestNotificationPermissionForExtract)
             }
         }
 
         override fun onDismissExtract() {
             pendingExtractFileItem = null
+            pendingExtractRequest = null
+        }
+
+        override fun onExtractPermissionResult() {
+            val request = pendingExtractRequest ?: return
+            pendingExtractRequest = null
+            viewModelScope.launch {
+                extractCoordinator.enqueueExtract(request)
+            }
+        }
+
+        override fun onOpenExtractResult(jobId: Long) {
+            viewModelScope.launch {
+                extractCoordinator.openExtractResult(jobId)
+            }
         }
 
         override fun onDeleteClick() {
@@ -696,6 +741,8 @@ class FileBrowserViewModel @AssistedInject constructor(
 
         data object RequestNotificationPermissionForDelete : ViewModelEvent
 
+        data object RequestNotificationPermissionForExtract : ViewModelEvent
+
         data class OpenFolderWithExternalApp(val path: String) : ViewModelEvent
 
         data class OpenWithExternalPlayer(
@@ -835,39 +882,6 @@ class FileBrowserViewModel @AssistedInject constructor(
         zipHandler.compress(
             items = items,
             fileName = fileName,
-            repository = getRepository(),
-            localFolderPath = viewModelStateFlow.value.localFolderPath,
-            onCompleted = {
-                viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
-                selectionModeRepository.setSelectionMode(false)
-                fetchFilesInternal()
-            },
-        )
-    }
-
-    private suspend fun handleExtractZip(zipFileItem: FileItem, folderName: String) {
-        zipHandler.extractZip(
-            zipFileItem = zipFileItem,
-            folderName = folderName,
-            context = createExtractContext(),
-        )
-    }
-
-    private suspend fun handleExtractCompressed(
-        fileItem: FileItem,
-        outputFileName: String,
-        format: CompressedFileUtil.Format,
-    ) {
-        zipHandler.extractCompressed(
-            fileItem = fileItem,
-            outputFileName = outputFileName,
-            format = format,
-            context = createExtractContext(),
-        )
-    }
-
-    private suspend fun createExtractContext(): ExtractContext {
-        return ExtractContext(
             repository = getRepository(),
             localFolderPath = viewModelStateFlow.value.localFolderPath,
             onCompleted = {

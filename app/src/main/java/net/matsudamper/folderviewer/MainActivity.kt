@@ -554,6 +554,7 @@ private fun FileBrowserEventHandler(
     folderPickerLauncher: androidx.activity.compose.ManagedActivityResultLauncher<android.net.Uri?, android.net.Uri?>,
     pasteNotificationPermissionLauncher: androidx.activity.compose.ManagedActivityResultLauncher<String, Boolean>,
     deleteNotificationPermissionLauncher: androidx.activity.compose.ManagedActivityResultLauncher<String, Boolean>,
+    extractNotificationPermissionLauncher: androidx.activity.compose.ManagedActivityResultLauncher<String, Boolean>,
 ) {
     val context = LocalContext.current
     LaunchedEffect(viewModel.viewModelEventFlow) {
@@ -605,6 +606,19 @@ private fun FileBrowserEventHandler(
                         deleteNotificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
                     } else {
                         callbacks.onDeletePermissionResult()
+                    }
+                }
+
+                is FileBrowserViewModel.ViewModelEvent.RequestNotificationPermissionForExtract -> {
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+                        androidx.core.content.ContextCompat.checkSelfPermission(
+                            context,
+                            android.Manifest.permission.POST_NOTIFICATIONS,
+                        ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                    ) {
+                        extractNotificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                    } else {
+                        callbacks.onExtractPermissionResult()
                     }
                 }
 
@@ -799,6 +813,12 @@ private fun EntryProviderScope<NavKey>.fileBrowserEntry(navigator: Navigator) {
             uiStateValue.callbacks.onDeletePermissionResult()
         }
 
+        val extractNotificationPermissionLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestPermission(),
+        ) { _ ->
+            uiStateValue.callbacks.onExtractPermissionResult()
+        }
+
         FileBrowserEventHandler(
             viewModel = viewModel,
             navigator = navigator,
@@ -807,12 +827,14 @@ private fun EntryProviderScope<NavKey>.fileBrowserEntry(navigator: Navigator) {
             folderPickerLauncher = folderPickerLauncher,
             pasteNotificationPermissionLauncher = pasteNotificationPermissionLauncher,
             deleteNotificationPermissionLauncher = deleteNotificationPermissionLauncher,
+            extractNotificationPermissionLauncher = extractNotificationPermissionLauncher,
         )
 
         FileBrowserScreen(
             uiState = uiStateValue,
             uiEvent = viewModel.uiEvent,
             onNavigateToUploadProgress = { navigator.navigate(UploadProgress) },
+            onOpenExtractResult = { jobId -> uiStateValue.callbacks.onOpenExtractResult(jobId) },
         )
     }
 }

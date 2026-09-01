@@ -1,7 +1,10 @@
 package net.matsudamper.folderviewer.ui.browser
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -10,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 
@@ -18,10 +22,13 @@ internal fun FileBrowserExtractDialog(
     defaultName: String,
     mode: ExtractDialogMode,
     onDismissRequest: () -> Unit,
-    onConfirm: (String) -> Unit,
+    onConfirm: (String, Boolean) -> Unit,
 ) {
     var extractNameInput by remember(defaultName, mode) {
         mutableStateOf(defaultName)
+    }
+    var openOnComplete by remember(defaultName, mode) {
+        mutableStateOf(true)
     }
     val dialogTitle = when (mode) {
         ExtractDialogMode.ZipFolder -> "zipを展開"
@@ -38,18 +45,30 @@ internal fun FileBrowserExtractDialog(
         onDismissRequest = onDismissRequest,
         title = { Text(dialogTitle) },
         text = {
-            TextField(
-                value = extractNameInput,
-                onValueChange = { extractNameInput = it },
-                label = { Text(nameLabel) },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            Column {
+                TextField(
+                    value = extractNameInput,
+                    onValueChange = { extractNameInput = it },
+                    label = { Text(nameLabel) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Checkbox(
+                        checked = openOnComplete,
+                        onCheckedChange = { openOnComplete = it },
+                    )
+                    Text("完了後に開く")
+                }
+            }
         },
         confirmButton = {
             TextButton(
                 onClick = {
                     if (extractNameInput.isNotBlank()) {
-                        onConfirm(extractNameInput)
+                        onConfirm(extractNameInput, openOnComplete)
                     }
                 },
                 enabled = extractNameInput.isNotBlank(),
@@ -72,7 +91,7 @@ private fun FileBrowserExtractDialogZipPreview() {
         defaultName = "archive",
         mode = ExtractDialogMode.ZipFolder,
         onDismissRequest = {},
-        onConfirm = {},
+        onConfirm = { _, _ -> },
     )
 }
 
@@ -83,7 +102,7 @@ private fun FileBrowserExtractDialogZstPreview() {
         defaultName = "archive.tar",
         mode = ExtractDialogMode.ZstFile,
         onDismissRequest = {},
-        onConfirm = {},
+        onConfirm = { _, _ -> },
     )
 }
 
@@ -94,6 +113,6 @@ private fun FileBrowserExtractDialogXzPreview() {
         defaultName = "archive.tar",
         mode = ExtractDialogMode.XzFile,
         onDismissRequest = {},
-        onConfirm = {},
+        onConfirm = { _, _ -> },
     )
 }

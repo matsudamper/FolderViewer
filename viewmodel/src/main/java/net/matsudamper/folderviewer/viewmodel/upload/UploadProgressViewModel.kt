@@ -108,6 +108,7 @@ class UploadProgressViewModel @Inject constructor(
         return when (op.type) {
             OperationRepository.OperationType.PASTE -> createPasteItem(op)
             OperationRepository.OperationType.DELETE -> createDeleteItem(op)
+            OperationRepository.OperationType.EXTRACT -> createExtractItem(op)
             OperationRepository.OperationType.UPLOAD_FOLDER -> createUploadItem(op, isFolder = true)
             OperationRepository.OperationType.UPLOAD_FILE, null -> createUploadItem(op, isFolder = false)
         }
@@ -272,6 +273,25 @@ class UploadProgressViewModel @Inject constructor(
             state = state,
             canNavigate = true,
             progress = progress,
+            progressText = progressText,
+        )
+    }
+
+    private fun createExtractItem(op: OperationRepository.OperationProgress): UploadProgressUiState.UploadItem {
+        val state = mapState(op.status)
+        val progressText = when (state) {
+            UploadProgressUiState.UploadState.RUNNING -> "解凍中"
+            UploadProgressUiState.UploadState.SUCCEEDED -> "完了"
+            UploadProgressUiState.UploadState.FAILED -> op.errorMessage ?: "失敗"
+            else -> null
+        }
+        return UploadProgressUiState.UploadItem.Extract(
+            id = op.id.toString(),
+            name = op.name,
+            description = op.description,
+            state = state,
+            canNavigate = false,
+            progress = null,
             progressText = progressText,
         )
     }
