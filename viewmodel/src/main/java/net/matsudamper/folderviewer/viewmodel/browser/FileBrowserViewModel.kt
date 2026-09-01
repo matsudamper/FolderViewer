@@ -6,13 +6,16 @@ import androidx.lifecycle.viewModelScope
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -323,6 +326,40 @@ class FileBrowserViewModel @AssistedInject constructor(
             }
         }
 
+        override fun onExtractClick() {
+            val selectedIds = when (val s = viewModelStateFlow.value.selectedState) {
+                is ViewModelState.SelectionState.NonSelected -> return
+                is ViewModelState.SelectionState.Selected -> s.items
+            }
+            if (selectedIds.size != 1) return
+            val rawFiles = viewModelStateFlow.value.rawFiles
+            val zipFileItem = selectedIds.firstNotNullOfOrNull { id -> rawFiles.find { it.id == id } }
+                ?: return
+            if (zipFileItem.isDirectory || !zipFileItem.displayPath.endsWith(".zip", ignoreCase = true)) return
+            viewModelScope.launch {
+                uiChannelEvent.send(
+                    FileBrowserUiEvent.ShowExtractDialog(
+                        defaultFolderName = zipFileDefaultFolderName(zipFileItem.displayPath),
+                    ),
+                )
+            }
+        }
+
+        override fun onConfirmExtract(folderName: String) {
+            val selectedIds = when (val s = viewModelStateFlow.value.selectedState) {
+                is ViewModelState.SelectionState.NonSelected -> return
+                is ViewModelState.SelectionState.Selected -> s.items
+            }
+            if (selectedIds.size != 1) return
+            val rawFiles = viewModelStateFlow.value.rawFiles
+            val zipFileItem = selectedIds.firstNotNullOfOrNull { id -> rawFiles.find { it.id == id } }
+                ?: return
+            if (zipFileItem.isDirectory || !zipFileItem.displayPath.endsWith(".zip", ignoreCase = true)) return
+            viewModelScope.launch {
+                handleExtract(zipFileItem, folderName)
+            }
+        }
+
         override fun onDeleteClick() {
             val selectedIds = when (val s = viewModelStateFlow.value.selectedState) {
                 is ViewModelState.SelectionState.NonSelected -> return
@@ -457,6 +494,8 @@ class FileBrowserViewModel @AssistedInject constructor(
             isSelectionMode = isSelectionMode,
             selectedCount = selectedItems.size,
             visibleCompressMenu = viewModelState.localFolderPath != null,
+            visibleExtractMenu = viewModelState.localFolderPath != null &&
+                isSingleZipFileSelected(selectedItems, viewModelState.rawFiles),
             isPasteMode = clipboardState != null,
             contentState = contentState,
         )
@@ -840,6 +879,93 @@ class FileBrowserViewModel @AssistedInject constructor(
             zipOut.putNextEntry(ZipEntry(entryName))
             file.inputStream().use { input -> input.copyTo(zipOut) }
             zipOut.closeEntry()
+        }
+    }
+
+    private suspend fun handleExtract(zipFileItem: FileItem, folderName: String) {
+        runCatching {
+            val repository = getRepository()
+            val zipFile = when (val uri = repository.getViewSourceUri(zipFileItem.id)) {
+                is ViewSourceUri.LocalFile -> File(uri.path)
+
+                is ViewSourceUri.RemoteUrl,
+                is ViewSourceUri.StreamProvider,
+                -> {
+                    uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("解凍はローカルストレージのみ対応しています"))
+                    return
+                }
+            }
+            val parentPath = viewModelStateFlow.value.localFolderPath ?: run {
+                uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("解凍はローカルストレージのみ対応しています"))
+                return
+            }
+            val extractDir = File(parentPath, folderName)
+            if (extractDir.exists()) {
+                uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("同じ名前のフォルダが既に存在します: ${extractDir.name}"))
+                return
+            }
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    extractZip(zipFile, extractDir)
+                }.onFailure { e ->
+                    extractDir.deleteRecursively()
+                    throw e
+                }
+            }
+            viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
+            selectionModeRepository.setSelectionMode(false)
+            fetchFilesInternal()
+            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("${extractDir.name}に展開しました"))
+        }.onFailure { e ->
+            when (e) {
+                is CancellationException -> throw e
+                else -> {
+                    e.printStackTrace()
+                    uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar("解凍に失敗しました: ${e.message}"))
+                }
+            }
+        }
+    }
+
+    private fun extractZip(zipFile: File, destDir: File) {
+        destDir.mkdirs()
+        ZipInputStream(BufferedInputStream(FileInputStream(zipFile))).use { zipIn ->
+            var entry = zipIn.nextEntry
+            while (entry != null) {
+                val entryFile = File(destDir, entry.name)
+                val destPath = destDir.canonicalPath
+                val entryPath = entryFile.canonicalPath
+                if (!entryPath.startsWith(destPath + File.separator) && entryPath != destPath) {
+                    throw SecurityException("Invalid zip entry path")
+                }
+                if (entry.isDirectory) {
+                    entryFile.mkdirs()
+                } else {
+                    entryFile.parentFile?.mkdirs()
+                    entryFile.outputStream().use { output ->
+                        zipIn.copyTo(output)
+                    }
+                }
+                zipIn.closeEntry()
+                entry = zipIn.nextEntry
+            }
+        }
+    }
+
+    private fun isSingleZipFileSelected(
+        selectedItems: Set<FileObjectId.Item>,
+        rawFiles: List<FileItem>,
+    ): Boolean {
+        if (selectedItems.size != 1) return false
+        val fileItem = rawFiles.find { it.id == selectedItems.first() } ?: return false
+        return !fileItem.isDirectory && fileItem.displayPath.endsWith(".zip", ignoreCase = true)
+    }
+
+    private fun zipFileDefaultFolderName(fileName: String): String {
+        return if (fileName.endsWith(".zip", ignoreCase = true)) {
+            fileName.dropLast(4)
+        } else {
+            fileName
         }
     }
 

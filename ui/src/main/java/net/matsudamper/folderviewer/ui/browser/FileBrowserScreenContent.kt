@@ -54,6 +54,10 @@ internal fun FileBrowserScreenContent(
     showCompressDialog: Boolean = false,
     onCompressDialogDismiss: () -> Unit = {},
     onConfirmCompress: (String) -> Unit = {},
+    showExtractDialog: Boolean = false,
+    extractDialogDefaultFolderName: String = "",
+    onExtractDialogDismiss: () -> Unit = {},
+    onConfirmExtract: (String) -> Unit = {},
     deleteConfirmCount: Int? = null,
     onDeleteConfirmDialogDismiss: () -> Unit = {},
     onConfirmDelete: () -> Unit = {},
@@ -73,10 +77,12 @@ internal fun FileBrowserScreenContent(
                 FileBrowserSelectionTopBar(
                     selectedCount = uiState.selectedCount,
                     visibleCompressMenu = uiState.visibleCompressMenu,
+                    visibleExtractMenu = uiState.visibleExtractMenu,
                     onCancelSelection = callbacks::onCancelSelection,
                     onSelectAllClick = callbacks::onSelectAllClick,
                     onShareClick = callbacks::onShareClick,
                     onCompressClick = callbacks::onCompressClick,
+                    onExtractClick = callbacks::onExtractClick,
                 )
             } else {
                 FileBrowserTopBar(
@@ -282,6 +288,47 @@ internal fun FileBrowserScreenContent(
         )
     }
 
+    if (showExtractDialog) {
+        var extractFolderNameInput by remember(extractDialogDefaultFolderName) {
+            mutableStateOf(extractDialogDefaultFolderName)
+        }
+        AlertDialog(
+            onDismissRequest = {
+                onExtractDialogDismiss()
+            },
+            title = { Text("zipを展開") },
+            text = {
+                TextField(
+                    value = extractFolderNameInput,
+                    onValueChange = { extractFolderNameInput = it },
+                    label = { Text("フォルダ名") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (extractFolderNameInput.isNotBlank()) {
+                            onConfirmExtract(extractFolderNameInput)
+                        }
+                    },
+                    enabled = extractFolderNameInput.isNotBlank(),
+                ) {
+                    Text("解凍")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        onExtractDialogDismiss()
+                    },
+                ) {
+                    Text("キャンセル")
+                }
+            },
+        )
+    }
+
     if (deleteConfirmCount != null) {
         AlertDialog(
             onDismissRequest = { onDeleteConfirmDialogDismiss() },
@@ -323,6 +370,7 @@ private fun Preview() {
             isSelectionMode = false,
             selectedCount = 0,
             visibleCompressMenu = true,
+            visibleExtractMenu = true,
             isPasteMode = false,
             callbacks = object : FileBrowserUiState.Callbacks {
                 override fun onRefresh() = Unit
@@ -343,6 +391,8 @@ private fun Preview() {
                 override fun onShareClick() = Unit
                 override fun onCompressClick() = Unit
                 override fun onConfirmCompress(fileName: String) = Unit
+                override fun onExtractClick() = Unit
+                override fun onConfirmExtract(folderName: String) = Unit
                 override fun onDeleteClick() = Unit
                 override fun onConfirmDelete() = Unit
                 override fun onPasteClick() = Unit

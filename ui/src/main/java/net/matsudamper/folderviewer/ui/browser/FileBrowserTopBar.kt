@@ -200,10 +200,12 @@ internal fun FileBrowserTopBar(
 internal fun FileBrowserSelectionTopBar(
     selectedCount: Int,
     visibleCompressMenu: Boolean,
+    visibleExtractMenu: Boolean,
     onCancelSelection: () -> Unit,
     onSelectAllClick: () -> Unit,
     onShareClick: () -> Unit,
     onCompressClick: () -> Unit,
+    onExtractClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     TopAppBar(
@@ -253,6 +255,21 @@ internal fun FileBrowserSelectionTopBar(
                         )
                     },
                 )
+                if (visibleExtractMenu) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.extract)) },
+                        onClick = {
+                            showMoreMenu = false
+                            onExtractClick()
+                        },
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_folder_zip),
+                                contentDescription = null,
+                            )
+                        },
+                    )
+                }
                 if (visibleCompressMenu) {
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.compress)) },
@@ -303,10 +320,12 @@ private fun SelectionTopBarPreview() {
     FileBrowserSelectionTopBar(
         selectedCount = 3,
         visibleCompressMenu = true,
+        visibleExtractMenu = true,
         onCancelSelection = {},
         onSelectAllClick = {},
         onShareClick = {},
         onCompressClick = {},
+        onExtractClick = {},
     )
 }
 
