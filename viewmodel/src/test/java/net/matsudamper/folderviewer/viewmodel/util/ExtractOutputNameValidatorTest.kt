@@ -33,6 +33,11 @@ internal class ExtractOutputNameValidatorTest {
     }
 
     @Test
+    fun validate_acceptsNameContainingDoubleDot() {
+        assertTrue(ExtractOutputNameValidator.validate("backup..2026") is ExtractOutputNameValidator.Result.Valid)
+    }
+
+    @Test
     fun validate_rejectsAbsolutePath() {
         assertEquals(ExtractOutputNameValidator.Result.Invalid, ExtractOutputNameValidator.validate("/absolute"))
     }

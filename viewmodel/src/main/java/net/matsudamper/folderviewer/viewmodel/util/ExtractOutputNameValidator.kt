@@ -17,7 +17,6 @@ internal object ExtractOutputNameValidator {
         if (name == "." || name == "..") return Result.Invalid
         if (name.startsWith("/") || name.startsWith("\\")) return Result.Invalid
         if (name.contains('/') || name.contains('\\')) return Result.Invalid
-        if (name.contains("..")) return Result.Invalid
         return Result.Valid(name)
     }
 
