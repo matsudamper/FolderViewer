@@ -6,17 +6,10 @@ import androidx.lifecycle.viewModelScope
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
-import java.io.BufferedInputStream
-import java.io.BufferedOutputStream
 import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.zip.ZipEntry
-import java.util.zip.ZipInputStream
-import java.util.zip.ZipOutputStream
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -57,6 +50,7 @@ import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 import net.matsudamper.folderviewer.ui.util.formatBytes
 import net.matsudamper.folderviewer.viewmodel.util.FileUtil
+import net.matsudamper.folderviewer.viewmodel.util.ZipFileUtil
 import net.matsudamper.folderviewer.viewmodel.worker.FilePasteWorker
 import net.matsudamper.folderviewer.viewmodel.worker.FileUploadWorker
 import net.matsudamper.folderviewer.viewmodel.worker.FolderUploadWorker
@@ -79,6 +73,10 @@ class FileBrowserViewModel @AssistedInject constructor(
 
     private val uiChannelEvent = Channel<FileBrowserUiEvent>()
     val uiEvent: Flow<FileBrowserUiEvent> = uiChannelEvent.receiveAsFlow()
+    private val zipHandler = FileBrowserZipHandler(
+        sendSnackbar = { message -> uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar(message)) },
+        trySendSnackbar = { message -> uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar(message)) },
+    )
     private val fileObjectId = arg.fileId
     private var pendingPasteClipboardState: ClipboardRepository.ClipboardState? = null
     private var pendingDeleteItems: List<FileItem>? = null
@@ -339,7 +337,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             viewModelScope.launch {
                 uiChannelEvent.send(
                     FileBrowserUiEvent.ShowExtractDialog(
-                        defaultFolderName = zipFileDefaultFolderName(zipFileItem.displayPath),
+                        defaultFolderName = ZipFileUtil.zipFileDefaultFolderName(zipFileItem.displayPath),
                     ),
                 )
             }
@@ -495,7 +493,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             selectedCount = selectedItems.size,
             visibleCompressMenu = viewModelState.localFolderPath != null,
             visibleExtractMenu = viewModelState.localFolderPath != null &&
-                isSingleZipFileSelected(selectedItems, viewModelState.rawFiles),
+                zipHandler.isSingleZipFileSelected(selectedItems, viewModelState.rawFiles),
             isPasteMode = clipboardState != null,
             contentState = contentState,
         )
@@ -819,154 +817,31 @@ class FileBrowserViewModel @AssistedInject constructor(
     }
 
     private suspend fun handleCompress(items: List<FileItem>, fileName: String) {
-        runCatching {
-            val repository = getRepository()
-            val sourceFiles = items.map { item ->
-                when (val uri = repository.getViewSourceUri(item.id)) {
-                    is ViewSourceUri.LocalFile -> File(uri.path)
-
-                    // TODO: リモートストレージの圧縮に対応する。getFileContentでストリーミングしながらzip化し、uploadFileで書き込む別実装が必要
-                    is ViewSourceUri.RemoteUrl,
-                    is ViewSourceUri.StreamProvider,
-                    -> {
-                        uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("圧縮はローカルストレージのみ対応しています"))
-                        return
-                    }
-                }
-            }
-            val parentPath = viewModelStateFlow.value.localFolderPath ?: run {
-                uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("圧縮はローカルストレージのみ対応しています"))
-                return
-            }
-            val zipFile = File(parentPath, "$fileName.zip")
-            if (zipFile.exists()) {
-                uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("同じ名前のファイルが既に存在します: ${zipFile.name}"))
-                return
-            }
-            withContext(Dispatchers.IO) {
-                runCatching {
-                    ZipOutputStream(BufferedOutputStream(FileOutputStream(zipFile))).use { zipOut ->
-                        sourceFiles.forEach { file -> addZipEntry(zipOut, file, file.name) }
-                    }
-                }.onFailure { e ->
-                    zipFile.delete()
-                    throw e
-                }
-            }
-            viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
-            selectionModeRepository.setSelectionMode(false)
-            fetchFilesInternal()
-            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("${zipFile.name}を作成しました"))
-        }.onFailure { e ->
-            when (e) {
-                is CancellationException -> throw e
-                else -> {
-                    e.printStackTrace()
-                    uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar("圧縮に失敗しました: ${e.message}"))
-                }
-            }
-        }
-    }
-
-    private fun addZipEntry(zipOut: ZipOutputStream, file: File, entryName: String) {
-        if (file.isDirectory) {
-            zipOut.putNextEntry(ZipEntry("$entryName/"))
-            zipOut.closeEntry()
-            file.listFiles()?.forEach { child ->
-                addZipEntry(zipOut, child, "$entryName/${child.name}")
-            }
-        } else {
-            zipOut.putNextEntry(ZipEntry(entryName))
-            file.inputStream().use { input -> input.copyTo(zipOut) }
-            zipOut.closeEntry()
-        }
+        zipHandler.compress(
+            items = items,
+            fileName = fileName,
+            repository = getRepository(),
+            localFolderPath = viewModelStateFlow.value.localFolderPath,
+            onCompleted = {
+                viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
+                selectionModeRepository.setSelectionMode(false)
+                fetchFilesInternal()
+            },
+        )
     }
 
     private suspend fun handleExtract(zipFileItem: FileItem, folderName: String) {
-        runCatching {
-            val repository = getRepository()
-            val zipFile = when (val uri = repository.getViewSourceUri(zipFileItem.id)) {
-                is ViewSourceUri.LocalFile -> File(uri.path)
-
-                is ViewSourceUri.RemoteUrl,
-                is ViewSourceUri.StreamProvider,
-                -> {
-                    uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("解凍はローカルストレージのみ対応しています"))
-                    return
-                }
-            }
-            val parentPath = viewModelStateFlow.value.localFolderPath ?: run {
-                uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("解凍はローカルストレージのみ対応しています"))
-                return
-            }
-            val extractDir = File(parentPath, folderName)
-            if (extractDir.exists()) {
-                uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("同じ名前のフォルダが既に存在します: ${extractDir.name}"))
-                return
-            }
-            withContext(Dispatchers.IO) {
-                runCatching {
-                    extractZip(zipFile, extractDir)
-                }.onFailure { e ->
-                    extractDir.deleteRecursively()
-                    throw e
-                }
-            }
-            viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
-            selectionModeRepository.setSelectionMode(false)
-            fetchFilesInternal()
-            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("${extractDir.name}に展開しました"))
-        }.onFailure { e ->
-            when (e) {
-                is CancellationException -> throw e
-                else -> {
-                    e.printStackTrace()
-                    uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar("解凍に失敗しました: ${e.message}"))
-                }
-            }
-        }
-    }
-
-    private fun extractZip(zipFile: File, destDir: File) {
-        destDir.mkdirs()
-        ZipInputStream(BufferedInputStream(FileInputStream(zipFile))).use { zipIn ->
-            var entry = zipIn.nextEntry
-            while (entry != null) {
-                val entryFile = File(destDir, entry.name)
-                val destPath = destDir.canonicalPath
-                val entryPath = entryFile.canonicalPath
-                if (!entryPath.startsWith(destPath + File.separator) && entryPath != destPath) {
-                    throw SecurityException("Invalid zip entry path")
-                }
-                if (entry.isDirectory) {
-                    entryFile.mkdirs()
-                } else {
-                    entryFile.parentFile?.mkdirs()
-                    entryFile.outputStream().use { output ->
-                        zipIn.copyTo(output)
-                    }
-                }
-                zipIn.closeEntry()
-                entry = zipIn.nextEntry
-            }
-        }
-    }
-
-    private fun isSingleZipFileSelected(
-        selectedItems: Set<FileObjectId.Item>,
-        rawFiles: List<FileItem>,
-    ): Boolean {
-        if (selectedItems.size != 1) return false
-        val fileItem = rawFiles.find { it.id == selectedItems.first() } ?: return false
-        return !fileItem.isDirectory && fileItem.displayPath.endsWith(".zip", ignoreCase = true)
-    }
-
-    private fun zipFileDefaultFolderName(fileName: String): String {
-        return if (fileName.endsWith(".zip", ignoreCase = true)) {
-            fileName.dropLast(4)
-        } else {
-            fileName
-        }
+        zipHandler.extract(
+            zipFileItem = zipFileItem,
+            folderName = folderName,
+            repository = getRepository(),
+            localFolderPath = viewModelStateFlow.value.localFolderPath,
+            onCompleted = {
+                viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
+                selectionModeRepository.setSelectionMode(false)
+                fetchFilesInternal()
+            },
+        )
     }
 
     private suspend fun collectDeleteFiles(
