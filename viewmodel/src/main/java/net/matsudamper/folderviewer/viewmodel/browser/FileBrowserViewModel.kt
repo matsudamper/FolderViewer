@@ -81,6 +81,7 @@ class FileBrowserViewModel @AssistedInject constructor(
     private val fileObjectId = arg.fileId
     private var pendingPasteClipboardState: ClipboardRepository.ClipboardState? = null
     private var pendingDeleteItems: List<FileItem>? = null
+    private var pendingExtractFileItem: FileItem? = null
 
     private val displayName get() = arg.displayPath ?: viewModelStateFlow.value.storageName ?: "null"
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> = MutableStateFlow(ViewModelState())
@@ -346,14 +347,17 @@ class FileBrowserViewModel @AssistedInject constructor(
         }
 
         override fun onConfirmExtract(folderName: String) {
-            val selectedIds = when (val s = viewModelStateFlow.value.selectedState) {
-                is ViewModelState.SelectionState.NonSelected -> return
-                is ViewModelState.SelectionState.Selected -> s.items
-            }
-            if (selectedIds.size != 1) return
             val rawFiles = viewModelStateFlow.value.rawFiles
-            val fileItem = selectedIds.firstNotNullOfOrNull { id -> rawFiles.find { it.id == id } }
-                ?: return
+            val fileItem = pendingExtractFileItem
+                ?: run {
+                    val selectedIds = when (val s = viewModelStateFlow.value.selectedState) {
+                        is ViewModelState.SelectionState.NonSelected -> return
+                        is ViewModelState.SelectionState.Selected -> s.items
+                    }
+                    if (selectedIds.size != 1) return
+                    selectedIds.firstNotNullOfOrNull { id -> rawFiles.find { it.id == id } } ?: return
+                }
+            pendingExtractFileItem = null
             when (val extractType = zipHandler.getExtractableFileType(fileItem) ?: return) {
                 ExtractableFileType.Zip -> viewModelScope.launch {
                     handleExtractZip(fileItem, folderName)
@@ -363,6 +367,10 @@ class FileBrowserViewModel @AssistedInject constructor(
                     handleExtractCompressed(fileItem, folderName, extractType.format)
                 }
             }
+        }
+
+        override fun onDismissExtract() {
+            pendingExtractFileItem = null
         }
 
         override fun onDeleteClick() {
@@ -1094,14 +1102,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                     else -> {
                         val extractType = zipHandler.getExtractableFileType(fileItem)
                         if (extractType != null && viewModelStateFlow.value.localFolderPath != null) {
-                            viewModelStateFlow.update {
-                                it.copy(
-                                    selectedState = ViewModelState.SelectionState.Selected(
-                                        items = setOf(fileItem.id),
-                                    ),
-                                )
-                            }
-                            selectionModeRepository.setSelectionMode(true)
+                            pendingExtractFileItem = fileItem
                             viewModelScope.launch {
                                 uiChannelEvent.send(
                                     FileBrowserUiEvent.ShowExtractDialog(
