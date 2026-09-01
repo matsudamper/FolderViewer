@@ -26,7 +26,8 @@ fun FileBrowserScreen(
     val showCreateDirectoryDialog = remember { mutableStateOf(false) }
     val showCompressDialog = remember { mutableStateOf(false) }
     val showExtractDialog = remember { mutableStateOf(false) }
-    val extractDialogDefaultFolderName = remember { mutableStateOf("") }
+    val extractDialogDefaultName = remember { mutableStateOf("") }
+    val extractDialogMode = remember { mutableStateOf(ExtractDialogMode.ZipFolder) }
     val deleteConfirmCount = remember { mutableStateOf<Int?>(null) }
 
     LaunchedEffect(uiEvent) {
@@ -48,7 +49,8 @@ fun FileBrowserScreen(
                     showCompressDialog.value = true
                 }
                 is FileBrowserUiEvent.ShowExtractDialog -> {
-                    extractDialogDefaultFolderName.value = event.defaultFolderName
+                    extractDialogDefaultName.value = event.defaultName
+                    extractDialogMode.value = event.mode
                     showExtractDialog.value = true
                 }
                 is FileBrowserUiEvent.ShowDeleteConfirmDialog -> {
@@ -75,10 +77,11 @@ fun FileBrowserScreen(
                 showCompressDialog.value = false
             },
             showExtractDialog = showExtractDialog.value,
-            extractDialogDefaultFolderName = extractDialogDefaultFolderName.value,
+            extractDialogDefaultName = extractDialogDefaultName.value,
+            extractDialogMode = extractDialogMode.value,
             onExtractDialogDismiss = { showExtractDialog.value = false },
-            onConfirmExtract = { folderName ->
-                uiState.callbacks.onConfirmExtract(folderName)
+            onConfirmExtract = { name ->
+                uiState.callbacks.onConfirmExtract(name)
                 showExtractDialog.value = false
             },
             deleteConfirmCount = deleteConfirmCount.value,

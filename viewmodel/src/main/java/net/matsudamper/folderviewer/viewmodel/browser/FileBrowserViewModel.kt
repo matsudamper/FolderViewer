@@ -45,12 +45,13 @@ import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.UploadJobRepository
 import net.matsudamper.folderviewer.viewmodel.worker.FileDeleteWorker
 import net.matsudamper.folderviewer.repository.ViewSourceUri
+import net.matsudamper.folderviewer.ui.browser.ExtractDialogMode
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 import net.matsudamper.folderviewer.ui.util.formatBytes
+import net.matsudamper.folderviewer.viewmodel.util.CompressedFileUtil
 import net.matsudamper.folderviewer.viewmodel.util.FileUtil
-import net.matsudamper.folderviewer.viewmodel.util.ZipFileUtil
 import net.matsudamper.folderviewer.viewmodel.worker.FilePasteWorker
 import net.matsudamper.folderviewer.viewmodel.worker.FileUploadWorker
 import net.matsudamper.folderviewer.viewmodel.worker.FolderUploadWorker
@@ -331,13 +332,14 @@ class FileBrowserViewModel @AssistedInject constructor(
             }
             if (selectedIds.size != 1) return
             val rawFiles = viewModelStateFlow.value.rawFiles
-            val zipFileItem = selectedIds.firstNotNullOfOrNull { id -> rawFiles.find { it.id == id } }
+            val fileItem = selectedIds.firstNotNullOfOrNull { id -> rawFiles.find { it.id == id } }
                 ?: return
-            if (zipFileItem.isDirectory || !zipFileItem.displayPath.endsWith(".zip", ignoreCase = true)) return
+            val extractType = zipHandler.getExtractableFileType(fileItem) ?: return
             viewModelScope.launch {
                 uiChannelEvent.send(
                     FileBrowserUiEvent.ShowExtractDialog(
-                        defaultFolderName = ZipFileUtil.zipFileDefaultFolderName(zipFileItem.displayPath),
+                        defaultName = zipHandler.defaultExtractName(fileItem, extractType),
+                        mode = extractType.toExtractDialogMode(),
                     ),
                 )
             }
@@ -350,11 +352,16 @@ class FileBrowserViewModel @AssistedInject constructor(
             }
             if (selectedIds.size != 1) return
             val rawFiles = viewModelStateFlow.value.rawFiles
-            val zipFileItem = selectedIds.firstNotNullOfOrNull { id -> rawFiles.find { it.id == id } }
+            val fileItem = selectedIds.firstNotNullOfOrNull { id -> rawFiles.find { it.id == id } }
                 ?: return
-            if (zipFileItem.isDirectory || !zipFileItem.displayPath.endsWith(".zip", ignoreCase = true)) return
-            viewModelScope.launch {
-                handleExtract(zipFileItem, folderName)
+            when (val extractType = zipHandler.getExtractableFileType(fileItem) ?: return) {
+                ExtractableFileType.Zip -> viewModelScope.launch {
+                    handleExtractZip(fileItem, folderName)
+                }
+
+                is ExtractableFileType.Compressed -> viewModelScope.launch {
+                    handleExtractCompressed(fileItem, folderName, extractType.format)
+                }
             }
         }
 
@@ -493,7 +500,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             selectedCount = selectedItems.size,
             visibleCompressMenu = viewModelState.localFolderPath != null,
             visibleExtractMenu = viewModelState.localFolderPath != null &&
-                zipHandler.isSingleZipFileSelected(selectedItems, viewModelState.rawFiles),
+                zipHandler.isSingleExtractableFileSelected(selectedItems, viewModelState.rawFiles),
             isPasteMode = clipboardState != null,
             contentState = contentState,
         )
@@ -830,10 +837,29 @@ class FileBrowserViewModel @AssistedInject constructor(
         )
     }
 
-    private suspend fun handleExtract(zipFileItem: FileItem, folderName: String) {
-        zipHandler.extract(
+    private suspend fun handleExtractZip(zipFileItem: FileItem, folderName: String) {
+        zipHandler.extractZip(
             zipFileItem = zipFileItem,
             folderName = folderName,
+            context = createExtractContext(),
+        )
+    }
+
+    private suspend fun handleExtractCompressed(
+        fileItem: FileItem,
+        outputFileName: String,
+        format: CompressedFileUtil.Format,
+    ) {
+        zipHandler.extractCompressed(
+            fileItem = fileItem,
+            outputFileName = outputFileName,
+            format = format,
+            context = createExtractContext(),
+        )
+    }
+
+    private suspend fun createExtractContext(): ExtractContext {
+        return ExtractContext(
             repository = getRepository(),
             localFolderPath = viewModelStateFlow.value.localFolderPath,
             onCompleted = {
@@ -842,6 +868,16 @@ class FileBrowserViewModel @AssistedInject constructor(
                 fetchFilesInternal()
             },
         )
+    }
+
+    private fun ExtractableFileType.toExtractDialogMode(): ExtractDialogMode {
+        return when (this) {
+            ExtractableFileType.Zip -> ExtractDialogMode.ZipFolder
+            is ExtractableFileType.Compressed -> when (format) {
+                CompressedFileUtil.Format.Zst -> ExtractDialogMode.ZstFile
+                CompressedFileUtil.Format.Xz -> ExtractDialogMode.XzFile
+            }
+        }
     }
 
     private suspend fun collectDeleteFiles(
