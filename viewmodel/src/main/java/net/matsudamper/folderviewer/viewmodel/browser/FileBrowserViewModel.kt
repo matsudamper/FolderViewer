@@ -1092,8 +1092,28 @@ class FileBrowserViewModel @AssistedInject constructor(
                     }
 
                     else -> {
-                        viewModelScope.launch {
-                            openWithExternalPlayer(fileItem)
+                        val extractType = zipHandler.getExtractableFileType(fileItem)
+                        if (extractType != null && viewModelStateFlow.value.localFolderPath != null) {
+                            viewModelStateFlow.update {
+                                it.copy(
+                                    selectedState = ViewModelState.SelectionState.Selected(
+                                        items = setOf(fileItem.id),
+                                    ),
+                                )
+                            }
+                            selectionModeRepository.setSelectionMode(true)
+                            viewModelScope.launch {
+                                uiChannelEvent.send(
+                                    FileBrowserUiEvent.ShowExtractDialog(
+                                        defaultName = zipHandler.defaultExtractName(fileItem, extractType),
+                                        mode = extractType.toExtractDialogMode(),
+                                    ),
+                                )
+                            }
+                        } else {
+                            viewModelScope.launch {
+                                openWithExternalPlayer(fileItem)
+                            }
                         }
                     }
                 }
