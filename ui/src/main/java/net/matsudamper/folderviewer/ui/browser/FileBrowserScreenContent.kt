@@ -290,54 +290,11 @@ internal fun FileBrowserScreenContent(
     }
 
     if (showExtractDialog) {
-        var extractNameInput by remember(extractDialogDefaultName, extractDialogMode) {
-            mutableStateOf(extractDialogDefaultName)
-        }
-        val dialogTitle = when (extractDialogMode) {
-            ExtractDialogMode.ZipFolder -> "zipを展開"
-            ExtractDialogMode.ZstFile -> "zstを展開"
-            ExtractDialogMode.XzFile -> "xzを展開"
-        }
-        val nameLabel = when (extractDialogMode) {
-            ExtractDialogMode.ZipFolder -> "フォルダ名"
-            ExtractDialogMode.ZstFile,
-            ExtractDialogMode.XzFile,
-            -> "ファイル名"
-        }
-        AlertDialog(
-            onDismissRequest = {
-                onExtractDialogDismiss()
-            },
-            title = { Text(dialogTitle) },
-            text = {
-                TextField(
-                    value = extractNameInput,
-                    onValueChange = { extractNameInput = it },
-                    label = { Text(nameLabel) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (extractNameInput.isNotBlank()) {
-                            onConfirmExtract(extractNameInput)
-                        }
-                    },
-                    enabled = extractNameInput.isNotBlank(),
-                ) {
-                    Text("解凍")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        onExtractDialogDismiss()
-                    },
-                ) {
-                    Text("キャンセル")
-                }
-            },
+        FileBrowserExtractDialog(
+            defaultName = extractDialogDefaultName,
+            mode = extractDialogMode,
+            onDismissRequest = onExtractDialogDismiss,
+            onConfirm = onConfirmExtract,
         )
     }
 
@@ -357,100 +314,6 @@ internal fun FileBrowserScreenContent(
                 }
             },
         )
-    }
-}
-
-@Composable
-@Preview
-private fun ExtractDialogPreview() {
-    ExtractDialogPreviewContent(
-        defaultName = "archive",
-        mode = ExtractDialogMode.ZipFolder,
-    )
-}
-
-@Composable
-@Preview
-private fun ZstExtractDialogPreview() {
-    ExtractDialogPreviewContent(
-        defaultName = "archive.tar",
-        mode = ExtractDialogMode.ZstFile,
-    )
-}
-
-@Composable
-@Preview
-private fun XzExtractDialogPreview() {
-    ExtractDialogPreviewContent(
-        defaultName = "archive.tar",
-        mode = ExtractDialogMode.XzFile,
-    )
-}
-
-@Composable
-private fun ExtractDialogPreviewContent(
-    defaultName: String,
-    mode: ExtractDialogMode,
-) {
-    FileBrowserScreenContent(
-        uiState = FileBrowserUiState(
-            visibleFolderBrowserButton = true,
-            visibleOpenFolderWithExternalAppButton = false,
-            visibleFavoriteButton = true,
-            isRefreshing = false,
-            title = "サンプルフォルダ",
-            isFavorite = false,
-            sortConfig = FileBrowserUiState.FileSortConfig(
-                key = FileBrowserUiState.FileSortKey.Name,
-                isAscending = true,
-            ),
-            displayConfig = UiDisplayConfig(
-                displayMode = UiDisplayConfig.DisplayMode.List,
-                displaySize = UiDisplayConfig.DisplaySize.Medium,
-            ),
-            isSelectionMode = true,
-            selectedCount = 1,
-            visibleCompressMenu = true,
-            visibleExtractMenu = true,
-            isPasteMode = false,
-            callbacks = extractDialogPreviewCallbacks(),
-            contentState = FileBrowserUiState.ContentState.Empty,
-        ),
-        snackbarHostState = SnackbarHostState(),
-        showExtractDialog = true,
-        extractDialogDefaultName = defaultName,
-        extractDialogMode = mode,
-    )
-}
-
-private fun extractDialogPreviewCallbacks(): FileBrowserUiState.Callbacks {
-    return object : FileBrowserUiState.Callbacks {
-        override fun onRefresh() = Unit
-        override fun onBack() = Unit
-        override fun onSortConfigChanged(config: FileBrowserUiState.FileSortConfig) = Unit
-        override fun onDisplayModeChanged(config: UiDisplayConfig) = Unit
-        override fun onFolderBrowserClick() = Unit
-        override fun onFavoriteClick() = Unit
-        override fun onUploadFileClick() = Unit
-        override fun onUploadFolderClick() = Unit
-        override fun onCreateDirectoryClick() = Unit
-        override fun onConfirmCreateDirectory(directoryName: String) = Unit
-        override fun onOpenFolderWithExternalAppClick() = Unit
-        override fun onCancelSelection() = Unit
-        override fun onSelectAllClick() = Unit
-        override fun onCopyClick() = Unit
-        override fun onCutClick() = Unit
-        override fun onShareClick() = Unit
-        override fun onCompressClick() = Unit
-        override fun onConfirmCompress(fileName: String) = Unit
-        override fun onExtractClick() = Unit
-        override fun onConfirmExtract(folderName: String) = Unit
-        override fun onDeleteClick() = Unit
-        override fun onConfirmDelete() = Unit
-        override fun onPasteClick() = Unit
-        override fun onPastePermissionResult() = Unit
-        override fun onDeletePermissionResult() = Unit
-        override fun onCancelPaste() = Unit
     }
 }
 

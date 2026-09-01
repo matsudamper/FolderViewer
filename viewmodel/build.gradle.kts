@@ -39,4 +39,6 @@ dependencies {
     implementation(libs.kotlinxSerializationJson)
     implementation(libs.zstdJni)
     implementation(libs.xz)
+
+    testImplementation(libs.junit)
 }

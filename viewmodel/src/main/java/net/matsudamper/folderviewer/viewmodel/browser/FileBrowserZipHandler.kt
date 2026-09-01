@@ -9,6 +9,7 @@ import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.viewmodel.util.CompressedFileUtil
+import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputNameValidator
 import net.matsudamper.folderviewer.viewmodel.util.ZipFileUtil
 
 internal sealed interface ExtractableFileType {
@@ -90,7 +91,11 @@ internal class FileBrowserZipHandler(
                 sendSnackbar("解凍はローカルストレージのみ対応しています")
                 return
             }
-            val extractDir = File(parentPath, folderName)
+            val extractDir = ExtractOutputNameValidator.resolveChildFile(parentPath, folderName)
+                ?: run {
+                    sendSnackbar("無効なフォルダ名です")
+                    return
+                }
             if (extractDir.exists()) {
                 sendSnackbar("同じ名前のフォルダが既に存在します: ${extractDir.name}")
                 return
@@ -122,7 +127,11 @@ internal class FileBrowserZipHandler(
                 sendSnackbar("解凍はローカルストレージのみ対応しています")
                 return
             }
-            val outputFile = File(parentPath, outputFileName)
+            val outputFile = ExtractOutputNameValidator.resolveChildFile(parentPath, outputFileName)
+                ?: run {
+                    sendSnackbar("無効なファイル名です")
+                    return
+                }
             if (outputFile.exists()) {
                 sendSnackbar("同じ名前のファイルが既に存在します: ${outputFile.name}")
                 return
