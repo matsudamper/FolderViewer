@@ -13,6 +13,10 @@ import net.matsudamper.folderviewer.viewmodel.util.ExtractMediaScanner
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputNameValidator
 import net.matsudamper.folderviewer.viewmodel.util.ZipFileUtil
 
+internal sealed interface ExtractableFileType {
+    data object Zip : ExtractableFileType
+}
+
 internal data class ExtractContext(
     val repository: FileRepository,
     val localFolderPath: String?,
@@ -107,7 +111,13 @@ internal class FileBrowserZipHandler(
     ): Boolean {
         if (selectedItems.size != 1) return false
         val fileItem = rawFiles.find { it.id == selectedItems.first() } ?: return false
-        return !fileItem.isDirectory && fileItem.displayPath.endsWith(".zip", ignoreCase = true)
+        return getExtractableFileType(fileItem) != null
+    }
+
+    fun getExtractableFileType(fileItem: FileItem): ExtractableFileType? {
+        if (fileItem.isDirectory) return null
+        if (!fileItem.displayPath.endsWith(".zip", ignoreCase = true)) return null
+        return ExtractableFileType.Zip
     }
 
     private suspend fun resolveLocalFile(

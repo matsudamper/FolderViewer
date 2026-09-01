@@ -141,6 +141,7 @@ private fun UploadItemRow(
                     is UploadProgressUiState.UploadItem.Folder -> R.drawable.ic_folder
                     is UploadProgressUiState.UploadItem.Paste -> R.drawable.ic_file
                     is UploadProgressUiState.UploadItem.Delete -> R.drawable.ic_file
+                    is UploadProgressUiState.UploadItem.Extract -> R.drawable.ic_folder_zip
                 },
             ),
             contentDescription = null,

@@ -16,6 +16,7 @@ fun FileBrowserScreen(
     uiState: FileBrowserUiState,
     uiEvent: Flow<FileBrowserUiEvent>,
     onNavigateToUploadProgress: () -> Unit,
+    onOpenExtractResult: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BackHandler(enabled = true) {
@@ -33,12 +34,23 @@ fun FileBrowserScreen(
         uiEvent.collect { event ->
             when (event) {
                 is FileBrowserUiEvent.ShowSnackbar -> {
+                    val actionLabel = when {
+                        event.openExtractJobId != null -> "開く"
+                        event.showAction -> "表示"
+                        else -> null
+                    }
                     val result = snackbarHostState.showSnackbar(
                         message = event.message,
-                        actionLabel = if (event.showAction) "表示" else null,
+                        actionLabel = actionLabel,
                     )
-                    if (result == SnackbarResult.ActionPerformed) {
-                        onNavigateToUploadProgress()
+                    when {
+                        result == SnackbarResult.ActionPerformed && event.openExtractJobId != null -> {
+                            onOpenExtractResult(event.openExtractJobId)
+                        }
+
+                        result == SnackbarResult.ActionPerformed && event.showAction -> {
+                            onNavigateToUploadProgress()
+                        }
                     }
                 }
                 is FileBrowserUiEvent.ShowCreateDirectoryDialog -> {
@@ -80,8 +92,8 @@ fun FileBrowserScreen(
                 uiState.callbacks.onDismissExtract()
                 showExtractDialog.value = false
             },
-            onConfirmExtract = { folderName ->
-                uiState.callbacks.onConfirmExtract(folderName)
+            onConfirmExtract = { folderName, openOnComplete ->
+                uiState.callbacks.onConfirmExtract(folderName, openOnComplete)
                 showExtractDialog.value = false
             },
             deleteConfirmCount = deleteConfirmCount.value,

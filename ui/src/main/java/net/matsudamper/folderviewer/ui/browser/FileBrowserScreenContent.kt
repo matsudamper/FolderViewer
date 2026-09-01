@@ -57,7 +57,7 @@ internal fun FileBrowserScreenContent(
     showExtractDialog: Boolean = false,
     extractDialogDefaultFolderName: String = "",
     onExtractDialogDismiss: () -> Unit = {},
-    onConfirmExtract: (String) -> Unit = {},
+    onConfirmExtract: (String, Boolean) -> Unit = { _, _ -> },
     deleteConfirmCount: Int? = null,
     onDeleteConfirmDialogDismiss: () -> Unit = {},
     onConfirmDelete: () -> Unit = {},
@@ -359,8 +359,10 @@ private fun Preview() {
                 override fun onCompressClick() = Unit
                 override fun onConfirmCompress(fileName: String) = Unit
                 override fun onExtractClick() = Unit
-                override fun onConfirmExtract(folderName: String) = Unit
+                override fun onConfirmExtract(folderName: String, openOnComplete: Boolean) = Unit
                 override fun onDismissExtract() = Unit
+                override fun onExtractPermissionResult() = Unit
+                override fun onOpenExtractResult(jobId: Long) = Unit
                 override fun onDeleteClick() = Unit
                 override fun onConfirmDelete() = Unit
                 override fun onPasteClick() = Unit

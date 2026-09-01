@@ -70,6 +70,16 @@ data class UploadProgressUiState(
             override val progress: Float?,
             override val progressText: String?,
         ) : UploadItem
+
+        data class Extract(
+            override val id: String,
+            override val name: String,
+            override val description: String,
+            override val state: UploadState,
+            override val canNavigate: Boolean,
+            override val progress: Float?,
+            override val progressText: String?,
+        ) : UploadItem
     }
 
     @Immutable

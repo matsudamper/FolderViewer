@@ -66,7 +66,7 @@ class OperationRepository @Inject internal constructor(
     }
 
     enum class OperationType {
-        UPLOAD_FILE, UPLOAD_FOLDER, PASTE, DELETE
+        UPLOAD_FILE, UPLOAD_FOLDER, PASTE, DELETE, EXTRACT
     }
 
     enum class OperationStatus {
