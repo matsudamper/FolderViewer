@@ -1058,8 +1058,31 @@ class FileBrowserViewModel @AssistedInject constructor(
                     }
 
                     else -> {
-                        viewModelScope.launch {
-                            openWithExternalPlayer(fileItem)
+                        if (
+                            viewModelStateFlow.value.localFolderPath != null &&
+                            fileItem.displayPath.endsWith(".zip", ignoreCase = true)
+                        ) {
+                            viewModelStateFlow.update {
+                                it.copy(
+                                    selectedState = ViewModelState.SelectionState.Selected(
+                                        items = setOf(fileItem.id),
+                                    ),
+                                )
+                            }
+                            selectionModeRepository.setSelectionMode(true)
+                            viewModelScope.launch {
+                                uiChannelEvent.send(
+                                    FileBrowserUiEvent.ShowExtractDialog(
+                                        defaultFolderName = ZipFileUtil.zipFileDefaultFolderName(
+                                            fileItem.displayPath,
+                                        ),
+                                    ),
+                                )
+                            }
+                        } else {
+                            viewModelScope.launch {
+                                openWithExternalPlayer(fileItem)
+                            }
                         }
                     }
                 }
