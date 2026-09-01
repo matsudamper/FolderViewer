@@ -76,7 +76,10 @@ fun FileBrowserScreen(
             },
             showExtractDialog = showExtractDialog.value,
             extractDialogDefaultFolderName = extractDialogDefaultFolderName.value,
-            onExtractDialogDismiss = { showExtractDialog.value = false },
+            onExtractDialogDismiss = {
+                uiState.callbacks.onDismissExtract()
+                showExtractDialog.value = false
+            },
             onConfirmExtract = { folderName ->
                 uiState.callbacks.onConfirmExtract(folderName)
                 showExtractDialog.value = false

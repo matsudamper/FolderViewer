@@ -88,6 +88,7 @@ data class FileBrowserUiState(
         fun onConfirmCompress(fileName: String)
         fun onExtractClick()
         fun onConfirmExtract(folderName: String)
+        fun onDismissExtract()
         fun onDeleteClick()
         fun onConfirmDelete()
         fun onPasteClick()

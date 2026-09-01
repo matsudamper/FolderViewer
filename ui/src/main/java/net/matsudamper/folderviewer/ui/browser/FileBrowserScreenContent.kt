@@ -360,6 +360,7 @@ private fun Preview() {
                 override fun onConfirmCompress(fileName: String) = Unit
                 override fun onExtractClick() = Unit
                 override fun onConfirmExtract(folderName: String) = Unit
+                override fun onDismissExtract() = Unit
                 override fun onDeleteClick() = Unit
                 override fun onConfirmDelete() = Unit
                 override fun onPasteClick() = Unit
