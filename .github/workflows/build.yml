@@ -101,6 +101,7 @@ jobs:
         uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
         with:
           header: apk-download
+          recreate: true
           message: |
             ✅ **Debug APK is ready!**
             | Storage | Download Link | QR Code |
