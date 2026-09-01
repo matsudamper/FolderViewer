@@ -831,16 +831,18 @@ class FileBrowserViewModel @AssistedInject constructor(
     }
 
     private suspend fun handleExtract(zipFileItem: FileItem, folderName: String) {
-        zipHandler.extract(
+        zipHandler.extractZip(
             zipFileItem = zipFileItem,
             folderName = folderName,
-            repository = getRepository(),
-            localFolderPath = viewModelStateFlow.value.localFolderPath,
-            onCompleted = {
-                viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
-                selectionModeRepository.setSelectionMode(false)
-                fetchFilesInternal()
-            },
+            context = ExtractContext(
+                repository = getRepository(),
+                localFolderPath = viewModelStateFlow.value.localFolderPath,
+                onCompleted = {
+                    viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
+                    selectionModeRepository.setSelectionMode(false)
+                    fetchFilesInternal()
+                },
+            ),
         )
     }
 

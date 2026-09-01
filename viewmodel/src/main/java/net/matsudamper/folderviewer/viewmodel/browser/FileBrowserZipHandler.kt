@@ -8,7 +8,14 @@ import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
+import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputNameValidator
 import net.matsudamper.folderviewer.viewmodel.util.ZipFileUtil
+
+internal data class ExtractContext(
+    val repository: FileRepository,
+    val localFolderPath: String?,
+    val onCompleted: suspend () -> Unit,
+)
 
 internal class FileBrowserZipHandler(
     private val sendSnackbar: suspend (String) -> Unit,
@@ -64,29 +71,22 @@ internal class FileBrowserZipHandler(
         }
     }
 
-    suspend fun extract(
+    suspend fun extractZip(
         zipFileItem: FileItem,
         folderName: String,
-        repository: FileRepository,
-        localFolderPath: String?,
-        onCompleted: suspend () -> Unit,
+        context: ExtractContext,
     ) {
         runCatching {
-            val zipFile = when (val uri = repository.getViewSourceUri(zipFileItem.id)) {
-                is ViewSourceUri.LocalFile -> File(uri.path)
-
-                is ViewSourceUri.RemoteUrl,
-                is ViewSourceUri.StreamProvider,
-                -> {
-                    sendSnackbar("解凍はローカルストレージのみ対応しています")
-                    return
-                }
-            }
-            val parentPath = localFolderPath ?: run {
+            val zipFile = resolveLocalFile(zipFileItem, context.repository) ?: return@runCatching
+            val parentPath = context.localFolderPath ?: run {
                 sendSnackbar("解凍はローカルストレージのみ対応しています")
                 return
             }
-            val extractDir = File(parentPath, folderName)
+            val extractDir = ExtractOutputNameValidator.resolveChildFile(parentPath, folderName)
+                ?: run {
+                    sendSnackbar("無効なフォルダ名です")
+                    return
+                }
             if (extractDir.exists()) {
                 sendSnackbar("同じ名前のフォルダが既に存在します: ${extractDir.name}")
                 return
@@ -99,16 +99,10 @@ internal class FileBrowserZipHandler(
                     throw e
                 }
             }
-            onCompleted()
+            context.onCompleted()
             sendSnackbar("${extractDir.name}に展開しました")
         }.onFailure { e ->
-            when (e) {
-                is CancellationException -> throw e
-                else -> {
-                    e.printStackTrace()
-                    trySendSnackbar("解凍に失敗しました: ${e.message}")
-                }
-            }
+            handleExtractFailure(e)
         }
     }
 
@@ -119,5 +113,31 @@ internal class FileBrowserZipHandler(
         if (selectedItems.size != 1) return false
         val fileItem = rawFiles.find { it.id == selectedItems.first() } ?: return false
         return !fileItem.isDirectory && fileItem.displayPath.endsWith(".zip", ignoreCase = true)
+    }
+
+    private suspend fun resolveLocalFile(
+        fileItem: FileItem,
+        repository: FileRepository,
+    ): File? {
+        return when (val uri = repository.getViewSourceUri(fileItem.id)) {
+            is ViewSourceUri.LocalFile -> File(uri.path)
+
+            is ViewSourceUri.RemoteUrl,
+            is ViewSourceUri.StreamProvider,
+            -> {
+                sendSnackbar("解凍はローカルストレージのみ対応しています")
+                null
+            }
+        }
+    }
+
+    private fun handleExtractFailure(e: Throwable) {
+        when (e) {
+            is CancellationException -> throw e
+            else -> {
+                e.printStackTrace()
+                trySendSnackbar("解凍に失敗しました: ${e.message}")
+            }
+        }
     }
 }

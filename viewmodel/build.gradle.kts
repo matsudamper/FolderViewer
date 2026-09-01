@@ -37,4 +37,6 @@ dependencies {
 
     implementation(libs.jakartaInject)
     implementation(libs.kotlinxSerializationJson)
+
+    testImplementation(libs.junit)
 }
