@@ -82,7 +82,8 @@ internal class FileBrowserExtractCoordinator(
         scope.launch {
             dependencies.extractJobCompletionWatcher.completionUiEvents.collect { event ->
                 val meta = dependencies.extractJobRepository.getJobMeta(event.jobId) ?: return@collect
-                if (meta.parentFileObjectId != dependencies.fileObjectId) {
+                val parentFileObjectId = meta.parentFileObjectId ?: return@collect
+                if (parentFileObjectId != dependencies.fileObjectId) {
                     return@collect
                 }
                 when (event) {

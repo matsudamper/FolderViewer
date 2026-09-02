@@ -11,6 +11,7 @@ import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.ExtractDialogMode
 import net.matsudamper.folderviewer.viewmodel.util.CompressedFileUtil
+import net.matsudamper.folderviewer.viewmodel.util.ExtractableFileNameUtil
 import net.matsudamper.folderviewer.viewmodel.util.ExtractMediaScanner
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputNameValidator
 import net.matsudamper.folderviewer.viewmodel.util.ZipFileUtil
@@ -139,22 +140,11 @@ internal class FileBrowserZipHandler(
 
     fun getExtractableFileType(fileItem: FileItem): ExtractableFileType? {
         if (fileItem.isDirectory) return null
-        val fileName = fileItem.displayPath
-        if (fileName.endsWith(".zip", ignoreCase = true)) {
-            return ExtractableFileType.Zip
-        }
-        val compressedFormat = CompressedFileUtil.detectFormat(fileName) ?: return null
-        return ExtractableFileType.Compressed(compressedFormat)
+        return ExtractableFileNameUtil.detect(fileItem.displayPath)
     }
 
     fun defaultExtractName(fileItem: FileItem, type: ExtractableFileType): String {
-        return when (type) {
-            ExtractableFileType.Zip -> ZipFileUtil.zipFileDefaultFolderName(fileItem.displayPath)
-            is ExtractableFileType.Compressed -> CompressedFileUtil.defaultOutputName(
-                fileName = fileItem.displayPath,
-                format = type.format,
-            )
-        }
+        return ExtractableFileNameUtil.defaultOutputName(fileItem.displayPath, type)
     }
 
     private suspend fun resolveLocalFile(

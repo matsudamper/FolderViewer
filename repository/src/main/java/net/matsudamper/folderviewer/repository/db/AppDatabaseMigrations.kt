@@ -65,10 +65,19 @@ internal val Migration13To14 = object : Migration(13, 14) {
     }
 }
 
+internal val Migration14To15 = object : Migration(14, 15) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "ALTER TABLE `extract_operations` ADD COLUMN `sourceAbsolutePath` TEXT",
+        )
+    }
+}
+
 internal val AppDatabaseMigrations = arrayOf(
     Migration9To10,
     Migration10To11,
     Migration11To12,
     Migration12To13,
     Migration13To14,
+    Migration14To15,
 )

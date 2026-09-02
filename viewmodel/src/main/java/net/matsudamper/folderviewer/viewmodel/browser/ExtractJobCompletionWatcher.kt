@@ -128,12 +128,13 @@ class ExtractJobCompletionWatcher @Inject constructor(
 
     private suspend fun resolveNavigation(jobId: Long): PendingExtractNavigation? {
         val meta = extractJobRepository.getJobMeta(jobId) ?: return null
-        if (meta.extractType != ExtractJobRepository.ExtractType.Zip) {
+        if (meta.isExternalJob || meta.extractType != ExtractJobRepository.ExtractType.Zip) {
             return null
         }
-        val repository = storageRepository.getFileRepository(meta.parentFileObjectId.storageId)
+        val parentFileObjectId = meta.parentFileObjectId ?: return null
+        val repository = storageRepository.getFileRepository(parentFileObjectId.storageId)
             ?: return null
-        val folder = repository.getFiles(meta.parentFileObjectId)
+        val folder = repository.getFiles(parentFileObjectId)
             .find { it.isDirectory && it.displayPath == meta.outputName }
             ?: return null
         val displayPath = if (meta.parentDisplayPath.isEmpty()) {
@@ -149,19 +150,23 @@ class ExtractJobCompletionWatcher @Inject constructor(
 
     private suspend fun resolveExternalOpen(jobId: Long): PendingExtractExternalOpen? {
         val meta = extractJobRepository.getJobMeta(jobId) ?: return null
+        if (meta.isExternalJob) {
+            return null
+        }
         when (meta.extractType) {
             ExtractJobRepository.ExtractType.Zst,
             ExtractJobRepository.ExtractType.Xz,
             -> Unit
             ExtractJobRepository.ExtractType.Zip -> return null
         }
-        val repository = storageRepository.getFileRepository(meta.parentFileObjectId.storageId)
+        val parentFileObjectId = meta.parentFileObjectId ?: return null
+        val repository = storageRepository.getFileRepository(parentFileObjectId.storageId)
             ?: return null
-        val file = repository.getFiles(meta.parentFileObjectId)
+        val file = repository.getFiles(parentFileObjectId)
             .find { !it.isDirectory && it.displayPath == meta.outputName }
             ?: return null
         return PendingExtractExternalOpen(
-            parentFileObjectId = meta.parentFileObjectId,
+            parentFileObjectId = parentFileObjectId,
             fileId = file.id,
         )
     }
