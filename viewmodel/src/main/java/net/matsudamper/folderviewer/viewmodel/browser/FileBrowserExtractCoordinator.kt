@@ -11,9 +11,11 @@ import kotlinx.coroutines.launch
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.ExtractJobRepository
 import net.matsudamper.folderviewer.repository.FileItem
+import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.SelectionModeRepository
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
+import net.matsudamper.folderviewer.viewmodel.util.CompressedFileUtil
 import net.matsudamper.folderviewer.viewmodel.worker.FileExtractWorker
 
 internal data class PendingExtractRequest(
@@ -125,9 +127,36 @@ internal class FileBrowserExtractCoordinator(
         val isExtractDialogOpenForJob: (Long) -> Boolean,
         val closeExtractDialog: () -> Unit,
         val extractJobCompletionWatcher: ExtractJobCompletionWatcher,
+        val getRepository: suspend () -> FileRepository,
+        val openWithExternalPlayer: suspend (FileItem) -> Unit,
     )
 
+    suspend fun openExtractResult(jobId: Long) {
+        val meta = dependencies.extractJobRepository.getJobMeta(jobId) ?: return
+        when (meta.extractType) {
+            ExtractJobRepository.ExtractType.Zip -> {
+                dependencies.extractJobCompletionWatcher.openExtractResult(jobId)
+            }
+
+            ExtractJobRepository.ExtractType.Zst,
+            ExtractJobRepository.ExtractType.Xz,
+            -> {
+                dependencies.extractJobRepository.markOpenOnCompleteHandled(jobId)
+                val file = dependencies.getRepository().getFiles(meta.parentFileObjectId)
+                    .find { !it.isDirectory && it.displayPath == meta.outputName }
+                    ?: return
+                dependencies.openWithExternalPlayer(file)
+            }
+        }
+    }
+
     private fun ExtractableFileType.toExtractJobType(): ExtractJobRepository.ExtractType {
-        return ExtractJobRepository.ExtractType.Zip
+        return when (this) {
+            ExtractableFileType.Zip -> ExtractJobRepository.ExtractType.Zip
+            is ExtractableFileType.Compressed -> when (format) {
+                CompressedFileUtil.Format.Zst -> ExtractJobRepository.ExtractType.Zst
+                CompressedFileUtil.Format.Xz -> ExtractJobRepository.ExtractType.Xz
+            }
+        }
     }
 }

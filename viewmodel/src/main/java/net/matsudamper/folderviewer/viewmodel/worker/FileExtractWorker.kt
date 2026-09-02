@@ -21,6 +21,7 @@ import net.matsudamper.folderviewer.repository.ExtractJobRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
+import net.matsudamper.folderviewer.viewmodel.util.CompressedFileUtil
 import net.matsudamper.folderviewer.viewmodel.util.ExtractMediaScanner
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputNameValidator
 import net.matsudamper.folderviewer.viewmodel.util.ZipFileUtil
@@ -94,12 +95,18 @@ internal class FileExtractWorker @AssistedInject constructor(
     }
 
     private fun notifyCompleted(meta: ExtractJobRepository.ExtractJobMeta) {
+        val text = when (meta.extractType) {
+            ExtractJobRepository.ExtractType.Zip -> "${meta.outputName}に展開しました"
+            ExtractJobRepository.ExtractType.Zst,
+            ExtractJobRepository.ExtractType.Xz,
+            -> "${meta.outputName}を作成しました"
+        }
         OperationResultNotification.notify(
             context = workerContext,
             notificationId = EXTRACT_RESULT_NOTIFICATION_BASE_ID + meta.id.toInt(),
             content = OperationResultNotification.Content(
                 title = "解凍が完了しました",
-                text = "${meta.outputName}に展開しました",
+                text = text,
                 smallIcon = android.R.drawable.stat_sys_download_done,
             ),
             contentIntent = operationNotificationIntentFactory.createUploadProgressIntent(),
@@ -186,9 +193,18 @@ internal object ExtractWorkerExecutor {
             }
             when (meta.extractType) {
                 ExtractJobRepository.ExtractType.Zip -> extractZip(sourceFile, meta, appContext)
-                ExtractJobRepository.ExtractType.Zst,
-                ExtractJobRepository.ExtractType.Xz,
-                -> error("未対応の解凍形式です")
+                ExtractJobRepository.ExtractType.Zst -> extractCompressed(
+                    sourceFile = sourceFile,
+                    meta = meta,
+                    format = CompressedFileUtil.Format.Zst,
+                    appContext = appContext,
+                )
+                ExtractJobRepository.ExtractType.Xz -> extractCompressed(
+                    sourceFile = sourceFile,
+                    meta = meta,
+                    format = CompressedFileUtil.Format.Xz,
+                    appContext = appContext,
+                )
             }
         }
     }
@@ -203,5 +219,26 @@ internal object ExtractWorkerExecutor {
         val extractedFiles = ZipFileUtil.extractZip(sourceFile, extractDir)
         ExtractMediaScanner.scanExtractedMediaFiles(appContext, extractedFiles)
         return extractDir
+    }
+
+    private fun extractCompressed(
+        sourceFile: File,
+        meta: ExtractJobRepository.ExtractJobMeta,
+        format: CompressedFileUtil.Format,
+        appContext: Context,
+    ): File {
+        val outputFile = ExtractOutputNameValidator.resolveChildFile(meta.localFolderPath, meta.outputName)
+            ?: error("無効なファイル名です")
+        if (outputFile.exists()) {
+            error("同じ名前のファイルが既に存在します: ${outputFile.name}")
+        }
+        runCatching {
+            CompressedFileUtil.decompress(sourceFile, outputFile, format)
+        }.onFailure { e ->
+            outputFile.delete()
+            throw e
+        }.getOrThrow()
+        ExtractMediaScanner.scanExtractedMediaFiles(appContext, listOf(outputFile))
+        return outputFile
     }
 }

@@ -26,6 +26,7 @@ data class FileBrowserUiState(
         val folderName: String,
         val isExtracting: Boolean,
         val jobId: Long?,
+        val mode: ExtractDialogMode,
     )
 
     sealed interface ContentState {

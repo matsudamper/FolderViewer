@@ -19,16 +19,28 @@ import androidx.compose.ui.tooling.preview.Preview
 @Composable
 internal fun FileBrowserExtractDialog(
     defaultName: String,
+    mode: ExtractDialogMode,
     isExtracting: Boolean,
     onDismissRequest: () -> Unit,
     onConfirm: (String) -> Unit,
 ) {
-    var extractNameInput by remember(defaultName) {
+    var extractNameInput by remember(defaultName, mode) {
         mutableStateOf(defaultName)
+    }
+    val dialogTitle = when (mode) {
+        ExtractDialogMode.ZipFolder -> "zipを展開"
+        ExtractDialogMode.ZstFile -> "zstを展開"
+        ExtractDialogMode.XzFile -> "xzを展開"
+    }
+    val nameLabel = when (mode) {
+        ExtractDialogMode.ZipFolder -> "フォルダ名"
+        ExtractDialogMode.ZstFile,
+        ExtractDialogMode.XzFile,
+        -> "ファイル名"
     }
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        title = { Text("zipを展開") },
+        title = { Text(dialogTitle) },
         text = {
             Column {
                 if (isExtracting) {
@@ -40,7 +52,7 @@ internal fun FileBrowserExtractDialog(
                     TextField(
                         value = extractNameInput,
                         onValueChange = { extractNameInput = it },
-                        label = { Text("フォルダ名") },
+                        label = { Text(nameLabel) },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
@@ -73,6 +85,31 @@ internal fun FileBrowserExtractDialog(
 private fun FileBrowserExtractDialogZipPreview() {
     FileBrowserExtractDialog(
         defaultName = "archive",
+        mode = ExtractDialogMode.ZipFolder,
+        isExtracting = false,
+        onDismissRequest = {},
+        onConfirm = {},
+    )
+}
+
+@Preview
+@Composable
+private fun FileBrowserExtractDialogZstPreview() {
+    FileBrowserExtractDialog(
+        defaultName = "archive.tar",
+        mode = ExtractDialogMode.ZstFile,
+        isExtracting = false,
+        onDismissRequest = {},
+        onConfirm = {},
+    )
+}
+
+@Preview
+@Composable
+private fun FileBrowserExtractDialogXzPreview() {
+    FileBrowserExtractDialog(
+        defaultName = "archive.tar",
+        mode = ExtractDialogMode.XzFile,
         isExtracting = false,
         onDismissRequest = {},
         onConfirm = {},
@@ -84,6 +121,7 @@ private fun FileBrowserExtractDialogZipPreview() {
 private fun FileBrowserExtractDialogExtractingPreview() {
     FileBrowserExtractDialog(
         defaultName = "archive",
+        mode = ExtractDialogMode.ZipFolder,
         isExtracting = true,
         onDismissRequest = {},
         onConfirm = {},

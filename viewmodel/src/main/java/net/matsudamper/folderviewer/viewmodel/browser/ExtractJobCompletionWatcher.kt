@@ -76,7 +76,12 @@ class ExtractJobCompletionWatcher @Inject constructor(
         when (terminalStatus) {
             OperationRepository.OperationStatus.COMPLETED -> {
                 val meta = extractJobRepository.getJobMeta(jobId) ?: return
-                val message = "${meta.outputName}に展開しました"
+                val message = when (meta.extractType) {
+                    ExtractJobRepository.ExtractType.Zip -> "${meta.outputName}に展開しました"
+                    ExtractJobRepository.ExtractType.Zst,
+                    ExtractJobRepository.ExtractType.Xz,
+                    -> "${meta.outputName}を作成しました"
+                }
                 _completionUiEvents.emit(
                     CompletionUiEvent.Completed(
                         jobId = jobId,
