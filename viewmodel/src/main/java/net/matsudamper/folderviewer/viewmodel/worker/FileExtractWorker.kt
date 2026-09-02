@@ -22,17 +22,18 @@ import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.viewmodel.util.CompressedFileUtil
+import net.matsudamper.folderviewer.viewmodel.util.ExtractMediaScanner
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputNameValidator
 import net.matsudamper.folderviewer.viewmodel.util.ZipFileUtil
 
 @HiltWorker
 internal class FileExtractWorker @AssistedInject constructor(
-    @Assisted private val context: Context,
+    @Assisted private val workerContext: Context,
     @Assisted params: WorkerParameters,
     private val storageRepository: StorageRepository,
     private val extractJobRepository: ExtractJobRepository,
     private val operationNotificationIntentFactory: OperationNotificationIntentFactory,
-) : CoroutineWorker(context, params) {
+) : CoroutineWorker(workerContext, params) {
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         val operationId = inputData.getLong(KEY_EXTRACT_OPERATION_ID, -1L)
@@ -73,6 +74,7 @@ internal class FileExtractWorker @AssistedInject constructor(
         val extractResult = ExtractWorkerExecutor.run(
             meta = meta,
             storageRepository = storageRepository,
+            appContext = workerContext,
         )
         return extractResult.fold(
             onSuccess = { outputFile ->
@@ -100,7 +102,7 @@ internal class FileExtractWorker @AssistedInject constructor(
             -> "${meta.outputName}を作成しました"
         }
         OperationResultNotification.notify(
-            context = context,
+            context = workerContext,
             notificationId = EXTRACT_RESULT_NOTIFICATION_BASE_ID + meta.id.toInt(),
             content = OperationResultNotification.Content(
                 title = "解凍が完了しました",
@@ -113,7 +115,7 @@ internal class FileExtractWorker @AssistedInject constructor(
 
     private fun notifyFailed(operationId: Long, text: String) {
         OperationResultNotification.notify(
-            context = context,
+            context = workerContext,
             notificationId = EXTRACT_RESULT_NOTIFICATION_BASE_ID + operationId.toInt(),
             content = OperationResultNotification.Content(
                 title = "解凍に失敗しました",
@@ -134,7 +136,7 @@ internal class FileExtractWorker @AssistedInject constructor(
         createNotificationChannel()
         val title = "解凍中"
         val text = fileName ?: "処理中"
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val notification = NotificationCompat.Builder(workerContext, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(text)
             .setSmallIcon(android.R.drawable.stat_sys_download)
@@ -160,7 +162,7 @@ internal class FileExtractWorker @AssistedInject constructor(
         ).apply {
             description = "ファイルの解凍状態を表示します"
         }
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager = workerContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
     }
 
@@ -178,6 +180,7 @@ internal object ExtractWorkerExecutor {
     suspend fun run(
         meta: ExtractJobRepository.ExtractJobMeta,
         storageRepository: StorageRepository,
+        appContext: Context,
     ): Result<File> {
         return runCatching {
             val repository = storageRepository.getFileRepository(meta.sourceFileObjectId.storageId)
@@ -189,7 +192,7 @@ internal object ExtractWorkerExecutor {
                 -> error("解凍はローカルストレージのみ対応しています")
             }
             when (meta.extractType) {
-                ExtractJobRepository.ExtractType.Zip -> extractZip(sourceFile, meta)
+                ExtractJobRepository.ExtractType.Zip -> extractZip(sourceFile, meta, appContext)
                 ExtractJobRepository.ExtractType.Zst -> extractCompressed(
                     sourceFile = sourceFile,
                     meta = meta,
@@ -204,18 +207,15 @@ internal object ExtractWorkerExecutor {
         }
     }
 
-    private fun extractZip(sourceFile: File, meta: ExtractJobRepository.ExtractJobMeta): File {
+    private fun extractZip(
+        sourceFile: File,
+        meta: ExtractJobRepository.ExtractJobMeta,
+        appContext: Context,
+    ): File {
         val extractDir = ExtractOutputNameValidator.resolveChildFile(meta.localFolderPath, meta.outputName)
             ?: error("無効なフォルダ名です")
-        if (extractDir.exists()) {
-            error("同じ名前のフォルダが既に存在します: ${extractDir.name}")
-        }
-        runCatching {
-            ZipFileUtil.extractZip(sourceFile, extractDir)
-        }.onFailure { e ->
-            extractDir.deleteRecursively()
-            throw e
-        }.getOrThrow()
+        val extractedFiles = ZipFileUtil.extractZip(sourceFile, extractDir)
+        ExtractMediaScanner.scanExtractedMediaFiles(appContext, extractedFiles)
         return extractDir
     }
 
