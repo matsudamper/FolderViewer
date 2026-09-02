@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -146,12 +147,36 @@ public fun ExtractDetailScreen(
                     )
                 }
             }
+
+            if (uiState.canNavigateToOutput) {
+                item {
+                    Button(
+                        onClick = { uiState.callbacks.onNavigateToOutputClick() },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.extract_detail_navigate_to_output))
+                    }
+                }
+            }
+
+            if (uiState.canOpenOutputFile) {
+                item {
+                    Button(
+                        onClick = { uiState.callbacks.onOpenOutputFileClick() },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.extract_detail_open_output_file))
+                    }
+                }
+            }
         }
     }
 }
 
 private val previewExtractCallbacks = object : ExtractDetailUiState.Callbacks {
     override fun onBackClick() = Unit
+    override fun onNavigateToOutputClick() = Unit
+    override fun onOpenOutputFileClick() = Unit
 }
 
 @Preview(showBackground = true)
@@ -166,6 +191,8 @@ private fun ExtractDetailScreenPreview() {
                 sourceFile = "/sdcard/Download/archive.zip",
                 outputName = "archive",
                 outputPath = "/sdcard/Download/archive",
+                canNavigateToOutput = true,
+                canOpenOutputFile = false,
                 extractTypeLabel = "ZIP（フォルダ）",
                 errorMessage = "同じ名前のフォルダが既に存在します: archive",
                 errorCause = "java.lang.IllegalStateException",

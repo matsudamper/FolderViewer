@@ -1160,6 +1160,7 @@ private fun EntryProviderScope<NavKey>.extractDetailEntry(navigator: Navigator) 
     entry<ExtractDetail> { key ->
         val viewModel: ExtractDetailViewModel = hiltViewModel()
         val uiState by viewModel.uiState.collectAsState()
+        val context = androidx.compose.ui.platform.LocalContext.current
 
         LaunchedEffect(key.operationId) {
             viewModel.init(key.operationId)
@@ -1170,6 +1171,41 @@ private fun EntryProviderScope<NavKey>.extractDetailEntry(navigator: Navigator) 
                 when (event) {
                     ExtractDetailViewModel.ViewModelEvent.NavigateBack -> {
                         navigator.goBack()
+                    }
+
+                    is ExtractDetailViewModel.ViewModelEvent.NavigateToOutput -> {
+                        navigator.navigate(
+                            FileBrowser(
+                                displayPath = event.displayPath,
+                                fileId = event.fileId,
+                            ),
+                        )
+                    }
+
+                    is ExtractDetailViewModel.ViewModelEvent.OpenOutputFile -> {
+                        openWithExternalApp(
+                            context = context,
+                            viewSourceUri = event.viewSourceUri,
+                            fileName = event.fileName,
+                            mimeType = event.mimeType,
+                        )
+                    }
+
+                    is ExtractDetailViewModel.ViewModelEvent.OpenOutputFolder -> {
+                        val relativePath = File(event.absolutePath)
+                            .relativeToOrNull(android.os.Environment.getExternalStorageDirectory())
+                            ?.path
+                            .orEmpty()
+                        val uri = android.provider.DocumentsContract.buildDocumentUri(
+                            "com.android.externalstorage.documents",
+                            "primary:$relativePath",
+                        )
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(uri, android.provider.DocumentsContract.Document.MIME_TYPE_DIR)
+                        }
+                        runCatching {
+                            context.startActivity(intent)
+                        }
                     }
                 }
             }

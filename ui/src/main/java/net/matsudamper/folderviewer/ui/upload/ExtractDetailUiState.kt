@@ -9,6 +9,8 @@ data class ExtractDetailUiState(
     val sourceFile: String,
     val outputName: String,
     val outputPath: String?,
+    val canNavigateToOutput: Boolean,
+    val canOpenOutputFile: Boolean,
     val extractTypeLabel: String,
     val errorMessage: String?,
     val errorCause: String?,
@@ -24,5 +26,9 @@ data class ExtractDetailUiState(
     @Immutable
     interface Callbacks {
         fun onBackClick()
+
+        fun onNavigateToOutputClick()
+
+        fun onOpenOutputFileClick()
     }
 }

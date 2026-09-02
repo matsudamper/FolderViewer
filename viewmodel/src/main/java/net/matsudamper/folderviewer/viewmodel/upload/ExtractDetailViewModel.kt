@@ -12,14 +12,19 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
+import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.ExtractJobRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
+import net.matsudamper.folderviewer.repository.StorageRepository
+import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.upload.ExtractDetailUiState
+import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputLocationResolver
 
 @HiltViewModel
 class ExtractDetailViewModel @Inject constructor(
     private val operationRepository: OperationRepository,
     private val extractJobRepository: ExtractJobRepository,
+    private val storageRepository: StorageRepository,
 ) : ViewModel() {
 
     private val viewModelEventChannel = Channel<ViewModelEvent>(Channel.UNLIMITED)
@@ -29,11 +34,35 @@ class ExtractDetailViewModel @Inject constructor(
     val uiState: StateFlow<ExtractDetailUiState?> = _uiState.asStateFlow()
 
     private var initJob: Job? = null
+    private var currentOperationId: Long? = null
+
+    private val callbacks = object : ExtractDetailUiState.Callbacks {
+        override fun onBackClick() {
+            viewModelScope.launch {
+                viewModelEventChannel.send(ViewModelEvent.NavigateBack)
+            }
+        }
+
+        override fun onNavigateToOutputClick() {
+            val operationId = currentOperationId ?: return
+            viewModelScope.launch {
+                navigateToOutput(operationId)
+            }
+        }
+
+        override fun onOpenOutputFileClick() {
+            val operationId = currentOperationId ?: return
+            viewModelScope.launch {
+                openOutputFile(operationId)
+            }
+        }
+    }
 
     fun init(operationId: Long) {
-        if (initJob?.isActive == true) {
+        if (initJob?.isActive == true && currentOperationId == operationId) {
             return
         }
+        currentOperationId = operationId
         initJob = viewModelScope.launch {
             operationRepository.observeProgressById(operationId).collect { progress ->
                 if (progress == null) {
@@ -46,7 +75,7 @@ class ExtractDetailViewModel @Inject constructor(
         }
     }
 
-    private fun createUiState(
+    private suspend fun createUiState(
         progress: OperationRepository.OperationProgress,
         meta: ExtractJobRepository.ExtractJobMeta?,
     ): ExtractDetailUiState {
@@ -70,6 +99,13 @@ class ExtractDetailViewModel @Inject constructor(
         val sourceFile = meta?.sourceAbsolutePath ?: meta?.sourceFileName ?: progress.description
         val outputPath = meta?.outputAbsolutePath
             ?: meta?.let { File(it.localFolderPath, it.outputName).absolutePath }
+        val isCompleted = uiStatus == ExtractDetailUiState.Status.COMPLETED
+        val canNavigateToOutput = isCompleted && meta != null && (
+            ExtractOutputLocationResolver.resolveNavigateToOutput(meta, storageRepository) != null ||
+                ExtractOutputLocationResolver.resolveOpenOutputFolder(meta, storageRepository) != null
+            )
+        val canOpenOutputFile = isCompleted && meta != null &&
+            ExtractOutputLocationResolver.resolveOpenOutputFile(meta, storageRepository) != null
 
         return ExtractDetailUiState(
             jobName = progress.name,
@@ -78,16 +114,40 @@ class ExtractDetailViewModel @Inject constructor(
             sourceFile = sourceFile,
             outputName = meta?.outputName ?: progress.name,
             outputPath = outputPath,
+            canNavigateToOutput = canNavigateToOutput,
+            canOpenOutputFile = canOpenOutputFile,
             extractTypeLabel = meta?.extractType.toLabel(),
             errorMessage = progress.errorMessage,
             errorCause = progress.errorCause,
-            callbacks = object : ExtractDetailUiState.Callbacks {
-                override fun onBackClick() {
-                    viewModelScope.launch {
-                        viewModelEventChannel.send(ViewModelEvent.NavigateBack)
-                    }
-                }
-            },
+            callbacks = callbacks,
+        )
+    }
+
+    private suspend fun navigateToOutput(operationId: Long) {
+        val meta = extractJobRepository.getJobMeta(operationId) ?: return
+        ExtractOutputLocationResolver.resolveNavigateToOutput(meta, storageRepository)?.let { target ->
+            viewModelEventChannel.send(
+                ViewModelEvent.NavigateToOutput(
+                    fileId = target.fileId,
+                    displayPath = target.displayPath,
+                ),
+            )
+            return
+        }
+        ExtractOutputLocationResolver.resolveOpenOutputFolder(meta, storageRepository)?.let { target ->
+            viewModelEventChannel.send(ViewModelEvent.OpenOutputFolder(target.absolutePath))
+        }
+    }
+
+    private suspend fun openOutputFile(operationId: Long) {
+        val meta = extractJobRepository.getJobMeta(operationId) ?: return
+        val target = ExtractOutputLocationResolver.resolveOpenOutputFile(meta, storageRepository) ?: return
+        viewModelEventChannel.send(
+            ViewModelEvent.OpenOutputFile(
+                viewSourceUri = target.viewSourceUri,
+                fileName = target.fileName,
+                mimeType = target.mimeType,
+            ),
         )
     }
 
@@ -104,5 +164,20 @@ class ExtractDetailViewModel @Inject constructor(
 
     sealed interface ViewModelEvent {
         data object NavigateBack : ViewModelEvent
+
+        data class NavigateToOutput(
+            val fileId: FileObjectId,
+            val displayPath: String?,
+        ) : ViewModelEvent
+
+        data class OpenOutputFile(
+            val viewSourceUri: ViewSourceUri,
+            val fileName: String,
+            val mimeType: String?,
+        ) : ViewModelEvent
+
+        data class OpenOutputFolder(
+            val absolutePath: String,
+        ) : ViewModelEvent
     }
 }

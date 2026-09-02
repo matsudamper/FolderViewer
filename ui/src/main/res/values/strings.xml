@@ -103,6 +103,8 @@
     <string name="extract_detail_output_name">出力名</string>
     <string name="extract_detail_output_path">出力先</string>
     <string name="extract_detail_type">形式</string>
+    <string name="extract_detail_navigate_to_output">出力先に移動</string>
+    <string name="extract_detail_open_output_file">ファイルを開く</string>
     <string name="operation_file_list_section">ファイル一覧</string>
     <string name="operation_file_list_empty">表示する対象がありません</string>
     <string name="operation_file_filter_completed">完了 %1$d</string>
