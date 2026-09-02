@@ -21,8 +21,12 @@ fun FileBrowserScreen(
     onNavigateToExtractDetail: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    BackHandler(enabled = true) {
-        uiState.callbacks.onBack()
+    BackHandler {
+        if (uiState.extractDialog != null) {
+            uiState.callbacks.onDismissExtract()
+        } else {
+            uiState.callbacks.onBack()
+        }
     }
 
     val snackbarHostState = remember { SnackbarHostState() }

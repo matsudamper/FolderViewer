@@ -68,7 +68,11 @@ internal fun FileBrowserExtractDialog(
             }
         },
         confirmButton = {
-            if (!isExtracting) {
+            if (isExtracting) {
+                TextButton(onClick = onDismissRequest) {
+                    Text("閉じる")
+                }
+            } else {
                 TextButton(
                     onClick = {
                         if (extractNameInput.isNotBlank()) {
@@ -82,8 +86,10 @@ internal fun FileBrowserExtractDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismissRequest) {
-                Text(if (isExtracting) "閉じる" else "キャンセル")
+            if (!isExtracting) {
+                TextButton(onClick = onDismissRequest) {
+                    Text("キャンセル")
+                }
             }
         },
     )
