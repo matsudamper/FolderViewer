@@ -57,6 +57,79 @@ internal class TarArchiveUtilTest {
         }
     }
 
+    @Test(expected = TarArchiveUtil.ExtractException.LimitExceeded::class)
+    fun listEntries_rejectsTooManyEntries() {
+        val tempDir = Files.createTempDirectory("tar-archive-util").toFile()
+        try {
+            val tarFile = File(tempDir, "archive.tar")
+            FileOutputStream(tarFile).use { output ->
+                repeat(10_001) { index ->
+                    writeTarEntry(output, "file$index.txt", "x".toByteArray())
+                }
+                output.write(ByteArray(1024))
+            }
+            TarArchiveUtil.listEntries(tarFile)
+        } finally {
+            tempDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun extract_readsUstarPrefix() {
+        val tempDir = Files.createTempDirectory("tar-archive-util").toFile()
+        try {
+            val tarFile = File(tempDir, "archive.tar")
+            createUstarTar(
+                tarFile,
+                listOf(
+                    TarTestEntry(
+                        name = "very/long/prefix/path/test.apk",
+                        content = zipMagic(),
+                    ),
+                ),
+            )
+            val destDir = File(tempDir, "output")
+            val extracted = TarArchiveUtil.extract(tarFile, destDir)
+            val outputFile = extracted.first()
+            assertEquals("very/long/prefix/path/test.apk", outputFile.relativeTo(destDir).path.replace('\\', '/'))
+        } finally {
+            tempDir.deleteRecursively()
+        }
+    }
+
+    private fun createUstarTar(tarFile: File, entries: List<TarTestEntry>) {
+        FileOutputStream(tarFile).use { output ->
+            entries.forEach { entry ->
+                writeUstarEntry(output, entry.name, entry.content)
+            }
+            output.write(ByteArray(1024))
+        }
+    }
+
+    private fun writeUstarEntry(output: FileOutputStream, name: String, content: ByteArray) {
+        val slashIndex = name.lastIndexOf('/')
+        val prefix = if (slashIndex >= 0) name.substring(0, slashIndex) else ""
+        val entryName = if (slashIndex >= 0) name.substring(slashIndex + 1) else name
+        val header = ByteArray(512)
+        entryName.toByteArray(Charsets.US_ASCII)
+            .copyInto(header, destinationOffset = 0, endIndex = minOf(entryName.length, 100))
+        prefix.toByteArray(Charsets.US_ASCII)
+            .copyInto(header, destinationOffset = 345, endIndex = minOf(prefix.length, 155))
+        writeOctal(header, 124, 12, content.size.toLong())
+        writeOctal(header, 136, 12, 0L)
+        writeOctal(header, 148, 12, 0L)
+        header[156] = '0'.code.toByte()
+        "ustar".toByteArray(Charsets.US_ASCII).copyInto(header, destinationOffset = 257)
+        header[262] = 0
+        header[263] = '0'.code.toByte()
+        output.write(header)
+        output.write(content)
+        val padding = (512 - (content.size % 512)) % 512
+        if (padding > 0) {
+            output.write(ByteArray(padding))
+        }
+    }
+
     private data class TarTestEntry(
         val name: String,
         val content: ByteArray,

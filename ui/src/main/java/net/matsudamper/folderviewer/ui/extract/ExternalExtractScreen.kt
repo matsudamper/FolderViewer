@@ -11,8 +11,9 @@ import net.matsudamper.folderviewer.ui.browser.FileBrowserExtractDialog
 @Composable
 fun ExternalExtractScreen(
     uiState: ExternalExtractUiState,
+    modifier: Modifier = Modifier,
 ) {
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize()) {
         FileBrowserExtractDialog(
             defaultName = uiState.defaultName,
             mode = uiState.mode,

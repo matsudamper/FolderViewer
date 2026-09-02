@@ -8,6 +8,7 @@ import androidx.documentfile.provider.DocumentFile
 import java.io.File
 
 internal object ExternalExtractPathResolver {
+    private const val MAX_COPY_BYTES = 2L * 1024 * 1024 * 1024
     data class ResolvedExtractFile(
         val sourceFile: File,
         val outputParentPath: String,
@@ -86,7 +87,12 @@ internal object ExternalExtractPathResolver {
         val inputStream = context.contentResolver.openInputStream(uri) ?: return null
         return runCatching {
             inputStream.use { input ->
-                sourceFile.outputStream().use { output -> input.copyTo(output) }
+                sourceFile.outputStream().use { output ->
+                    val copied = input.copyTo(output, MAX_COPY_BYTES.toInt())
+                    if (copied >= MAX_COPY_BYTES && input.read() != -1) {
+                        error("コピーサイズが上限を超えています")
+                    }
+                }
             }
             if (!sourceFile.isFile) {
                 error("invalid file")

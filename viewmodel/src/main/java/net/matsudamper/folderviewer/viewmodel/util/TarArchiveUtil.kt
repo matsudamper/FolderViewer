@@ -141,9 +141,14 @@ internal object TarArchiveUtil {
 
     private fun readEntries(input: InputStream): List<EntryInfo> {
         val entries = mutableListOf<EntryInfo>()
+        var entryCount = 0
         var header = readHeader(input)
         while (header != null) {
             val entry = parseEntry(header)
+            entryCount++
+            if (entryCount > MAX_ENTRY_COUNT) {
+                throw ExtractException.LimitExceeded("tarエントリ数が上限を超えています")
+            }
             entries += entry
             skipEntryData(input, entry.size)
             header = readHeader(input)
@@ -169,11 +174,32 @@ internal object TarArchiveUtil {
 
     private fun parseEntry(header: ByteArray): EntryInfo {
         val rawName = parseString(header, 0, 100)
+        val prefix = if (isUstarHeader(header)) {
+            parseString(header, 345, 155)
+        } else {
+            ""
+        }
+        val fullName = when {
+            prefix.isEmpty() -> rawName
+            rawName.isEmpty() -> prefix
+            else -> "$prefix/$rawName"
+        }
         val size = parseOctal(header, 124, 12)
         val typeFlag = header[156].toInt().toChar()
-        val isDirectory = typeFlag == '5' || rawName.endsWith('/')
-        val name = rawName.trimEnd('/')
+        val isDirectory = typeFlag == '5' || fullName.endsWith('/')
+        val name = fullName.trimEnd('/')
         return EntryInfo(name = name, size = size, isDirectory = isDirectory)
+    }
+
+    private fun isUstarHeader(header: ByteArray): Boolean {
+        if (header.size < 263) {
+            return false
+        }
+        return header[257] == 'u'.code.toByte() &&
+            header[258] == 's'.code.toByte() &&
+            header[259] == 't'.code.toByte() &&
+            header[260] == 'a'.code.toByte() &&
+            header[261] == 'r'.code.toByte()
     }
 
     private fun parseString(header: ByteArray, offset: Int, length: Int): String {
@@ -196,13 +222,16 @@ internal object TarArchiveUtil {
             val toRead = minOf(remaining, buffer.size.toLong()).toInt()
             val read = input.read(buffer, 0, toRead)
             if (read == -1) {
-                break
+                throw ExtractException.InvalidArchive("tarエントリが途中で終端しています")
             }
             remaining -= read
         }
         val padding = (BLOCK_SIZE - (size % BLOCK_SIZE)) % BLOCK_SIZE
         if (padding > 0) {
-            input.skip(padding)
+            val skipped = input.skip(padding)
+            if (skipped < padding) {
+                throw ExtractException.InvalidArchive("tarエントリが途中で終端しています")
+            }
         }
     }
 
@@ -214,7 +243,7 @@ internal object TarArchiveUtil {
             val toRead = minOf(remaining, buffer.size.toLong()).toInt()
             val read = input.read(buffer, 0, toRead)
             if (read == -1) {
-                break
+                throw ExtractException.InvalidArchive("tarエントリが途中で終端しています")
             }
             ensureEntrySizeWithinLimit(total + read)
             output.write(buffer, 0, read)
@@ -223,7 +252,10 @@ internal object TarArchiveUtil {
         }
         val padding = (BLOCK_SIZE - (size % BLOCK_SIZE)) % BLOCK_SIZE
         if (padding > 0) {
-            input.skip(padding)
+            val skipped = input.skip(padding)
+            if (skipped < padding) {
+                throw ExtractException.InvalidArchive("tarエントリが途中で終端しています")
+            }
         }
         return total
     }

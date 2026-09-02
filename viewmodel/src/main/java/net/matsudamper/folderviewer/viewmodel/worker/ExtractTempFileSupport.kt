@@ -64,17 +64,17 @@ internal object ExtractTempFileSupport {
     }
 
     private fun moveTempFile(tempFile: File, outputFile: File): Boolean {
-        val atomicMoved = runCatching {
+        if (outputFile.exists()) {
+            return false
+        }
+        return runCatching {
             Files.move(
                 tempFile.toPath(),
                 outputFile.toPath(),
                 StandardCopyOption.ATOMIC_MOVE,
             )
-        }.isSuccess
-        if (atomicMoved) {
-            return true
-        }
-        return tempFile.renameTo(outputFile)
+            true
+        }.getOrDefault(false)
     }
 
     private fun tempDirectory(appContext: Context): File {

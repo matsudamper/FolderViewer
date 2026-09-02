@@ -34,7 +34,7 @@ fun FileBrowserScreen(
         uiEvent.collect { event ->
             when (event) {
                 is FileBrowserUiEvent.ShowSnackbar -> {
-                    if (uiState.extractDialog != null) {
+                    if (uiState.extractDialog != null && event.openExtractJobId != null) {
                         return@collect
                     }
                     val actionLabel = when {
