@@ -51,7 +51,6 @@ import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 import net.matsudamper.folderviewer.ui.util.formatBytes
 import net.matsudamper.folderviewer.viewmodel.util.FileUtil
-import net.matsudamper.folderviewer.viewmodel.util.ZipFileUtil
 import net.matsudamper.folderviewer.viewmodel.worker.FilePasteWorker
 import net.matsudamper.folderviewer.viewmodel.worker.FileUploadWorker
 import net.matsudamper.folderviewer.viewmodel.worker.FolderUploadWorker
@@ -369,8 +368,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             val rawFiles = viewModelStateFlow.value.rawFiles
             val zipFileItem = selectedIds.firstNotNullOfOrNull { id -> rawFiles.find { it.id == id } }
                 ?: return
-            if (zipFileItem.isDirectory || !zipFileItem.displayPath.endsWith(".zip", ignoreCase = true)) return
-            val defaultFolderName = ZipFileUtil.zipFileDefaultFolderName(zipFileItem.displayPath)
+            val defaultFolderName = zipHandler.defaultExtractFolderName(zipFileItem) ?: return
             pendingExtractFileItem = zipFileItem
             viewModelStateFlow.update {
                 it.copy(
@@ -1147,12 +1145,9 @@ class FileBrowserViewModel @AssistedInject constructor(
                     }
 
                     else -> {
-                        if (
-                            viewModelStateFlow.value.localFolderPath != null &&
-                            fileItem.displayPath.endsWith(".zip", ignoreCase = true)
-                        ) {
+                        val defaultFolderName = zipHandler.defaultExtractFolderName(fileItem)
+                        if (viewModelStateFlow.value.localFolderPath != null && defaultFolderName != null) {
                             pendingExtractFileItem = fileItem
-                            val defaultFolderName = ZipFileUtil.zipFileDefaultFolderName(fileItem.displayPath)
                             viewModelStateFlow.update {
                                 it.copy(
                                     extractDialog = ViewModelState.ExtractDialogState(

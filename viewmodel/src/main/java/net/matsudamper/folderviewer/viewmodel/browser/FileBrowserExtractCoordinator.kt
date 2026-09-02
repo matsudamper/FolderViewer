@@ -128,6 +128,9 @@ internal class FileBrowserExtractCoordinator(
     )
 
     private fun ExtractableFileType.toExtractJobType(): ExtractJobRepository.ExtractType {
-        return ExtractJobRepository.ExtractType.Zip
+        return when (this) {
+            ExtractableFileType.Zip -> ExtractJobRepository.ExtractType.Zip
+            ExtractableFileType.TarGz -> ExtractJobRepository.ExtractType.TarGz
+        }
     }
 }

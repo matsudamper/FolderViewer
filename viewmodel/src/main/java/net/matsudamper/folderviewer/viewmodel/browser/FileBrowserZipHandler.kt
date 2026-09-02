@@ -11,10 +11,13 @@ import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.viewmodel.util.ExtractMediaScanner
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputNameValidator
+import net.matsudamper.folderviewer.viewmodel.util.TarGzFileUtil
 import net.matsudamper.folderviewer.viewmodel.util.ZipFileUtil
 
 internal sealed interface ExtractableFileType {
     data object Zip : ExtractableFileType
+
+    data object TarGz : ExtractableFileType
 }
 
 internal data class ExtractContext(
@@ -116,8 +119,21 @@ internal class FileBrowserZipHandler(
 
     fun getExtractableFileType(fileItem: FileItem): ExtractableFileType? {
         if (fileItem.isDirectory) return null
-        if (!fileItem.displayPath.endsWith(".zip", ignoreCase = true)) return null
-        return ExtractableFileType.Zip
+        val path = fileItem.displayPath
+        return when {
+            path.endsWith(".zip", ignoreCase = true) -> ExtractableFileType.Zip
+            path.endsWith(".tar.gz", ignoreCase = true) ||
+                path.endsWith(".tgz", ignoreCase = true) -> ExtractableFileType.TarGz
+            else -> null
+        }
+    }
+
+    fun defaultExtractFolderName(fileItem: FileItem): String? {
+        return when (getExtractableFileType(fileItem)) {
+            ExtractableFileType.Zip -> ZipFileUtil.zipFileDefaultFolderName(fileItem.displayPath)
+            ExtractableFileType.TarGz -> TarGzFileUtil.tarGzDefaultFolderName(fileItem.displayPath)
+            null -> null
+        }
     }
 
     private suspend fun resolveLocalFile(
@@ -139,7 +155,9 @@ internal class FileBrowserZipHandler(
     private fun handleExtractFailure(e: Throwable) {
         when (e) {
             is CancellationException -> throw e
-            is ZipFileUtil.ExtractException -> trySendSnackbar(e.message ?: "解凍に失敗しました")
+            is ZipFileUtil.ExtractException,
+            is TarGzFileUtil.ExtractException,
+            -> trySendSnackbar(e.message ?: "解凍に失敗しました")
             else -> {
                 e.printStackTrace()
                 trySendSnackbar("解凍に失敗しました: ${e.message}")

@@ -23,6 +23,7 @@ import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.viewmodel.util.ExtractMediaScanner
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputNameValidator
+import net.matsudamper.folderviewer.viewmodel.util.TarGzFileUtil
 import net.matsudamper.folderviewer.viewmodel.util.ZipFileUtil
 
 @HiltWorker
@@ -186,6 +187,7 @@ internal object ExtractWorkerExecutor {
             }
             when (meta.extractType) {
                 ExtractJobRepository.ExtractType.Zip -> extractZip(sourceFile, meta, appContext)
+                ExtractJobRepository.ExtractType.TarGz -> extractTarGz(sourceFile, meta, appContext)
                 ExtractJobRepository.ExtractType.Zst,
                 ExtractJobRepository.ExtractType.Xz,
                 -> error("未対応の解凍形式です")
@@ -201,6 +203,18 @@ internal object ExtractWorkerExecutor {
         val extractDir = ExtractOutputNameValidator.resolveChildFile(meta.localFolderPath, meta.outputName)
             ?: error("無効なフォルダ名です")
         val extractedFiles = ZipFileUtil.extractZip(sourceFile, extractDir)
+        ExtractMediaScanner.scanExtractedMediaFiles(appContext, extractedFiles)
+        return extractDir
+    }
+
+    private fun extractTarGz(
+        sourceFile: File,
+        meta: ExtractJobRepository.ExtractJobMeta,
+        appContext: Context,
+    ): File {
+        val extractDir = ExtractOutputNameValidator.resolveChildFile(meta.localFolderPath, meta.outputName)
+            ?: error("無効なフォルダ名です")
+        val extractedFiles = TarGzFileUtil.extractTarGz(sourceFile, extractDir)
         ExtractMediaScanner.scanExtractedMediaFiles(appContext, extractedFiles)
         return extractDir
     }

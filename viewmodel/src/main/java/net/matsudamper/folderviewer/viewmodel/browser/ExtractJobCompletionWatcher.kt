@@ -116,7 +116,9 @@ class ExtractJobCompletionWatcher @Inject constructor(
 
     private suspend fun resolveNavigation(jobId: Long): PendingExtractNavigation? {
         val meta = extractJobRepository.getJobMeta(jobId) ?: return null
-        if (meta.extractType != ExtractJobRepository.ExtractType.Zip) {
+        if (meta.extractType != ExtractJobRepository.ExtractType.Zip &&
+            meta.extractType != ExtractJobRepository.ExtractType.TarGz
+        ) {
             return null
         }
         val repository = storageRepository.getFileRepository(meta.parentFileObjectId.storageId)

@@ -28,7 +28,7 @@ internal fun FileBrowserExtractDialog(
     }
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        title = { Text("zipを展開") },
+        title = { Text("アーカイブを展開") },
         text = {
             Column {
                 if (isExtracting) {
