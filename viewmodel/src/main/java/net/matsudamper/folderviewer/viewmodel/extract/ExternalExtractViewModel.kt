@@ -6,10 +6,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
-import dagger.assisted.Assisted
-import dagger.assisted.AssistedFactory
-import dagger.assisted.AssistedInject
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,6 +14,10 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
+import dagger.hilt.android.lifecycle.HiltViewModel
 import net.matsudamper.folderviewer.repository.ExtractJobRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.ui.browser.ExtractDialogMode
@@ -153,7 +153,9 @@ private fun ExtractLaunchType.toExtractDialogMode(): ExtractDialogMode {
         ExtractLaunchType.TarXz,
         ExtractLaunchType.TarZst,
         -> ExtractDialogMode.ZipFolder
+
         ExtractLaunchType.Zst -> ExtractDialogMode.ZstFile
+
         ExtractLaunchType.Xz -> ExtractDialogMode.XzFile
     }
 }
@@ -171,11 +173,15 @@ private fun ExtractLaunchType.toExtractJobType(): ExtractJobRepository.ExtractTy
 private fun ExtractLaunchType.toExtractableType(): net.matsudamper.folderviewer.viewmodel.browser.ExtractableFileType {
     return when (this) {
         ExtractLaunchType.Zip -> net.matsudamper.folderviewer.viewmodel.browser.ExtractableFileType.Zip
+
         ExtractLaunchType.TarXz -> net.matsudamper.folderviewer.viewmodel.browser.ExtractableFileType.TarXz
+
         ExtractLaunchType.TarZst -> net.matsudamper.folderviewer.viewmodel.browser.ExtractableFileType.TarZst
+
         ExtractLaunchType.Zst -> net.matsudamper.folderviewer.viewmodel.browser.ExtractableFileType.Compressed(
             net.matsudamper.folderviewer.viewmodel.util.CompressedFileUtil.Format.Zst,
         )
+
         ExtractLaunchType.Xz -> net.matsudamper.folderviewer.viewmodel.browser.ExtractableFileType.Compressed(
             net.matsudamper.folderviewer.viewmodel.util.CompressedFileUtil.Format.Xz,
         )

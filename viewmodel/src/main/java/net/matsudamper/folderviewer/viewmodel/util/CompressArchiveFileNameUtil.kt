@@ -40,10 +40,15 @@ internal object CompressArchiveFileNameUtil {
         return when {
             fileName.endsWith(".tar.xz", ignoreCase = true) ||
                 fileName.endsWith(".txz", ignoreCase = true) -> CompressArchiveKind.TarXz
+
             fileName.endsWith(".tar.zst", ignoreCase = true) -> CompressArchiveKind.TarZst
+
             fileName.endsWith(".zip", ignoreCase = true) -> CompressArchiveKind.Zip
+
             fileName.endsWith(".zst", ignoreCase = true) -> CompressArchiveKind.Zst
+
             fileName.endsWith(".xz", ignoreCase = true) -> CompressArchiveKind.Xz
+
             else -> null
         }
     }

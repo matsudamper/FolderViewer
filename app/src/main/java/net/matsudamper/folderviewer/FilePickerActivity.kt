@@ -3,8 +3,8 @@ package net.matsudamper.folderviewer
 import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
-import android.widget.Toast
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -22,12 +22,12 @@ import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
+import java.io.File
+import kotlinx.coroutines.launch
 import coil.Coil
 import coil.ImageLoader
 import dagger.hilt.android.AndroidEntryPoint
 import jakarta.inject.Inject
-import java.io.File
-import kotlinx.coroutines.launch
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.navigation.ExternalFilePicker
 import net.matsudamper.folderviewer.navigation.ExternalFilePickerSelectedList

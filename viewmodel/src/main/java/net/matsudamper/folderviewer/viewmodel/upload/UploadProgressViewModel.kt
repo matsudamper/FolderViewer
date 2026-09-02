@@ -50,14 +50,17 @@ class UploadProgressViewModel @Inject constructor(
                         val jobId = item.id.toLongOrNull() ?: return@launch
                         viewModelEventChannel.send(ViewModelEvent.NavigateToPasteDetail(jobId))
                     }
+
                     is UploadProgressUiState.UploadItem.Delete -> {
                         val opId = item.id.toLongOrNull() ?: return@launch
                         viewModelEventChannel.send(ViewModelEvent.NavigateToDeleteDetail(opId))
                     }
+
                     is UploadProgressUiState.UploadItem.Extract -> {
                         val opId = item.id.toLongOrNull() ?: return@launch
                         viewModelEventChannel.send(ViewModelEvent.NavigateToExtractDetail(opId))
                     }
+
                     else -> {
                         val uuid = runCatching { UUID.fromString(item.id) }.getOrNull()
                             ?: return@launch
@@ -237,6 +240,7 @@ class UploadProgressViewModel @Inject constructor(
                 val failedText = if (op.failedFiles > 0) " ${op.failedFiles}失敗" else ""
                 "$base - ${op.completedFiles}完了 ${notCompleted}未完了$failedText ($completed/$total)"
             }
+
             UploadProgressUiState.UploadState.WAITING_RESOLUTION,
             UploadProgressUiState.UploadState.SUCCEEDED,
             -> {
@@ -246,9 +250,11 @@ class UploadProgressViewModel @Inject constructor(
                     "$base - ${op.completedFiles}完了"
                 }
             }
+
             UploadProgressUiState.UploadState.FAILED -> {
                 "$base - ${op.completedFiles}完了 ${op.failedFiles}失敗"
             }
+
             else -> base
         }
     }
@@ -267,12 +273,15 @@ class UploadProgressViewModel @Inject constructor(
                 val notCompleted = op.totalFiles - op.completedFiles
                 "$base - ${op.completedFiles}完了 ${notCompleted}未完了"
             }
+
             UploadProgressUiState.UploadState.SUCCEEDED -> {
                 "$base - ${op.completedFiles}完了"
             }
+
             UploadProgressUiState.UploadState.FAILED -> {
                 "$base - ${op.completedFiles}完了 ${op.failedFiles}失敗"
             }
+
             else -> base
         }
 
@@ -312,11 +321,17 @@ class UploadProgressViewModel @Inject constructor(
     private fun mapState(status: OperationRepository.OperationStatus): UploadProgressUiState.UploadState {
         return when (status) {
             OperationRepository.OperationStatus.ENQUEUED -> UploadProgressUiState.UploadState.ENQUEUED
+
             OperationRepository.OperationStatus.RUNNING -> UploadProgressUiState.UploadState.RUNNING
+
             OperationRepository.OperationStatus.PAUSED -> UploadProgressUiState.UploadState.PAUSED
+
             OperationRepository.OperationStatus.COMPLETED -> UploadProgressUiState.UploadState.SUCCEEDED
+
             OperationRepository.OperationStatus.FAILED -> UploadProgressUiState.UploadState.FAILED
+
             OperationRepository.OperationStatus.CANCELLED -> UploadProgressUiState.UploadState.CANCELLED
+
             OperationRepository.OperationStatus.WAITING_RESOLUTION ->
                 UploadProgressUiState.UploadState.WAITING_RESOLUTION
         }

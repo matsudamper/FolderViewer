@@ -77,9 +77,11 @@ class DeleteDetailViewModel @Inject constructor(
 
         val uiStatus = when (progress.status) {
             OperationRepository.OperationStatus.COMPLETED -> DeleteDetailUiState.Status.COMPLETED
+
             OperationRepository.OperationStatus.FAILED,
             OperationRepository.OperationStatus.CANCELLED,
             -> DeleteDetailUiState.Status.FAILED
+
             else -> DeleteDetailUiState.Status.RUNNING
         }
 
@@ -151,7 +153,9 @@ class DeleteDetailViewModel @Inject constructor(
     private fun OperationRepository.FileStatus.toFileStatus(): OperationFileStatus {
         return when (this) {
             OperationRepository.FileStatus.COMPLETED -> OperationFileStatus.COMPLETED
+
             OperationRepository.FileStatus.FAILED -> OperationFileStatus.FAILED
+
             OperationRepository.FileStatus.PENDING,
             OperationRepository.FileStatus.RUNNING,
             -> OperationFileStatus.PENDING
