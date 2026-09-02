@@ -21,7 +21,7 @@ internal object ExternalExtractLaunchArgsMapper {
         val extractType = net.matsudamper.folderviewer.viewmodel.util.ExtractableFileNameUtil.detect(resolved.fileName)
             ?: error("unsupported file")
         val locationMessage = if (resolved.usedFallbackOutputLocation) {
-            "元の場所に書き込めないため、Documents/FolderViewer に展開します"
+            "Documents/FolderViewerに展開します"
         } else {
             null
         }
