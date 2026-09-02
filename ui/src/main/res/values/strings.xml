@@ -96,6 +96,13 @@
     <string name="delete_detail_failed_files">失敗ファイル数</string>
     <string name="delete_detail_failed_section">失敗ファイル</string>
     <string name="delete_detail_completed_section">削除済みファイル</string>
+    <string name="extract_detail_title">解凍詳細</string>
+    <string name="extract_detail_failed">解凍に失敗しました</string>
+    <string name="extract_detail_info">解凍情報</string>
+    <string name="extract_detail_source_file">解凍元ファイル</string>
+    <string name="extract_detail_output_name">出力名</string>
+    <string name="extract_detail_output_path">出力先</string>
+    <string name="extract_detail_type">形式</string>
     <string name="operation_file_list_section">ファイル一覧</string>
     <string name="operation_file_list_empty">表示する対象がありません</string>
     <string name="operation_file_filter_completed">完了 %1$d</string>

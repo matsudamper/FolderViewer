@@ -94,6 +94,7 @@ import net.matsudamper.folderviewer.navigation.SharePointAdd
 import net.matsudamper.folderviewer.navigation.SmbAdd
 import net.matsudamper.folderviewer.navigation.StorageTypeSelection
 import net.matsudamper.folderviewer.navigation.DeleteDetail
+import net.matsudamper.folderviewer.navigation.ExtractDetail
 import net.matsudamper.folderviewer.navigation.PasteDetail
 import net.matsudamper.folderviewer.navigation.UploadDetail
 import net.matsudamper.folderviewer.navigation.UploadProgress
@@ -113,6 +114,7 @@ import net.matsudamper.folderviewer.ui.storage.SmbAddScreen
 import net.matsudamper.folderviewer.ui.storage.StorageTypeSelectionScreen
 import net.matsudamper.folderviewer.ui.theme.FolderViewerTheme
 import net.matsudamper.folderviewer.ui.upload.DeleteDetailScreen
+import net.matsudamper.folderviewer.ui.upload.ExtractDetailScreen
 import net.matsudamper.folderviewer.ui.upload.PasteDetailScreen
 import net.matsudamper.folderviewer.ui.upload.UploadDetailScreen
 import net.matsudamper.folderviewer.ui.upload.UploadProgressScreen
@@ -127,6 +129,7 @@ import net.matsudamper.folderviewer.viewmodel.storage.SharePointAddViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.SmbAddViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.StorageTypeSelectionViewModel
 import net.matsudamper.folderviewer.viewmodel.upload.DeleteDetailViewModel
+import net.matsudamper.folderviewer.viewmodel.upload.ExtractDetailViewModel
 import net.matsudamper.folderviewer.viewmodel.upload.PasteDetailViewModel
 import net.matsudamper.folderviewer.viewmodel.upload.UploadDetailViewModel
 import net.matsudamper.folderviewer.viewmodel.upload.UploadProgressViewModel
@@ -429,6 +432,7 @@ internal fun entryProvider(navigator: Navigator): (NavKey) -> NavEntry<NavKey> {
         uploadDetailEntry(navigator)
         pasteDetailEntry(navigator)
         deleteDetailEntry(navigator)
+        extractDetailEntry(navigator)
     }
 }
 
@@ -1050,6 +1054,12 @@ private fun EntryProviderScope<NavKey>.uploadProgressEntry(navigator: Navigator)
                             DeleteDetail(operationId = event.opId),
                         )
                     }
+
+                    is UploadProgressViewModel.ViewModelEvent.NavigateToExtractDetail -> {
+                        navigator.navigate(
+                            ExtractDetail(operationId = event.opId),
+                        )
+                    }
                 }
             }
         }
@@ -1140,5 +1150,29 @@ private fun EntryProviderScope<NavKey>.deleteDetailEntry(navigator: Navigator) {
 
         val uiStateValue = uiState ?: return@entry
         DeleteDetailScreen(uiState = uiStateValue)
+    }
+}
+
+private fun EntryProviderScope<NavKey>.extractDetailEntry(navigator: Navigator) {
+    entry<ExtractDetail> { key ->
+        val viewModel: ExtractDetailViewModel = hiltViewModel()
+        val uiState by viewModel.uiState.collectAsState()
+
+        LaunchedEffect(key.operationId) {
+            viewModel.init(key.operationId)
+        }
+
+        LaunchedEffect(viewModel.viewModelEventFlow) {
+            viewModel.viewModelEventFlow.collect { event ->
+                when (event) {
+                    ExtractDetailViewModel.ViewModelEvent.NavigateBack -> {
+                        navigator.goBack()
+                    }
+                }
+            }
+        }
+
+        val uiStateValue = uiState ?: return@entry
+        ExtractDetailScreen(uiState = uiStateValue)
     }
 }

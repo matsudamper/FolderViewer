@@ -123,7 +123,7 @@ internal class FileExtractWorker @AssistedInject constructor(
                 text = text,
                 smallIcon = android.R.drawable.stat_notify_error,
             ),
-            contentIntent = operationNotificationIntentFactory.createUploadProgressIntent(),
+            contentIntent = operationNotificationIntentFactory.createExtractDetailIntent(operationId),
         )
     }
 
