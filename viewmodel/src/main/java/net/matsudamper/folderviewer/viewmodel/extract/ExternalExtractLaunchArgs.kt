@@ -21,7 +21,7 @@ internal object ExternalExtractLaunchArgsMapper {
         val extractType = net.matsudamper.folderviewer.viewmodel.util.ExtractableFileNameUtil.detect(resolved.fileName)
             ?: error("unsupported file")
         val locationMessage = if (resolved.usedFallbackOutputLocation) {
-            "元の場所に書き込めないため、Documents/FolderViewer に展開します"
+            "Documents/FolderViewerに展開します"
         } else {
             null
         }
@@ -37,8 +37,11 @@ internal object ExternalExtractLaunchArgsMapper {
     private fun net.matsudamper.folderviewer.viewmodel.browser.ExtractableFileType.toLaunchType(): ExtractLaunchType {
         return when (this) {
             net.matsudamper.folderviewer.viewmodel.browser.ExtractableFileType.Zip -> ExtractLaunchType.Zip
+
             net.matsudamper.folderviewer.viewmodel.browser.ExtractableFileType.TarXz -> ExtractLaunchType.TarXz
+
             net.matsudamper.folderviewer.viewmodel.browser.ExtractableFileType.TarZst -> ExtractLaunchType.TarZst
+
             is net.matsudamper.folderviewer.viewmodel.browser.ExtractableFileType.Compressed -> when (format) {
                 net.matsudamper.folderviewer.viewmodel.util.CompressedFileUtil.Format.Zst -> ExtractLaunchType.Zst
                 net.matsudamper.folderviewer.viewmodel.util.CompressedFileUtil.Format.Xz -> ExtractLaunchType.Xz

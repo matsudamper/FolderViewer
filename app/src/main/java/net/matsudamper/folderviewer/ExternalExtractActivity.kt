@@ -26,13 +26,13 @@ import androidx.core.content.IntentCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import coil.Coil
 import coil.ImageLoader
 import dagger.hilt.android.AndroidEntryPoint
 import jakarta.inject.Inject
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import net.matsudamper.folderviewer.ui.R
 import net.matsudamper.folderviewer.ui.extract.ExternalExtractScreen
 import net.matsudamper.folderviewer.ui.theme.FolderViewerTheme

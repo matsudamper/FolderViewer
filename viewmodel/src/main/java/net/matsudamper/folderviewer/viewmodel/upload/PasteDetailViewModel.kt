@@ -98,12 +98,17 @@ class PasteDetailViewModel @Inject constructor(
 
         val uiStatus = when (progress.status) {
             OperationRepository.OperationStatus.ENQUEUED -> PasteDetailUiState.Status.ENQUEUED
+
             OperationRepository.OperationStatus.RUNNING -> PasteDetailUiState.Status.RUNNING
+
             OperationRepository.OperationStatus.PAUSED -> PasteDetailUiState.Status.PAUSED
+
             OperationRepository.OperationStatus.COMPLETED -> PasteDetailUiState.Status.COMPLETED
+
             OperationRepository.OperationStatus.FAILED,
             OperationRepository.OperationStatus.CANCELLED,
             -> PasteDetailUiState.Status.FAILED
+
             OperationRepository.OperationStatus.WAITING_RESOLUTION ->
                 PasteDetailUiState.Status.WAITING_RESOLUTION
         }
@@ -219,8 +224,10 @@ class PasteDetailViewModel @Inject constructor(
         val uiResolution = when (file.resolution) {
             PasteJobRepository.DuplicateResolution.KEEP_DESTINATION ->
                 PasteDetailUiState.Resolution.KEEP_DESTINATION
+
             PasteJobRepository.DuplicateResolution.OVERWRITE_WITH_SOURCE ->
                 PasteDetailUiState.Resolution.OVERWRITE_WITH_SOURCE
+
             PasteJobRepository.DuplicateResolution.PENDING, null -> null
         }
         val isImage = !file.isDirectory && FileUtil.isImage(file.fileName)
@@ -304,7 +311,9 @@ class PasteDetailViewModel @Inject constructor(
     private fun OperationRepository.FileStatus.toFileStatus(): OperationFileStatus {
         return when (this) {
             OperationRepository.FileStatus.COMPLETED -> OperationFileStatus.COMPLETED
+
             OperationRepository.FileStatus.FAILED -> OperationFileStatus.FAILED
+
             OperationRepository.FileStatus.PENDING,
             OperationRepository.FileStatus.RUNNING,
             -> OperationFileStatus.PENDING

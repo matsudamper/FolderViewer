@@ -4,8 +4,6 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import java.util.Locale
-import dagger.hilt.android.lifecycle.HiltViewModel
-import jakarta.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +13,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import dagger.hilt.android.lifecycle.HiltViewModel
+import jakarta.inject.Inject
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
@@ -182,7 +182,9 @@ class UploadDetailViewModel @Inject internal constructor(
     private fun OperationRepository.FileStatus.toFileStatus(): OperationFileStatus {
         return when (this) {
             OperationRepository.FileStatus.COMPLETED -> OperationFileStatus.COMPLETED
+
             OperationRepository.FileStatus.FAILED -> OperationFileStatus.FAILED
+
             OperationRepository.FileStatus.PENDING,
             OperationRepository.FileStatus.RUNNING,
             -> OperationFileStatus.PENDING

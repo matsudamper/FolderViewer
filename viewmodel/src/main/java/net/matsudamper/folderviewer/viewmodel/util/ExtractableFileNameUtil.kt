@@ -22,8 +22,11 @@ internal object ExtractableFileNameUtil {
     private fun ExtractableFileType.toKind(): CompressArchiveKind {
         return when (this) {
             ExtractableFileType.Zip -> CompressArchiveKind.Zip
+
             ExtractableFileType.TarXz -> CompressArchiveKind.TarXz
+
             ExtractableFileType.TarZst -> CompressArchiveKind.TarZst
+
             is ExtractableFileType.Compressed -> when (format) {
                 CompressedFileUtil.Format.Zst -> CompressArchiveKind.Zst
                 CompressedFileUtil.Format.Xz -> CompressArchiveKind.Xz

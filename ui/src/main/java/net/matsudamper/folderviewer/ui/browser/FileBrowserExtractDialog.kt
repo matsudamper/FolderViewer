@@ -36,6 +36,7 @@ internal fun FileBrowserExtractDialog(
     }
     val nameLabel = when (mode) {
         ExtractDialogMode.ZipFolder -> "フォルダ名"
+
         ExtractDialogMode.ZstFile,
         ExtractDialogMode.XzFile,
         -> "ファイル名"

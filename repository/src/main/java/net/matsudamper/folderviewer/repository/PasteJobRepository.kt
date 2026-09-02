@@ -1,11 +1,11 @@
 package net.matsudamper.folderviewer.repository
 
-import jakarta.inject.Inject
-import jakarta.inject.Singleton
 import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
+import jakarta.inject.Inject
+import jakarta.inject.Singleton
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.db.AppDatabase
 import net.matsudamper.folderviewer.repository.db.OperationDao
@@ -139,12 +139,15 @@ class PasteJobRepository @Inject internal constructor(
         database.withTransaction {
             when (finish) {
                 is FileFinish.Completed -> operationFileDao.markCompleted(finish.fileId)
+
                 is FileFinish.Failed -> operationFileDao.markFailed(finish.fileId, finish.errorMessage)
+
                 is FileFinish.Duplicated -> operationFileDao.markDuplicate(
                     fileId = finish.fileId,
                     destinationFileId = Json.encodeToString(finish.destinationFileId),
                     destinationFileSize = finish.destinationFileSize,
                 )
+
                 null -> Unit
             }
             if (nextFileId != null) {
@@ -269,7 +272,9 @@ class PasteJobRepository @Inject internal constructor(
     }
 
     enum class DuplicateResolution {
-        PENDING, KEEP_DESTINATION, OVERWRITE_WITH_SOURCE
+        PENDING,
+        KEEP_DESTINATION,
+        OVERWRITE_WITH_SOURCE,
     }
 
     sealed interface FileFinish {
