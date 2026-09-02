@@ -88,10 +88,7 @@ internal object ExternalExtractPathResolver {
         return runCatching {
             inputStream.use { input ->
                 sourceFile.outputStream().use { output ->
-                    val copied = input.copyTo(output, MAX_COPY_BYTES.toInt())
-                    if (copied >= MAX_COPY_BYTES && input.read() != -1) {
-                        error("コピーサイズが上限を超えています")
-                    }
+                    copyWithLimit(input, output)
                 }
             }
             if (!sourceFile.isFile) {
@@ -106,6 +103,26 @@ internal object ExternalExtractPathResolver {
         }.onFailure {
             sourceFile.delete()
         }.getOrNull()
+    }
+
+    internal fun copyWithLimit(
+        input: java.io.InputStream,
+        output: java.io.OutputStream,
+        maxBytes: Long = MAX_COPY_BYTES,
+    ) {
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        var copiedBytes = 0L
+        while (true) {
+            val readBytes = input.read(buffer)
+            if (readBytes == -1) {
+                return
+            }
+            copiedBytes += readBytes
+            if (copiedBytes > maxBytes) {
+                error("コピーサイズが上限を超えています")
+            }
+            output.write(buffer, 0, readBytes)
+        }
     }
 
     private fun fallbackDocumentsDirectory(): File {
