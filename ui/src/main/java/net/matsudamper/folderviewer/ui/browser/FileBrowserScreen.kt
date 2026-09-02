@@ -61,12 +61,15 @@ fun FileBrowserScreen(
                         }
                     }
                 }
+
                 is FileBrowserUiEvent.ShowCreateDirectoryDialog -> {
                     showCreateDirectoryDialog.value = true
                 }
+
                 is FileBrowserUiEvent.ShowCompressDialog -> {
                     showCompressDialog.value = true
                 }
+
                 is FileBrowserUiEvent.ShowDeleteConfirmDialog -> {
                     deleteConfirmCount.value = event.count
                 }

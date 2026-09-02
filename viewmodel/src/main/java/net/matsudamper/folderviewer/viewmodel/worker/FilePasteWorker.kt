@@ -255,9 +255,11 @@ internal class FilePasteWorker @AssistedInject constructor(
             file.resolution == PasteJobRepository.DuplicateResolution.KEEP_DESTINATION -> {
                 processKeepDestination(jobContext, file)
             }
+
             file.resolution != null && file.sourceFileId == file.destinationFileId -> {
                 PasteJobRepository.FileFinish.Completed(file.id)
             }
+
             else -> copyFile(jobContext, file)
         }
     }

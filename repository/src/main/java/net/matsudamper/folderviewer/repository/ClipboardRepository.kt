@@ -1,10 +1,10 @@
 package net.matsudamper.folderviewer.repository
 
-import jakarta.inject.Inject
-import jakarta.inject.Singleton
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import jakarta.inject.Inject
+import jakarta.inject.Singleton
 
 @Singleton
 class ClipboardRepository @Inject constructor() {

@@ -18,8 +18,8 @@ import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -107,6 +107,7 @@ fun UploadDetailScreen(uiState: UploadDetailUiState) {
                         }
                     }
                 }
+
                 UploadDetailUiState.UploadStatus.SUCCEEDED -> {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -133,6 +134,7 @@ fun UploadDetailScreen(uiState: UploadDetailUiState) {
                         }
                     }
                 }
+
                 UploadDetailUiState.UploadStatus.FAILED -> {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -162,7 +164,7 @@ fun UploadDetailScreen(uiState: UploadDetailUiState) {
             }
 
             InfoCard(
-                modifier  = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 title = stringResource(R.string.upload_detail_file_info),
             ) {
                 InfoRow(
@@ -189,11 +191,11 @@ fun UploadDetailScreen(uiState: UploadDetailUiState) {
 
             if (uiState.currentUploadFile != null) {
                 InfoCard(
-                    modifier  = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth(),
                     title = stringResource(R.string.upload_detail_current_file),
                 ) {
                     Text(
-                        modifier  = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth(),
                         text = uiState.currentUploadFile.name,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -206,7 +208,7 @@ fun UploadDetailScreen(uiState: UploadDetailUiState) {
                     }
                     if (uiState.currentUploadFile.progressText != null) {
                         Text(
-                            modifier  = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth(),
                             text = uiState.currentUploadFile.progressText,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -233,7 +235,7 @@ fun UploadDetailScreen(uiState: UploadDetailUiState) {
                     }
                     if (uiState.errorMessage == null && uiState.errorCause == null) {
                         Text(
-                            modifier  = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth(),
                             text = stringResource(R.string.upload_detail_no_error_info),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -262,7 +264,6 @@ fun UploadDetailScreen(uiState: UploadDetailUiState) {
         }
     }
 }
-
 
 private val previewCallbacks = object : UploadDetailUiState.Callbacks {
     override fun onBackClick() = Unit

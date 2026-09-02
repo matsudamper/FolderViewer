@@ -201,7 +201,7 @@ public fun PasteDetailScreen(
                 item {
                     SectionHeader(
                         text = stringResource(R.string.paste_detail_duplicate_files_section) +
-                                " (${uiState.duplicateFiles.size})",
+                            " (${uiState.duplicateFiles.size})",
                     )
                 }
                 items(

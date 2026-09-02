@@ -1,10 +1,10 @@
 package net.matsudamper.folderviewer.repository
 
+import androidx.room.withTransaction
 import java.io.File
+import kotlinx.serialization.json.Json
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
-import androidx.room.withTransaction
-import kotlinx.serialization.json.Json
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.db.AppDatabase
 import net.matsudamper.folderviewer.repository.db.ExtractOperationDao
@@ -56,6 +56,7 @@ class ExtractJobRepository @Inject internal constructor(
             ExtractType.TarXz,
             ExtractType.TarZst,
             -> "${params.sourceFileName}を展開"
+
             ExtractType.Zst,
             ExtractType.Xz,
             -> "${params.sourceFileName}を展開"
