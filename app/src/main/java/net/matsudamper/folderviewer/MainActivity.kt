@@ -113,6 +113,7 @@ import net.matsudamper.folderviewer.ui.storage.SharePointAddScreen
 import net.matsudamper.folderviewer.ui.storage.SmbAddScreen
 import net.matsudamper.folderviewer.ui.storage.StorageTypeSelectionScreen
 import net.matsudamper.folderviewer.ui.theme.FolderViewerTheme
+import net.matsudamper.folderviewer.ui.util.showDismissibleSnackbar
 import net.matsudamper.folderviewer.ui.upload.DeleteDetailScreen
 import net.matsudamper.folderviewer.ui.upload.ExtractDetailScreen
 import net.matsudamper.folderviewer.ui.upload.PasteDetailScreen
@@ -535,7 +536,7 @@ private fun EntryProviderScope<NavKey>.storageTypeSelectionEntry(
 
                     StorageTypeSelectionViewModel.ViewModelEvent.ShowAlreadyAddedMessage -> {
                         scope.launch {
-                            snackbarHostState.showSnackbar("追加済です")
+                            snackbarHostState.showDismissibleSnackbar("追加済です")
                         }
                     }
                 }

@@ -10,6 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import kotlinx.coroutines.flow.Flow
+import net.matsudamper.folderviewer.ui.util.showDismissibleSnackbar
 
 @Composable
 fun FileBrowserScreen(
@@ -42,7 +43,7 @@ fun FileBrowserScreen(
                         event.showAction -> "表示"
                         else -> null
                     }
-                    val result = snackbarHostState.showSnackbar(
+                    val result = snackbarHostState.showDismissibleSnackbar(
                         message = event.message,
                         actionLabel = actionLabel,
                     )
