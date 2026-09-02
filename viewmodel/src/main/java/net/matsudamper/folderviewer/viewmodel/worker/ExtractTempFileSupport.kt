@@ -25,9 +25,8 @@ internal object ExtractTempFileSupport {
         return outputFile
     }
 
-    fun createTempFile(appContext: Context, outputDirectoryPath: String? = null): File {
-        val directory = resolveTempDirectory(appContext, outputDirectoryPath)
-        return File.createTempFile("extract-", ".tmp", directory)
+    fun createTempFile(appContext: Context): File {
+        return File.createTempFile("extract-", ".tmp", tempDirectory(appContext))
     }
 
     fun markPublished(appContext: Context, jobId: Long, outputFile: File) {
@@ -53,16 +52,6 @@ internal object ExtractTempFileSupport {
         if (tempFile.exists()) {
             tempFile.delete()
         }
-    }
-
-    private fun resolveTempDirectory(appContext: Context, outputDirectoryPath: String?): File {
-        if (outputDirectoryPath != null) {
-            val outputDirectory = File(outputDirectoryPath)
-            if (outputDirectory.isDirectory || outputDirectory.mkdirs()) {
-                return outputDirectory
-            }
-        }
-        return tempDirectory(appContext)
     }
 
     private fun moveTempFile(tempFile: File, outputFile: File): Boolean {
