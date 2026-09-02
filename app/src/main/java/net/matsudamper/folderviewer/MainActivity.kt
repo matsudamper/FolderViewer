@@ -99,6 +99,7 @@ import net.matsudamper.folderviewer.navigation.UploadDetail
 import net.matsudamper.folderviewer.navigation.UploadProgress
 import net.matsudamper.folderviewer.navigation.rememberNavigationState
 import net.matsudamper.folderviewer.navigation.toEntries
+import net.matsudamper.folderviewer.repository.ExtractJobRepository
 import net.matsudamper.folderviewer.repository.PermissionUtil
 import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.FileBrowserScreen
@@ -138,6 +139,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var extractJobCompletionWatcher: ExtractJobCompletionWatcher
 
+    @Inject
+    lateinit var extractJobRepository: ExtractJobRepository
+
     private val navigateToUploadProgressRequest = mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -150,6 +154,7 @@ class MainActivity : ComponentActivity() {
             FolderViewerTheme {
                 AppContent(
                     extractJobCompletionWatcher = extractJobCompletionWatcher,
+                    extractJobRepository = extractJobRepository,
                     navigateToUploadProgressOnStart = navigateToUploadProgressRequest.value,
                     onUploadProgressNavigationHandled = { navigateToUploadProgressRequest.value = false },
                 )
@@ -186,6 +191,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun AppContent(
     extractJobCompletionWatcher: ExtractJobCompletionWatcher,
+    extractJobRepository: ExtractJobRepository,
     navigateToUploadProgressOnStart: Boolean,
     onUploadProgressNavigationHandled: () -> Unit,
     modifier: Modifier = Modifier,
@@ -243,6 +249,7 @@ private fun AppContent(
                     pagerState = pagerState,
                     navigator = navigator,
                     extractJobCompletionWatcher = extractJobCompletionWatcher,
+                    extractJobRepository = extractJobRepository,
                     navigateToUploadProgressOnStart = navigateToUploadProgressOnStart,
                     onUploadProgressNavigationHandled = onUploadProgressNavigationHandled,
                 )
@@ -289,6 +296,7 @@ private fun GlobalNavigationEffect(
     pagerState: androidx.compose.foundation.pager.PagerState,
     navigator: Navigator,
     extractJobCompletionWatcher: ExtractJobCompletionWatcher,
+    extractJobRepository: ExtractJobRepository,
     navigateToUploadProgressOnStart: Boolean,
     onUploadProgressNavigationHandled: () -> Unit,
 ) {
@@ -311,6 +319,7 @@ private fun GlobalNavigationEffect(
                     fileId = navigation.fileId,
                 ),
             )
+            extractJobRepository.markOpenOnCompleteHandled(navigation.jobId)
         }
     }
 }

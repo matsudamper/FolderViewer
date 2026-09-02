@@ -131,6 +131,7 @@ internal class FileBrowserExtractCoordinator(
                     return@collect
                 } ?: return@collect
                 dependencies.openWithExternalPlayer(file)
+                dependencies.extractJobRepository.markOpenOnCompleteHandled(event.jobId)
             }
         }
     }

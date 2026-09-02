@@ -68,12 +68,10 @@ class ExtractJobCompletionWatcher @Inject constructor(
 
     suspend fun openExtractResult(jobId: Long) {
         resolveNavigation(jobId)?.let { navigation ->
-            extractJobRepository.markOpenOnCompleteHandled(jobId)
             _pendingNavigation.emit(navigation)
             return
         }
         resolveExternalOpen(jobId)?.let { externalOpen ->
-            extractJobRepository.markOpenOnCompleteHandled(jobId)
             _pendingExternalOpen.emit(externalOpen)
         }
     }
@@ -142,6 +140,7 @@ class ExtractJobCompletionWatcher @Inject constructor(
             "${meta.parentDisplayPath}/${folder.displayPath}"
         }
         return PendingExtractNavigation(
+            jobId = jobId,
             displayPath = displayPath,
             fileId = folder.id,
         )
@@ -161,6 +160,7 @@ class ExtractJobCompletionWatcher @Inject constructor(
             .find { !it.isDirectory && it.displayPath == meta.outputName }
             ?: return null
         return PendingExtractExternalOpen(
+            jobId = jobId,
             parentFileObjectId = meta.parentFileObjectId,
             fileId = file.id,
         )
@@ -182,11 +182,13 @@ class ExtractJobCompletionWatcher @Inject constructor(
     }
 
     data class PendingExtractNavigation(
+        val jobId: Long,
         val displayPath: String?,
         val fileId: FileObjectId,
     )
 
     data class PendingExtractExternalOpen(
+        val jobId: Long,
         val parentFileObjectId: FileObjectId,
         val fileId: FileObjectId,
     )

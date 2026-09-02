@@ -79,6 +79,7 @@ internal class FileExtractWorker @AssistedInject constructor(
         return extractResult.fold(
             onSuccess = { outputFile ->
                 extractJobRepository.completeJob(meta.id, outputFile.absolutePath)
+                ExtractTempFileSupport.clearMarker(workerContext, meta.id)
                 notifyCompleted(meta)
                 Result.success()
             },
@@ -229,19 +230,24 @@ internal object ExtractWorkerExecutor {
     ): File {
         val outputFile = ExtractOutputNameValidator.resolveChildFile(meta.localFolderPath, meta.outputName)
             ?: error("無効なファイル名です")
+        ExtractTempFileSupport.recoverOutputIfAlreadyPublished(
+            appContext = appContext,
+            jobId = meta.id,
+            outputFile = outputFile,
+        )?.let { recovered ->
+            ExtractMediaScanner.scanExtractedMediaFiles(appContext, listOf(recovered))
+            return recovered
+        }
         if (outputFile.exists()) {
             error("同じ名前のファイルが既に存在します: ${outputFile.name}")
         }
-        val parentDir = outputFile.parentFile ?: error("無効な出力先です")
-        val tempFile = File(parentDir, ".extract-${meta.id}.tmp")
-        tempFile.delete()
+        val tempFile = ExtractTempFileSupport.createTempFile(appContext)
         try {
             CompressedFileUtil.decompress(sourceFile, tempFile, format)
-            if (!tempFile.renameTo(outputFile)) {
-                error("出力ファイルの作成に失敗しました")
-            }
+            ExtractTempFileSupport.publishTempFile(tempFile, outputFile)
+            ExtractTempFileSupport.markPublished(appContext, meta.id, outputFile)
         } catch (e: Throwable) {
-            tempFile.delete()
+            ExtractTempFileSupport.cleanupTempFile(tempFile)
             throw e
         }
         ExtractMediaScanner.scanExtractedMediaFiles(appContext, listOf(outputFile))
