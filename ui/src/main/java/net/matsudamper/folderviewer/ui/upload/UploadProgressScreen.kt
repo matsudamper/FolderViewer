@@ -15,9 +15,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -94,12 +94,14 @@ public fun UploadProgressScreen(
                                 onClick = { uiState.callbacks.onItemClick(item) },
                             )
                         }
+
                         is UploadProgressUiState.UploadItem.Delete -> {
                             DeleteItemRow(
                                 item = item,
                                 onClick = { uiState.callbacks.onItemClick(item) },
                             )
                         }
+
                         else -> {
                             UploadItemRow(
                                 item = item,
@@ -286,6 +288,7 @@ private fun PasteItemRow(
                         tint = MaterialTheme.colorScheme.primary,
                     )
                 }
+
                 UploadProgressUiState.UploadState.FAILED -> {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_close),
@@ -293,6 +296,7 @@ private fun PasteItemRow(
                         tint = MaterialTheme.colorScheme.error,
                     )
                 }
+
                 else -> {}
             }
         }
@@ -373,6 +377,7 @@ private fun DeleteItemRow(
                         )
                     }
                 }
+
                 UploadProgressUiState.UploadState.SUCCEEDED -> {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_check),
@@ -380,6 +385,7 @@ private fun DeleteItemRow(
                         tint = MaterialTheme.colorScheme.primary,
                     )
                 }
+
                 UploadProgressUiState.UploadState.FAILED -> {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_close),
@@ -387,6 +393,7 @@ private fun DeleteItemRow(
                         tint = MaterialTheme.colorScheme.error,
                     )
                 }
+
                 else -> {}
             }
         }

@@ -1,5 +1,7 @@
 package net.matsudamper.folderviewer.viewmodel.browser
 
+import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
@@ -10,13 +12,11 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
-import java.io.File
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.ExtractJobRepository
 import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
-import java.util.concurrent.ConcurrentHashMap
 
 @Singleton
 class ExtractJobCompletionWatcher @Inject constructor(

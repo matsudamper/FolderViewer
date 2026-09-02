@@ -23,10 +23,10 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.DisplayMode
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -58,7 +58,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.Flow
-import net.matsudamper.folderviewer.ui.util.showDismissibleSnackbar
 import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
@@ -67,6 +66,7 @@ import net.matsudamper.folderviewer.ui.browser.DisplayConfigDropDownMenu
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
 import net.matsudamper.folderviewer.ui.util.formatBytes
+import net.matsudamper.folderviewer.ui.util.showDismissibleSnackbar
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -568,7 +568,7 @@ private fun FileIcon(
                 when (painter.state) {
                     is AsyncImagePainter.State.Loading,
                     is AsyncImagePainter.State.Error,
-                        -> {
+                    -> {
                         Icon(
                             painter = painterResource(R.drawable.ic_file),
                             contentDescription = null,

@@ -200,24 +200,28 @@ internal object ExtractWorkerExecutor {
             val sourceFile = resolveSourceFile(meta, storageRepository)
             when (meta.extractType) {
                 ExtractJobRepository.ExtractType.Zip -> extractZip(sourceFile, meta, appContext)
+
                 ExtractJobRepository.ExtractType.TarXz -> extractTar(
                     sourceFile = sourceFile,
                     meta = meta,
                     format = CompressedFileUtil.Format.Xz,
                     appContext = appContext,
                 )
+
                 ExtractJobRepository.ExtractType.TarZst -> extractTar(
                     sourceFile = sourceFile,
                     meta = meta,
                     format = CompressedFileUtil.Format.Zst,
                     appContext = appContext,
                 )
+
                 ExtractJobRepository.ExtractType.Zst -> extractCompressed(
                     sourceFile = sourceFile,
                     meta = meta,
                     format = CompressedFileUtil.Format.Zst,
                     appContext = appContext,
                 )
+
                 ExtractJobRepository.ExtractType.Xz -> extractCompressed(
                     sourceFile = sourceFile,
                     meta = meta,
@@ -239,6 +243,7 @@ internal object ExtractWorkerExecutor {
             ?: error("ストレージが見つかりません")
         return when (val uri = repository.getViewSourceUri(sourceFileObjectId)) {
             is ViewSourceUri.LocalFile -> File(uri.path)
+
             is ViewSourceUri.RemoteUrl,
             is ViewSourceUri.StreamProvider,
             -> error("解凍はローカルストレージのみ対応しています")
