@@ -42,7 +42,7 @@ private fun ExternalExtractScreenPreview() {
             defaultName = "archive",
             mode = ExtractDialogMode.ZipFolder,
             isExtracting = false,
-            locationMessage = "元の場所に書き込めないため、アプリ内の一時フォルダに展開します",
+            locationMessage = "元の場所に書き込めないため、Documents/FolderViewer に展開します",
             callbacks = object : ExternalExtractUiState.Callbacks {
                 override fun onDismissRequest() = Unit
 

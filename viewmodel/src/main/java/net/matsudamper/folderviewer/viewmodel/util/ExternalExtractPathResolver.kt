@@ -6,7 +6,6 @@ import android.os.Environment
 import android.provider.DocumentsContract
 import androidx.documentfile.provider.DocumentFile
 import java.io.File
-import java.util.UUID
 
 internal object ExternalExtractPathResolver {
     data class ResolvedExtractFile(
@@ -81,8 +80,9 @@ internal object ExternalExtractPathResolver {
         uri: Uri,
         fileName: String,
     ): ResolvedExtractFile? {
-        val directory = File(context.cacheDir, "external_extract/${UUID.randomUUID()}").apply { mkdirs() }
-        val sourceFile = File(directory, fileName)
+        val directory = fallbackDocumentsDirectory()
+        directory.mkdirs()
+        val sourceFile = resolveAvailableSourceFile(directory, fileName)
         val inputStream = context.contentResolver.openInputStream(uri) ?: return null
         return runCatching {
             inputStream.use { input ->
@@ -94,11 +94,27 @@ internal object ExternalExtractPathResolver {
             ResolvedExtractFile(
                 sourceFile = sourceFile,
                 outputParentPath = directory.absolutePath,
-                fileName = fileName,
+                fileName = sourceFile.name,
                 usedFallbackOutputLocation = true,
             )
         }.onFailure {
-            directory.deleteRecursively()
+            sourceFile.delete()
         }.getOrNull()
+    }
+
+    private fun fallbackDocumentsDirectory(): File {
+        val documents = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+        return File(documents, "FolderViewer")
+    }
+
+    private fun resolveAvailableSourceFile(directory: File, fileName: String): File {
+        val candidate = File(directory, fileName)
+        if (!candidate.exists()) {
+            return candidate
+        }
+        val dotIndex = fileName.lastIndexOf('.')
+        val baseName = if (dotIndex > 0) fileName.substring(0, dotIndex) else fileName
+        val extension = if (dotIndex > 0) fileName.substring(dotIndex) else ""
+        return File(directory, "${baseName}_${System.currentTimeMillis()}$extension")
     }
 }
