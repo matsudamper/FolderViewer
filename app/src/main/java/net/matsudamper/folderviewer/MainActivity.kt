@@ -1,5 +1,6 @@
 package net.matsudamper.folderviewer
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -496,8 +497,14 @@ private fun EntryProviderScope<NavKey>.settingsEntry(navigator: Navigator) {
                                 context.getString(net.matsudamper.folderviewer.ui.R.string.github_releases_url),
                             )
                         }
-                        runCatching {
+                        try {
                             context.startActivity(intent)
+                        } catch (_: ActivityNotFoundException) {
+                            snackbarHostState.showDismissibleSnackbar(
+                                context.getString(
+                                    net.matsudamper.folderviewer.ui.R.string.github_releases_open_error,
+                                ),
+                            )
                         }
                     }
                 }
