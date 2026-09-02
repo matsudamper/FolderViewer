@@ -15,12 +15,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
-private const val ZERO_WIDTH_SPACE = "\u200B"
-
 private fun insertLineBreakOpportunities(value: String): String = buildString {
     value.codePoints().forEach { codePoint ->
         appendCodePoint(codePoint)
-        append(ZERO_WIDTH_SPACE)
+        append('\u200B')
     }
 }
 
