@@ -1,9 +1,11 @@
 package net.matsudamper.folderviewer
 
+import android.content.ClipData
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.DocumentsContract
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -38,6 +40,7 @@ import net.matsudamper.folderviewer.ui.util.showDismissibleSnackbar
 import net.matsudamper.folderviewer.viewmodel.extract.ExternalExtractIntentHandler
 import net.matsudamper.folderviewer.viewmodel.extract.ExternalExtractLaunchArgs
 import net.matsudamper.folderviewer.viewmodel.extract.ExternalExtractViewModel
+import net.matsudamper.folderviewer.viewmodel.extract.ExternalIncomingUriResolution
 
 @AndroidEntryPoint
 class ExternalExtractActivity : ComponentActivity() {
@@ -46,6 +49,7 @@ class ExternalExtractActivity : ComponentActivity() {
 
     private var viewModelArgs by mutableStateOf<ExternalExtractLaunchArgs?>(null)
     private var launchErrorMessage by mutableStateOf<String?>(null)
+    private var handledIncomingUri by mutableStateOf(false)
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -63,12 +67,26 @@ class ExternalExtractActivity : ComponentActivity() {
         } else {
             lifecycleScope.launch {
                 val resolved = withContext(Dispatchers.IO) {
-                    ExternalExtractIntentHandler.resolveLaunchArgs(this@ExternalExtractActivity, uri)
+                    ExternalExtractIntentHandler.resolve(
+                        context = this@ExternalExtractActivity,
+                        uri = uri,
+                        mimeType = intent.type,
+                    )
                 }
-                if (resolved == null) {
-                    launchErrorMessage = "対応していないファイルです"
-                } else {
-                    viewModelArgs = resolved
+                when (resolved) {
+                    is ExternalIncomingUriResolution.Extractable -> {
+                        viewModelArgs = resolved.args
+                    }
+
+                    is ExternalIncomingUriResolution.Directory -> {
+                        handledIncomingUri = true
+                        openDirectoryWithChooser(resolved.uri)
+                        finish()
+                    }
+
+                    ExternalIncomingUriResolution.Unsupported -> {
+                        launchErrorMessage = "対応していないファイルです"
+                    }
                 }
             }
         }
@@ -85,7 +103,7 @@ class ExternalExtractActivity : ComponentActivity() {
                 }
 
                 val args = viewModelArgs
-                if (args == null && launchErrorMessage == null) {
+                if (args == null && launchErrorMessage == null && !handledIncomingUri) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
@@ -142,6 +160,23 @@ class ExternalExtractActivity : ComponentActivity() {
     private fun extractTargetUri(intent: Intent): Uri? {
         intent.data?.let { return it }
         return IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
+    }
+
+    private fun openDirectoryWithChooser(uri: Uri) {
+        val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, DocumentsContract.Document.MIME_TYPE_DIR)
+            clipData = ClipData.newRawUri("", uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        if (intent.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION != 0) {
+            viewIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        val chooserIntent = Intent.createChooser(viewIntent, null).apply {
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        runCatching {
+            startActivity(chooserIntent)
+        }
     }
 
     private fun requestNotificationPermissionIfNeeded() {
