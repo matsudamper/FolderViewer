@@ -288,6 +288,7 @@ internal fun FileBrowserScreenContent(
         val extractDialog = uiState.extractDialog
         FileBrowserExtractDialog(
             defaultName = extractDialog.folderName,
+            mode = extractDialog.mode,
             isExtracting = extractDialog.isExtracting,
             onDismissRequest = { uiState.callbacks.onDismissExtract() },
             onConfirm = { folderName -> uiState.callbacks.onConfirmExtract(folderName) },

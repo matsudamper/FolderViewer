@@ -46,6 +46,13 @@ internal class OperationNotificationIntentFactoryImpl @Inject constructor(
         )
     }
 
+    override fun createExtractDetailIntent(operationId: Long): PendingIntent {
+        return createPendingIntent(
+            requestCode = EXTRACT_DETAIL_REQUEST_CODE_BASE + operationId.toInt(),
+            intent = OperationDetailActivity.createExtractDetailIntent(context, operationId),
+        )
+    }
+
     override fun createUploadProgressIntent(): PendingIntent {
         return createPendingIntent(
             requestCode = UPLOAD_PROGRESS_REQUEST_CODE,
@@ -66,5 +73,6 @@ internal class OperationNotificationIntentFactoryImpl @Inject constructor(
 
     companion object {
         private const val UPLOAD_PROGRESS_REQUEST_CODE = 9001
+        private const val EXTRACT_DETAIL_REQUEST_CODE_BASE = 10000
     }
 }

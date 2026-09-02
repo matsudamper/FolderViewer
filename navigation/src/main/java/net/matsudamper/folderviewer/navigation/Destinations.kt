@@ -45,6 +45,9 @@ data class PasteDetail(val jobId: Long) : NavKey
 data class DeleteDetail(val operationId: Long) : NavKey
 
 @Serializable
+data class ExtractDetail(val operationId: Long) : NavKey
+
+@Serializable
 data class ExternalFilePicker(
     val allowMultiple: Boolean,
     val displayPath: String?,

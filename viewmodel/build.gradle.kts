@@ -39,4 +39,11 @@ dependencies {
     implementation(libs.kotlinxSerializationJson)
 
     testImplementation(libs.junit)
+
+    implementation(libs.zstdJni) {
+        artifact {
+            type = "aar"
+        }
+    }
+    implementation(libs.xz)
 }

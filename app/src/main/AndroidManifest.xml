@@ -81,6 +81,32 @@
         </activity>
 
         <activity
+            android:name=".ExternalExtractActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.FolderViewer">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="application/zip" />
+                <data android:mimeType="application/x-zip-compressed" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:mimeType="application/x-xz" />
+                <data android:mimeType="application/xz" />
+                <data android:mimeType="application/zstd" />
+                <data android:mimeType="application/x-zstd" />
+            </intent-filter>
+        </activity>
+
+        <activity
             android:name=".OperationDetailActivity"
             android:autoRemoveFromRecents="true"
             android:documentLaunchMode="intoExisting"

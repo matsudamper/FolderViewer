@@ -36,6 +36,8 @@ room = "2.8.4"
 paparazzi = "2.0.0-alpha05"
 composablePreviewScanner = "0.9.3"
 robolectric = "4.16.1"
+zstdJni = "1.5.6-9"
+xz = "1.10"
 
 [libraries]
 androidxCoreKtx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -88,6 +90,8 @@ androidxRoomCompiler = { group = "androidx.room", name = "room-compiler", versio
 androidxRoomTesting = { group = "androidx.room", name = "room-testing", version.ref = "room" }
 composablePreviewScanner = { group = "io.github.sergio-sastre.ComposablePreviewScanner", name = "android", version.ref = "composablePreviewScanner" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+zstdJni = { group = "com.github.luben", name = "zstd-jni", version.ref = "zstdJni" }
+xz = { group = "org.tukaani", name = "xz", version.ref = "xz" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
