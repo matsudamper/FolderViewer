@@ -8,12 +8,11 @@ import org.junit.Test
 
 internal class ExtractTempFileSupportTest {
     @Test
-    fun publishTempFile_copiesAcrossDirectoriesWhenRenameFails() {
+    fun publishTempFile_renamesWithinOutputDirectory() {
         val root = Files.createTempDirectory("extract-temp-support").toFile()
         try {
-            val cacheDir = File(root, "cache").apply { mkdirs() }
             val outputDir = File(root, "output").apply { mkdirs() }
-            val tempFile = File(cacheDir, "extract.tmp")
+            val tempFile = File.createTempFile("extract-", ".tmp", outputDir)
             tempFile.writeText("payload")
             val outputFile = File(outputDir, "result.bin")
 

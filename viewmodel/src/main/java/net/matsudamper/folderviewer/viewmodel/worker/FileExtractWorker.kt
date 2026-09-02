@@ -263,7 +263,7 @@ internal object ExtractWorkerExecutor {
         format: CompressedFileUtil.Format,
         appContext: Context,
     ): File {
-        val tempFile = ExtractTempFileSupport.createTempFile(appContext)
+        val tempFile = ExtractTempFileSupport.createTempFile(meta.localFolderPath)
         try {
             CompressedFileUtil.decompress(sourceFile, tempFile, format)
             val resolvedName = DecompressedOutputNameResolver.resolveFileName(meta.outputName, tempFile)
@@ -285,7 +285,7 @@ internal object ExtractWorkerExecutor {
         format: CompressedFileUtil.Format,
         appContext: Context,
     ): File {
-        val tempTar = ExtractTempFileSupport.createTempFile(appContext)
+        val tempTar = ExtractTempFileSupport.createTempFile(meta.localFolderPath)
         try {
             CompressedFileUtil.decompress(sourceFile, tempTar, format)
             val fileEntries = TarArchiveUtil.listEntries(tempTar).filter { !it.isDirectory }
@@ -309,7 +309,7 @@ internal object ExtractWorkerExecutor {
         meta: ExtractJobRepository.ExtractJobMeta,
         appContext: Context,
     ): File {
-        val tempOutput = ExtractTempFileSupport.createTempFile(appContext)
+        val tempOutput = ExtractTempFileSupport.createTempFile(meta.localFolderPath)
         try {
             TarArchiveUtil.extractSingleFileEntry(tempTar, entry, tempOutput)
             val entryBaseName = entry.name.substringAfterLast('/')
