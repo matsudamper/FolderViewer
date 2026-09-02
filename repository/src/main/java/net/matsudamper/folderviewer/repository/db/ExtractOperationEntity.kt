@@ -30,4 +30,5 @@ internal data class ExtractOperationEntity(
     val openOnComplete: Boolean,
     val openOnCompleteHandled: Boolean = false,
     val outputAbsolutePath: String? = null,
+    val sourceAbsolutePath: String? = null,
 )

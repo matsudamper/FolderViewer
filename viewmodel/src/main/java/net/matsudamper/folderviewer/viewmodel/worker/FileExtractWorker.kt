@@ -21,8 +21,11 @@ import net.matsudamper.folderviewer.repository.ExtractJobRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
+import net.matsudamper.folderviewer.viewmodel.util.CompressedFileUtil
+import net.matsudamper.folderviewer.viewmodel.util.DecompressedOutputNameResolver
 import net.matsudamper.folderviewer.viewmodel.util.ExtractMediaScanner
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputNameValidator
+import net.matsudamper.folderviewer.viewmodel.util.TarArchiveUtil
 import net.matsudamper.folderviewer.viewmodel.util.ZipFileUtil
 
 @HiltWorker
@@ -78,7 +81,8 @@ internal class FileExtractWorker @AssistedInject constructor(
         return extractResult.fold(
             onSuccess = { outputFile ->
                 extractJobRepository.completeJob(meta.id, outputFile.absolutePath)
-                notifyCompleted(meta)
+                ExtractTempFileSupport.clearMarker(workerContext, meta.id)
+                notifyCompleted(meta, outputFile)
                 Result.success()
             },
             onFailure = { error ->
@@ -93,17 +97,34 @@ internal class FileExtractWorker @AssistedInject constructor(
         )
     }
 
-    private fun notifyCompleted(meta: ExtractJobRepository.ExtractJobMeta) {
+    private fun notifyCompleted(meta: ExtractJobRepository.ExtractJobMeta, outputFile: File) {
+        val text = completionMessage(meta, outputFile)
         OperationResultNotification.notify(
             context = workerContext,
             notificationId = EXTRACT_RESULT_NOTIFICATION_BASE_ID + meta.id.toInt(),
             content = OperationResultNotification.Content(
                 title = "解凍が完了しました",
-                text = "${meta.outputName}に展開しました",
+                text = text,
                 smallIcon = android.R.drawable.stat_sys_download_done,
             ),
             contentIntent = operationNotificationIntentFactory.createUploadProgressIntent(),
         )
+    }
+
+    private fun completionMessage(
+        meta: ExtractJobRepository.ExtractJobMeta,
+        outputFile: File,
+    ): String {
+        val outputLabel = if (outputFile.isFile) {
+            outputFile.name
+        } else {
+            meta.outputName
+        }
+        return if (outputFile.isDirectory) {
+            "${outputLabel}に展開しました"
+        } else {
+            "${outputLabel}を作成しました"
+        }
     }
 
     private fun notifyFailed(operationId: Long, text: String) {
@@ -115,7 +136,7 @@ internal class FileExtractWorker @AssistedInject constructor(
                 text = text,
                 smallIcon = android.R.drawable.stat_notify_error,
             ),
-            contentIntent = operationNotificationIntentFactory.createUploadProgressIntent(),
+            contentIntent = operationNotificationIntentFactory.createExtractDetailIntent(operationId),
         )
     }
 
@@ -176,20 +197,51 @@ internal object ExtractWorkerExecutor {
         appContext: Context,
     ): Result<File> {
         return runCatching {
-            val repository = storageRepository.getFileRepository(meta.sourceFileObjectId.storageId)
-                ?: error("ストレージが見つかりません")
-            val sourceFile = when (val uri = repository.getViewSourceUri(meta.sourceFileObjectId)) {
-                is ViewSourceUri.LocalFile -> File(uri.path)
-                is ViewSourceUri.RemoteUrl,
-                is ViewSourceUri.StreamProvider,
-                -> error("解凍はローカルストレージのみ対応しています")
-            }
+            val sourceFile = resolveSourceFile(meta, storageRepository)
             when (meta.extractType) {
                 ExtractJobRepository.ExtractType.Zip -> extractZip(sourceFile, meta, appContext)
-                ExtractJobRepository.ExtractType.Zst,
-                ExtractJobRepository.ExtractType.Xz,
-                -> error("未対応の解凍形式です")
+                ExtractJobRepository.ExtractType.TarXz -> extractTar(
+                    sourceFile = sourceFile,
+                    meta = meta,
+                    format = CompressedFileUtil.Format.Xz,
+                    appContext = appContext,
+                )
+                ExtractJobRepository.ExtractType.TarZst -> extractTar(
+                    sourceFile = sourceFile,
+                    meta = meta,
+                    format = CompressedFileUtil.Format.Zst,
+                    appContext = appContext,
+                )
+                ExtractJobRepository.ExtractType.Zst -> extractCompressed(
+                    sourceFile = sourceFile,
+                    meta = meta,
+                    format = CompressedFileUtil.Format.Zst,
+                    appContext = appContext,
+                )
+                ExtractJobRepository.ExtractType.Xz -> extractCompressed(
+                    sourceFile = sourceFile,
+                    meta = meta,
+                    format = CompressedFileUtil.Format.Xz,
+                    appContext = appContext,
+                )
             }
+        }
+    }
+
+    private suspend fun resolveSourceFile(
+        meta: ExtractJobRepository.ExtractJobMeta,
+        storageRepository: StorageRepository,
+    ): File {
+        meta.sourceAbsolutePath?.let { return File(it) }
+        val sourceFileObjectId = meta.sourceFileObjectId
+            ?: error("解凍元ファイルが見つかりません")
+        val repository = storageRepository.getFileRepository(sourceFileObjectId.storageId)
+            ?: error("ストレージが見つかりません")
+        return when (val uri = repository.getViewSourceUri(sourceFileObjectId)) {
+            is ViewSourceUri.LocalFile -> File(uri.path)
+            is ViewSourceUri.RemoteUrl,
+            is ViewSourceUri.StreamProvider,
+            -> error("解凍はローカルストレージのみ対応しています")
         }
     }
 
@@ -203,5 +255,121 @@ internal object ExtractWorkerExecutor {
         val extractedFiles = ZipFileUtil.extractZip(sourceFile, extractDir)
         ExtractMediaScanner.scanExtractedMediaFiles(appContext, extractedFiles)
         return extractDir
+    }
+
+    private fun extractCompressed(
+        sourceFile: File,
+        meta: ExtractJobRepository.ExtractJobMeta,
+        format: CompressedFileUtil.Format,
+        appContext: Context,
+    ): File {
+        val tempFile = ExtractTempFileSupport.createTempFile(meta.localFolderPath)
+        try {
+            CompressedFileUtil.decompress(sourceFile, tempFile, format)
+            val resolvedName = DecompressedOutputNameResolver.resolveFileName(meta.outputName, tempFile)
+            return publishDecompressedFile(
+                tempFile = tempFile,
+                meta = meta,
+                outputName = resolvedName,
+                appContext = appContext,
+            )
+        } catch (e: Throwable) {
+            ExtractTempFileSupport.cleanupTempFile(tempFile)
+            throw e
+        }
+    }
+
+    private fun extractTar(
+        sourceFile: File,
+        meta: ExtractJobRepository.ExtractJobMeta,
+        format: CompressedFileUtil.Format,
+        appContext: Context,
+    ): File {
+        val tempTar = ExtractTempFileSupport.createTempFile(meta.localFolderPath)
+        try {
+            CompressedFileUtil.decompress(sourceFile, tempTar, format)
+            val fileEntries = TarArchiveUtil.listEntries(tempTar).filter { !it.isDirectory }
+            if (fileEntries.size == 1) {
+                return extractSingleTarEntry(
+                    tempTar = tempTar,
+                    entry = fileEntries.first(),
+                    meta = meta,
+                    appContext = appContext,
+                )
+            }
+            return extractTarToFolder(tempTar, meta, appContext)
+        } finally {
+            ExtractTempFileSupport.cleanupTempFile(tempTar)
+        }
+    }
+
+    private fun extractSingleTarEntry(
+        tempTar: File,
+        entry: TarArchiveUtil.EntryInfo,
+        meta: ExtractJobRepository.ExtractJobMeta,
+        appContext: Context,
+    ): File {
+        val tempOutput = ExtractTempFileSupport.createTempFile(meta.localFolderPath)
+        try {
+            TarArchiveUtil.extractSingleFileEntry(tempTar, entry, tempOutput)
+            val entryBaseName = entry.name.substringAfterLast('/')
+            val resolvedName = DecompressedOutputNameResolver.resolveFileName(
+                outputName = entryBaseName.ifEmpty { meta.outputName },
+                decompressedFile = tempOutput,
+            )
+            return publishDecompressedFile(
+                tempFile = tempOutput,
+                meta = meta,
+                outputName = resolvedName,
+                appContext = appContext,
+            )
+        } catch (e: Throwable) {
+            ExtractTempFileSupport.cleanupTempFile(tempOutput)
+            throw e
+        }
+    }
+
+    private fun extractTarToFolder(
+        tempTar: File,
+        meta: ExtractJobRepository.ExtractJobMeta,
+        appContext: Context,
+    ): File {
+        val extractDir = ExtractOutputNameValidator.resolveChildFile(meta.localFolderPath, meta.outputName)
+            ?: error("無効なフォルダ名です")
+        val extractedFiles = TarArchiveUtil.extract(tempTar, extractDir)
+        ExtractMediaScanner.scanExtractedMediaFiles(appContext, extractedFiles)
+        return extractDir
+    }
+
+    private fun publishDecompressedFile(
+        tempFile: File,
+        meta: ExtractJobRepository.ExtractJobMeta,
+        outputName: String,
+        appContext: Context,
+    ): File {
+        val outputFile = ExtractOutputNameValidator.resolveChildFile(meta.localFolderPath, outputName)
+            ?: error("無効なファイル名です")
+        ExtractTempFileSupport.recoverOutputIfAlreadyPublished(
+            appContext = appContext,
+            jobId = meta.id,
+            outputFile = outputFile,
+        )?.let { recovered ->
+            ExtractTempFileSupport.cleanupTempFile(tempFile)
+            ExtractMediaScanner.scanExtractedMediaFiles(appContext, listOf(recovered))
+            return recovered
+        }
+        if (outputFile.exists()) {
+            ExtractTempFileSupport.cleanupTempFile(tempFile)
+            error("同じ名前のファイルが既に存在します: ${outputFile.name}")
+        }
+        try {
+            ExtractTempFileSupport.publishTempFile(tempFile, outputFile)
+            ExtractTempFileSupport.markPublished(appContext, meta.id, outputFile)
+        } catch (e: Throwable) {
+            ExtractTempFileSupport.cleanupTempFile(tempFile)
+            throw e
+        }
+        ExtractMediaScanner.scanExtractedMediaFiles(appContext, listOf(outputFile))
+        return outputFile
     }
 }

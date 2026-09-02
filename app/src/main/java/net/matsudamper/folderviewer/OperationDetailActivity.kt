@@ -18,6 +18,7 @@ import coil.ImageLoader
 import dagger.hilt.android.AndroidEntryPoint
 import jakarta.inject.Inject
 import net.matsudamper.folderviewer.navigation.DeleteDetail
+import net.matsudamper.folderviewer.navigation.ExtractDetail
 import net.matsudamper.folderviewer.navigation.Navigator
 import net.matsudamper.folderviewer.navigation.PasteDetail
 import net.matsudamper.folderviewer.navigation.UploadDetail
@@ -84,6 +85,12 @@ class OperationDetailActivity : ComponentActivity() {
                 DeleteDetail(operationId = operationId)
             }
 
+            OPERATION_TYPE_EXTRACT -> {
+                val operationId = intent.getLongExtra(EXTRA_OPERATION_ID, -1L)
+                if (operationId == -1L) return null
+                ExtractDetail(operationId = operationId)
+            }
+
             else -> null
         }
     }
@@ -95,6 +102,7 @@ class OperationDetailActivity : ComponentActivity() {
         private const val OPERATION_TYPE_UPLOAD = "upload"
         private const val OPERATION_TYPE_PASTE = "paste"
         private const val OPERATION_TYPE_DELETE = "delete"
+        private const val OPERATION_TYPE_EXTRACT = "extract"
 
         fun createUploadDetailIntent(context: Context, workerId: String): Intent {
             return Intent(context, OperationDetailActivity::class.java).apply {
@@ -116,6 +124,14 @@ class OperationDetailActivity : ComponentActivity() {
             return Intent(context, OperationDetailActivity::class.java).apply {
                 data = "folderviewer://operation/$OPERATION_TYPE_DELETE/$operationId".toUri()
                 putExtra(EXTRA_OPERATION_TYPE, OPERATION_TYPE_DELETE)
+                putExtra(EXTRA_OPERATION_ID, operationId)
+            }
+        }
+
+        fun createExtractDetailIntent(context: Context, operationId: Long): Intent {
+            return Intent(context, OperationDetailActivity::class.java).apply {
+                data = "folderviewer://operation/$OPERATION_TYPE_EXTRACT/$operationId".toUri()
+                putExtra(EXTRA_OPERATION_TYPE, OPERATION_TYPE_EXTRACT)
                 putExtra(EXTRA_OPERATION_ID, operationId)
             }
         }

@@ -9,18 +9,37 @@ import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
+import net.matsudamper.folderviewer.ui.browser.ExtractDialogMode
+import net.matsudamper.folderviewer.viewmodel.util.CompressedFileUtil
+import net.matsudamper.folderviewer.viewmodel.util.ExtractableFileNameUtil
 import net.matsudamper.folderviewer.viewmodel.util.ExtractMediaScanner
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputNameValidator
+import net.matsudamper.folderviewer.viewmodel.util.TarArchiveUtil
 import net.matsudamper.folderviewer.viewmodel.util.ZipFileUtil
 
 internal sealed interface ExtractableFileType {
     data object Zip : ExtractableFileType
+
+    data object TarXz : ExtractableFileType
+
+    data object TarZst : ExtractableFileType
+
+    data class Compressed(
+        val format: CompressedFileUtil.Format,
+    ) : ExtractableFileType
 }
 
 internal data class ExtractContext(
     val repository: FileRepository,
     val localFolderPath: String?,
     val onCompleted: suspend () -> Unit,
+)
+
+internal data class ExtractDialogInput(
+    val fileItem: FileItem,
+    val outputName: String,
+    val extractType: ExtractableFileType,
+    val mode: ExtractDialogMode,
 )
 
 internal class FileBrowserZipHandler(
@@ -105,7 +124,17 @@ internal class FileBrowserZipHandler(
         }
     }
 
-    fun isSingleZipFileSelected(
+    fun createExtractDialogInput(fileItem: FileItem): ExtractDialogInput? {
+        val extractType = getExtractableFileType(fileItem) ?: return null
+        return ExtractDialogInput(
+            fileItem = fileItem,
+            outputName = defaultExtractName(fileItem, extractType),
+            extractType = extractType,
+            mode = extractType.toExtractDialogMode(),
+        )
+    }
+
+    fun isSingleExtractableFileSelected(
         selectedItems: Set<FileObjectId.Item>,
         rawFiles: List<FileItem>,
     ): Boolean {
@@ -116,8 +145,11 @@ internal class FileBrowserZipHandler(
 
     fun getExtractableFileType(fileItem: FileItem): ExtractableFileType? {
         if (fileItem.isDirectory) return null
-        if (!fileItem.displayPath.endsWith(".zip", ignoreCase = true)) return null
-        return ExtractableFileType.Zip
+        return ExtractableFileNameUtil.detect(fileItem.displayPath)
+    }
+
+    fun defaultExtractName(fileItem: FileItem, type: ExtractableFileType): String {
+        return ExtractableFileNameUtil.defaultOutputName(fileItem.displayPath, type)
     }
 
     private suspend fun resolveLocalFile(
@@ -139,11 +171,26 @@ internal class FileBrowserZipHandler(
     private fun handleExtractFailure(e: Throwable) {
         when (e) {
             is CancellationException -> throw e
-            is ZipFileUtil.ExtractException -> trySendSnackbar(e.message ?: "解凍に失敗しました")
+            is ZipFileUtil.ExtractException,
+            is TarArchiveUtil.ExtractException,
+            -> trySendSnackbar(e.message ?: "解凍に失敗しました")
             else -> {
                 e.printStackTrace()
                 trySendSnackbar("解凍に失敗しました: ${e.message}")
             }
+        }
+    }
+}
+
+private fun ExtractableFileType.toExtractDialogMode(): ExtractDialogMode {
+    return when (this) {
+        ExtractableFileType.Zip,
+        ExtractableFileType.TarXz,
+        ExtractableFileType.TarZst,
+        -> ExtractDialogMode.ZipFolder
+        is ExtractableFileType.Compressed -> when (format) {
+            CompressedFileUtil.Format.Zst -> ExtractDialogMode.ZstFile
+            CompressedFileUtil.Format.Xz -> ExtractDialogMode.XzFile
         }
     }
 }

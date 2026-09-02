@@ -22,6 +22,9 @@ object FileUtil {
     fun getMimeType(name: String): String? {
         val extension = name.substringAfterLast('.', "")
         if (extension.isEmpty()) return null
+        if (extension.equals("apk", ignoreCase = true)) {
+            return "application/vnd.android.package-archive"
+        }
         return MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension.lowercase())
     }
 
