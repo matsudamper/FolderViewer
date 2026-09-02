@@ -57,4 +57,18 @@ internal val Migration12To13 = object : Migration(12, 13) {
     }
 }
 
-internal val AppDatabaseMigrations = arrayOf(Migration9To10, Migration10To11, Migration11To12, Migration12To13)
+internal val Migration13To14 = object : Migration(13, 14) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "ALTER TABLE `extract_operations` ADD COLUMN `openOnCompleteHandled` INTEGER NOT NULL DEFAULT 0",
+        )
+    }
+}
+
+internal val AppDatabaseMigrations = arrayOf(
+    Migration9To10,
+    Migration10To11,
+    Migration11To12,
+    Migration12To13,
+    Migration13To14,
+)

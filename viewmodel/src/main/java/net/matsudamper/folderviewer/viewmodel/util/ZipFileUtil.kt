@@ -78,10 +78,17 @@ internal object ZipFileUtil {
     private fun extractZipContents(zipFile: File, destDir: File): List<File> {
         val extractedFiles = mutableListOf<File>()
         ZipFile(zipFile, ZIP_NAME_CHARSET).use { zip ->
-            val entries = zip.entries().asSequence().toList()
-            ensureValidEntryList(entries)
+            val entries = zip.entries()
+            var entryCount = 0
+            var sawEntry = false
             var totalBytes = 0L
-            for (entry in entries) {
+            while (entries.hasMoreElements()) {
+                val entry = entries.nextElement()
+                sawEntry = true
+                entryCount++
+                if (entryCount > MAX_ENTRY_COUNT) {
+                    throw ExtractException.LimitExceeded("ZIPエントリ数が上限を超えています")
+                }
                 val written = extractZipEntry(zip, entry, destDir)
                 totalBytes += written
                 ensureTotalSizeWithinLimit(totalBytes)
@@ -89,18 +96,11 @@ internal object ZipFileUtil {
                     extractedFiles += File(destDir, entry.name)
                 }
             }
+            if (!sawEntry) {
+                throw ExtractException.InvalidArchive("ZIPファイルにエントリがありません")
+            }
         }
         return extractedFiles
-    }
-
-    private fun ensureValidEntryList(entries: List<ZipEntry>) {
-        if (entries.isNotEmpty() && entries.size <= MAX_ENTRY_COUNT) {
-            return
-        }
-        throw when {
-            entries.isEmpty() -> ExtractException.InvalidArchive("ZIPファイルにエントリがありません")
-            else -> ExtractException.LimitExceeded("ZIPエントリ数が上限を超えています")
-        }
     }
 
     private fun ensureTotalSizeWithinLimit(totalBytes: Long) {

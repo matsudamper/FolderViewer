@@ -28,5 +28,6 @@ internal data class ExtractOperationEntity(
     val parentDisplayPath: String,
     val localFolderPath: String,
     val openOnComplete: Boolean,
+    val openOnCompleteHandled: Boolean = false,
     val outputAbsolutePath: String? = null,
 )

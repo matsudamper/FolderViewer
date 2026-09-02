@@ -39,7 +39,9 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -113,6 +115,7 @@ import net.matsudamper.folderviewer.ui.upload.DeleteDetailScreen
 import net.matsudamper.folderviewer.ui.upload.PasteDetailScreen
 import net.matsudamper.folderviewer.ui.upload.UploadDetailScreen
 import net.matsudamper.folderviewer.ui.upload.UploadProgressScreen
+import net.matsudamper.folderviewer.viewmodel.browser.ExtractJobCompletionWatcher
 import net.matsudamper.folderviewer.viewmodel.browser.FileBrowserViewModel
 import net.matsudamper.folderviewer.viewmodel.browser.ImageViewerViewModel
 import net.matsudamper.folderviewer.viewmodel.folder.FolderBrowserViewModel
@@ -132,21 +135,59 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var imageLoader: ImageLoader
 
+    @Inject
+    lateinit var extractJobCompletionWatcher: ExtractJobCompletionWatcher
+
+    private val navigateToUploadProgressRequest = mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        updateUploadProgressNavigation(intent)
         enableEdgeToEdge()
         Coil.setImageLoader(imageLoader)
 
         setContent {
             FolderViewerTheme {
-                AppContent()
+                AppContent(
+                    extractJobCompletionWatcher = extractJobCompletionWatcher,
+                    navigateToUploadProgressOnStart = navigateToUploadProgressRequest.value,
+                    onUploadProgressNavigationHandled = { navigateToUploadProgressRequest.value = false },
+                )
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        updateUploadProgressNavigation(intent)
+    }
+
+    private fun updateUploadProgressNavigation(intent: Intent?) {
+        navigateToUploadProgressRequest.value = consumeUploadProgressNavigationIntent(intent)
+    }
+
+    private fun consumeUploadProgressNavigationIntent(intent: Intent?): Boolean {
+        if (intent == null) {
+            return false
+        }
+        val shouldNavigate = intent.getBooleanExtra(EXTRA_NAVIGATE_TO_UPLOAD_PROGRESS, false)
+        if (shouldNavigate) {
+            intent.removeExtra(EXTRA_NAVIGATE_TO_UPLOAD_PROGRESS)
+        }
+        return shouldNavigate
+    }
+
+    companion object {
+        const val EXTRA_NAVIGATE_TO_UPLOAD_PROGRESS = "extra_navigate_to_upload_progress"
     }
 }
 
 @Composable
 private fun AppContent(
+    extractJobCompletionWatcher: ExtractJobCompletionWatcher,
+    navigateToUploadProgressOnStart: Boolean,
+    onUploadProgressNavigationHandled: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val pagerState = rememberPagerState { 2 }
@@ -197,6 +238,15 @@ private fun AppContent(
                 val navigator = remember(navigationState) { Navigator(navigationState) }
                 val entryProvider = remember(navigator) { entryProvider(navigator) }
 
+                GlobalNavigationEffect(
+                    pageIndex = pageIndex,
+                    pagerState = pagerState,
+                    navigator = navigator,
+                    extractJobCompletionWatcher = extractJobCompletionWatcher,
+                    navigateToUploadProgressOnStart = navigateToUploadProgressOnStart,
+                    onUploadProgressNavigationHandled = onUploadProgressNavigationHandled,
+                )
+
                 NavDisplay(
                     modifier = Modifier.fillMaxSize(),
                     entries = navigationState.toEntries(
@@ -229,6 +279,38 @@ private fun AppContent(
                 IndicatorItem(isActive = pagerState.currentPage == 0)
                 IndicatorItem(isActive = pagerState.currentPage == 1)
             }
+        }
+    }
+}
+
+@Composable
+private fun GlobalNavigationEffect(
+    pageIndex: Int,
+    pagerState: androidx.compose.foundation.pager.PagerState,
+    navigator: Navigator,
+    extractJobCompletionWatcher: ExtractJobCompletionWatcher,
+    navigateToUploadProgressOnStart: Boolean,
+    onUploadProgressNavigationHandled: () -> Unit,
+) {
+    LaunchedEffect(navigateToUploadProgressOnStart, pagerState.currentPage, pageIndex) {
+        if (!navigateToUploadProgressOnStart || pagerState.currentPage != pageIndex) {
+            return@LaunchedEffect
+        }
+        navigator.navigate(UploadProgress)
+        onUploadProgressNavigationHandled()
+    }
+
+    LaunchedEffect(pagerState.currentPage, pageIndex, extractJobCompletionWatcher) {
+        if (pagerState.currentPage != pageIndex) {
+            return@LaunchedEffect
+        }
+        extractJobCompletionWatcher.pendingNavigation.collect { navigation ->
+            navigator.navigate(
+                FileBrowser(
+                    displayPath = navigation.displayPath,
+                    fileId = navigation.fileId,
+                ),
+            )
         }
     }
 }

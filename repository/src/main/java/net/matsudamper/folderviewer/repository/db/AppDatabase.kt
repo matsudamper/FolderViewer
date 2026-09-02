@@ -11,7 +11,7 @@ import androidx.room.RoomDatabase
         ExtractOperationEntity::class,
         OperationFileEntity::class,
     ],
-    version = 13,
+    version = 14,
     exportSchema = true,
 )
 internal abstract class AppDatabase : RoomDatabase() {

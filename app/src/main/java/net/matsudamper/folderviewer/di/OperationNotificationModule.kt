@@ -49,7 +49,9 @@ internal class OperationNotificationIntentFactoryImpl @Inject constructor(
     override fun createUploadProgressIntent(): PendingIntent {
         return createPendingIntent(
             requestCode = UPLOAD_PROGRESS_REQUEST_CODE,
-            intent = Intent(context, MainActivity::class.java),
+            intent = Intent(context, MainActivity::class.java).apply {
+                putExtra(MainActivity.EXTRA_NAVIGATE_TO_UPLOAD_PROGRESS, true)
+            },
         )
     }
 

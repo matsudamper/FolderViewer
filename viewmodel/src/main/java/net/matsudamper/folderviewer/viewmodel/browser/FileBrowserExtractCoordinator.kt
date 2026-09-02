@@ -7,13 +7,10 @@ import androidx.work.WorkManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.ExtractJobRepository
 import net.matsudamper.folderviewer.repository.FileItem
-import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.SelectionModeRepository
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
@@ -64,7 +61,7 @@ internal class FileBrowserExtractCoordinator(
             WorkManager.getInstance(dependencies.application).enqueue(workRequest)
             dependencies.clearSelection()
             dependencies.selectionModeRepository.setSelectionMode(false)
-            observeExtractJobCompletion(jobId, request.openOnComplete)
+            dependencies.extractJobCompletionWatcher.watchJob(jobId)
             dependencies.uiChannelEvent.send(
                 FileBrowserUiEvent.ShowSnackbar("解凍を開始しました", showAction = true),
             )
@@ -81,77 +78,31 @@ internal class FileBrowserExtractCoordinator(
         }
     }
 
-    fun observeExtractJobCompletion(jobId: Long, openOnComplete: Boolean) {
-        dependencies.viewModelScope.launch {
-            val terminalStatus = dependencies.operationRepository.observeProgressById(jobId)
-                .mapNotNull { it?.status }
-                .first { status ->
-                    status == OperationRepository.OperationStatus.COMPLETED ||
-                        status == OperationRepository.OperationStatus.FAILED ||
-                        status == OperationRepository.OperationStatus.CANCELLED
+    fun observeCompletionEvents(scope: CoroutineScope) {
+        scope.launch {
+            dependencies.extractJobCompletionWatcher.completionUiEvents.collect { event ->
+                val meta = dependencies.extractJobRepository.getJobMeta(event.jobId) ?: return@collect
+                if (meta.parentFileObjectId != dependencies.fileObjectId) {
+                    return@collect
                 }
-            when (terminalStatus) {
-                OperationRepository.OperationStatus.COMPLETED -> {
-                    dependencies.refreshFiles()
-                    val meta = dependencies.extractJobRepository.getJobMeta(jobId)
-                    val message = when (meta?.extractType) {
-                        ExtractJobRepository.ExtractType.Zip -> "${meta.outputName}に展開しました"
-                        ExtractJobRepository.ExtractType.Zst,
-                        ExtractJobRepository.ExtractType.Xz,
-                        -> "${meta.outputName}を作成しました"
-                        null -> "解凍が完了しました"
+                when (event) {
+                    is ExtractJobCompletionWatcher.CompletionUiEvent.Completed -> {
+                        dependencies.refreshFiles()
+                        dependencies.uiChannelEvent.send(
+                            FileBrowserUiEvent.ShowSnackbar(
+                                message = event.message,
+                                openExtractJobId = event.jobId,
+                            ),
+                        )
                     }
-                    dependencies.uiChannelEvent.send(
-                        FileBrowserUiEvent.ShowSnackbar(
-                            message = message,
-                            openExtractJobId = jobId,
-                        ),
-                    )
-                    if (openOnComplete) {
-                        openExtractResult(jobId)
+
+                    is ExtractJobCompletionWatcher.CompletionUiEvent.Failed -> {
+                        dependencies.uiChannelEvent.send(
+                            FileBrowserUiEvent.ShowSnackbar(message = event.message),
+                        )
                     }
                 }
-
-                OperationRepository.OperationStatus.FAILED -> {
-                    val progress = dependencies.operationRepository.observeProgressById(jobId)
-                        .mapNotNull { it }
-                        .first()
-                    dependencies.uiChannelEvent.send(
-                        FileBrowserUiEvent.ShowSnackbar(
-                            message = progress.errorMessage ?: "解凍に失敗しました",
-                        ),
-                    )
-                }
-
-                else -> Unit
             }
-        }
-    }
-
-    suspend fun openExtractResult(jobId: Long) {
-        val meta = dependencies.extractJobRepository.getJobMeta(jobId) ?: return
-        val repo = dependencies.getRepository()
-        when (meta.extractType) {
-            ExtractJobRepository.ExtractType.Zip -> {
-                val folder = repo.getFiles(meta.parentFileObjectId)
-                    .find { it.isDirectory && it.displayPath == meta.outputName }
-                    ?: return
-                val newDisplayPath = if (meta.parentDisplayPath.isEmpty()) {
-                    folder.displayPath
-                } else {
-                    "${meta.parentDisplayPath}/${folder.displayPath}"
-                }
-                dependencies.viewModelEventChannel.send(
-                    FileBrowserViewModel.ViewModelEvent.NavigateToFileBrowser(
-                        displayPath = newDisplayPath,
-                        id = folder.id,
-                    ),
-                )
-            }
-
-            ExtractJobRepository.ExtractType.Zst,
-            ExtractJobRepository.ExtractType.Xz,
-            -> Unit
         }
     }
 
@@ -160,16 +111,13 @@ internal class FileBrowserExtractCoordinator(
         val extractJobRepository: ExtractJobRepository,
         val operationRepository: OperationRepository,
         val selectionModeRepository: SelectionModeRepository,
-        val viewModelScope: CoroutineScope,
         val uiChannelEvent: Channel<FileBrowserUiEvent>,
-        val viewModelEventChannel: Channel<FileBrowserViewModel.ViewModelEvent>,
         val fileObjectId: FileObjectId,
         val displayPath: String?,
         val getLocalFolderPath: () -> String?,
         val clearSelection: () -> Unit,
         val refreshFiles: suspend () -> Unit,
-        val getRepository: suspend () -> FileRepository,
-        val openWithExternalPlayer: suspend (FileItem) -> Unit,
+        val extractJobCompletionWatcher: ExtractJobCompletionWatcher,
     )
 
     private fun ExtractableFileType.toExtractJobType(): ExtractJobRepository.ExtractType {

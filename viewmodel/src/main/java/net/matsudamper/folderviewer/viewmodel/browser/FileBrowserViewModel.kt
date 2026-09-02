@@ -64,6 +64,7 @@ class FileBrowserViewModel @AssistedInject constructor(
     private val pasteJobRepository: PasteJobRepository,
     private val deleteJobRepository: DeleteJobRepository,
     private val extractJobRepository: ExtractJobRepository,
+    private val extractJobCompletionWatcher: ExtractJobCompletionWatcher,
     private val operationRepository: OperationRepository,
     private val selectionModeRepository: SelectionModeRepository,
     private val clipboardRepository: ClipboardRepository,
@@ -97,9 +98,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                 extractJobRepository = extractJobRepository,
                 operationRepository = operationRepository,
                 selectionModeRepository = selectionModeRepository,
-                viewModelScope = viewModelScope,
                 uiChannelEvent = uiChannelEvent,
-                viewModelEventChannel = viewModelEventChannel,
                 fileObjectId = fileObjectId,
                 displayPath = arg.displayPath,
                 getLocalFolderPath = { viewModelStateFlow.value.localFolderPath },
@@ -109,8 +108,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                     }
                 },
                 refreshFiles = { fetchFilesInternal() },
-                getRepository = { getRepository() },
-                openWithExternalPlayer = { fileItem -> openWithExternalPlayer(fileItem) },
+                extractJobCompletionWatcher = extractJobCompletionWatcher,
             ),
         )
     }
@@ -413,7 +411,7 @@ class FileBrowserViewModel @AssistedInject constructor(
 
         override fun onOpenExtractResult(jobId: Long) {
             viewModelScope.launch {
-                extractCoordinator.openExtractResult(jobId)
+                extractJobCompletionWatcher.openExtractResult(jobId)
             }
         }
 
@@ -597,6 +595,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                     }
             }
         }
+        extractCoordinator.observeCompletionEvents(viewModelScope)
     }
 
     private suspend fun loadSortConfig() {

@@ -81,6 +81,7 @@ class ExtractJobRepository @Inject internal constructor(
             parentDisplayPath = detail.parentDisplayPath,
             localFolderPath = detail.localFolderPath,
             openOnComplete = detail.openOnComplete,
+            openOnCompleteHandled = detail.openOnCompleteHandled,
             outputAbsolutePath = detail.outputAbsolutePath,
         )
     }
@@ -109,6 +110,18 @@ class ExtractJobRepository @Inject internal constructor(
         )
     }
 
+    suspend fun markOpenOnCompleteHandled(operationId: Long) {
+        extractOperationDao.markOpenOnCompleteHandled(operationId)
+    }
+
+    suspend fun getActiveJobIds(): List<Long> {
+        return extractOperationDao.getActiveOperationIds()
+    }
+
+    suspend fun getPendingOpenOnCompleteJobIds(): List<Long> {
+        return extractOperationDao.getPendingOpenOnCompleteOperationIds()
+    }
+
     enum class ExtractType {
         Zip,
         Zst,
@@ -125,6 +138,7 @@ class ExtractJobRepository @Inject internal constructor(
         val parentDisplayPath: String,
         val localFolderPath: String,
         val openOnComplete: Boolean,
+        val openOnCompleteHandled: Boolean,
         val outputAbsolutePath: String?,
     )
 
