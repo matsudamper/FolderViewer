@@ -114,6 +114,10 @@ class ExtractJobRepository @Inject internal constructor(
         extractOperationDao.markOpenOnCompleteHandled(operationId)
     }
 
+    suspend fun disableOpenOnComplete(operationId: Long) {
+        extractOperationDao.disableOpenOnComplete(operationId)
+    }
+
     suspend fun getActiveJobIds(): List<Long> {
         return extractOperationDao.getActiveOperationIds()
     }

@@ -18,6 +18,9 @@ internal interface ExtractOperationDao {
     @Query("UPDATE extract_operations SET openOnCompleteHandled = 1 WHERE operationId = :operationId")
     suspend fun markOpenOnCompleteHandled(operationId: Long)
 
+    @Query("UPDATE extract_operations SET openOnComplete = 0 WHERE operationId = :operationId")
+    suspend fun disableOpenOnComplete(operationId: Long)
+
     @Query(
         """
         SELECT eo.operationId FROM extract_operations AS eo

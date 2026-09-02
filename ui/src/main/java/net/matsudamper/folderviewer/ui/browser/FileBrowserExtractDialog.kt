@@ -1,10 +1,9 @@
 package net.matsudamper.folderviewer.ui.browser
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -20,53 +19,50 @@ import androidx.compose.ui.tooling.preview.Preview
 @Composable
 internal fun FileBrowserExtractDialog(
     defaultName: String,
+    isExtracting: Boolean,
     onDismissRequest: () -> Unit,
-    onConfirm: (String, Boolean) -> Unit,
+    onConfirm: (String) -> Unit,
 ) {
     var extractNameInput by remember(defaultName) {
         mutableStateOf(defaultName)
-    }
-    var openOnComplete by remember(defaultName) {
-        mutableStateOf(true)
     }
     AlertDialog(
         onDismissRequest = onDismissRequest,
         title = { Text("zipを展開") },
         text = {
             Column {
-                TextField(
-                    value = extractNameInput,
-                    onValueChange = { extractNameInput = it },
-                    label = { Text("フォルダ名") },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Checkbox(
-                        checked = openOnComplete,
-                        onCheckedChange = { openOnComplete = it },
+                if (isExtracting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
                     )
-                    Text("完了後に開く")
+                    Text("解凍中...")
+                } else {
+                    TextField(
+                        value = extractNameInput,
+                        onValueChange = { extractNameInput = it },
+                        label = { Text("フォルダ名") },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = {
-                    if (extractNameInput.isNotBlank()) {
-                        onConfirm(extractNameInput, openOnComplete)
-                    }
-                },
-                enabled = extractNameInput.isNotBlank(),
-            ) {
-                Text("解凍")
+            if (!isExtracting) {
+                TextButton(
+                    onClick = {
+                        if (extractNameInput.isNotBlank()) {
+                            onConfirm(extractNameInput)
+                        }
+                    },
+                    enabled = extractNameInput.isNotBlank(),
+                ) {
+                    Text("解凍")
+                }
             }
         },
         dismissButton = {
             TextButton(onClick = onDismissRequest) {
-                Text("キャンセル")
+                Text(if (isExtracting) "閉じる" else "キャンセル")
             }
         },
     )
@@ -77,7 +73,19 @@ internal fun FileBrowserExtractDialog(
 private fun FileBrowserExtractDialogZipPreview() {
     FileBrowserExtractDialog(
         defaultName = "archive",
+        isExtracting = false,
         onDismissRequest = {},
-        onConfirm = { _, _ -> },
+        onConfirm = {},
+    )
+}
+
+@Preview
+@Composable
+private fun FileBrowserExtractDialogExtractingPreview() {
+    FileBrowserExtractDialog(
+        defaultName = "archive",
+        isExtracting = true,
+        onDismissRequest = {},
+        onConfirm = {},
     )
 }

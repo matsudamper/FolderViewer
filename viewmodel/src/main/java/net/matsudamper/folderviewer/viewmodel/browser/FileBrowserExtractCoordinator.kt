@@ -20,19 +20,18 @@ internal data class PendingExtractRequest(
     val fileItem: FileItem,
     val outputName: String,
     val extractType: ExtractableFileType,
-    val openOnComplete: Boolean,
 )
 
 internal class FileBrowserExtractCoordinator(
     private val dependencies: Dependencies,
 ) {
-    suspend fun enqueueExtract(request: PendingExtractRequest) {
-        runCatching {
+    suspend fun enqueueExtract(request: PendingExtractRequest): Long? {
+        return runCatching {
             val localFolderPath = dependencies.getLocalFolderPath() ?: run {
                 dependencies.uiChannelEvent.send(
                     FileBrowserUiEvent.ShowSnackbar("解凍はローカルストレージのみ対応しています"),
                 )
-                return
+                return null
             }
             val jobId = dependencies.extractJobRepository.createJob(
                 ExtractJobRepository.NewExtractJob(
@@ -43,7 +42,7 @@ internal class FileBrowserExtractCoordinator(
                     parentFileObjectId = dependencies.fileObjectId,
                     parentDisplayPath = dependencies.displayPath.orEmpty(),
                     localFolderPath = localFolderPath,
-                    openOnComplete = request.openOnComplete,
+                    openOnComplete = true,
                 ),
             )
             val inputData = Data.Builder()
@@ -62,10 +61,8 @@ internal class FileBrowserExtractCoordinator(
             dependencies.clearSelection()
             dependencies.selectionModeRepository.setSelectionMode(false)
             dependencies.extractJobCompletionWatcher.watchJob(jobId)
-            dependencies.uiChannelEvent.send(
-                FileBrowserUiEvent.ShowSnackbar("解凍を開始しました", showAction = true),
-            )
-        }.onFailure { e ->
+            jobId
+        }.getOrElse { e ->
             when (e) {
                 is CancellationException -> throw e
                 else -> {
@@ -73,6 +70,7 @@ internal class FileBrowserExtractCoordinator(
                     dependencies.uiChannelEvent.trySend(
                         FileBrowserUiEvent.ShowSnackbar("解凍開始失敗: ${e.message}"),
                     )
+                    null
                 }
             }
         }
@@ -88,15 +86,22 @@ internal class FileBrowserExtractCoordinator(
                 when (event) {
                     is ExtractJobCompletionWatcher.CompletionUiEvent.Completed -> {
                         dependencies.refreshFiles()
-                        dependencies.uiChannelEvent.send(
-                            FileBrowserUiEvent.ShowSnackbar(
-                                message = event.message,
-                                openExtractJobId = event.jobId,
-                            ),
-                        )
+                        if (dependencies.isExtractDialogOpenForJob(event.jobId)) {
+                            dependencies.closeExtractDialog()
+                        } else {
+                            dependencies.uiChannelEvent.send(
+                                FileBrowserUiEvent.ShowSnackbar(
+                                    message = event.message,
+                                    openExtractJobId = event.jobId,
+                                ),
+                            )
+                        }
                     }
 
                     is ExtractJobCompletionWatcher.CompletionUiEvent.Failed -> {
+                        if (dependencies.isExtractDialogOpenForJob(event.jobId)) {
+                            dependencies.closeExtractDialog()
+                        }
                         dependencies.uiChannelEvent.send(
                             FileBrowserUiEvent.ShowSnackbar(message = event.message),
                         )
@@ -117,6 +122,8 @@ internal class FileBrowserExtractCoordinator(
         val getLocalFolderPath: () -> String?,
         val clearSelection: () -> Unit,
         val refreshFiles: suspend () -> Unit,
+        val isExtractDialogOpenForJob: (Long) -> Boolean,
+        val closeExtractDialog: () -> Unit,
         val extractJobCompletionWatcher: ExtractJobCompletionWatcher,
     )
 

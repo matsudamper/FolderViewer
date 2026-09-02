@@ -54,10 +54,6 @@ internal fun FileBrowserScreenContent(
     showCompressDialog: Boolean = false,
     onCompressDialogDismiss: () -> Unit = {},
     onConfirmCompress: (String) -> Unit = {},
-    showExtractDialog: Boolean = false,
-    extractDialogDefaultFolderName: String = "",
-    onExtractDialogDismiss: () -> Unit = {},
-    onConfirmExtract: (String, Boolean) -> Unit = { _, _ -> },
     deleteConfirmCount: Int? = null,
     onDeleteConfirmDialogDismiss: () -> Unit = {},
     onConfirmDelete: () -> Unit = {},
@@ -288,11 +284,13 @@ internal fun FileBrowserScreenContent(
         )
     }
 
-    if (showExtractDialog) {
+    if (uiState.extractDialog != null) {
+        val extractDialog = uiState.extractDialog
         FileBrowserExtractDialog(
-            defaultName = extractDialogDefaultFolderName,
-            onDismissRequest = onExtractDialogDismiss,
-            onConfirm = onConfirmExtract,
+            defaultName = extractDialog.folderName,
+            isExtracting = extractDialog.isExtracting,
+            onDismissRequest = { uiState.callbacks.onDismissExtract() },
+            onConfirm = { folderName -> uiState.callbacks.onConfirmExtract(folderName) },
         )
     }
 
@@ -339,6 +337,7 @@ private fun Preview() {
             visibleCompressMenu = true,
             visibleExtractMenu = true,
             isPasteMode = false,
+            extractDialog = null,
             callbacks = object : FileBrowserUiState.Callbacks {
                 override fun onRefresh() = Unit
                 override fun onBack() = Unit
@@ -359,7 +358,7 @@ private fun Preview() {
                 override fun onCompressClick() = Unit
                 override fun onConfirmCompress(fileName: String) = Unit
                 override fun onExtractClick() = Unit
-                override fun onConfirmExtract(folderName: String, openOnComplete: Boolean) = Unit
+                override fun onConfirmExtract(folderName: String) = Unit
                 override fun onDismissExtract() = Unit
                 override fun onExtractPermissionResult() = Unit
                 override fun onOpenExtractResult(jobId: Long) = Unit
