@@ -58,6 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.Flow
+import net.matsudamper.folderviewer.ui.util.showDismissibleSnackbar
 import coil.compose.AsyncImagePainter
 import coil.compose.SubcomposeAsyncImage
 import coil.compose.SubcomposeAsyncImageContent
@@ -84,7 +85,7 @@ fun FolderBrowserScreen(
         uiEvent.collect { event ->
             when (event) {
                 is FolderBrowserUiEvent.ShowSnackbar -> {
-                    snackbarHostState.showSnackbar(event.message)
+                    snackbarHostState.showDismissibleSnackbar(event.message)
                 }
             }
         }
