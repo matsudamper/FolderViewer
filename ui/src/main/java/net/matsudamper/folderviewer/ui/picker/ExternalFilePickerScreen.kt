@@ -1,8 +1,5 @@
 package net.matsudamper.folderviewer.ui.picker
 
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -57,12 +54,15 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.flow.Flow
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.ui.R
 import net.matsudamper.folderviewer.ui.browser.DisplayConfigDropDownMenu
-import net.matsudamper.folderviewer.ui.browser.FileHeaderItem
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
+import net.matsudamper.folderviewer.ui.browser.FileHeaderItem
 import net.matsudamper.folderviewer.ui.browser.FileLargeGridItem
 import net.matsudamper.folderviewer.ui.browser.FileLargeListItem
 import net.matsudamper.folderviewer.ui.browser.FileMediumListItem

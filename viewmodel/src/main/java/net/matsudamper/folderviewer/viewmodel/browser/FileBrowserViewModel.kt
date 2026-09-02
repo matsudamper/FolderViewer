@@ -31,6 +31,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.navigation.FileBrowser
+import net.matsudamper.folderviewer.repository.ClipboardRepository
 import net.matsudamper.folderviewer.repository.DeleteJobRepository
 import net.matsudamper.folderviewer.repository.ExtractJobRepository
 import net.matsudamper.folderviewer.repository.FavoriteConfiguration
@@ -39,12 +40,10 @@ import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.PasteJobRepository
 import net.matsudamper.folderviewer.repository.PreferencesRepository
-import net.matsudamper.folderviewer.repository.ClipboardRepository
 import net.matsudamper.folderviewer.repository.SelectionModeRepository
 import net.matsudamper.folderviewer.repository.StorageConfiguration
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.UploadJobRepository
-import net.matsudamper.folderviewer.viewmodel.worker.FileDeleteWorker
 import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.ExtractDialogMode
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
@@ -53,6 +52,7 @@ import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 import net.matsudamper.folderviewer.ui.util.formatBytes
 import net.matsudamper.folderviewer.viewmodel.util.FileUtil
 import net.matsudamper.folderviewer.viewmodel.util.ZipFileUtil
+import net.matsudamper.folderviewer.viewmodel.worker.FileDeleteWorker
 import net.matsudamper.folderviewer.viewmodel.worker.FilePasteWorker
 import net.matsudamper.folderviewer.viewmodel.worker.FileUploadWorker
 import net.matsudamper.folderviewer.viewmodel.worker.FolderUploadWorker
@@ -330,6 +330,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                 }.onFailure { e ->
                     when (e) {
                         is CancellationException -> throw e
+
                         else -> {
                             e.printStackTrace()
                             uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("共有の準備に失敗しました: ${e.message}"))
@@ -883,6 +884,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         }.onFailure { e ->
             when (e) {
                 is CancellationException -> throw e
+
                 else -> {
                     e.printStackTrace()
                     uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar("ペースト開始失敗: ${e.message}"))
@@ -919,6 +921,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         }.onFailure { e ->
             when (e) {
                 is CancellationException -> throw e
+
                 else -> {
                     e.printStackTrace()
                     uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar("削除開始失敗: ${e.message}"))
@@ -1246,7 +1249,6 @@ class FileBrowserViewModel @AssistedInject constructor(
                         selected - fileId
                     } else {
                         selected + fileId
-
                     },
                 ),
             )

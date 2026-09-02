@@ -1,11 +1,11 @@
 package net.matsudamper.folderviewer.repository
 
 import android.net.Uri
-import jakarta.inject.Inject
-import jakarta.inject.Singleton
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import jakarta.inject.Inject
+import jakarta.inject.Singleton
 
 @Singleton
 class ShareUploadRepository @Inject constructor() {

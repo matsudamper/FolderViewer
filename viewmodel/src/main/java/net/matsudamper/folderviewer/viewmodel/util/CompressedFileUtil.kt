@@ -1,6 +1,5 @@
 package net.matsudamper.folderviewer.viewmodel.util
 
-import com.github.luben.zstd.ZstdInputStream
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.File
@@ -8,6 +7,7 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.OutputStream
+import com.github.luben.zstd.ZstdInputStream
 import org.tukaani.xz.XZInputStream
 
 internal object CompressedFileUtil {
