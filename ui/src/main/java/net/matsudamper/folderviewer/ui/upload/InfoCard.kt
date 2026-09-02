@@ -12,7 +12,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+
+private const val ZERO_WIDTH_SPACE = "\u200B"
+
+private fun insertLineBreakOpportunities(value: String): String = buildString {
+    value.codePoints().forEach { codePoint ->
+        appendCodePoint(codePoint)
+        append(ZERO_WIDTH_SPACE)
+    }
+}
 
 @Composable
 internal fun InfoCard(
@@ -56,9 +66,26 @@ internal fun InfoRow(
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             modifier = Modifier.fillMaxWidth(),
-            text = remember(value) { value.toList().joinToString(separator = "") { "${it}\u200B" } },
+            text = remember(value) { insertLineBreakOpportunities(value) },
             style = MaterialTheme.typography.bodyMedium.merge(),
             color = MaterialTheme.colorScheme.onSurface,
         )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun InfoCardLongValuePreview() {
+    MaterialTheme {
+        InfoCard(title = "ファイル情報") {
+            InfoRow(
+                label = "パス",
+                value = "/storage/emulated/0/very/long/path/to/a/file/without/spaces/that/needs/wrapping/photo📸backup.jpg",
+            )
+            InfoRow(
+                label = "エラー",
+                value = "接続がタイムアウトしました: java.net.SocketTimeoutException: connect timed out after 30000ms",
+            )
+        }
     }
 }
