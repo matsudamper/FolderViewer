@@ -14,6 +14,8 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import net.matsudamper.folderviewer.repository.ExtractJobRepository
@@ -65,8 +67,8 @@ class ExternalExtractViewModel @AssistedInject constructor(
             return
         }
         _uiState.value = _uiState.value.copy(isExtracting = true)
-        runCatching {
-            val jobId = extractJobRepository.createExternalJob(
+        val jobId = runCatching {
+            val operationId = extractJobRepository.createExternalJob(
                 ExtractJobRepository.NewExternalExtractJob(
                     sourceAbsolutePath = args.sourcePath,
                     sourceFileName = args.fileName,
@@ -77,33 +79,64 @@ class ExternalExtractViewModel @AssistedInject constructor(
                 ),
             )
             val inputData = Data.Builder()
-                .putLong(FileExtractWorker.KEY_EXTRACT_OPERATION_ID, jobId)
+                .putLong(FileExtractWorker.KEY_EXTRACT_OPERATION_ID, operationId)
                 .build()
             val workRequest = OneTimeWorkRequestBuilder<FileExtractWorker>()
                 .setInputData(inputData)
                 .addTag(FileExtractWorker.TAG_EXTRACT)
                 .build()
             extractJobRepository.updateStatus(
-                operationId = jobId,
+                operationId = operationId,
                 status = OperationRepository.OperationStatus.ENQUEUED,
                 workerId = workRequest.id.toString(),
             )
             WorkManager.getInstance(getApplication()).enqueue(workRequest)
-            extractJobCompletionWatcher.watchJob(jobId)
-        }.onFailure { e ->
+            extractJobCompletionWatcher.watchJob(operationId)
+            observeJobFailure(operationId)
+            operationId
+        }.getOrElse { e ->
             _uiState.value = _uiState.value.copy(isExtracting = false)
-            viewModelEventChannel.send(ViewModelEvent.ShowMessage("解凍開始失敗: ${e.message}"))
+            viewModelEventChannel.send(
+                ViewModelEvent.ShowSnackbar(
+                    message = "解凍開始失敗: ${e.message}",
+                ),
+            )
             return
         }
-        viewModelEventChannel.send(ViewModelEvent.FinishWithMessage("解凍を開始しました"))
+        viewModelEventChannel.send(
+            ViewModelEvent.ShowSnackbar(
+                message = "解凍を開始しました",
+                extractDetailJobId = jobId,
+                finishAfterDismiss = true,
+            ),
+        )
+    }
+
+    private fun observeJobFailure(jobId: Long) {
+        viewModelScope.launch {
+            val event = extractJobCompletionWatcher.completionUiEvents
+                .filter { it.jobId == jobId }
+                .first()
+            if (event is ExtractJobCompletionWatcher.CompletionUiEvent.Failed) {
+                _uiState.value = _uiState.value.copy(isExtracting = false)
+                viewModelEventChannel.send(
+                    ViewModelEvent.ShowSnackbar(
+                        message = event.message,
+                        extractDetailJobId = jobId,
+                    ),
+                )
+            }
+        }
     }
 
     sealed interface ViewModelEvent {
         data object Finish : ViewModelEvent
 
-        data class FinishWithMessage(val message: String) : ViewModelEvent
-
-        data class ShowMessage(val message: String) : ViewModelEvent
+        data class ShowSnackbar(
+            val message: String,
+            val extractDetailJobId: Long? = null,
+            val finishAfterDismiss: Boolean = false,
+        ) : ViewModelEvent
     }
 
     companion object {
