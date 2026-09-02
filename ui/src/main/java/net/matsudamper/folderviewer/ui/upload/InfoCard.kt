@@ -10,6 +10,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
@@ -49,14 +50,14 @@ internal fun InfoRow(
         Text(
             modifier = Modifier.fillMaxWidth(),
             text = label,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             modifier = Modifier.fillMaxWidth(),
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
+            text = remember(value) { value.toList().joinToString(separator = "") { "${it}\u200B" } },
+            style = MaterialTheme.typography.bodyMedium.merge(),
             color = MaterialTheme.colorScheme.onSurface,
         )
     }
