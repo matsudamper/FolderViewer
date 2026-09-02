@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "net.matsudamper.folderviewer"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "net.matsudamper.folderviewer"
