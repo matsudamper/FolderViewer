@@ -218,14 +218,13 @@ private fun FolderRow(
                 contentDescription = null,
             )
         },
-        headlineContent = {
-            Text(
-                text = folder.name,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        },
-    )
+    ) {
+        Text(
+            text = folder.name,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
 }
 
 @Composable
