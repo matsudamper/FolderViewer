@@ -17,11 +17,11 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -39,9 +39,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -83,22 +81,24 @@ import dagger.hilt.android.AndroidEntryPoint
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import net.matsudamper.folderviewer.common.FileObjectId
+import net.matsudamper.folderviewer.navigation.DeleteDetail
+import net.matsudamper.folderviewer.navigation.ExtractDetail
 import net.matsudamper.folderviewer.navigation.FileBrowser
 import net.matsudamper.folderviewer.navigation.FolderBrowser
 import net.matsudamper.folderviewer.navigation.Home
 import net.matsudamper.folderviewer.navigation.ImageViewer
 import net.matsudamper.folderviewer.navigation.Navigator
+import net.matsudamper.folderviewer.navigation.PasteDetail
 import net.matsudamper.folderviewer.navigation.PermissionRequest
 import net.matsudamper.folderviewer.navigation.Settings
 import net.matsudamper.folderviewer.navigation.SharePointAdd
 import net.matsudamper.folderviewer.navigation.SmbAdd
 import net.matsudamper.folderviewer.navigation.StorageTypeSelection
-import net.matsudamper.folderviewer.navigation.DeleteDetail
-import net.matsudamper.folderviewer.navigation.PasteDetail
 import net.matsudamper.folderviewer.navigation.UploadDetail
 import net.matsudamper.folderviewer.navigation.UploadProgress
 import net.matsudamper.folderviewer.navigation.rememberNavigationState
 import net.matsudamper.folderviewer.navigation.toEntries
+import net.matsudamper.folderviewer.repository.ExtractJobRepository
 import net.matsudamper.folderviewer.repository.PermissionUtil
 import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.FileBrowserScreen
@@ -111,11 +111,12 @@ import net.matsudamper.folderviewer.ui.storage.SharePointAddScreen
 import net.matsudamper.folderviewer.ui.storage.SmbAddScreen
 import net.matsudamper.folderviewer.ui.storage.StorageTypeSelectionScreen
 import net.matsudamper.folderviewer.ui.theme.FolderViewerTheme
-import net.matsudamper.folderviewer.ui.util.showDismissibleSnackbar
 import net.matsudamper.folderviewer.ui.upload.DeleteDetailScreen
+import net.matsudamper.folderviewer.ui.upload.ExtractDetailScreen
 import net.matsudamper.folderviewer.ui.upload.PasteDetailScreen
 import net.matsudamper.folderviewer.ui.upload.UploadDetailScreen
 import net.matsudamper.folderviewer.ui.upload.UploadProgressScreen
+import net.matsudamper.folderviewer.ui.util.showDismissibleSnackbar
 import net.matsudamper.folderviewer.viewmodel.browser.ExtractJobCompletionWatcher
 import net.matsudamper.folderviewer.viewmodel.browser.FileBrowserViewModel
 import net.matsudamper.folderviewer.viewmodel.browser.ImageViewerViewModel
@@ -127,6 +128,7 @@ import net.matsudamper.folderviewer.viewmodel.storage.SharePointAddViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.SmbAddViewModel
 import net.matsudamper.folderviewer.viewmodel.storage.StorageTypeSelectionViewModel
 import net.matsudamper.folderviewer.viewmodel.upload.DeleteDetailViewModel
+import net.matsudamper.folderviewer.viewmodel.upload.ExtractDetailViewModel
 import net.matsudamper.folderviewer.viewmodel.upload.PasteDetailViewModel
 import net.matsudamper.folderviewer.viewmodel.upload.UploadDetailViewModel
 import net.matsudamper.folderviewer.viewmodel.upload.UploadProgressViewModel
@@ -138,6 +140,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var extractJobCompletionWatcher: ExtractJobCompletionWatcher
+
+    @Inject
+    lateinit var extractJobRepository: ExtractJobRepository
 
     private val navigateToUploadProgressRequest = mutableStateOf(false)
 
@@ -151,6 +156,7 @@ class MainActivity : ComponentActivity() {
             FolderViewerTheme {
                 AppContent(
                     extractJobCompletionWatcher = extractJobCompletionWatcher,
+                    extractJobRepository = extractJobRepository,
                     navigateToUploadProgressOnStart = navigateToUploadProgressRequest.value,
                     onUploadProgressNavigationHandled = { navigateToUploadProgressRequest.value = false },
                 )
@@ -187,6 +193,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun AppContent(
     extractJobCompletionWatcher: ExtractJobCompletionWatcher,
+    extractJobRepository: ExtractJobRepository,
     navigateToUploadProgressOnStart: Boolean,
     onUploadProgressNavigationHandled: () -> Unit,
     modifier: Modifier = Modifier,
@@ -244,6 +251,7 @@ private fun AppContent(
                     pagerState = pagerState,
                     navigator = navigator,
                     extractJobCompletionWatcher = extractJobCompletionWatcher,
+                    extractJobRepository = extractJobRepository,
                     navigateToUploadProgressOnStart = navigateToUploadProgressOnStart,
                     onUploadProgressNavigationHandled = onUploadProgressNavigationHandled,
                 )
@@ -290,6 +298,7 @@ private fun GlobalNavigationEffect(
     pagerState: androidx.compose.foundation.pager.PagerState,
     navigator: Navigator,
     extractJobCompletionWatcher: ExtractJobCompletionWatcher,
+    extractJobRepository: ExtractJobRepository,
     navigateToUploadProgressOnStart: Boolean,
     onUploadProgressNavigationHandled: () -> Unit,
 ) {
@@ -312,6 +321,7 @@ private fun GlobalNavigationEffect(
                     fileId = navigation.fileId,
                 ),
             )
+            extractJobRepository.markOpenOnCompleteHandled(navigation.jobId)
         }
     }
 }
@@ -421,6 +431,7 @@ internal fun entryProvider(navigator: Navigator): (NavKey) -> NavEntry<NavKey> {
         uploadDetailEntry(navigator)
         pasteDetailEntry(navigator)
         deleteDetailEntry(navigator)
+        extractDetailEntry(navigator)
     }
 }
 
@@ -918,6 +929,9 @@ private fun EntryProviderScope<NavKey>.fileBrowserEntry(navigator: Navigator) {
             uiEvent = viewModel.uiEvent,
             onNavigateToUploadProgress = { navigator.navigate(UploadProgress) },
             onOpenExtractResult = { jobId -> uiStateValue.callbacks.onOpenExtractResult(jobId) },
+            onNavigateToExtractDetail = { jobId ->
+                navigator.navigate(ExtractDetail(operationId = jobId))
+            },
         )
     }
 }
@@ -1042,6 +1056,12 @@ private fun EntryProviderScope<NavKey>.uploadProgressEntry(navigator: Navigator)
                             DeleteDetail(operationId = event.opId),
                         )
                     }
+
+                    is UploadProgressViewModel.ViewModelEvent.NavigateToExtractDetail -> {
+                        navigator.navigate(
+                            ExtractDetail(operationId = event.opId),
+                        )
+                    }
                 }
             }
         }
@@ -1132,5 +1152,65 @@ private fun EntryProviderScope<NavKey>.deleteDetailEntry(navigator: Navigator) {
 
         val uiStateValue = uiState ?: return@entry
         DeleteDetailScreen(uiState = uiStateValue)
+    }
+}
+
+private fun EntryProviderScope<NavKey>.extractDetailEntry(navigator: Navigator) {
+    entry<ExtractDetail> { key ->
+        val viewModel: ExtractDetailViewModel = hiltViewModel()
+        val uiState by viewModel.uiState.collectAsState()
+        val context = androidx.compose.ui.platform.LocalContext.current
+
+        LaunchedEffect(key.operationId) {
+            viewModel.init(key.operationId)
+        }
+
+        LaunchedEffect(viewModel.viewModelEventFlow) {
+            viewModel.viewModelEventFlow.collect { event ->
+                when (event) {
+                    ExtractDetailViewModel.ViewModelEvent.NavigateBack -> {
+                        navigator.goBack()
+                    }
+
+                    is ExtractDetailViewModel.ViewModelEvent.NavigateToOutput -> {
+                        navigator.navigate(
+                            FileBrowser(
+                                displayPath = event.displayPath,
+                                fileId = event.fileId,
+                            ),
+                        )
+                    }
+
+                    is ExtractDetailViewModel.ViewModelEvent.OpenOutputFile -> {
+                        openWithExternalApp(
+                            context = context,
+                            viewSourceUri = event.viewSourceUri,
+                            fileName = event.fileName,
+                            mimeType = event.mimeType,
+                        )
+                    }
+
+                    is ExtractDetailViewModel.ViewModelEvent.OpenOutputFolder -> {
+                        val relativePath = File(event.absolutePath)
+                            .relativeToOrNull(android.os.Environment.getExternalStorageDirectory())
+                            ?.path
+                            .orEmpty()
+                        val uri = android.provider.DocumentsContract.buildDocumentUri(
+                            "com.android.externalstorage.documents",
+                            "primary:$relativePath",
+                        )
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(uri, android.provider.DocumentsContract.Document.MIME_TYPE_DIR)
+                        }
+                        runCatching {
+                            context.startActivity(intent)
+                        }
+                    }
+                }
+            }
+        }
+
+        val uiStateValue = uiState ?: return@entry
+        ExtractDetailScreen(uiState = uiStateValue)
     }
 }

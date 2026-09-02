@@ -9,21 +9,39 @@ import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
+import net.matsudamper.folderviewer.ui.browser.ExtractDialogMode
+import net.matsudamper.folderviewer.viewmodel.util.CompressedFileUtil
 import net.matsudamper.folderviewer.viewmodel.util.ExtractMediaScanner
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputNameValidator
-import net.matsudamper.folderviewer.viewmodel.util.TarGzFileUtil
+import net.matsudamper.folderviewer.viewmodel.util.ExtractableFileNameUtil
+import net.matsudamper.folderviewer.viewmodel.util.TarArchiveUtil
 import net.matsudamper.folderviewer.viewmodel.util.ZipFileUtil
 
 internal sealed interface ExtractableFileType {
     data object Zip : ExtractableFileType
 
     data object TarGz : ExtractableFileType
+
+    data object TarXz : ExtractableFileType
+
+    data object TarZst : ExtractableFileType
+
+    data class Compressed(
+        val format: CompressedFileUtil.Format,
+    ) : ExtractableFileType
 }
 
 internal data class ExtractContext(
     val repository: FileRepository,
     val localFolderPath: String?,
     val onCompleted: suspend () -> Unit,
+)
+
+internal data class ExtractDialogInput(
+    val fileItem: FileItem,
+    val outputName: String,
+    val extractType: ExtractableFileType,
+    val mode: ExtractDialogMode,
 )
 
 internal class FileBrowserZipHandler(
@@ -73,6 +91,7 @@ internal class FileBrowserZipHandler(
         }.onFailure { e ->
             when (e) {
                 is CancellationException -> throw e
+
                 else -> {
                     e.printStackTrace()
                     trySendSnackbar("圧縮に失敗しました: ${e.message}")
@@ -108,7 +127,17 @@ internal class FileBrowserZipHandler(
         }
     }
 
-    fun isSingleZipFileSelected(
+    fun createExtractDialogInput(fileItem: FileItem): ExtractDialogInput? {
+        val extractType = getExtractableFileType(fileItem) ?: return null
+        return ExtractDialogInput(
+            fileItem = fileItem,
+            outputName = defaultExtractName(fileItem, extractType),
+            extractType = extractType,
+            mode = extractType.toExtractDialogMode(),
+        )
+    }
+
+    fun isSingleExtractableFileSelected(
         selectedItems: Set<FileObjectId.Item>,
         rawFiles: List<FileItem>,
     ): Boolean {
@@ -119,21 +148,11 @@ internal class FileBrowserZipHandler(
 
     fun getExtractableFileType(fileItem: FileItem): ExtractableFileType? {
         if (fileItem.isDirectory) return null
-        val path = fileItem.displayPath
-        return when {
-            path.endsWith(".zip", ignoreCase = true) -> ExtractableFileType.Zip
-            path.endsWith(".tar.gz", ignoreCase = true) ||
-                path.endsWith(".tgz", ignoreCase = true) -> ExtractableFileType.TarGz
-            else -> null
-        }
+        return ExtractableFileNameUtil.detect(fileItem.displayPath)
     }
 
-    fun defaultExtractFolderName(fileItem: FileItem): String? {
-        return when (getExtractableFileType(fileItem)) {
-            ExtractableFileType.Zip -> ZipFileUtil.zipFileDefaultFolderName(fileItem.displayPath)
-            ExtractableFileType.TarGz -> TarGzFileUtil.tarGzDefaultFolderName(fileItem.displayPath)
-            null -> null
-        }
+    fun defaultExtractName(fileItem: FileItem, type: ExtractableFileType): String {
+        return ExtractableFileNameUtil.defaultOutputName(fileItem.displayPath, type)
     }
 
     private suspend fun resolveLocalFile(
@@ -155,13 +174,30 @@ internal class FileBrowserZipHandler(
     private fun handleExtractFailure(e: Throwable) {
         when (e) {
             is CancellationException -> throw e
+
             is ZipFileUtil.ExtractException,
-            is TarGzFileUtil.ExtractException,
+            is TarArchiveUtil.ExtractException,
             -> trySendSnackbar(e.message ?: "解凍に失敗しました")
+
             else -> {
                 e.printStackTrace()
                 trySendSnackbar("解凍に失敗しました: ${e.message}")
             }
+        }
+    }
+}
+
+private fun ExtractableFileType.toExtractDialogMode(): ExtractDialogMode {
+    return when (this) {
+        ExtractableFileType.Zip,
+        ExtractableFileType.TarGz,
+        ExtractableFileType.TarXz,
+        ExtractableFileType.TarZst,
+        -> ExtractDialogMode.ZipFolder
+
+        is ExtractableFileType.Compressed -> when (format) {
+            CompressedFileUtil.Format.Zst -> ExtractDialogMode.ZstFile
+            CompressedFileUtil.Format.Xz -> ExtractDialogMode.XzFile
         }
     }
 }

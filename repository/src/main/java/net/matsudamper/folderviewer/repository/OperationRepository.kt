@@ -1,9 +1,9 @@
 package net.matsudamper.folderviewer.repository
 
-import jakarta.inject.Inject
-import jakarta.inject.Singleton
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import jakarta.inject.Inject
+import jakarta.inject.Singleton
 import net.matsudamper.folderviewer.repository.db.OperationDao
 import net.matsudamper.folderviewer.repository.db.OperationProgressRow
 
@@ -66,15 +66,28 @@ class OperationRepository @Inject internal constructor(
     }
 
     enum class OperationType {
-        UPLOAD_FILE, UPLOAD_FOLDER, PASTE, DELETE, EXTRACT
+        UPLOAD_FILE,
+        UPLOAD_FOLDER,
+        PASTE,
+        DELETE,
+        EXTRACT,
     }
 
     enum class OperationStatus {
-        ENQUEUED, RUNNING, PAUSED, COMPLETED, FAILED, CANCELLED, WAITING_RESOLUTION
+        ENQUEUED,
+        RUNNING,
+        PAUSED,
+        COMPLETED,
+        FAILED,
+        CANCELLED,
+        WAITING_RESOLUTION,
     }
 
     enum class FileStatus {
-        PENDING, RUNNING, COMPLETED, FAILED
+        PENDING,
+        RUNNING,
+        COMPLETED,
+        FAILED,
     }
 
     data class OperationProgress(

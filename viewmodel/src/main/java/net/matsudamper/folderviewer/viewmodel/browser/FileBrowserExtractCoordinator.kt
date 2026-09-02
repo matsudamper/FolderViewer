@@ -11,9 +11,11 @@ import kotlinx.coroutines.launch
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.ExtractJobRepository
 import net.matsudamper.folderviewer.repository.FileItem
+import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.SelectionModeRepository
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
+import net.matsudamper.folderviewer.viewmodel.util.CompressedFileUtil
 import net.matsudamper.folderviewer.viewmodel.worker.FileExtractWorker
 
 internal data class PendingExtractRequest(
@@ -65,6 +67,7 @@ internal class FileBrowserExtractCoordinator(
         }.getOrElse { e ->
             when (e) {
                 is CancellationException -> throw e
+
                 else -> {
                     e.printStackTrace()
                     dependencies.uiChannelEvent.trySend(
@@ -80,7 +83,8 @@ internal class FileBrowserExtractCoordinator(
         scope.launch {
             dependencies.extractJobCompletionWatcher.completionUiEvents.collect { event ->
                 val meta = dependencies.extractJobRepository.getJobMeta(event.jobId) ?: return@collect
-                if (meta.parentFileObjectId != dependencies.fileObjectId) {
+                val parentFileObjectId = meta.parentFileObjectId ?: return@collect
+                if (parentFileObjectId != dependencies.fileObjectId) {
                     return@collect
                 }
                 when (event) {
@@ -101,12 +105,39 @@ internal class FileBrowserExtractCoordinator(
                     is ExtractJobCompletionWatcher.CompletionUiEvent.Failed -> {
                         if (dependencies.isExtractDialogOpenForJob(event.jobId)) {
                             dependencies.closeExtractDialog()
+                        } else {
+                            dependencies.uiChannelEvent.send(
+                                FileBrowserUiEvent.ShowSnackbar(
+                                    message = event.message,
+                                    extractDetailJobId = event.jobId,
+                                ),
+                            )
                         }
-                        dependencies.uiChannelEvent.send(
-                            FileBrowserUiEvent.ShowSnackbar(message = event.message),
-                        )
                     }
                 }
+            }
+        }
+    }
+
+    fun observeExternalOpenEvents(scope: CoroutineScope) {
+        scope.launch {
+            dependencies.extractJobCompletionWatcher.pendingExternalOpen.collect { event ->
+                if (event.parentFileObjectId != dependencies.fileObjectId) {
+                    return@collect
+                }
+                val file = try {
+                    dependencies.getRepository().getFiles(event.parentFileObjectId)
+                        .find { it.id == event.fileId }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    dependencies.uiChannelEvent.trySend(
+                        FileBrowserUiEvent.ShowSnackbar("解凍結果を開けませんでした: ${e.message}"),
+                    )
+                    return@collect
+                } ?: return@collect
+                dependencies.openWithExternalPlayer(file)
+                dependencies.extractJobRepository.markOpenOnCompleteHandled(event.jobId)
             }
         }
     }
@@ -125,12 +156,28 @@ internal class FileBrowserExtractCoordinator(
         val isExtractDialogOpenForJob: (Long) -> Boolean,
         val closeExtractDialog: () -> Unit,
         val extractJobCompletionWatcher: ExtractJobCompletionWatcher,
+        val getRepository: suspend () -> FileRepository,
+        val openWithExternalPlayer: suspend (FileItem) -> Unit,
     )
+
+    suspend fun openExtractResult(jobId: Long) {
+        dependencies.extractJobCompletionWatcher.openExtractResult(jobId)
+    }
 
     private fun ExtractableFileType.toExtractJobType(): ExtractJobRepository.ExtractType {
         return when (this) {
             ExtractableFileType.Zip -> ExtractJobRepository.ExtractType.Zip
+
             ExtractableFileType.TarGz -> ExtractJobRepository.ExtractType.TarGz
+
+            ExtractableFileType.TarXz -> ExtractJobRepository.ExtractType.TarXz
+
+            ExtractableFileType.TarZst -> ExtractJobRepository.ExtractType.TarZst
+
+            is ExtractableFileType.Compressed -> when (format) {
+                CompressedFileUtil.Format.Zst -> ExtractJobRepository.ExtractType.Zst
+                CompressedFileUtil.Format.Xz -> ExtractJobRepository.ExtractType.Xz
+            }
         }
     }
 }

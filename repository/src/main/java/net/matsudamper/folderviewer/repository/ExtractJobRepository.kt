@@ -1,9 +1,10 @@
 package net.matsudamper.folderviewer.repository
 
+import androidx.room.withTransaction
+import java.io.File
+import kotlinx.serialization.json.Json
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
-import androidx.room.withTransaction
-import kotlinx.serialization.json.Json
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.db.AppDatabase
 import net.matsudamper.folderviewer.repository.db.ExtractOperationDao
@@ -18,10 +19,45 @@ class ExtractJobRepository @Inject internal constructor(
     private val extractOperationDao: ExtractOperationDao,
 ) {
     suspend fun createJob(params: NewExtractJob): Long {
+        return createJobInternal(
+            CreateJobParams(
+                sourceFileObjectId = params.sourceFileObjectId,
+                sourceFileName = params.sourceFileName,
+                outputName = params.outputName,
+                extractType = params.extractType,
+                parentFileObjectId = params.parentFileObjectId,
+                parentDisplayPath = params.parentDisplayPath,
+                localFolderPath = params.localFolderPath,
+                openOnComplete = params.openOnComplete,
+                sourceAbsolutePath = null,
+            ),
+        )
+    }
+
+    suspend fun createExternalJob(params: NewExternalExtractJob): Long {
+        return createJobInternal(
+            CreateJobParams(
+                sourceFileObjectId = ExternalExtractJobIds.sourceFileObjectId,
+                sourceFileName = params.sourceFileName,
+                outputName = params.outputName,
+                extractType = params.extractType,
+                parentFileObjectId = ExternalExtractJobIds.parentFileObjectId,
+                parentDisplayPath = "",
+                localFolderPath = params.outputParentPath,
+                openOnComplete = params.openOnComplete,
+                sourceAbsolutePath = params.sourceAbsolutePath,
+            ),
+        )
+    }
+
+    private suspend fun createJobInternal(params: CreateJobParams): Long {
         val name = when (params.extractType) {
             ExtractType.Zip,
             ExtractType.TarGz,
+            ExtractType.TarXz,
+            ExtractType.TarZst,
             -> "${params.sourceFileName}を展開"
+
             ExtractType.Zst,
             ExtractType.Xz,
             -> "${params.sourceFileName}を展開"
@@ -57,22 +93,44 @@ class ExtractJobRepository @Inject internal constructor(
                     parentDisplayPath = params.parentDisplayPath,
                     localFolderPath = params.localFolderPath,
                     openOnComplete = params.openOnComplete,
+                    sourceAbsolutePath = params.sourceAbsolutePath,
                 ),
             )
             operationId
         }
     }
 
+    private data class CreateJobParams(
+        val sourceFileObjectId: FileObjectId.Item,
+        val sourceFileName: String,
+        val outputName: String,
+        val extractType: ExtractType,
+        val parentFileObjectId: FileObjectId,
+        val parentDisplayPath: String,
+        val localFolderPath: String,
+        val openOnComplete: Boolean,
+        val sourceAbsolutePath: String?,
+    )
+
     suspend fun getJobMeta(operationId: Long): ExtractJobMeta? {
         val operation = operationDao.getById(operationId) ?: return null
         val detail = extractOperationDao.getByOperationId(operationId) ?: return null
-        val sourceFileObjectId = runCatching {
-            Json.decodeFromString<FileObjectId.Item>(detail.sourceFileObjectId)
-        }.getOrNull() ?: return null
-        val parentFileObjectId = runCatching {
-            Json.decodeFromString<FileObjectId>(detail.parentFileObjectId)
-        }.getOrNull() ?: return null
         val extractType = ExtractType.entries.firstOrNull { it.name == detail.extractType } ?: return null
+        val isExternalJob = detail.sourceAbsolutePath != null
+        val sourceFileObjectId = if (isExternalJob) {
+            null
+        } else {
+            runCatching {
+                Json.decodeFromString<FileObjectId.Item>(detail.sourceFileObjectId)
+            }.getOrNull() ?: return null
+        }
+        val parentFileObjectId = if (isExternalJob) {
+            null
+        } else {
+            runCatching {
+                Json.decodeFromString<FileObjectId>(detail.parentFileObjectId)
+            }.getOrNull() ?: return null
+        }
         return ExtractJobMeta(
             id = operation.id,
             sourceFileObjectId = sourceFileObjectId,
@@ -85,12 +143,17 @@ class ExtractJobRepository @Inject internal constructor(
             openOnComplete = detail.openOnComplete,
             openOnCompleteHandled = detail.openOnCompleteHandled,
             outputAbsolutePath = detail.outputAbsolutePath,
+            sourceAbsolutePath = detail.sourceAbsolutePath,
         )
     }
 
     suspend fun completeJob(operationId: Long, outputAbsolutePath: String) {
+        val outputFile = File(outputAbsolutePath)
         database.withTransaction {
             extractOperationDao.updateOutputAbsolutePath(operationId, outputAbsolutePath)
+            if (outputFile.isFile) {
+                extractOperationDao.updateOutputName(operationId, outputFile.name)
+            }
             operationDao.updateStatusAndWorkerId(
                 id = operationId,
                 status = OperationRepository.OperationStatus.COMPLETED.name,
@@ -131,23 +194,29 @@ class ExtractJobRepository @Inject internal constructor(
     enum class ExtractType {
         Zip,
         TarGz,
+        TarXz,
+        TarZst,
         Zst,
         Xz,
     }
 
     data class ExtractJobMeta(
         val id: Long,
-        val sourceFileObjectId: FileObjectId.Item,
+        val sourceFileObjectId: FileObjectId.Item?,
         val sourceFileName: String,
         val outputName: String,
         val extractType: ExtractType,
-        val parentFileObjectId: FileObjectId,
+        val parentFileObjectId: FileObjectId?,
         val parentDisplayPath: String,
         val localFolderPath: String,
         val openOnComplete: Boolean,
         val openOnCompleteHandled: Boolean,
         val outputAbsolutePath: String?,
-    )
+        val sourceAbsolutePath: String?,
+    ) {
+        val isExternalJob: Boolean
+            get() = sourceAbsolutePath != null
+    }
 
     data class NewExtractJob(
         val sourceFileObjectId: FileObjectId.Item,
@@ -157,6 +226,15 @@ class ExtractJobRepository @Inject internal constructor(
         val parentFileObjectId: FileObjectId,
         val parentDisplayPath: String,
         val localFolderPath: String,
+        val openOnComplete: Boolean,
+    )
+
+    data class NewExternalExtractJob(
+        val sourceAbsolutePath: String,
+        val sourceFileName: String,
+        val outputName: String,
+        val extractType: ExtractType,
+        val outputParentPath: String,
         val openOnComplete: Boolean,
     )
 }

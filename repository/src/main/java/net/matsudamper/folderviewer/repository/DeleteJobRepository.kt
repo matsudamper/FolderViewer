@@ -1,11 +1,11 @@
 package net.matsudamper.folderviewer.repository
 
-import jakarta.inject.Inject
-import jakarta.inject.Singleton
 import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.json.Json
+import jakarta.inject.Inject
+import jakarta.inject.Singleton
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.db.AppDatabase
 import net.matsudamper.folderviewer.repository.db.OperationDao

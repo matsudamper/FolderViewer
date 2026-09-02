@@ -50,10 +50,17 @@ class UploadProgressViewModel @Inject constructor(
                         val jobId = item.id.toLongOrNull() ?: return@launch
                         viewModelEventChannel.send(ViewModelEvent.NavigateToPasteDetail(jobId))
                     }
+
                     is UploadProgressUiState.UploadItem.Delete -> {
                         val opId = item.id.toLongOrNull() ?: return@launch
                         viewModelEventChannel.send(ViewModelEvent.NavigateToDeleteDetail(opId))
                     }
+
+                    is UploadProgressUiState.UploadItem.Extract -> {
+                        val opId = item.id.toLongOrNull() ?: return@launch
+                        viewModelEventChannel.send(ViewModelEvent.NavigateToExtractDetail(opId))
+                    }
+
                     else -> {
                         val uuid = runCatching { UUID.fromString(item.id) }.getOrNull()
                             ?: return@launch
@@ -130,9 +137,12 @@ class UploadProgressViewModel @Inject constructor(
         } else {
             null
         }
+        val description = when (state) {
+            UploadProgressUiState.UploadState.FAILED -> op.errorMessage ?: op.currentFileName ?: op.description
+            else -> op.currentFileName ?: op.description
+        }
         val id = op.workerId ?: op.id.toString()
         val name = "アップロード ${op.totalFiles}件"
-        val description = op.currentFileName ?: op.description
         return if (isFolder) {
             UploadProgressUiState.UploadItem.Folder(
                 id = id,
@@ -186,7 +196,10 @@ class UploadProgressViewModel @Inject constructor(
         return UploadProgressUiState.UploadItem.Paste(
             id = op.id.toString(),
             name = "$modeText ${op.totalFiles}件",
-            description = op.currentFileName ?: op.description,
+            description = when (state) {
+                UploadProgressUiState.UploadState.FAILED -> op.errorMessage ?: op.currentFileName ?: op.description
+                else -> op.currentFileName ?: op.description
+            },
             state = state,
             canNavigate = true,
             currentFileProgress = currentFileProgress,
@@ -227,6 +240,7 @@ class UploadProgressViewModel @Inject constructor(
                 val failedText = if (op.failedFiles > 0) " ${op.failedFiles}失敗" else ""
                 "$base - ${op.completedFiles}完了 ${notCompleted}未完了$failedText ($completed/$total)"
             }
+
             UploadProgressUiState.UploadState.WAITING_RESOLUTION,
             UploadProgressUiState.UploadState.SUCCEEDED,
             -> {
@@ -236,9 +250,11 @@ class UploadProgressViewModel @Inject constructor(
                     "$base - ${op.completedFiles}完了"
                 }
             }
+
             UploadProgressUiState.UploadState.FAILED -> {
                 "$base - ${op.completedFiles}完了 ${op.failedFiles}失敗"
             }
+
             else -> base
         }
     }
@@ -257,19 +273,25 @@ class UploadProgressViewModel @Inject constructor(
                 val notCompleted = op.totalFiles - op.completedFiles
                 "$base - ${op.completedFiles}完了 ${notCompleted}未完了"
             }
+
             UploadProgressUiState.UploadState.SUCCEEDED -> {
                 "$base - ${op.completedFiles}完了"
             }
+
             UploadProgressUiState.UploadState.FAILED -> {
                 "$base - ${op.completedFiles}完了 ${op.failedFiles}失敗"
             }
+
             else -> base
         }
 
         return UploadProgressUiState.UploadItem.Delete(
             id = op.id.toString(),
             name = base,
-            description = op.currentFileName ?: op.description,
+            description = when (state) {
+                UploadProgressUiState.UploadState.FAILED -> op.errorMessage ?: op.currentFileName ?: op.description
+                else -> op.currentFileName ?: op.description
+            },
             state = state,
             canNavigate = true,
             progress = progress,
@@ -288,9 +310,9 @@ class UploadProgressViewModel @Inject constructor(
         return UploadProgressUiState.UploadItem.Extract(
             id = op.id.toString(),
             name = op.name,
-            description = op.description,
+            description = op.errorMessage ?: op.description,
             state = state,
-            canNavigate = false,
+            canNavigate = true,
             progress = null,
             progressText = progressText,
         )
@@ -299,11 +321,17 @@ class UploadProgressViewModel @Inject constructor(
     private fun mapState(status: OperationRepository.OperationStatus): UploadProgressUiState.UploadState {
         return when (status) {
             OperationRepository.OperationStatus.ENQUEUED -> UploadProgressUiState.UploadState.ENQUEUED
+
             OperationRepository.OperationStatus.RUNNING -> UploadProgressUiState.UploadState.RUNNING
+
             OperationRepository.OperationStatus.PAUSED -> UploadProgressUiState.UploadState.PAUSED
+
             OperationRepository.OperationStatus.COMPLETED -> UploadProgressUiState.UploadState.SUCCEEDED
+
             OperationRepository.OperationStatus.FAILED -> UploadProgressUiState.UploadState.FAILED
+
             OperationRepository.OperationStatus.CANCELLED -> UploadProgressUiState.UploadState.CANCELLED
+
             OperationRepository.OperationStatus.WAITING_RESOLUTION ->
                 UploadProgressUiState.UploadState.WAITING_RESOLUTION
         }
@@ -356,6 +384,7 @@ class UploadProgressViewModel @Inject constructor(
         data class NavigateToUploadDetail(val workerId: String) : ViewModelEvent
         data class NavigateToPasteDetail(val jobId: Long) : ViewModelEvent
         data class NavigateToDeleteDetail(val opId: Long) : ViewModelEvent
+        data class NavigateToExtractDetail(val opId: Long) : ViewModelEvent
     }
 
     private fun formatFileSize(bytes: Long): String {

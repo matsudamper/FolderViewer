@@ -18,6 +18,7 @@ fun FileBrowserScreen(
     uiEvent: Flow<FileBrowserUiEvent>,
     onNavigateToUploadProgress: () -> Unit,
     onOpenExtractResult: (Long) -> Unit,
+    onNavigateToExtractDetail: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BackHandler(enabled = true) {
@@ -29,12 +30,16 @@ fun FileBrowserScreen(
     val showCompressDialog = remember { mutableStateOf(false) }
     val deleteConfirmCount = remember { mutableStateOf<Int?>(null) }
 
-    LaunchedEffect(uiEvent) {
+    LaunchedEffect(uiEvent, uiState.extractDialog) {
         uiEvent.collect { event ->
             when (event) {
                 is FileBrowserUiEvent.ShowSnackbar -> {
+                    if (uiState.extractDialog != null && event.openExtractJobId != null) {
+                        return@collect
+                    }
                     val actionLabel = when {
                         event.openExtractJobId != null -> "開く"
+                        event.extractDetailJobId != null -> "詳細"
                         event.showAction -> "表示"
                         else -> null
                     }
@@ -47,17 +52,24 @@ fun FileBrowserScreen(
                             onOpenExtractResult(event.openExtractJobId)
                         }
 
+                        result == SnackbarResult.ActionPerformed && event.extractDetailJobId != null -> {
+                            onNavigateToExtractDetail(event.extractDetailJobId)
+                        }
+
                         result == SnackbarResult.ActionPerformed && event.showAction -> {
                             onNavigateToUploadProgress()
                         }
                     }
                 }
+
                 is FileBrowserUiEvent.ShowCreateDirectoryDialog -> {
                     showCreateDirectoryDialog.value = true
                 }
+
                 is FileBrowserUiEvent.ShowCompressDialog -> {
                     showCompressDialog.value = true
                 }
+
                 is FileBrowserUiEvent.ShowDeleteConfirmDialog -> {
                     deleteConfirmCount.value = event.count
                 }

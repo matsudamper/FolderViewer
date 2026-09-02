@@ -1,5 +1,7 @@
 package net.matsudamper.folderviewer.viewmodel.browser
 
+import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
@@ -15,7 +17,6 @@ import net.matsudamper.folderviewer.repository.ExtractJobRepository
 import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
-import java.util.concurrent.ConcurrentHashMap
 
 @Singleton
 class ExtractJobCompletionWatcher @Inject constructor(
@@ -31,6 +32,9 @@ class ExtractJobCompletionWatcher @Inject constructor(
 
     private val _pendingNavigation = MutableSharedFlow<PendingExtractNavigation>(extraBufferCapacity = 4)
     val pendingNavigation = _pendingNavigation.asSharedFlow()
+
+    private val _pendingExternalOpen = MutableSharedFlow<PendingExtractExternalOpen>(extraBufferCapacity = 4)
+    val pendingExternalOpen = _pendingExternalOpen.asSharedFlow()
 
     fun watchJob(jobId: Long) {
         if (!activeWatches.add(jobId)) {
@@ -64,9 +68,13 @@ class ExtractJobCompletionWatcher @Inject constructor(
     }
 
     suspend fun openExtractResult(jobId: Long) {
-        val navigation = resolveNavigation(jobId) ?: return
-        extractJobRepository.markOpenOnCompleteHandled(jobId)
-        _pendingNavigation.emit(navigation)
+        resolveNavigation(jobId)?.let { navigation ->
+            _pendingNavigation.emit(navigation)
+            return
+        }
+        resolveExternalOpen(jobId)?.let { externalOpen ->
+            _pendingExternalOpen.emit(externalOpen)
+        }
     }
 
     private suspend fun handleTerminalStatus(
@@ -76,7 +84,13 @@ class ExtractJobCompletionWatcher @Inject constructor(
         when (terminalStatus) {
             OperationRepository.OperationStatus.COMPLETED -> {
                 val meta = extractJobRepository.getJobMeta(jobId) ?: return
-                val message = "${meta.outputName}に展開しました"
+                val outputFile = meta.outputAbsolutePath?.let { File(it) }
+                val message = if (outputFile != null && outputFile.isDirectory) {
+                    "${meta.outputName}に展開しました"
+                } else {
+                    val outputLabel = outputFile?.name ?: meta.outputName
+                    "${outputLabel}を作成しました"
+                }
                 _completionUiEvents.emit(
                     CompletionUiEvent.Completed(
                         jobId = jobId,
@@ -109,21 +123,23 @@ class ExtractJobCompletionWatcher @Inject constructor(
         if (!meta.openOnComplete || meta.openOnCompleteHandled) {
             return
         }
-        val navigation = resolveNavigation(jobId) ?: return
-        extractJobRepository.markOpenOnCompleteHandled(jobId)
-        _pendingNavigation.emit(navigation)
+        openExtractResult(jobId)
     }
 
     private suspend fun resolveNavigation(jobId: Long): PendingExtractNavigation? {
         val meta = extractJobRepository.getJobMeta(jobId) ?: return null
-        if (meta.extractType != ExtractJobRepository.ExtractType.Zip &&
-            meta.extractType != ExtractJobRepository.ExtractType.TarGz
-        ) {
+        if (meta.isExternalJob) {
             return null
         }
-        val repository = storageRepository.getFileRepository(meta.parentFileObjectId.storageId)
+        val outputPath = meta.outputAbsolutePath ?: return null
+        val outputFile = File(outputPath)
+        if (!outputFile.isDirectory) {
+            return null
+        }
+        val parentFileObjectId = meta.parentFileObjectId ?: return null
+        val repository = storageRepository.getFileRepository(parentFileObjectId.storageId)
             ?: return null
-        val folder = repository.getFiles(meta.parentFileObjectId)
+        val folder = repository.getFiles(parentFileObjectId)
             .find { it.isDirectory && it.displayPath == meta.outputName }
             ?: return null
         val displayPath = if (meta.parentDisplayPath.isEmpty()) {
@@ -132,8 +148,32 @@ class ExtractJobCompletionWatcher @Inject constructor(
             "${meta.parentDisplayPath}/${folder.displayPath}"
         }
         return PendingExtractNavigation(
+            jobId = jobId,
             displayPath = displayPath,
             fileId = folder.id,
+        )
+    }
+
+    private suspend fun resolveExternalOpen(jobId: Long): PendingExtractExternalOpen? {
+        val meta = extractJobRepository.getJobMeta(jobId) ?: return null
+        if (meta.isExternalJob) {
+            return null
+        }
+        val outputPath = meta.outputAbsolutePath ?: return null
+        val outputFile = File(outputPath)
+        if (!outputFile.isFile) {
+            return null
+        }
+        val parentFileObjectId = meta.parentFileObjectId ?: return null
+        val repository = storageRepository.getFileRepository(parentFileObjectId.storageId)
+            ?: return null
+        val file = repository.getFiles(parentFileObjectId)
+            .find { !it.isDirectory && it.displayPath == meta.outputName }
+            ?: return null
+        return PendingExtractExternalOpen(
+            jobId = jobId,
+            parentFileObjectId = parentFileObjectId,
+            fileId = file.id,
         )
     }
 
@@ -153,7 +193,14 @@ class ExtractJobCompletionWatcher @Inject constructor(
     }
 
     data class PendingExtractNavigation(
+        val jobId: Long,
         val displayPath: String?,
+        val fileId: FileObjectId,
+    )
+
+    data class PendingExtractExternalOpen(
+        val jobId: Long,
+        val parentFileObjectId: FileObjectId,
         val fileId: FileObjectId,
     )
 }

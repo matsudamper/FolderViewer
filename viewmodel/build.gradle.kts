@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace = "net.matsudamper.folderviewer.viewmodel"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         minSdk = 28
@@ -41,4 +41,11 @@ dependencies {
     implementation(libs.commonsCompress)
 
     testImplementation(libs.junit)
+
+    implementation(libs.zstdJni) {
+        artifact {
+            type = "aar"
+        }
+    }
+    implementation(libs.xz)
 }
