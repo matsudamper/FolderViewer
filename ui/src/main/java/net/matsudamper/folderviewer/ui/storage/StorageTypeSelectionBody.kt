@@ -18,23 +18,26 @@ internal fun StorageTypeSelectionBody(
         modifier = modifier.fillMaxSize(),
     ) {
         ListItem(
-            headlineContent = { Text("SMB (Windows Share / NAS)") },
             modifier = Modifier.clickable(onClick = { uiState.callbacks.onSmbClick() }),
-        )
+        ) {
+            Text("SMB (Windows Share / NAS)")
+        }
         HorizontalDivider()
 
         ListItem(
-            headlineContent = { Text("ローカルストレージ") },
-            supportingContent = { Text("デバイス内のフォルダを参照") },
             modifier = Modifier.clickable(onClick = { uiState.callbacks.onLocalClick() }),
-        )
+            supportingContent = { Text("デバイス内のフォルダを参照") },
+        ) {
+            Text("ローカルストレージ")
+        }
         HorizontalDivider()
 
         ListItem(
-            headlineContent = { Text("SharePoint") },
-            supportingContent = { Text("SharePoint Online のドキュメントライブラリにアクセス") },
             modifier = Modifier.clickable(onClick = { uiState.callbacks.onSharePointClick() }),
-        )
+            supportingContent = { Text("SharePoint Online のドキュメントライブラリにアクセス") },
+        ) {
+            Text("SharePoint")
+        }
         HorizontalDivider()
     }
 }
