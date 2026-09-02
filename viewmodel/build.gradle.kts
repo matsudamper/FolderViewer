@@ -40,6 +40,10 @@ dependencies {
 
     testImplementation(libs.junit)
 
-    implementation(libs.zstdJni)
+    implementation(libs.zstdJni) {
+        artifact {
+            type = "aar"
+        }
+    }
     implementation(libs.xz)
 }

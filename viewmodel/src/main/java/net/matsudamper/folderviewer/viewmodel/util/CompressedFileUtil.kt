@@ -6,14 +6,23 @@ import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.InputStream
+import java.io.OutputStream
 import org.tukaani.xz.XZInputStream
 
 internal object CompressedFileUtil {
+    private const val MAX_OUTPUT_SIZE_BYTES = 2L * 1024 * 1024 * 1024
+    private const val XZ_MEMORY_LIMIT_KIB = 64 * 1024
+
     enum class Format(
         val extension: String,
     ) {
         Zst(".zst"),
         Xz(".xz"),
+    }
+
+    sealed class DecompressException(message: String) : Exception(message) {
+        class LimitExceeded(message: String) : DecompressException(message)
     }
 
     fun detectFormat(fileName: String): Format? {
@@ -37,7 +46,7 @@ internal object CompressedFileUtil {
         BufferedInputStream(FileInputStream(sourceFile)).use { input ->
             ZstdInputStream(input).use { zstInput ->
                 BufferedOutputStream(FileOutputStream(outputFile)).use { output ->
-                    zstInput.copyTo(output)
+                    copyWithLimit(zstInput, output, MAX_OUTPUT_SIZE_BYTES)
                 }
             }
         }
@@ -45,11 +54,32 @@ internal object CompressedFileUtil {
 
     private fun decompressXz(sourceFile: File, outputFile: File) {
         BufferedInputStream(FileInputStream(sourceFile)).use { input ->
-            XZInputStream(input).use { xzInput ->
+            XZInputStream(input, XZ_MEMORY_LIMIT_KIB).use { xzInput ->
                 BufferedOutputStream(FileOutputStream(outputFile)).use { output ->
-                    xzInput.copyTo(output)
+                    copyWithLimit(xzInput, output, MAX_OUTPUT_SIZE_BYTES)
                 }
             }
         }
+    }
+
+    private fun copyWithLimit(input: InputStream, output: OutputStream, maxBytes: Long) {
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        var total = 0L
+        while (true) {
+            val read = input.read(buffer)
+            if (read == -1) {
+                break
+            }
+            total += read
+            ensureOutputSizeWithinLimit(total, maxBytes)
+            output.write(buffer, 0, read)
+        }
+    }
+
+    private fun ensureOutputSizeWithinLimit(total: Long, maxBytes: Long) {
+        if (total <= maxBytes) {
+            return
+        }
+        throw DecompressException.LimitExceeded("展開サイズが上限を超えています")
     }
 }

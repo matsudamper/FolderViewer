@@ -32,6 +32,9 @@ class ExtractJobCompletionWatcher @Inject constructor(
     private val _pendingNavigation = MutableSharedFlow<PendingExtractNavigation>(extraBufferCapacity = 4)
     val pendingNavigation = _pendingNavigation.asSharedFlow()
 
+    private val _pendingExternalOpen = MutableSharedFlow<PendingExtractExternalOpen>(extraBufferCapacity = 4)
+    val pendingExternalOpen = _pendingExternalOpen.asSharedFlow()
+
     fun watchJob(jobId: Long) {
         if (!activeWatches.add(jobId)) {
             return
@@ -64,9 +67,15 @@ class ExtractJobCompletionWatcher @Inject constructor(
     }
 
     suspend fun openExtractResult(jobId: Long) {
-        val navigation = resolveNavigation(jobId) ?: return
-        extractJobRepository.markOpenOnCompleteHandled(jobId)
-        _pendingNavigation.emit(navigation)
+        resolveNavigation(jobId)?.let { navigation ->
+            extractJobRepository.markOpenOnCompleteHandled(jobId)
+            _pendingNavigation.emit(navigation)
+            return
+        }
+        resolveExternalOpen(jobId)?.let { externalOpen ->
+            extractJobRepository.markOpenOnCompleteHandled(jobId)
+            _pendingExternalOpen.emit(externalOpen)
+        }
     }
 
     private suspend fun handleTerminalStatus(
@@ -114,9 +123,7 @@ class ExtractJobCompletionWatcher @Inject constructor(
         if (!meta.openOnComplete || meta.openOnCompleteHandled) {
             return
         }
-        val navigation = resolveNavigation(jobId) ?: return
-        extractJobRepository.markOpenOnCompleteHandled(jobId)
-        _pendingNavigation.emit(navigation)
+        openExtractResult(jobId)
     }
 
     private suspend fun resolveNavigation(jobId: Long): PendingExtractNavigation? {
@@ -140,6 +147,25 @@ class ExtractJobCompletionWatcher @Inject constructor(
         )
     }
 
+    private suspend fun resolveExternalOpen(jobId: Long): PendingExtractExternalOpen? {
+        val meta = extractJobRepository.getJobMeta(jobId) ?: return null
+        when (meta.extractType) {
+            ExtractJobRepository.ExtractType.Zst,
+            ExtractJobRepository.ExtractType.Xz,
+            -> Unit
+            ExtractJobRepository.ExtractType.Zip -> return null
+        }
+        val repository = storageRepository.getFileRepository(meta.parentFileObjectId.storageId)
+            ?: return null
+        val file = repository.getFiles(meta.parentFileObjectId)
+            .find { !it.isDirectory && it.displayPath == meta.outputName }
+            ?: return null
+        return PendingExtractExternalOpen(
+            parentFileObjectId = meta.parentFileObjectId,
+            fileId = file.id,
+        )
+    }
+
     sealed interface CompletionUiEvent {
         val jobId: Long
         val message: String
@@ -157,6 +183,11 @@ class ExtractJobCompletionWatcher @Inject constructor(
 
     data class PendingExtractNavigation(
         val displayPath: String?,
+        val fileId: FileObjectId,
+    )
+
+    data class PendingExtractExternalOpen(
+        val parentFileObjectId: FileObjectId,
         val fileId: FileObjectId,
     )
 }

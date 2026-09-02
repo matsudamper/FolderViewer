@@ -1,8 +1,13 @@
 package net.matsudamper.folderviewer.viewmodel.util
 
+import java.io.File
+import java.io.FileOutputStream
+import java.nio.file.Files
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import org.tukaani.xz.LZMA2Options
+import org.tukaani.xz.XZOutputStream
 
 internal class CompressedFileUtilTest {
     @Test
@@ -30,5 +35,20 @@ internal class CompressedFileUtilTest {
             "archive.tar",
             CompressedFileUtil.defaultOutputName("archive.tar.xz", CompressedFileUtil.Format.Xz),
         )
+    }
+
+    @Test
+    fun decompress_decompressesXz() {
+        val tempDir = Files.createTempDirectory("compressed-file-util").toFile()
+        try {
+            val source = File(tempDir, "data.txt.xz")
+            val original = "hello xz"
+            XZOutputStream(FileOutputStream(source), LZMA2Options()).use { it.write(original.toByteArray()) }
+            val output = File(tempDir, "data.txt")
+            CompressedFileUtil.decompress(source, output, CompressedFileUtil.Format.Xz)
+            assertEquals(original, output.readText())
+        } finally {
+            tempDir.deleteRecursively()
+        }
     }
 }

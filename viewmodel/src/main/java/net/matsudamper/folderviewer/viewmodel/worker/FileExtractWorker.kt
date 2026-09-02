@@ -232,12 +232,18 @@ internal object ExtractWorkerExecutor {
         if (outputFile.exists()) {
             error("同じ名前のファイルが既に存在します: ${outputFile.name}")
         }
-        runCatching {
-            CompressedFileUtil.decompress(sourceFile, outputFile, format)
-        }.onFailure { e ->
-            outputFile.delete()
+        val parentDir = outputFile.parentFile ?: error("無効な出力先です")
+        val tempFile = File(parentDir, ".extract-${meta.id}.tmp")
+        tempFile.delete()
+        try {
+            CompressedFileUtil.decompress(sourceFile, tempFile, format)
+            if (!tempFile.renameTo(outputFile)) {
+                error("出力ファイルの作成に失敗しました")
+            }
+        } catch (e: Throwable) {
+            tempFile.delete()
             throw e
-        }.getOrThrow()
+        }
         ExtractMediaScanner.scanExtractedMediaFiles(appContext, listOf(outputFile))
         return outputFile
     }

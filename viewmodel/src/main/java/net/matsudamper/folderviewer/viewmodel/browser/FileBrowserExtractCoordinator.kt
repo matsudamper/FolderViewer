@@ -113,6 +113,28 @@ internal class FileBrowserExtractCoordinator(
         }
     }
 
+    fun observeExternalOpenEvents(scope: CoroutineScope) {
+        scope.launch {
+            dependencies.extractJobCompletionWatcher.pendingExternalOpen.collect { event ->
+                if (event.parentFileObjectId != dependencies.fileObjectId) {
+                    return@collect
+                }
+                val file = try {
+                    dependencies.getRepository().getFiles(event.parentFileObjectId)
+                        .find { it.id == event.fileId }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    dependencies.uiChannelEvent.trySend(
+                        FileBrowserUiEvent.ShowSnackbar("解凍結果を開けませんでした: ${e.message}"),
+                    )
+                    return@collect
+                } ?: return@collect
+                dependencies.openWithExternalPlayer(file)
+            }
+        }
+    }
+
     internal data class Dependencies(
         val application: Application,
         val extractJobRepository: ExtractJobRepository,
@@ -132,22 +154,7 @@ internal class FileBrowserExtractCoordinator(
     )
 
     suspend fun openExtractResult(jobId: Long) {
-        val meta = dependencies.extractJobRepository.getJobMeta(jobId) ?: return
-        when (meta.extractType) {
-            ExtractJobRepository.ExtractType.Zip -> {
-                dependencies.extractJobCompletionWatcher.openExtractResult(jobId)
-            }
-
-            ExtractJobRepository.ExtractType.Zst,
-            ExtractJobRepository.ExtractType.Xz,
-            -> {
-                dependencies.extractJobRepository.markOpenOnCompleteHandled(jobId)
-                val file = dependencies.getRepository().getFiles(meta.parentFileObjectId)
-                    .find { !it.isDirectory && it.displayPath == meta.outputName }
-                    ?: return
-                dependencies.openWithExternalPlayer(file)
-            }
-        }
+        dependencies.extractJobCompletionWatcher.openExtractResult(jobId)
     }
 
     private fun ExtractableFileType.toExtractJobType(): ExtractJobRepository.ExtractType {
