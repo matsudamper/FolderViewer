@@ -181,6 +181,29 @@ private val previewExtractCallbacks = object : ExtractDetailUiState.Callbacks {
 
 @Preview(showBackground = true)
 @Composable
+private fun ExtractDetailScreenDuplicateFilePreview() {
+    MaterialTheme {
+        ExtractDetailScreen(
+            uiState = ExtractDetailUiState(
+                jobName = "app.apk.xzを展開",
+                statusText = "失敗",
+                status = ExtractDetailUiState.Status.FAILED,
+                sourceFile = "/sdcard/Download/app.apk.xz",
+                outputName = "app",
+                outputPath = "/sdcard/Download/app.apk",
+                canNavigateToOutput = true,
+                canOpenOutputFile = true,
+                extractTypeLabel = "XZ（.xz）",
+                errorMessage = "同じ名前のファイルが既に存在します: app.apk",
+                errorCause = null,
+                callbacks = previewExtractCallbacks,
+            ),
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
 private fun ExtractDetailScreenPreview() {
     MaterialTheme {
         ExtractDetailScreen(

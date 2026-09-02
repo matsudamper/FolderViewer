@@ -35,6 +35,7 @@ class ExtractDetailViewModel @Inject constructor(
 
     private var initJob: Job? = null
     private var currentOperationId: Long? = null
+    private var currentErrorMessage: String? = null
 
     private val callbacks = object : ExtractDetailUiState.Callbacks {
         override fun onBackClick() {
@@ -70,6 +71,7 @@ class ExtractDetailViewModel @Inject constructor(
                     return@collect
                 }
                 val meta = extractJobRepository.getJobMeta(operationId)
+                currentErrorMessage = progress.errorMessage
                 _uiState.value = createUiState(progress, meta)
             }
         }
@@ -97,15 +99,23 @@ class ExtractDetailViewModel @Inject constructor(
         }
 
         val sourceFile = meta?.sourceAbsolutePath ?: meta?.sourceFileName ?: progress.description
-        val outputPath = meta?.outputAbsolutePath
-            ?: meta?.let { File(it.localFolderPath, it.outputName).absolutePath }
-        val isCompleted = uiStatus == ExtractDetailUiState.Status.COMPLETED
-        val canNavigateToOutput = isCompleted && meta != null && (
-            ExtractOutputLocationResolver.resolveNavigateToOutput(meta, storageRepository) != null ||
-                ExtractOutputLocationResolver.resolveOpenOutputFolder(meta, storageRepository) != null
+        val errorMessage = progress.errorMessage
+        val outputPath = meta?.let {
+            ExtractOutputLocationResolver.resolveExistingOutputPath(it, errorMessage)
+                ?: it.outputAbsolutePath
+                ?: File(it.localFolderPath, it.outputName).absolutePath
+        }
+        val allowOutputActions = when (uiStatus) {
+            ExtractDetailUiState.Status.COMPLETED -> true
+            ExtractDetailUiState.Status.FAILED -> ExtractOutputLocationResolver.isDuplicateOutputError(errorMessage)
+            else -> false
+        }
+        val canNavigateToOutput = allowOutputActions && meta != null && (
+            ExtractOutputLocationResolver.resolveNavigateToOutput(meta, storageRepository, errorMessage) != null ||
+                ExtractOutputLocationResolver.resolveOpenOutputFolder(meta, storageRepository, errorMessage) != null
             )
-        val canOpenOutputFile = isCompleted && meta != null &&
-            ExtractOutputLocationResolver.resolveOpenOutputFile(meta, storageRepository) != null
+        val canOpenOutputFile = allowOutputActions && meta != null &&
+            ExtractOutputLocationResolver.resolveOpenOutputFile(meta, storageRepository, errorMessage) != null
 
         return ExtractDetailUiState(
             jobName = progress.name,
@@ -125,7 +135,8 @@ class ExtractDetailViewModel @Inject constructor(
 
     private suspend fun navigateToOutput(operationId: Long) {
         val meta = extractJobRepository.getJobMeta(operationId) ?: return
-        ExtractOutputLocationResolver.resolveNavigateToOutput(meta, storageRepository)?.let { target ->
+        val errorMessage = currentErrorMessage
+        ExtractOutputLocationResolver.resolveNavigateToOutput(meta, storageRepository, errorMessage)?.let { target ->
             viewModelEventChannel.send(
                 ViewModelEvent.NavigateToOutput(
                     fileId = target.fileId,
@@ -134,14 +145,15 @@ class ExtractDetailViewModel @Inject constructor(
             )
             return
         }
-        ExtractOutputLocationResolver.resolveOpenOutputFolder(meta, storageRepository)?.let { target ->
+        ExtractOutputLocationResolver.resolveOpenOutputFolder(meta, storageRepository, errorMessage)?.let { target ->
             viewModelEventChannel.send(ViewModelEvent.OpenOutputFolder(target.absolutePath))
         }
     }
 
     private suspend fun openOutputFile(operationId: Long) {
         val meta = extractJobRepository.getJobMeta(operationId) ?: return
-        val target = ExtractOutputLocationResolver.resolveOpenOutputFile(meta, storageRepository) ?: return
+        val errorMessage = currentErrorMessage
+        val target = ExtractOutputLocationResolver.resolveOpenOutputFile(meta, storageRepository, errorMessage) ?: return
         viewModelEventChannel.send(
             ViewModelEvent.OpenOutputFile(
                 viewSourceUri = target.viewSourceUri,

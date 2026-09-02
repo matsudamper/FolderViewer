@@ -10,6 +10,8 @@ import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
 
 internal object ExtractOutputLocationResolver {
+    private const val DUPLICATE_OUTPUT_ERROR_MARKER = "既に存在します"
+
     data class NavigateTarget(
         val fileId: FileObjectId,
         val displayPath: String?,
@@ -25,12 +27,34 @@ internal object ExtractOutputLocationResolver {
         val absolutePath: String,
     )
 
+    fun isDuplicateOutputError(errorMessage: String?): Boolean {
+        return errorMessage?.contains(DUPLICATE_OUTPUT_ERROR_MARKER) == true
+    }
+
+    fun parseDuplicateOutputName(errorMessage: String?): String? {
+        if (!isDuplicateOutputError(errorMessage)) {
+            return null
+        }
+        return errorMessage
+            ?.substringAfter(": ", missingDelimiterValue = "")
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+    }
+
+    fun resolveExistingOutputPath(
+        meta: ExtractJobRepository.ExtractJobMeta,
+        errorMessage: String? = null,
+    ): String? {
+        return outputAbsolutePath(meta, errorMessage)
+    }
+
     suspend fun resolveNavigateToOutput(
         meta: ExtractJobRepository.ExtractJobMeta,
         storageRepository: StorageRepository,
+        errorMessage: String? = null,
     ): NavigateTarget? {
         resolveInternalNavigation(meta, storageRepository)?.let { return it }
-        val outputPath = outputAbsolutePath(meta) ?: return null
+        val outputPath = outputAbsolutePath(meta, errorMessage) ?: return null
         val outputFile = File(outputPath)
         if (!outputFile.exists()) {
             return null
@@ -46,8 +70,9 @@ internal object ExtractOutputLocationResolver {
     suspend fun resolveOpenOutputFile(
         meta: ExtractJobRepository.ExtractJobMeta,
         storageRepository: StorageRepository,
+        errorMessage: String? = null,
     ): OpenFileTarget? {
-        val outputPath = outputAbsolutePath(meta) ?: return null
+        val outputPath = outputAbsolutePath(meta, errorMessage) ?: return null
         val outputFile = File(outputPath)
         if (!outputFile.isFile) {
             return null
@@ -66,11 +91,12 @@ internal object ExtractOutputLocationResolver {
     suspend fun resolveOpenOutputFolder(
         meta: ExtractJobRepository.ExtractJobMeta,
         storageRepository: StorageRepository,
+        errorMessage: String? = null,
     ): OpenFolderTarget? {
-        if (resolveNavigateToOutput(meta, storageRepository) != null) {
+        if (resolveNavigateToOutput(meta, storageRepository, errorMessage) != null) {
             return null
         }
-        val outputPath = outputAbsolutePath(meta) ?: return null
+        val outputPath = outputAbsolutePath(meta, errorMessage) ?: return null
         val outputFile = File(outputPath)
         if (!outputFile.exists()) {
             return null
@@ -179,10 +205,19 @@ internal object ExtractOutputLocationResolver {
         )
     }
 
-    private fun outputAbsolutePath(meta: ExtractJobRepository.ExtractJobMeta): String? {
-        return meta.outputAbsolutePath
-            ?: File(meta.localFolderPath, meta.outputName).absolutePath.takeIf {
-                File(it).exists()
+    private fun outputAbsolutePath(
+        meta: ExtractJobRepository.ExtractJobMeta,
+        errorMessage: String? = null,
+    ): String? {
+        meta.outputAbsolutePath?.let { return it }
+        parseDuplicateOutputName(errorMessage)?.let { duplicateName ->
+            val duplicateFile = File(meta.localFolderPath, duplicateName)
+            if (duplicateFile.exists()) {
+                return duplicateFile.absolutePath
             }
+        }
+        return File(meta.localFolderPath, meta.outputName).absolutePath.takeIf {
+            File(it).exists()
+        }
     }
 }
