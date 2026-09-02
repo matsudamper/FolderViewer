@@ -106,7 +106,10 @@ internal class FileBrowserExtractCoordinator(
                             dependencies.closeExtractDialog()
                         }
                         dependencies.uiChannelEvent.send(
-                            FileBrowserUiEvent.ShowSnackbar(message = event.message),
+                            FileBrowserUiEvent.ShowSnackbar(
+                                message = event.message,
+                                extractDetailJobId = event.jobId,
+                            ),
                         )
                     }
                 }

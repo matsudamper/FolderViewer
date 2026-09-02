@@ -17,6 +17,7 @@ fun FileBrowserScreen(
     uiEvent: Flow<FileBrowserUiEvent>,
     onNavigateToUploadProgress: () -> Unit,
     onOpenExtractResult: (Long) -> Unit,
+    onNavigateToExtractDetail: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BackHandler(enabled = true) {
@@ -34,6 +35,7 @@ fun FileBrowserScreen(
                 is FileBrowserUiEvent.ShowSnackbar -> {
                     val actionLabel = when {
                         event.openExtractJobId != null -> "開く"
+                        event.extractDetailJobId != null -> "詳細"
                         event.showAction -> "表示"
                         else -> null
                     }
@@ -44,6 +46,10 @@ fun FileBrowserScreen(
                     when {
                         result == SnackbarResult.ActionPerformed && event.openExtractJobId != null -> {
                             onOpenExtractResult(event.openExtractJobId)
+                        }
+
+                        result == SnackbarResult.ActionPerformed && event.extractDetailJobId != null -> {
+                            onNavigateToExtractDetail(event.extractDetailJobId)
                         }
 
                         result == SnackbarResult.ActionPerformed && event.showAction -> {
