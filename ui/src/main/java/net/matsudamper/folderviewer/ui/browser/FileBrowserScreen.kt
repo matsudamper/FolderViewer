@@ -29,10 +29,13 @@ fun FileBrowserScreen(
     val showCompressDialog = remember { mutableStateOf(false) }
     val deleteConfirmCount = remember { mutableStateOf<Int?>(null) }
 
-    LaunchedEffect(uiEvent) {
+    LaunchedEffect(uiEvent, uiState.extractDialog) {
         uiEvent.collect { event ->
             when (event) {
                 is FileBrowserUiEvent.ShowSnackbar -> {
+                    if (uiState.extractDialog != null) {
+                        return@collect
+                    }
                     val actionLabel = when {
                         event.openExtractJobId != null -> "開く"
                         event.extractDetailJobId != null -> "詳細"

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -23,6 +24,7 @@ internal fun FileBrowserExtractDialog(
     isExtracting: Boolean,
     onDismissRequest: () -> Unit,
     onConfirm: (String) -> Unit,
+    hintMessage: String? = null,
 ) {
     var extractNameInput by remember(defaultName, mode) {
         mutableStateOf(defaultName)
@@ -43,6 +45,12 @@ internal fun FileBrowserExtractDialog(
         title = { Text(dialogTitle) },
         text = {
             Column {
+                hintMessage?.let { message ->
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
                 if (isExtracting) {
                     CircularProgressIndicator(
                         modifier = Modifier.align(Alignment.CenterHorizontally),

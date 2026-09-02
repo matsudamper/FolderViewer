@@ -25,8 +25,9 @@ internal object ExtractTempFileSupport {
         return outputFile
     }
 
-    fun createTempFile(appContext: Context): File {
-        return File.createTempFile("extract-", ".tmp", tempDirectory(appContext))
+    fun createTempFile(appContext: Context, outputDirectoryPath: String? = null): File {
+        val directory = resolveTempDirectory(appContext, outputDirectoryPath)
+        return File.createTempFile("extract-", ".tmp", directory)
     }
 
     fun markPublished(appContext: Context, jobId: Long, outputFile: File) {
@@ -41,17 +42,8 @@ internal object ExtractTempFileSupport {
         if (outputFile.exists()) {
             error("同じ名前のファイルが既に存在します: ${outputFile.name}")
         }
-        val moved = runCatching {
-            Files.move(
-                tempFile.toPath(),
-                outputFile.toPath(),
-                StandardCopyOption.ATOMIC_MOVE,
-            )
-        }.isSuccess
-        if (moved) {
-            return
-        }
-        if (tempFile.renameTo(outputFile)) {
+        outputFile.parentFile?.mkdirs()
+        if (moveTempFile(tempFile, outputFile)) {
             return
         }
         error("出力ファイルの作成に失敗しました")
@@ -61,6 +53,37 @@ internal object ExtractTempFileSupport {
         if (tempFile.exists()) {
             tempFile.delete()
         }
+    }
+
+    private fun resolveTempDirectory(appContext: Context, outputDirectoryPath: String?): File {
+        if (outputDirectoryPath != null) {
+            val outputDirectory = File(outputDirectoryPath)
+            if (outputDirectory.isDirectory || outputDirectory.mkdirs()) {
+                return outputDirectory
+            }
+        }
+        return tempDirectory(appContext)
+    }
+
+    private fun moveTempFile(tempFile: File, outputFile: File): Boolean {
+        val atomicMoved = runCatching {
+            Files.move(
+                tempFile.toPath(),
+                outputFile.toPath(),
+                StandardCopyOption.ATOMIC_MOVE,
+            )
+        }.isSuccess
+        if (atomicMoved) {
+            return true
+        }
+        if (tempFile.renameTo(outputFile)) {
+            return true
+        }
+        return runCatching {
+            Files.copy(tempFile.toPath(), outputFile.toPath())
+            tempFile.delete()
+            outputFile.isFile
+        }.getOrDefault(false)
     }
 
     private fun tempDirectory(appContext: Context): File {

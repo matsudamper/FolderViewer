@@ -104,13 +104,14 @@ internal class FileBrowserExtractCoordinator(
                     is ExtractJobCompletionWatcher.CompletionUiEvent.Failed -> {
                         if (dependencies.isExtractDialogOpenForJob(event.jobId)) {
                             dependencies.closeExtractDialog()
+                        } else {
+                            dependencies.uiChannelEvent.send(
+                                FileBrowserUiEvent.ShowSnackbar(
+                                    message = event.message,
+                                    extractDetailJobId = event.jobId,
+                                ),
+                            )
                         }
-                        dependencies.uiChannelEvent.send(
-                            FileBrowserUiEvent.ShowSnackbar(
-                                message = event.message,
-                                extractDetailJobId = event.jobId,
-                            ),
-                        )
                     }
                 }
             }
