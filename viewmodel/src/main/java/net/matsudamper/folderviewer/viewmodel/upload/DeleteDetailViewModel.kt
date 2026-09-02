@@ -94,7 +94,8 @@ class DeleteDetailViewModel @Inject constructor(
             )
         }
 
-        val canRetry = uiStatus == DeleteDetailUiState.Status.FAILED && progress.failedFiles > 0
+        val canRetry = uiStatus != DeleteDetailUiState.Status.COMPLETED &&
+            progress.totalFiles > progress.completedFiles
 
         return DeleteDetailUiState(
             jobName = progress.name,
@@ -142,7 +143,7 @@ class DeleteDetailViewModel @Inject constructor(
 
             WorkManager.getInstance(getApplication()).enqueueUniqueWork(
                 "delete_job_$operationId",
-                ExistingWorkPolicy.KEEP,
+                ExistingWorkPolicy.REPLACE,
                 workRequest,
             )
         }

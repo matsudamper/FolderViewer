@@ -81,14 +81,14 @@ internal class LocalFileRepository(
     override suspend fun deleteFile(fileId: FileObjectId.Item): Unit = withContext(Dispatchers.IO) {
         val file = buildAbsoluteFile(fileId.id)
         require(file.exists()) { "File not found: ${fileId.id}" }
-        require(file.delete()) { "Failed to delete file: ${fileId.id}" }
+        require(deleteFileRecursively(file)) { "Failed to delete file: ${fileId.id}" }
         notifyMediaScanner(listOf(file.absolutePath))
     }
 
     override suspend fun deleteDirectory(dirId: FileObjectId.Item): Unit = withContext(Dispatchers.IO) {
         val dir = buildAbsoluteFile(dirId.id)
         require(dir.exists() && dir.isDirectory) { "Directory not found: ${dirId.id}" }
-        require(dir.delete()) { "Failed to delete directory: ${dirId.id}" }
+        require(deleteFileRecursively(dir)) { "Failed to delete directory: ${dirId.id}" }
         notifyMediaScanner(listOf(dir.absolutePath))
     }
 
@@ -134,6 +134,14 @@ internal class LocalFileRepository(
 
     private fun notifyMediaScanner(paths: List<String>) {
         MediaScannerConnection.scanFile(context, paths.toTypedArray(), null, null)
+    }
+
+    private fun deleteFileRecursively(file: File): Boolean {
+        if (file.delete()) {
+            return true
+        }
+        file.setWritable(true)
+        return file.delete()
     }
 
     private fun buildAbsoluteFile(path: String): File {

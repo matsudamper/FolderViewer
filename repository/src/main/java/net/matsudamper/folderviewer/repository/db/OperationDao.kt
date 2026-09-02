@@ -41,6 +41,11 @@ internal interface OperationDao {
     suspend fun isPauseRequested(id: Long): Boolean
 
     @Query(
+        "SELECT id FROM operations WHERE type = 'DELETE' AND status IN ('ENQUEUED', 'RUNNING')",
+    )
+    suspend fun getActiveDeleteOperationIds(): List<Long>
+
+    @Query(
         "DELETE FROM operations WHERE status NOT IN ('RUNNING', 'ENQUEUED')",
     )
     suspend fun deleteNonActive()

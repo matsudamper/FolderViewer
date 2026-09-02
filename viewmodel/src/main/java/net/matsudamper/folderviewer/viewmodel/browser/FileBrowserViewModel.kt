@@ -44,7 +44,6 @@ import net.matsudamper.folderviewer.repository.SelectionModeRepository
 import net.matsudamper.folderviewer.repository.StorageConfiguration
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.UploadJobRepository
-import net.matsudamper.folderviewer.viewmodel.worker.FileDeleteWorker
 import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
@@ -65,6 +64,7 @@ class FileBrowserViewModel @AssistedInject constructor(
     private val deleteJobRepository: DeleteJobRepository,
     private val extractJobRepository: ExtractJobRepository,
     private val extractJobCompletionWatcher: ExtractJobCompletionWatcher,
+    private val deleteJobCompletionWatcher: DeleteJobCompletionWatcher,
     private val operationRepository: OperationRepository,
     private val selectionModeRepository: SelectionModeRepository,
     private val clipboardRepository: ClipboardRepository,
@@ -90,6 +90,20 @@ class FileBrowserViewModel @AssistedInject constructor(
 
     private val displayName get() = arg.displayPath ?: viewModelStateFlow.value.storageName ?: "null"
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> = MutableStateFlow(ViewModelState())
+
+    private val deleteCoordinator by lazy {
+        FileBrowserDeleteCoordinator(
+            dependencies = FileBrowserDeleteCoordinator.Dependencies(
+                application = getApplication(),
+                deleteJobRepository = deleteJobRepository,
+                deleteJobCompletionWatcher = deleteJobCompletionWatcher,
+                fileObjectId = fileObjectId,
+                uiChannelEvent = uiChannelEvent,
+                getRepository = { getRepository() },
+                refreshFiles = { fetchFilesInternal() },
+            ),
+        )
+    }
 
     private val extractCoordinator by lazy {
         FileBrowserExtractCoordinator(
@@ -503,7 +517,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             val items = pendingDeleteItems ?: return
             pendingDeleteItems = null
             viewModelScope.launch {
-                handleDelete(items)
+                deleteCoordinator.handleDelete(items)
             }
         }
 
@@ -641,6 +655,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             }
         }
         extractCoordinator.observeCompletionEvents(viewModelScope)
+        deleteCoordinator.observeCompletionEvents(viewModelScope)
     }
 
     private suspend fun loadSortConfig() {
@@ -885,42 +900,6 @@ class FileBrowserViewModel @AssistedInject constructor(
         }
     }
 
-    private suspend fun handleDelete(items: List<FileItem>) {
-        runCatching {
-            val repository = getRepository()
-            val files = items.flatMap { collectDeleteFiles(repository, it, "") }
-            val jobName = "${items.size}件を削除"
-            val operationId = deleteJobRepository.createJob(name = jobName, files = files)
-
-            val inputData = androidx.work.Data.Builder()
-                .putLong(FileDeleteWorker.KEY_DELETE_OPERATION_ID, operationId)
-                .build()
-
-            val workRequest = OneTimeWorkRequestBuilder<FileDeleteWorker>()
-                .setInputData(inputData)
-                .addTag(FileDeleteWorker.TAG_DELETE)
-                .build()
-
-            deleteJobRepository.updateStatus(
-                operationId = operationId,
-                status = OperationRepository.OperationStatus.ENQUEUED,
-                workerId = workRequest.id.toString(),
-            )
-
-            WorkManager.getInstance(getApplication()).enqueue(workRequest)
-
-            uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("削除を開始しました", showAction = true))
-        }.onFailure { e ->
-            when (e) {
-                is CancellationException -> throw e
-                else -> {
-                    e.printStackTrace()
-                    uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar("削除開始失敗: ${e.message}"))
-                }
-            }
-        }
-    }
-
     private suspend fun handleCompress(items: List<FileItem>, fileName: String) {
         zipHandler.compress(
             items = items,
@@ -933,35 +912,6 @@ class FileBrowserViewModel @AssistedInject constructor(
                 fetchFilesInternal()
             },
         )
-    }
-
-    private suspend fun collectDeleteFiles(
-        repo: FileRepository,
-        item: FileItem,
-        parentRelativePath: String,
-    ): List<DeleteJobRepository.NewDeleteFile> {
-        return if (item.isDirectory) {
-            val children = repo.getFiles(item.id)
-            val dirPath = if (parentRelativePath.isEmpty()) item.displayPath else "$parentRelativePath/${item.displayPath}"
-            val childFiles = children.flatMap { child -> collectDeleteFiles(repo, child, dirPath) }
-            childFiles + DeleteJobRepository.NewDeleteFile(
-                sourceFileId = item.id,
-                fileName = item.displayPath,
-                fileSize = 0,
-                isDirectory = true,
-                relativePath = parentRelativePath,
-            )
-        } else {
-            listOf(
-                DeleteJobRepository.NewDeleteFile(
-                    sourceFileId = item.id,
-                    fileName = item.displayPath,
-                    fileSize = item.size,
-                    isDirectory = false,
-                    relativePath = parentRelativePath,
-                ),
-            )
-        }
     }
 
     private suspend fun collectPasteFiles(

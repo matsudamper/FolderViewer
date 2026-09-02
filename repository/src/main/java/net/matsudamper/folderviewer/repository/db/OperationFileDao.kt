@@ -95,6 +95,9 @@ internal interface OperationFileDao {
     @Query("SELECT COUNT(*) FROM operation_files WHERE operationId = :operationId AND status = 'FAILED'")
     suspend fun countFailed(operationId: Long): Int
 
+    @Query("SELECT COUNT(*) FROM operation_files WHERE operationId = :operationId")
+    suspend fun countByOperationId(operationId: Long): Int
+
     @Query(
         "SELECT * FROM operation_files WHERE operationId = :operationId " +
             "AND destinationFileId IS NOT NULL " +

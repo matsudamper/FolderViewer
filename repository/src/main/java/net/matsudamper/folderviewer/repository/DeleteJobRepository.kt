@@ -98,6 +98,14 @@ class DeleteJobRepository @Inject internal constructor(
         }
     }
 
+    suspend fun getActiveOperationIds(): List<Long> {
+        return operationDao.getActiveDeleteOperationIds()
+    }
+
+    suspend fun countRawFiles(operationId: Long): Int {
+        return operationFileDao.countByOperationId(operationId)
+    }
+
     suspend fun updateStatus(operationId: Long, status: OperationRepository.OperationStatus, workerId: String? = null) {
         operationDao.updateStatusAndWorkerId(id = operationId, status = status.name, workerId = workerId)
     }

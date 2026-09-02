@@ -41,7 +41,7 @@ internal class FileDeleteWorker @AssistedInject constructor(
                 status = OperationRepository.OperationStatus.RUNNING,
                 workerId = id.toString(),
             )
-            executeJob(operationId)
+            return@withContext executeJob(operationId)
         } catch (e: CancellationException) {
             withContext(NonCancellable) {
                 deleteJobRepository.cancelJob(operationId)
@@ -55,7 +55,7 @@ internal class FileDeleteWorker @AssistedInject constructor(
                 errorCause = e.cause?.toString(),
             )
             notifyFailed(operationId, e.message ?: e.toString())
-            Result.failure()
+            return@withContext Result.failure()
         }
     }
 
@@ -87,7 +87,17 @@ internal class FileDeleteWorker @AssistedInject constructor(
 
     private suspend fun executeJob(operationId: Long): Result {
         val notificationId = DELETE_NOTIFICATION_BASE_ID + operationId.toInt()
+        val rawFileCount = deleteJobRepository.countRawFiles(operationId)
         val allFiles = deleteJobRepository.getFiles(operationId)
+        if (rawFileCount > 0 && allFiles.isEmpty()) {
+            deleteJobRepository.updateError(
+                operationId = operationId,
+                errorMessage = "削除対象ファイルを読み込めませんでした",
+                errorCause = null,
+            )
+            notifyFailed(operationId, "削除対象ファイルを読み込めませんでした")
+            return Result.failure()
+        }
         val totalFiles = allFiles.count { !it.isDirectory }
         setForeground(createForegroundInfo(notificationId, 0, totalFiles, null))
 
