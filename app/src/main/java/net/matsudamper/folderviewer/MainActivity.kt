@@ -481,12 +481,24 @@ private fun EntryProviderScope<NavKey>.settingsEntry(navigator: Navigator) {
         val viewModel: SettingsViewModel = hiltViewModel()
         val uiState by viewModel.uiState.collectAsState()
         val snackbarHostState = remember { SnackbarHostState() }
+        val context = LocalContext.current
 
         LaunchedEffect(viewModel.viewModelEventFlow) {
             viewModel.viewModelEventFlow.collect { event ->
                 when (event) {
                     SettingsViewModel.ViewModelEvent.NavigateBack -> {
                         navigator.goBack()
+                    }
+
+                    SettingsViewModel.ViewModelEvent.OpenGitHubReleases -> {
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            data = android.net.Uri.parse(
+                                context.getString(net.matsudamper.folderviewer.ui.R.string.github_releases_url),
+                            )
+                        }
+                        runCatching {
+                            context.startActivity(intent)
+                        }
                     }
                 }
             }

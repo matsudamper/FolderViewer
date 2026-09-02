@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -67,17 +68,24 @@ fun SettingsScreen(
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxSize()
                     .padding(16.dp),
-                verticalArrangement = Arrangement.Top,
+                verticalArrangement = Arrangement.SpaceBetween,
                 horizontalAlignment = Alignment.Start,
             ) {
-                Text(text = stringResource(R.string.cache))
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(
-                    onClick = { uiState.callbacks.onClearDiskCache() },
+                Column {
+                    Text(text = stringResource(R.string.cache))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = { uiState.callbacks.onClearDiskCache() },
+                    ) {
+                        Text(text = stringResource(R.string.clear_disk_cache))
+                    }
+                }
+                TextButton(
+                    onClick = { uiState.callbacks.onOpenGitHubReleases() },
                 ) {
-                    Text(text = stringResource(R.string.clear_disk_cache))
+                    Text(text = stringResource(R.string.github_releases))
                 }
             }
         }
@@ -117,6 +125,7 @@ private fun SettingsScreenPreview() {
         uiState = SettingsUiState(
             callbacks = object : SettingsUiState.Callbacks {
                 override fun onClearDiskCache() = Unit
+                override fun onOpenGitHubReleases() = Unit
                 override fun onBack() = Unit
             },
         ),
