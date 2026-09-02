@@ -94,6 +94,8 @@ class ExtractDetailViewModel @Inject constructor(
     private fun ExtractJobRepository.ExtractType?.toLabel(): String {
         return when (this) {
             ExtractJobRepository.ExtractType.Zip -> "ZIP（フォルダ）"
+            ExtractJobRepository.ExtractType.TarXz -> "tar.xz"
+            ExtractJobRepository.ExtractType.TarZst -> "tar.zst"
             ExtractJobRepository.ExtractType.Zst -> "Zstandard（.zst）"
             ExtractJobRepository.ExtractType.Xz -> "XZ（.xz）"
             null -> "不明"

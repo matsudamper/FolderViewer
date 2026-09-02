@@ -1,5 +1,6 @@
 package net.matsudamper.folderviewer.repository
 
+import java.io.File
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
 import androidx.room.withTransaction
@@ -51,7 +52,10 @@ class ExtractJobRepository @Inject internal constructor(
 
     private suspend fun createJobInternal(params: CreateJobParams): Long {
         val name = when (params.extractType) {
-            ExtractType.Zip -> "${params.sourceFileName}を展開"
+            ExtractType.Zip,
+            ExtractType.TarXz,
+            ExtractType.TarZst,
+            -> "${params.sourceFileName}を展開"
             ExtractType.Zst,
             ExtractType.Xz,
             -> "${params.sourceFileName}を展開"
@@ -142,8 +146,12 @@ class ExtractJobRepository @Inject internal constructor(
     }
 
     suspend fun completeJob(operationId: Long, outputAbsolutePath: String) {
+        val outputFile = File(outputAbsolutePath)
         database.withTransaction {
             extractOperationDao.updateOutputAbsolutePath(operationId, outputAbsolutePath)
+            if (outputFile.isFile) {
+                extractOperationDao.updateOutputName(operationId, outputFile.name)
+            }
             operationDao.updateStatusAndWorkerId(
                 id = operationId,
                 status = OperationRepository.OperationStatus.COMPLETED.name,
@@ -183,6 +191,8 @@ class ExtractJobRepository @Inject internal constructor(
 
     enum class ExtractType {
         Zip,
+        TarXz,
+        TarZst,
         Zst,
         Xz,
     }

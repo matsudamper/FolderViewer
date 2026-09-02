@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
+import java.io.File
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.ExtractJobRepository
 import net.matsudamper.folderviewer.repository.FileRepository
@@ -83,11 +84,12 @@ class ExtractJobCompletionWatcher @Inject constructor(
         when (terminalStatus) {
             OperationRepository.OperationStatus.COMPLETED -> {
                 val meta = extractJobRepository.getJobMeta(jobId) ?: return
-                val message = when (meta.extractType) {
-                    ExtractJobRepository.ExtractType.Zip -> "${meta.outputName}に展開しました"
-                    ExtractJobRepository.ExtractType.Zst,
-                    ExtractJobRepository.ExtractType.Xz,
-                    -> "${meta.outputName}を作成しました"
+                val outputFile = meta.outputAbsolutePath?.let { File(it) }
+                val message = if (outputFile != null && outputFile.isDirectory) {
+                    "${meta.outputName}に展開しました"
+                } else {
+                    val outputLabel = outputFile?.name ?: meta.outputName
+                    "${outputLabel}を作成しました"
                 }
                 _completionUiEvents.emit(
                     CompletionUiEvent.Completed(
@@ -126,7 +128,12 @@ class ExtractJobCompletionWatcher @Inject constructor(
 
     private suspend fun resolveNavigation(jobId: Long): PendingExtractNavigation? {
         val meta = extractJobRepository.getJobMeta(jobId) ?: return null
-        if (meta.isExternalJob || meta.extractType != ExtractJobRepository.ExtractType.Zip) {
+        if (meta.isExternalJob) {
+            return null
+        }
+        val outputPath = meta.outputAbsolutePath ?: return null
+        val outputFile = File(outputPath)
+        if (!outputFile.isDirectory) {
             return null
         }
         val parentFileObjectId = meta.parentFileObjectId ?: return null
@@ -152,11 +159,10 @@ class ExtractJobCompletionWatcher @Inject constructor(
         if (meta.isExternalJob) {
             return null
         }
-        when (meta.extractType) {
-            ExtractJobRepository.ExtractType.Zst,
-            ExtractJobRepository.ExtractType.Xz,
-            -> Unit
-            ExtractJobRepository.ExtractType.Zip -> return null
+        val outputPath = meta.outputAbsolutePath ?: return null
+        val outputFile = File(outputPath)
+        if (!outputFile.isFile) {
+            return null
         }
         val parentFileObjectId = meta.parentFileObjectId ?: return null
         val repository = storageRepository.getFileRepository(parentFileObjectId.storageId)

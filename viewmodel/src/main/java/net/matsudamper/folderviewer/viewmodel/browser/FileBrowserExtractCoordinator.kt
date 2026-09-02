@@ -165,6 +165,8 @@ internal class FileBrowserExtractCoordinator(
     private fun ExtractableFileType.toExtractJobType(): ExtractJobRepository.ExtractType {
         return when (this) {
             ExtractableFileType.Zip -> ExtractJobRepository.ExtractType.Zip
+            ExtractableFileType.TarXz -> ExtractJobRepository.ExtractType.TarXz
+            ExtractableFileType.TarZst -> ExtractJobRepository.ExtractType.TarZst
             is ExtractableFileType.Compressed -> when (format) {
                 CompressedFileUtil.Format.Zst -> ExtractJobRepository.ExtractType.Zst
                 CompressedFileUtil.Format.Xz -> ExtractJobRepository.ExtractType.Xz

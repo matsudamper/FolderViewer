@@ -15,6 +15,9 @@ internal interface ExtractOperationDao {
     @Query("UPDATE extract_operations SET outputAbsolutePath = :outputAbsolutePath WHERE operationId = :operationId")
     suspend fun updateOutputAbsolutePath(operationId: Long, outputAbsolutePath: String)
 
+    @Query("UPDATE extract_operations SET outputName = :outputName WHERE operationId = :operationId")
+    suspend fun updateOutputName(operationId: Long, outputName: String)
+
     @Query("UPDATE extract_operations SET openOnCompleteHandled = 1 WHERE operationId = :operationId")
     suspend fun markOpenOnCompleteHandled(operationId: Long)
 
