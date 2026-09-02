@@ -1,5 +1,6 @@
 package net.matsudamper.folderviewer.viewmodel.browser
 
+import android.content.Context
 import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -8,6 +9,7 @@ import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
+import net.matsudamper.folderviewer.viewmodel.util.ExtractMediaScanner
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputNameValidator
 import net.matsudamper.folderviewer.viewmodel.util.ZipFileUtil
 
@@ -18,6 +20,7 @@ internal data class ExtractContext(
 )
 
 internal class FileBrowserZipHandler(
+    private val appContext: Context,
     private val sendSnackbar: suspend (String) -> Unit,
     private val trySendSnackbar: (String) -> Unit,
 ) {
@@ -87,17 +90,9 @@ internal class FileBrowserZipHandler(
                     sendSnackbar("無効なフォルダ名です")
                     return
                 }
-            if (extractDir.exists()) {
-                sendSnackbar("同じ名前のフォルダが既に存在します: ${extractDir.name}")
-                return
-            }
             withContext(Dispatchers.IO) {
-                runCatching {
-                    ZipFileUtil.extractZip(zipFile, extractDir)
-                }.onFailure { e ->
-                    extractDir.deleteRecursively()
-                    throw e
-                }
+                val extractedFiles = ZipFileUtil.extractZip(zipFile, extractDir)
+                ExtractMediaScanner.scanExtractedMediaFiles(appContext, extractedFiles)
             }
             context.onCompleted()
             sendSnackbar("${extractDir.name}に展開しました")
@@ -134,6 +129,7 @@ internal class FileBrowserZipHandler(
     private fun handleExtractFailure(e: Throwable) {
         when (e) {
             is CancellationException -> throw e
+            is ZipFileUtil.ExtractException -> trySendSnackbar(e.message ?: "解凍に失敗しました")
             else -> {
                 e.printStackTrace()
                 trySendSnackbar("解凍に失敗しました: ${e.message}")

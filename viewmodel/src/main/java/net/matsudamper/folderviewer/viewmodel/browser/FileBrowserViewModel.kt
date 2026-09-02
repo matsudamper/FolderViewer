@@ -74,6 +74,7 @@ class FileBrowserViewModel @AssistedInject constructor(
     private val uiChannelEvent = Channel<FileBrowserUiEvent>()
     val uiEvent: Flow<FileBrowserUiEvent> = uiChannelEvent.receiveAsFlow()
     private val zipHandler = FileBrowserZipHandler(
+        appContext = application,
         sendSnackbar = { message -> uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar(message)) },
         trySendSnackbar = { message -> uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar(message)) },
     )
