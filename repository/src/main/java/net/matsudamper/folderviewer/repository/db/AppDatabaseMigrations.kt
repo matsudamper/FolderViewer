@@ -32,4 +32,43 @@ internal val Migration11To12 = object : Migration(11, 12) {
     }
 }
 
-internal val AppDatabaseMigrations = arrayOf(Migration9To10, Migration10To11, Migration11To12)
+internal val Migration12To13 = object : Migration(12, 13) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `extract_operations` (" +
+                "`operationId` INTEGER NOT NULL, " +
+                "`sourceFileObjectId` TEXT NOT NULL, " +
+                "`sourceFileName` TEXT NOT NULL, " +
+                "`outputName` TEXT NOT NULL, " +
+                "`extractType` TEXT NOT NULL, " +
+                "`parentFileObjectId` TEXT NOT NULL, " +
+                "`parentDisplayPath` TEXT NOT NULL, " +
+                "`localFolderPath` TEXT NOT NULL, " +
+                "`openOnComplete` INTEGER NOT NULL, " +
+                "`outputAbsolutePath` TEXT, " +
+                "PRIMARY KEY(`operationId`), " +
+                "FOREIGN KEY(`operationId`) REFERENCES `operations`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE" +
+                ")",
+        )
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_extract_operations_operationId` " +
+                "ON `extract_operations` (`operationId`)",
+        )
+    }
+}
+
+internal val Migration13To14 = object : Migration(13, 14) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "ALTER TABLE `extract_operations` ADD COLUMN `openOnCompleteHandled` INTEGER NOT NULL DEFAULT 0",
+        )
+    }
+}
+
+internal val AppDatabaseMigrations = arrayOf(
+    Migration9To10,
+    Migration10To11,
+    Migration11To12,
+    Migration12To13,
+    Migration13To14,
+)

@@ -73,10 +73,12 @@ internal fun FileBrowserScreenContent(
                 FileBrowserSelectionTopBar(
                     selectedCount = uiState.selectedCount,
                     visibleCompressMenu = uiState.visibleCompressMenu,
+                    visibleExtractMenu = uiState.visibleExtractMenu,
                     onCancelSelection = callbacks::onCancelSelection,
                     onSelectAllClick = callbacks::onSelectAllClick,
                     onShareClick = callbacks::onShareClick,
                     onCompressClick = callbacks::onCompressClick,
+                    onExtractClick = callbacks::onExtractClick,
                 )
             } else {
                 FileBrowserTopBar(
@@ -282,6 +284,16 @@ internal fun FileBrowserScreenContent(
         )
     }
 
+    if (uiState.extractDialog != null) {
+        val extractDialog = uiState.extractDialog
+        FileBrowserExtractDialog(
+            defaultName = extractDialog.folderName,
+            isExtracting = extractDialog.isExtracting,
+            onDismissRequest = { uiState.callbacks.onDismissExtract() },
+            onConfirm = { folderName -> uiState.callbacks.onConfirmExtract(folderName) },
+        )
+    }
+
     if (deleteConfirmCount != null) {
         AlertDialog(
             onDismissRequest = { onDeleteConfirmDialogDismiss() },
@@ -323,7 +335,9 @@ private fun Preview() {
             isSelectionMode = false,
             selectedCount = 0,
             visibleCompressMenu = true,
+            visibleExtractMenu = true,
             isPasteMode = false,
+            extractDialog = null,
             callbacks = object : FileBrowserUiState.Callbacks {
                 override fun onRefresh() = Unit
                 override fun onBack() = Unit
@@ -343,6 +357,11 @@ private fun Preview() {
                 override fun onShareClick() = Unit
                 override fun onCompressClick() = Unit
                 override fun onConfirmCompress(fileName: String) = Unit
+                override fun onExtractClick() = Unit
+                override fun onConfirmExtract(folderName: String) = Unit
+                override fun onDismissExtract() = Unit
+                override fun onExtractPermissionResult() = Unit
+                override fun onOpenExtractResult(jobId: Long) = Unit
                 override fun onDeleteClick() = Unit
                 override fun onConfirmDelete() = Unit
                 override fun onPasteClick() = Unit

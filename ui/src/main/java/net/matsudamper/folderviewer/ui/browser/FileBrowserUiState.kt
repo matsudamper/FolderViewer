@@ -15,10 +15,19 @@ data class FileBrowserUiState(
     val isSelectionMode: Boolean,
     val selectedCount: Int,
     val visibleCompressMenu: Boolean,
+    val visibleExtractMenu: Boolean,
     val isPasteMode: Boolean,
+    val extractDialog: ExtractDialogState?,
     val callbacks: Callbacks,
     val contentState: ContentState,
 ) {
+    @Immutable
+    data class ExtractDialogState(
+        val folderName: String,
+        val isExtracting: Boolean,
+        val jobId: Long?,
+    )
+
     sealed interface ContentState {
         data object Loading : ContentState
         data object Error : ContentState
@@ -85,6 +94,11 @@ data class FileBrowserUiState(
         fun onShareClick()
         fun onCompressClick()
         fun onConfirmCompress(fileName: String)
+        fun onExtractClick()
+        fun onConfirmExtract(folderName: String)
+        fun onDismissExtract()
+        fun onExtractPermissionResult()
+        fun onOpenExtractResult(jobId: Long)
         fun onDeleteClick()
         fun onConfirmDelete()
         fun onPasteClick()

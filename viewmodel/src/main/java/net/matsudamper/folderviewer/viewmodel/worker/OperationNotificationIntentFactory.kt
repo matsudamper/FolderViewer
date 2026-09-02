@@ -6,4 +6,5 @@ interface OperationNotificationIntentFactory {
     fun createUploadDetailIntent(workerId: String): PendingIntent
     fun createPasteDetailIntent(jobId: Long): PendingIntent
     fun createDeleteDetailIntent(operationId: Long): PendingIntent
+    fun createUploadProgressIntent(): PendingIntent
 }
