@@ -8,6 +8,7 @@ data class SettingsUiState(
     @Immutable
     interface Callbacks {
         fun onClearDiskCache()
+        fun onOpenGitHubReleases()
         fun onBack()
     }
 }

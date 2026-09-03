@@ -1,5 +1,6 @@
 package net.matsudamper.folderviewer
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -481,12 +482,30 @@ private fun EntryProviderScope<NavKey>.settingsEntry(navigator: Navigator) {
         val viewModel: SettingsViewModel = hiltViewModel()
         val uiState by viewModel.uiState.collectAsState()
         val snackbarHostState = remember { SnackbarHostState() }
+        val context = LocalContext.current
 
         LaunchedEffect(viewModel.viewModelEventFlow) {
             viewModel.viewModelEventFlow.collect { event ->
                 when (event) {
                     SettingsViewModel.ViewModelEvent.NavigateBack -> {
                         navigator.goBack()
+                    }
+
+                    SettingsViewModel.ViewModelEvent.OpenGitHubReleases -> {
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            data = android.net.Uri.parse(
+                                context.getString(net.matsudamper.folderviewer.ui.R.string.github_releases_url),
+                            )
+                        }
+                        try {
+                            context.startActivity(intent)
+                        } catch (_: ActivityNotFoundException) {
+                            snackbarHostState.showDismissibleSnackbar(
+                                context.getString(
+                                    net.matsudamper.folderviewer.ui.R.string.github_releases_open_error,
+                                ),
+                            )
+                        }
                     }
                 }
             }
