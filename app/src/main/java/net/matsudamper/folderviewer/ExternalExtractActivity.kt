@@ -25,7 +25,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import coil.Coil
@@ -115,26 +114,24 @@ class ExternalExtractActivity : ComponentActivity() {
                             is ExternalExtractViewModel.ViewModelEvent.ShowSnackbar -> {
                                 val extractDetailJobId = event.extractDetailJobId
                                 val finishAfterDismiss = event.finishAfterDismiss
-                                coroutineScope {
-                                    launch {
-                                        val result = snackbarHostState.showDismissibleSnackbar(
-                                            message = event.message,
-                                            actionLabel = extractDetailJobId?.let { detailActionLabel },
+                                launch {
+                                    val result = snackbarHostState.showDismissibleSnackbar(
+                                        message = event.message,
+                                        actionLabel = extractDetailJobId?.let { detailActionLabel },
+                                    )
+                                    if (
+                                        result == SnackbarResult.ActionPerformed &&
+                                        extractDetailJobId != null
+                                    ) {
+                                        startActivity(
+                                            OperationDetailActivity.createExtractDetailIntent(
+                                                this@ExternalExtractActivity,
+                                                extractDetailJobId,
+                                            ),
                                         )
-                                        if (
-                                            result == SnackbarResult.ActionPerformed &&
-                                            extractDetailJobId != null
-                                        ) {
-                                            startActivity(
-                                                OperationDetailActivity.createExtractDetailIntent(
-                                                    this@ExternalExtractActivity,
-                                                    extractDetailJobId,
-                                                ),
-                                            )
-                                        }
-                                        if (finishAfterDismiss) {
-                                            finish()
-                                        }
+                                    }
+                                    if (finishAfterDismiss) {
+                                        finish()
                                     }
                                 }
                             }
