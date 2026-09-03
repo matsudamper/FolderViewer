@@ -35,6 +35,12 @@ class SettingsViewModel @Inject constructor(
             clearDiskCache()
         }
 
+        override fun onOpenGitHubReleases() {
+            viewModelScope.launch {
+                viewModelEventChannel.send(ViewModelEvent.OpenGitHubReleases)
+            }
+        }
+
         override fun onBack() {
             viewModelScope.launch {
                 viewModelEventChannel.send(ViewModelEvent.NavigateBack)
@@ -68,5 +74,6 @@ class SettingsViewModel @Inject constructor(
 
     sealed interface ViewModelEvent {
         data object NavigateBack : ViewModelEvent
+        data object OpenGitHubReleases : ViewModelEvent
     }
 }
