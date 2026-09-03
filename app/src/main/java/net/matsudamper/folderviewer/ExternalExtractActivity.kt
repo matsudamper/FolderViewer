@@ -1,11 +1,11 @@
 package net.matsudamper.folderviewer
 
 import android.content.ClipData
+import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.provider.DocumentsContract
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -80,7 +80,7 @@ class ExternalExtractActivity : ComponentActivity() {
 
                     is ExternalIncomingUriResolution.Directory -> {
                         handledIncomingUri = true
-                        openDirectoryWithChooser(resolved.uri)
+                        openDirectoryWithChooser(resolved.uri, resolved.mimeType)
                         finish()
                     }
 
@@ -162,20 +162,34 @@ class ExternalExtractActivity : ComponentActivity() {
         return IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
     }
 
-    private fun openDirectoryWithChooser(uri: Uri) {
+    private fun openDirectoryWithChooser(uri: Uri, mimeType: String) {
         val viewIntent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, DocumentsContract.Document.MIME_TYPE_DIR)
+            setDataAndType(uri, mimeType)
             clipData = ClipData.newRawUri("", uri)
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        if (intent.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION != 0) {
-            viewIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
+        forwardUriGrantFlags(source = intent, target = viewIntent)
         val chooserIntent = Intent.createChooser(viewIntent, null).apply {
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            putExtra(
+                Intent.EXTRA_EXCLUDE_COMPONENTS,
+                arrayOf(ComponentName(this@ExternalExtractActivity, ExternalExtractActivity::class.java)),
+            )
         }
+        forwardUriGrantFlags(source = intent, target = chooserIntent)
         runCatching {
             startActivity(chooserIntent)
+        }
+    }
+
+    private fun forwardUriGrantFlags(source: Intent, target: Intent) {
+        if (source.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION != 0) {
+            target.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        if (source.flags and Intent.FLAG_GRANT_WRITE_URI_PERMISSION != 0) {
+            target.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        }
+        if (source.flags and Intent.FLAG_GRANT_PREFIX_URI_PERMISSION != 0) {
+            target.addFlags(Intent.FLAG_GRANT_PREFIX_URI_PERMISSION)
         }
     }
 

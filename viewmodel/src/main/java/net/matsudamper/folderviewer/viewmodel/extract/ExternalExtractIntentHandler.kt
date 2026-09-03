@@ -11,9 +11,30 @@ object ExternalExtractIntentHandler {
         uri: Uri,
         mimeType: String? = null,
     ): ExternalIncomingUriResolution {
-        if (ExternalDirectoryUriInspector.isDirectory(context, uri, mimeType)) {
-            return ExternalIncomingUriResolution.Directory(uri)
+        if (uri.scheme == "file") {
+            return if (ExternalDirectoryUriInspector.isDirectory(context, uri)) {
+                ExternalIncomingUriResolution.Unsupported
+            } else {
+                resolveExtractableOrUnsupported(context, uri)
+            }
         }
+        if (ExternalDirectoryUriInspector.isDirectory(context, uri)) {
+            return ExternalIncomingUriResolution.Directory(
+                uri = uri,
+                mimeType = ExternalDirectoryUriInspector.resolveDirectoryMimeType(
+                    context = context,
+                    uri = uri,
+                    intentMimeType = mimeType,
+                ),
+            )
+        }
+        return resolveExtractableOrUnsupported(context, uri)
+    }
+
+    private fun resolveExtractableOrUnsupported(
+        context: Context,
+        uri: Uri,
+    ): ExternalIncomingUriResolution {
         val launchArgs = resolveLaunchArgs(context, uri)
         return if (launchArgs == null) {
             ExternalIncomingUriResolution.Unsupported
