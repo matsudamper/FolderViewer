@@ -142,6 +142,7 @@ class ExternalExtractActivity : ComponentActivity() {
                                         event.jobId,
                                     ),
                                 )
+                                finish()
                             }
                         }
                     }
