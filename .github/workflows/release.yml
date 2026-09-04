@@ -67,6 +67,11 @@ jobs:
           VERSION: ${{ vars.VERSION }}
         run: ./gradlew assembleRelease
 
+      - name: Zip Release APK
+        run: |
+          APK_SRC=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
+          zip -j "${APK_SRC%.apk}.zip" "$APK_SRC"
+
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
@@ -75,6 +80,6 @@ jobs:
           name: Release ${{ vars.VERSION }}
           draft: false
           prerelease: false
-          files: app/build/outputs/apk/release/*.apk
+          files: app/build/outputs/apk/release/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
