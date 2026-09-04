@@ -201,6 +201,8 @@ internal class FileBrowserExtractCoordinator(
         return when (this) {
             ExtractableFileType.Zip -> ExtractJobRepository.ExtractType.Zip
 
+            ExtractableFileType.TarGz -> ExtractJobRepository.ExtractType.TarGz
+
             ExtractableFileType.TarXz -> ExtractJobRepository.ExtractType.TarXz
 
             ExtractableFileType.TarZst -> ExtractJobRepository.ExtractType.TarZst

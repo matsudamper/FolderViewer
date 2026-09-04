@@ -36,6 +36,28 @@ internal class TarArchiveUtilTest {
         }
     }
 
+    @Test(expected = TarArchiveUtil.ExtractException.InvalidArchive::class)
+    fun extract_rejectsSymbolicLink() {
+        val tempDir = Files.createTempDirectory("tar-archive-util").toFile()
+        try {
+            val tarFile = File(tempDir, "archive.tar")
+            createTar(
+                tarFile,
+                listOf(
+                    TarTestEntry(
+                        name = "link.txt",
+                        content = ByteArray(0),
+                        typeFlag = '2',
+                    ),
+                ),
+            )
+            val destDir = File(tempDir, "output")
+            TarArchiveUtil.extract(tarFile, destDir)
+        } finally {
+            tempDir.deleteRecursively()
+        }
+    }
+
     @Test(expected = SecurityException::class)
     fun extract_rejectsPathTraversal() {
         val tempDir = Files.createTempDirectory("tar-archive-util").toFile()
@@ -133,25 +155,26 @@ internal class TarArchiveUtilTest {
     private data class TarTestEntry(
         val name: String,
         val content: ByteArray,
+        val typeFlag: Char = '0',
     )
 
     private fun createTar(tarFile: File, entries: List<TarTestEntry>) {
         FileOutputStream(tarFile).use { output ->
             entries.forEach { entry ->
-                writeTarEntry(output, entry.name, entry.content)
+                writeTarEntry(output, entry.name, entry.content, entry.typeFlag)
             }
             output.write(ByteArray(1024))
         }
     }
 
-    private fun writeTarEntry(output: FileOutputStream, name: String, content: ByteArray) {
+    private fun writeTarEntry(output: FileOutputStream, name: String, content: ByteArray, typeFlag: Char = '0') {
         val header = ByteArray(512)
         val nameBytes = name.toByteArray(Charsets.US_ASCII)
         nameBytes.copyInto(header, destinationOffset = 0, endIndex = minOf(nameBytes.size, 100))
         writeOctal(header, 124, 12, content.size.toLong())
         writeOctal(header, 136, 12, 0L)
         writeOctal(header, 148, 12, 0L)
-        header[156] = '0'.code.toByte()
+        header[156] = typeFlag.code.toByte()
         output.write(header)
         output.write(content)
         val padding = (512 - (content.size % 512)) % 512

@@ -2,6 +2,7 @@ package net.matsudamper.folderviewer.viewmodel.util
 
 internal enum class CompressArchiveKind {
     Zip,
+    TarGz,
     TarXz,
     TarZst,
     Zst,
@@ -29,6 +30,7 @@ internal object CompressArchiveFileNameUtil {
         val normalized = normalizeFileName(fileName)
         return when (kind) {
             CompressArchiveKind.Zip -> ZipFileUtil.zipFileDefaultFolderName(normalized)
+            CompressArchiveKind.TarGz -> dropSuffixes(normalized, ".tar.gz", ".tgz")
             CompressArchiveKind.TarXz -> dropSuffixes(normalized, ".tar.xz", ".txz")
             CompressArchiveKind.TarZst -> normalized.dropLast(".tar.zst".length)
             CompressArchiveKind.Zst -> normalized.dropLast(".zst".length)
@@ -38,6 +40,9 @@ internal object CompressArchiveFileNameUtil {
 
     private fun detectKindOnNormalizedName(fileName: String): CompressArchiveKind? {
         return when {
+            fileName.endsWith(".tar.gz", ignoreCase = true) ||
+                fileName.endsWith(".tgz", ignoreCase = true) -> CompressArchiveKind.TarGz
+
             fileName.endsWith(".tar.xz", ignoreCase = true) ||
                 fileName.endsWith(".txz", ignoreCase = true) -> CompressArchiveKind.TarXz
 

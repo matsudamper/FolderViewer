@@ -33,7 +33,7 @@ internal fun FileBrowserExtractDialog(
         mutableStateOf(defaultName)
     }
     val dialogTitle = when (mode) {
-        ExtractDialogMode.ZipFolder -> "zipを展開"
+        ExtractDialogMode.ZipFolder -> "アーカイブを展開"
         ExtractDialogMode.ZstFile -> "zstを展開"
         ExtractDialogMode.XzFile -> "xzを展開"
     }

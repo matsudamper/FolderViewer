@@ -38,6 +38,8 @@ dependencies {
     implementation(libs.jakartaInject)
     implementation(libs.kotlinxSerializationJson)
 
+    implementation(libs.commonsCompress)
+
     testImplementation(libs.junit)
 
     implementation(libs.zstdJni) {

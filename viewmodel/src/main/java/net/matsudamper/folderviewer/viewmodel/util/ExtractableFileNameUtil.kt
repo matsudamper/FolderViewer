@@ -6,6 +6,7 @@ internal object ExtractableFileNameUtil {
     fun detect(fileName: String): ExtractableFileType? {
         return when (val kind = CompressArchiveFileNameUtil.detectKind(fileName)) {
             CompressArchiveKind.Zip -> ExtractableFileType.Zip
+            CompressArchiveKind.TarGz -> ExtractableFileType.TarGz
             CompressArchiveKind.TarXz -> ExtractableFileType.TarXz
             CompressArchiveKind.TarZst -> ExtractableFileType.TarZst
             CompressArchiveKind.Zst -> ExtractableFileType.Compressed(CompressedFileUtil.Format.Zst)
@@ -22,6 +23,8 @@ internal object ExtractableFileNameUtil {
     private fun ExtractableFileType.toKind(): CompressArchiveKind {
         return when (this) {
             ExtractableFileType.Zip -> CompressArchiveKind.Zip
+
+            ExtractableFileType.TarGz -> CompressArchiveKind.TarGz
 
             ExtractableFileType.TarXz -> CompressArchiveKind.TarXz
 
