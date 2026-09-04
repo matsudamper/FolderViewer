@@ -1,10 +1,46 @@
 # FolderViewer
 
-リポジトリ固有のルールは次を参照:
-- @docs/agent-repo.md
-- @docs/compose-guidelines.md
+## このアプリについて
+Androidのファイルビューアです。
+
+## 構成
+- `/app` — Androidのappモジュール。アプリのrootとNavigation周り
+- `/ui` — UI Composable。各画面のUI実装
+- `viewmodel` — ViewModel。UIとはUiStateやEventを通してやり取り
+- `/repository` — 抽象化可能なデータの保存・取得
+- `/common` — 共通コード
+- `/navigation` — Navigation定義（Navigation3）
+- `/dao/*` — 各サービスへのアクセス
+
+## コメント例外
+- コードのコメントは禁止。複雑な関数のドキュメントコメントだけ許可
+
+## ビルド
+```shell
+./gradlew assembleDebug ktlintCheck detekt
+./gradlew ktlintFormat
+```
+
+## Paparazzi
+```shell
+./gradlew :ui:recordPaparazziDebug
+./gradlew :ui:recordPaparazziDebug -Dpaparazzi.filter="PreviewName"
+```
+スナップショットは `ui/src/test/snapshots/images/`。
+
+## その他
+- Composeの詳細は既存の `docs/compose-guidelines.md` も参照
+- private/internalをできる限り使用し、最小限のアクセスに絞る
 
 # 共通ルール
+
+## docs の参照
+リポジトリに存在する `docs/` 以下のエージェント向けドキュメントがあれば、必ず読んで従う。無いファイルは無視してよい。
+
+例:
+- `docs/agent-kotlin.md` — Kotlin 詳細スタイル
+- `docs/agent-compose.md` — Compose / UiState / Paparazzi
+- 既存の `docs/compose-guidelines.md` / `docs/coding_style.md` などリポ固有の詳細ガイド
 
 ## 言語
 - 応答・説明・コミットメッセージ・PR 文・レビュー返信は日本語
@@ -19,7 +55,7 @@
 - 書くなら What ではなく Why / コードで表せない制約
 - 既存コメントは削除しない。古くなったら更新可
 - どうしても必要そうなら勝手に書かずチャットで相談
-- 例外の緩さはリポジトリ固有ドキュメントに従う
+- 例外の緩さはリポジトリ固有セクションおよび docs に従う
 
 ## Kotlin / 一般（該当する場合）
 - Kotlin 公式コーディング規約に従う（リポに docs があればそちら優先）
@@ -48,7 +84,7 @@
 
 ## ビルド・検証（方針）
 - ビルド / format / lint / test 等のタスクは並列実行しない。逐次実行する
-- 編集後は確認してからコミット（具体コマンドはリポジトリ固有ドキュメント）
+- 編集後は確認してからコミット（具体コマンドはリポジトリ固有セクション）
 - 命令を無視して無理通ししない
 - 一回の指示で 5 回連続失敗したら経緯とやったことをまとめて提出して停止
 - ネットワーク起因のビルド失敗は深掘り不要。通らなかった旨を報告してよい
