@@ -8,7 +8,13 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 internal interface OperationFileDao {
     @Insert
+    suspend fun insert(file: OperationFileEntity): Long
+
+    @Insert
     suspend fun insertAll(files: List<OperationFileEntity>)
+
+    @Query("DELETE FROM operation_files WHERE operationId = :operationId")
+    suspend fun deleteByOperationId(operationId: Long)
 
     @Query("SELECT * FROM operation_files WHERE operationId = :operationId ORDER BY id ASC")
     suspend fun getByOperationId(operationId: Long): List<OperationFileEntity>

@@ -11,12 +11,15 @@ import net.matsudamper.folderviewer.repository.db.ExtractOperationDao
 import net.matsudamper.folderviewer.repository.db.ExtractOperationEntity
 import net.matsudamper.folderviewer.repository.db.OperationDao
 import net.matsudamper.folderviewer.repository.db.OperationEntity
+import net.matsudamper.folderviewer.repository.db.OperationFileDao
+import net.matsudamper.folderviewer.repository.db.OperationFileEntity
 
 @Singleton
 class ExtractJobRepository @Inject internal constructor(
     private val database: AppDatabase,
     private val operationDao: OperationDao,
     private val extractOperationDao: ExtractOperationDao,
+    private val operationFileDao: OperationFileDao,
 ) {
     suspend fun createJob(params: NewExtractJob): Long {
         return createJobInternal(
@@ -153,12 +156,60 @@ class ExtractJobRepository @Inject internal constructor(
             if (outputFile.isFile) {
                 extractOperationDao.updateOutputName(operationId, outputFile.name)
             }
+            operationFileDao.markAllCompleted(operationId)
             operationDao.updateStatusAndWorkerId(
                 id = operationId,
                 status = OperationRepository.OperationStatus.COMPLETED.name,
                 workerId = null,
             )
         }
+    }
+
+    suspend fun clearProgress(operationId: Long) {
+        operationFileDao.deleteByOperationId(operationId)
+    }
+
+    suspend fun initializeByteProgress(operationId: Long, totalBytes: Long, label: String): Long {
+        return database.withTransaction {
+            operationFileDao.insert(
+                OperationFileEntity(
+                    operationId = operationId,
+                    fileName = label,
+                    fileSize = totalBytes,
+                    status = OperationRepository.FileStatus.RUNNING.name,
+                ),
+            )
+        }
+    }
+
+    suspend fun initializeFileCountProgress(operationId: Long, fileNames: List<String>): List<Long> {
+        if (fileNames.isEmpty()) {
+            return emptyList()
+        }
+        return database.withTransaction {
+            operationFileDao.insertAll(
+                fileNames.map { fileName ->
+                    OperationFileEntity(
+                        operationId = operationId,
+                        fileName = fileName,
+                        status = OperationRepository.FileStatus.PENDING.name,
+                    )
+                },
+            )
+            operationFileDao.getByOperationId(operationId).map { it.id }
+        }
+    }
+
+    suspend fun startFileProgress(fileId: Long) {
+        operationFileDao.markRunning(fileId)
+    }
+
+    suspend fun updateByteProgress(fileId: Long, transferredBytes: Long) {
+        operationFileDao.updateTransferredBytes(fileId, transferredBytes)
+    }
+
+    suspend fun completeFileProgress(fileId: Long) {
+        operationFileDao.markCompleted(fileId)
     }
 
     suspend fun updateStatus(operationId: Long, status: OperationRepository.OperationStatus, workerId: String? = null) {

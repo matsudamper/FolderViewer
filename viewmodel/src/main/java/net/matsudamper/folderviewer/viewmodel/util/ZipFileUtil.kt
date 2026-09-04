@@ -48,7 +48,11 @@ internal object ZipFileUtil {
         }
     }
 
-    fun extractZip(zipFile: File, destDir: File): List<File> {
+    fun extractZip(
+        zipFile: File,
+        destDir: File,
+        progressListener: ExtractProgressListener? = null,
+    ): List<File> {
         if (!destDir.mkdir()) {
             throw if (destDir.exists()) {
                 ExtractException.OutputAlreadyExists(destDir.name)
@@ -57,7 +61,7 @@ internal object ZipFileUtil {
             }
         }
         return try {
-            extractZipContents(zipFile, destDir)
+            extractZipContents(zipFile, destDir, progressListener)
         } catch (e: Exception) {
             destDir.deleteRecursively()
             throw when (e) {
@@ -75,7 +79,25 @@ internal object ZipFileUtil {
         }
     }
 
-    private fun extractZipContents(zipFile: File, destDir: File): List<File> {
+    fun listFileEntries(zipFile: File): List<String> {
+        ZipFile(zipFile, ZIP_NAME_CHARSET).use { zip ->
+            val entries = zip.entries()
+            val fileNames = mutableListOf<String>()
+            while (entries.hasMoreElements()) {
+                val entry = entries.nextElement()
+                if (!entry.isDirectory) {
+                    fileNames += entry.name
+                }
+            }
+            return fileNames
+        }
+    }
+
+    private fun extractZipContents(
+        zipFile: File,
+        destDir: File,
+        progressListener: ExtractProgressListener?,
+    ): List<File> {
         val extractedFiles = mutableListOf<File>()
         ZipFile(zipFile, ZIP_NAME_CHARSET).use { zip ->
             val entries = zip.entries()
@@ -94,6 +116,7 @@ internal object ZipFileUtil {
                 ensureTotalSizeWithinLimit(totalBytes)
                 if (!entry.isDirectory) {
                     extractedFiles += File(destDir, entry.name)
+                    progressListener?.onFileCompleted()
                 }
             }
             if (!sawEntry) {

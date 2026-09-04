@@ -35,34 +35,52 @@ internal object CompressedFileUtil {
         return fileName.dropLast(format.extension.length)
     }
 
-    fun decompress(sourceFile: File, outputFile: File, format: Format) {
+    fun decompress(
+        sourceFile: File,
+        outputFile: File,
+        format: Format,
+        progressListener: ExtractProgressListener? = null,
+    ) {
         when (format) {
-            Format.Zst -> decompressZst(sourceFile, outputFile)
-            Format.Xz -> decompressXz(sourceFile, outputFile)
+            Format.Zst -> decompressZst(sourceFile, outputFile, progressListener)
+            Format.Xz -> decompressXz(sourceFile, outputFile, progressListener)
         }
     }
 
-    private fun decompressZst(sourceFile: File, outputFile: File) {
+    private fun decompressZst(
+        sourceFile: File,
+        outputFile: File,
+        progressListener: ExtractProgressListener?,
+    ) {
         BufferedInputStream(FileInputStream(sourceFile)).use { input ->
             ZstdInputStream(input).use { zstInput ->
                 BufferedOutputStream(FileOutputStream(outputFile)).use { output ->
-                    copyWithLimit(zstInput, output, MAX_OUTPUT_SIZE_BYTES)
+                    copyWithLimit(zstInput, output, MAX_OUTPUT_SIZE_BYTES, progressListener)
                 }
             }
         }
     }
 
-    private fun decompressXz(sourceFile: File, outputFile: File) {
+    private fun decompressXz(
+        sourceFile: File,
+        outputFile: File,
+        progressListener: ExtractProgressListener?,
+    ) {
         BufferedInputStream(FileInputStream(sourceFile)).use { input ->
             XZInputStream(input, XZ_MEMORY_LIMIT_KIB).use { xzInput ->
                 BufferedOutputStream(FileOutputStream(outputFile)).use { output ->
-                    copyWithLimit(xzInput, output, MAX_OUTPUT_SIZE_BYTES)
+                    copyWithLimit(xzInput, output, MAX_OUTPUT_SIZE_BYTES, progressListener)
                 }
             }
         }
     }
 
-    private fun copyWithLimit(input: InputStream, output: OutputStream, maxBytes: Long) {
+    private fun copyWithLimit(
+        input: InputStream,
+        output: OutputStream,
+        maxBytes: Long,
+        progressListener: ExtractProgressListener?,
+    ) {
         val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
         var total = 0L
         while (true) {
@@ -73,6 +91,7 @@ internal object CompressedFileUtil {
             total += read
             ensureOutputSizeWithinLimit(total, maxBytes)
             output.write(buffer, 0, read)
+            progressListener?.onBytesTransferred(total)
         }
     }
 
