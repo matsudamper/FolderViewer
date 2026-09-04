@@ -59,7 +59,6 @@ class ExternalExtractActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         Coil.setImageLoader(imageLoader)
-        requestNotificationPermissionIfNeeded()
 
         val uri = extractTargetUri(intent)
         if (uri == null) {
@@ -75,6 +74,7 @@ class ExternalExtractActivity : ComponentActivity() {
                 }
                 when (resolved) {
                     is ExternalIncomingUriResolution.Extractable -> {
+                        requestNotificationPermissionIfNeeded()
                         viewModelArgs = resolved.args
                     }
 

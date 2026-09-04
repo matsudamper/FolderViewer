@@ -7,16 +7,21 @@ import androidx.documentfile.provider.DocumentFile
 
 internal object ExternalDirectoryUriInspector {
     fun isDirectory(context: Context, uri: Uri): Boolean {
-        if (DocumentsContract.isTreeUri(uri)) {
+        if (DocumentsContract.isDocumentUri(context, uri)) {
+            DocumentFile.fromSingleUri(context, uri)?.let { document ->
+                return document.isDirectory
+            }
+        } else if (DocumentsContract.isTreeUri(uri)) {
             DocumentFile.fromTreeUri(context, uri)?.let { document ->
                 if (document.isDirectory) {
                     return true
                 }
             }
-        }
-        DocumentFile.fromSingleUri(context, uri)?.let { document ->
-            if (document.isDirectory) {
-                return true
+        } else {
+            DocumentFile.fromSingleUri(context, uri)?.let { document ->
+                if (document.isDirectory) {
+                    return true
+                }
             }
         }
         return isDirectoryMimeType(context.contentResolver.getType(uri))
