@@ -58,15 +58,10 @@ internal class FileBrowserExtractCoordinator(
         dialogProgressFlow.value = null
     }
 
-    suspend fun enqueueExtract(request: PendingExtractRequest): Long? {
+    suspend fun createExtractJob(request: PendingExtractRequest): Long? {
         return runCatching {
-            val localFolderPath = dependencies.getLocalFolderPath() ?: run {
-                dependencies.uiChannelEvent.send(
-                    FileBrowserUiEvent.ShowSnackbar("解凍はローカルストレージのみ対応しています"),
-                )
-                return null
-            }
-            val jobId = dependencies.extractJobRepository.createJob(
+            val localFolderPath = dependencies.getLocalFolderPath() ?: return null
+            dependencies.extractJobRepository.createJob(
                 ExtractJobRepository.NewExtractJob(
                     sourceFileObjectId = request.fileItem.id,
                     sourceFileName = request.fileItem.displayPath,
@@ -78,36 +73,41 @@ internal class FileBrowserExtractCoordinator(
                     openOnComplete = false,
                 ),
             )
-            val inputData = Data.Builder()
-                .putLong(FileExtractWorker.KEY_EXTRACT_OPERATION_ID, jobId)
-                .build()
-            val workRequest = OneTimeWorkRequestBuilder<FileExtractWorker>()
-                .setInputData(inputData)
-                .addTag(FileExtractWorker.TAG_EXTRACT)
-                .build()
-            dependencies.extractJobRepository.updateStatus(
-                operationId = jobId,
-                status = OperationRepository.OperationStatus.ENQUEUED,
-                workerId = workRequest.id.toString(),
-            )
-            WorkManager.getInstance(dependencies.application).enqueue(workRequest)
-            dependencies.clearSelection()
-            dependencies.selectionModeRepository.setSelectionMode(false)
-            dependencies.extractJobCompletionWatcher.watchJob(jobId)
-            jobId
         }.getOrElse { e ->
             when (e) {
                 is CancellationException -> throw e
 
                 else -> {
                     e.printStackTrace()
-                    dependencies.uiChannelEvent.trySend(
-                        FileBrowserUiEvent.ShowSnackbar("解凍開始失敗: ${e.message}"),
-                    )
                     null
                 }
             }
         }
+    }
+
+    suspend fun startExtractJob(jobId: Long) {
+        val inputData = Data.Builder()
+            .putLong(FileExtractWorker.KEY_EXTRACT_OPERATION_ID, jobId)
+            .build()
+        val workRequest = OneTimeWorkRequestBuilder<FileExtractWorker>()
+            .setInputData(inputData)
+            .addTag(FileExtractWorker.TAG_EXTRACT)
+            .build()
+        dependencies.extractJobRepository.updateStatus(
+            operationId = jobId,
+            status = OperationRepository.OperationStatus.ENQUEUED,
+            workerId = workRequest.id.toString(),
+        )
+        WorkManager.getInstance(dependencies.application).enqueue(workRequest)
+        dependencies.clearSelection()
+        dependencies.selectionModeRepository.setSelectionMode(false)
+        dependencies.extractJobCompletionWatcher.watchJob(jobId)
+    }
+
+    suspend fun enqueueExtract(request: PendingExtractRequest): Long? {
+        val jobId = createExtractJob(request) ?: return null
+        startExtractJob(jobId)
+        return jobId
     }
 
     fun observeCompletionEvents(scope: CoroutineScope) {
@@ -127,13 +127,6 @@ internal class FileBrowserExtractCoordinator(
                                 event.jobId,
                                 event.message,
                             )
-                        } else {
-                            dependencies.uiChannelEvent.send(
-                                FileBrowserUiEvent.ShowSnackbar(
-                                    message = event.message,
-                                    openExtractJobId = event.jobId,
-                                ),
-                            )
                         }
                     }
 
@@ -143,13 +136,6 @@ internal class FileBrowserExtractCoordinator(
                             dependencies.updateExtractDialogOnFailed(
                                 event.jobId,
                                 event.message,
-                            )
-                        } else {
-                            dependencies.uiChannelEvent.send(
-                                FileBrowserUiEvent.ShowSnackbar(
-                                    message = event.message,
-                                    extractDetailJobId = event.jobId,
-                                ),
                             )
                         }
                     }
@@ -170,9 +156,7 @@ internal class FileBrowserExtractCoordinator(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    dependencies.uiChannelEvent.trySend(
-                        FileBrowserUiEvent.ShowSnackbar("解凍結果を開けませんでした: ${e.message}"),
-                    )
+                    e.printStackTrace()
                     return@collect
                 } ?: return@collect
                 dependencies.openWithExternalPlayer(file)

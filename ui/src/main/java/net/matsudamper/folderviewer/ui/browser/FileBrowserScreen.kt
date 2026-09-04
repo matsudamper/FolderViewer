@@ -17,8 +17,6 @@ fun FileBrowserScreen(
     uiState: FileBrowserUiState,
     uiEvent: Flow<FileBrowserUiEvent>,
     onNavigateToUploadProgress: () -> Unit,
-    onOpenExtractResult: (Long) -> Unit,
-    onNavigateToExtractDetail: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BackHandler {
@@ -34,35 +32,17 @@ fun FileBrowserScreen(
     val showCompressDialog = remember { mutableStateOf(false) }
     val deleteConfirmCount = remember { mutableStateOf<Int?>(null) }
 
-    LaunchedEffect(uiEvent, uiState.extractDialog) {
+    LaunchedEffect(uiEvent) {
         uiEvent.collect { event ->
             when (event) {
                 is FileBrowserUiEvent.ShowSnackbar -> {
-                    if (uiState.extractDialog != null && event.openExtractJobId != null) {
-                        return@collect
-                    }
-                    val actionLabel = when {
-                        event.openExtractJobId != null -> "開く"
-                        event.extractDetailJobId != null -> "詳細"
-                        event.showAction -> "表示"
-                        else -> null
-                    }
+                    val actionLabel = if (event.showAction) "表示" else null
                     val result = snackbarHostState.showDismissibleSnackbar(
                         message = event.message,
                         actionLabel = actionLabel,
                     )
-                    when {
-                        result == SnackbarResult.ActionPerformed && event.openExtractJobId != null -> {
-                            onOpenExtractResult(event.openExtractJobId)
-                        }
-
-                        result == SnackbarResult.ActionPerformed && event.extractDetailJobId != null -> {
-                            onNavigateToExtractDetail(event.extractDetailJobId)
-                        }
-
-                        result == SnackbarResult.ActionPerformed && event.showAction -> {
-                            onNavigateToUploadProgress()
-                        }
+                    if (result == SnackbarResult.ActionPerformed && event.showAction) {
+                        onNavigateToUploadProgress()
                     }
                 }
 

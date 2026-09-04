@@ -433,8 +433,23 @@ class FileBrowserViewModel @AssistedInject constructor(
             val request = pendingExtractRequest ?: return
             pendingExtractRequest = null
             viewModelScope.launch {
-                val jobId = extractCoordinator.enqueueExtract(request) ?: run {
-                    viewModelStateFlow.update { it.copy(extractDialog = null) }
+                val jobId = extractCoordinator.createExtractJob(request)
+                if (jobId == null) {
+                    val message = if (viewModelStateFlow.value.localFolderPath == null) {
+                        "解凍はローカルストレージのみ対応しています"
+                    } else {
+                        "解凍を開始できませんでした"
+                    }
+                    viewModelStateFlow.update { state ->
+                        val dialog = state.extractDialog ?: return@update state
+                        state.copy(
+                            extractDialog = dialog.copy(
+                                isExtracting = false,
+                                isExtractComplete = false,
+                                statusMessage = message,
+                            ),
+                        )
+                    }
                     return@launch
                 }
                 viewModelStateFlow.update { state ->
@@ -449,6 +464,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                         ),
                     )
                 }
+                extractCoordinator.startExtractJob(jobId)
                 extractCoordinator.startProgressObservation(viewModelScope, jobId)
             }
         }

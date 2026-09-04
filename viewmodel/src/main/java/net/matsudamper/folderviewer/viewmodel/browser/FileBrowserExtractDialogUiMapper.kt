@@ -15,7 +15,11 @@ internal fun isExtractDialogOpenForJob(
     state: FileBrowserViewModel.ViewModelState,
     jobId: Long,
 ): Boolean {
-    return state.extractDialog?.jobId == jobId
+    val dialog = state.extractDialog ?: return false
+    if (dialog.jobId == jobId) {
+        return true
+    }
+    return dialog.isExtracting && dialog.jobId == null
 }
 
 internal fun updateExtractDialogOnComplete(
@@ -25,11 +29,12 @@ internal fun updateExtractDialogOnComplete(
 ) {
     viewModelStateFlow.update { state ->
         val dialog = state.extractDialog ?: return@update state
-        if (dialog.jobId != jobId) {
+        if (dialog.jobId != jobId && dialog.jobId != null) {
             return@update state
         }
         state.copy(
             extractDialog = dialog.copy(
+                jobId = jobId,
                 isExtracting = false,
                 isExtractComplete = true,
                 statusMessage = message,
@@ -45,11 +50,12 @@ internal fun updateExtractDialogOnFailed(
 ) {
     viewModelStateFlow.update { state ->
         val dialog = state.extractDialog ?: return@update state
-        if (dialog.jobId != jobId) {
+        if (dialog.jobId != jobId && dialog.jobId != null) {
             return@update state
         }
         state.copy(
             extractDialog = dialog.copy(
+                jobId = jobId,
                 isExtracting = false,
                 isExtractComplete = false,
                 statusMessage = message,
