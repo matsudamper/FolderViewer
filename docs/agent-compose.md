@@ -8,7 +8,7 @@
 
 ## Compose
 - 画面 Composable は必要に応じて `internal`
-- State Holder には `@Stable`
+- State Holder は `@Stable` の契約を正しく実装できる場合だけ `@Stable` を付ける（`var` や `MutableList` など変更通知がない状態だけを持つ型に一律付与しない）
 - `material-icons-extended` / Compose Material Icons Extended は使わない。アイコンは XML/SVG 等
 - Composable 内の早期 return は避け、if-else / when で分岐する（該当リポの方針がある場合）
 
