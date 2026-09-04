@@ -167,6 +167,23 @@ internal class FileBrowserExtractCoordinator(
                             )
                         }
                     }
+
+                    is ExtractJobCompletionWatcher.CompletionUiEvent.Cancelled -> {
+                        if (dependencies.isExtractDialogOpenForJob(event.jobId)) {
+                            stopProgressObservation()
+                            dependencies.updateExtractDialogOnFailed(
+                                event.jobId,
+                                event.message,
+                            )
+                        } else {
+                            dependencies.uiChannelEvent.send(
+                                FileBrowserUiEvent.ShowSnackbar(
+                                    message = event.message,
+                                    extractDetailJobId = event.jobId,
+                                ),
+                            )
+                        }
+                    }
                 }
             }
         }

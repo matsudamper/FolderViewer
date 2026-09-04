@@ -19,6 +19,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.ExtractJobRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
@@ -178,12 +179,29 @@ class ExternalExtractViewModel @AssistedInject constructor(
                         statusMessage = event.message,
                     )
                 }
+
+                is ExtractJobCompletionWatcher.CompletionUiEvent.Cancelled -> {
+                    _uiState.value = _uiState.value.copy(
+                        isExtracting = false,
+                        isExtractComplete = false,
+                        statusMessage = event.message,
+                    )
+                }
             }
         }
     }
 
     private suspend fun openExtractOutput(jobId: Long) {
         val meta = extractJobRepository.getJobMeta(jobId) ?: return
+        ExtractOutputLocationResolver.resolveNavigateToOutput(meta, storageRepository)?.let { target ->
+            viewModelEventChannel.send(
+                ViewModelEvent.NavigateToFileBrowser(
+                    fileId = target.fileId,
+                    displayPath = target.displayPath,
+                ),
+            )
+            return
+        }
         ExtractOutputLocationResolver.resolveOpenOutputFile(meta, storageRepository)?.let { target ->
             viewModelEventChannel.send(
                 ViewModelEvent.OpenOutputFile(
@@ -194,7 +212,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
             )
             return
         }
-        ExtractOutputLocationResolver.resolveOpenOutputFolder(meta, storageRepository)?.let { target ->
+        ExtractOutputLocationResolver.resolveOpenOutputFolderPath(meta)?.let { target ->
             viewModelEventChannel.send(ViewModelEvent.OpenOutputFolder(target.absolutePath))
             return
         }
@@ -208,6 +226,11 @@ class ExternalExtractViewModel @AssistedInject constructor(
 
         data class OpenExtractDetail(
             val jobId: Long,
+        ) : ViewModelEvent
+
+        data class NavigateToFileBrowser(
+            val fileId: FileObjectId,
+            val displayPath: String?,
         ) : ViewModelEvent
 
         data class OpenOutputFile(

@@ -109,6 +109,23 @@ internal object ExtractOutputLocationResolver {
         return OpenFolderTarget(absolutePath = folderPath)
     }
 
+    fun resolveOpenOutputFolderPath(
+        meta: ExtractJobRepository.ExtractJobMeta,
+        errorMessage: String? = null,
+    ): OpenFolderTarget? {
+        val outputPath = outputAbsolutePath(meta, errorMessage) ?: return null
+        val outputFile = File(outputPath)
+        if (!outputFile.exists()) {
+            return null
+        }
+        val folderPath = if (outputFile.isDirectory) {
+            outputFile.absolutePath
+        } else {
+            outputFile.parentFile?.absolutePath ?: return null
+        }
+        return OpenFolderTarget(absolutePath = folderPath)
+    }
+
     private suspend fun resolveInternalNavigation(
         meta: ExtractJobRepository.ExtractJobMeta,
         storageRepository: StorageRepository,

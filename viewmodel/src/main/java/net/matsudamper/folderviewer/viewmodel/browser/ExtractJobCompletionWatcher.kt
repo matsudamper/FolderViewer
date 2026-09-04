@@ -116,6 +116,15 @@ class ExtractJobCompletionWatcher @Inject constructor(
                 )
             }
 
+            OperationRepository.OperationStatus.CANCELLED -> {
+                _completionUiEvents.emit(
+                    CompletionUiEvent.Cancelled(
+                        jobId = jobId,
+                        message = "解凍がキャンセルされました",
+                    ),
+                )
+            }
+
             else -> Unit
         }
     }
@@ -189,6 +198,11 @@ class ExtractJobCompletionWatcher @Inject constructor(
         ) : CompletionUiEvent
 
         data class Failed(
+            override val jobId: Long,
+            override val message: String,
+        ) : CompletionUiEvent
+
+        data class Cancelled(
             override val jobId: Long,
             override val message: String,
         ) : CompletionUiEvent
