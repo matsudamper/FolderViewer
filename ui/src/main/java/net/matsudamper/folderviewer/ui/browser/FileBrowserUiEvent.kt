@@ -4,6 +4,8 @@ sealed interface FileBrowserUiEvent {
     data class ShowSnackbar(
         val message: String,
         val showAction: Boolean = false,
+        val openExtractJobId: Long? = null,
+        val extractDetailJobId: Long? = null,
     ) : FileBrowserUiEvent
     data object ShowCreateDirectoryDialog : FileBrowserUiEvent
     data object ShowCompressDialog : FileBrowserUiEvent

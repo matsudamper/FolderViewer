@@ -141,6 +141,13 @@ internal class FileBrowserExtractCoordinator(
                                 event.jobId,
                                 event.message,
                             )
+                        } else {
+                            dependencies.uiChannelEvent.send(
+                                FileBrowserUiEvent.ShowSnackbar(
+                                    message = event.message,
+                                    openExtractJobId = event.jobId,
+                                ),
+                            )
                         }
                     }
 
@@ -150,6 +157,13 @@ internal class FileBrowserExtractCoordinator(
                             dependencies.updateExtractDialogOnFailed(
                                 event.jobId,
                                 event.message,
+                            )
+                        } else {
+                            dependencies.uiChannelEvent.send(
+                                FileBrowserUiEvent.ShowSnackbar(
+                                    message = event.message,
+                                    extractDetailJobId = event.jobId,
+                                ),
                             )
                         }
                     }
@@ -198,8 +212,8 @@ internal class FileBrowserExtractCoordinator(
         val openWithExternalPlayer: suspend (FileItem) -> Unit,
     )
 
-    suspend fun openExtractResult(jobId: Long) {
-        dependencies.extractJobCompletionWatcher.openExtractResult(jobId)
+    suspend fun openExtractResult(jobId: Long): Boolean {
+        return dependencies.extractJobCompletionWatcher.openExtractResult(jobId)
     }
 
     private fun ExtractableFileType.toExtractJobType(): ExtractJobRepository.ExtractType {

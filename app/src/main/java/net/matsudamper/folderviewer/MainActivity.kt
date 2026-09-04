@@ -947,6 +947,12 @@ private fun EntryProviderScope<NavKey>.fileBrowserEntry(navigator: Navigator) {
             uiState = uiStateValue,
             uiEvent = viewModel.uiEvent,
             onNavigateToUploadProgress = { navigator.navigate(UploadProgress) },
+            onOpenExtractResult = { jobId ->
+                uiStateValue.callbacks.onOpenExtractResult(jobId)
+            },
+            onNavigateToExtractDetail = { jobId ->
+                navigator.navigate(ExtractDetail(operationId = jobId))
+            },
         )
     }
 }
