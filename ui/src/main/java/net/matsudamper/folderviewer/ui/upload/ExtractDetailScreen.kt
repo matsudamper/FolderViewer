@@ -14,6 +14,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -73,6 +74,34 @@ public fun ExtractDetailScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            if (uiState.status == ExtractDetailUiState.Status.RUNNING) {
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                        ) {
+                            if (uiState.progress != null) {
+                                LinearProgressIndicator(
+                                    progress = { uiState.progress },
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            } else {
+                                LinearProgressIndicator(
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                            Text(
+                                text = uiState.progressText ?: uiState.statusText,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
+                        }
+                    }
+                }
+            }
+
             if (uiState.status == ExtractDetailUiState.Status.FAILED) {
                 item {
                     Card(
@@ -196,6 +225,8 @@ private fun ExtractDetailScreenDuplicateFilePreview() {
                 extractTypeLabel = "XZ（.xz）",
                 errorMessage = "同じ名前のファイルが既に存在します: app.apk",
                 errorCause = null,
+                progress = null,
+                progressText = null,
                 callbacks = previewExtractCallbacks,
             ),
         )
@@ -219,6 +250,33 @@ private fun ExtractDetailScreenPreview() {
                 extractTypeLabel = "ZIP（フォルダ）",
                 errorMessage = "同じ名前のフォルダが既に存在します: archive",
                 errorCause = "java.lang.IllegalStateException",
+                progress = null,
+                progressText = null,
+                callbacks = previewExtractCallbacks,
+            ),
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ExtractDetailScreenRunningPreview() {
+    MaterialTheme {
+        ExtractDetailScreen(
+            uiState = ExtractDetailUiState(
+                jobName = "archive.zipを展開",
+                statusText = "解凍中",
+                status = ExtractDetailUiState.Status.RUNNING,
+                sourceFile = "/sdcard/Download/archive.zip",
+                outputName = "archive",
+                outputPath = "/sdcard/Download/archive",
+                canNavigateToOutput = false,
+                canOpenOutputFile = false,
+                extractTypeLabel = "ZIP（フォルダ）",
+                errorMessage = null,
+                errorCause = null,
+                progress = 0.42f,
+                progressText = "42/100 ファイル",
                 callbacks = previewExtractCallbacks,
             ),
         )

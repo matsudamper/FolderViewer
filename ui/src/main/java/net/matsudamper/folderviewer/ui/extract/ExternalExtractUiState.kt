@@ -7,6 +7,8 @@ data class ExternalExtractUiState(
     val mode: ExtractDialogMode,
     val isExtracting: Boolean,
     val locationMessage: String?,
+    val progress: Float? = null,
+    val progressText: String? = null,
     val callbacks: Callbacks,
 ) {
     interface Callbacks {
