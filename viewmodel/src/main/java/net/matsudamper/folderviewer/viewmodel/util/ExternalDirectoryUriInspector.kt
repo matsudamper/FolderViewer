@@ -19,7 +19,7 @@ internal object ExternalDirectoryUriInspector {
                 return true
             }
         }
-        return false
+        return isDirectoryMimeType(context.contentResolver.getType(uri))
     }
 
     fun resolveDirectoryMimeType(

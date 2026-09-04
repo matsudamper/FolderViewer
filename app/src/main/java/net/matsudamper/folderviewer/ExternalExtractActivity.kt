@@ -79,9 +79,13 @@ class ExternalExtractActivity : ComponentActivity() {
                     }
 
                     is ExternalIncomingUriResolution.Directory -> {
-                        handledIncomingUri = true
-                        openDirectoryWithChooser(resolved.uri, resolved.mimeType)
-                        finish()
+                        val launched = openDirectoryWithChooser(resolved.uri, resolved.mimeType)
+                        if (launched) {
+                            handledIncomingUri = true
+                            finish()
+                        } else {
+                            launchErrorMessage = "フォルダを開けませんでした"
+                        }
                     }
 
                     ExternalIncomingUriResolution.Unsupported -> {
@@ -165,7 +169,7 @@ class ExternalExtractActivity : ComponentActivity() {
         return IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
     }
 
-    private fun openDirectoryWithChooser(uri: Uri, mimeType: String) {
+    private fun openDirectoryWithChooser(uri: Uri, mimeType: String): Boolean {
         val viewIntent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, mimeType)
             clipData = ClipData.newRawUri("", uri)
@@ -179,9 +183,9 @@ class ExternalExtractActivity : ComponentActivity() {
             )
         }
         forwardUriGrantFlags(source = intent, target = chooserIntent)
-        runCatching {
+        return runCatching {
             startActivity(chooserIntent)
-        }
+        }.isSuccess
     }
 
     private fun forwardUriGrantFlags(source: Intent, target: Intent) {
