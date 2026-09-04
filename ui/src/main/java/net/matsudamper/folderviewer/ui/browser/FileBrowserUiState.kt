@@ -25,6 +25,8 @@ data class FileBrowserUiState(
     data class ExtractDialogState(
         val folderName: String,
         val isExtracting: Boolean,
+        val isExtractComplete: Boolean,
+        val statusMessage: String?,
         val jobId: Long?,
         val mode: ExtractDialogMode,
         val progress: Float? = null,

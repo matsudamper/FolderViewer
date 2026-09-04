@@ -49,6 +49,8 @@ class ExternalExtractViewModel @AssistedInject constructor(
                 enqueueExtract(outputName.trim())
             }
         }
+
+        override fun onOpenResult() = Unit
     }
 
     private val _uiState = MutableStateFlow(createInitialState())
@@ -62,6 +64,8 @@ class ExternalExtractViewModel @AssistedInject constructor(
             defaultName = ExtractableFileNameUtil.defaultOutputName(args.fileName, args.extractType.toExtractableType()),
             mode = args.extractType.toExtractDialogMode(),
             isExtracting = false,
+            isExtractComplete = false,
+            statusMessage = null,
             locationMessage = args.locationMessage,
             callbacks = callbacks,
         )

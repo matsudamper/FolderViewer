@@ -75,7 +75,7 @@ internal class FileBrowserExtractCoordinator(
                     parentFileObjectId = dependencies.fileObjectId,
                     parentDisplayPath = dependencies.displayPath.orEmpty(),
                     localFolderPath = localFolderPath,
-                    openOnComplete = true,
+                    openOnComplete = false,
                 ),
             )
             val inputData = Data.Builder()
@@ -123,7 +123,10 @@ internal class FileBrowserExtractCoordinator(
                         dependencies.refreshFiles()
                         if (dependencies.isExtractDialogOpenForJob(event.jobId)) {
                             stopProgressObservation()
-                            dependencies.closeExtractDialog()
+                            dependencies.updateExtractDialogOnComplete(
+                                event.jobId,
+                                event.message,
+                            )
                         } else {
                             dependencies.uiChannelEvent.send(
                                 FileBrowserUiEvent.ShowSnackbar(
@@ -137,7 +140,10 @@ internal class FileBrowserExtractCoordinator(
                     is ExtractJobCompletionWatcher.CompletionUiEvent.Failed -> {
                         if (dependencies.isExtractDialogOpenForJob(event.jobId)) {
                             stopProgressObservation()
-                            dependencies.closeExtractDialog()
+                            dependencies.updateExtractDialogOnFailed(
+                                event.jobId,
+                                event.message,
+                            )
                         } else {
                             dependencies.uiChannelEvent.send(
                                 FileBrowserUiEvent.ShowSnackbar(
@@ -187,7 +193,8 @@ internal class FileBrowserExtractCoordinator(
         val clearSelection: () -> Unit,
         val refreshFiles: suspend () -> Unit,
         val isExtractDialogOpenForJob: (Long) -> Boolean,
-        val closeExtractDialog: () -> Unit,
+        val updateExtractDialogOnComplete: (Long, String) -> Unit,
+        val updateExtractDialogOnFailed: (Long, String) -> Unit,
         val extractJobCompletionWatcher: ExtractJobCompletionWatcher,
         val getRepository: suspend () -> FileRepository,
         val openWithExternalPlayer: suspend (FileItem) -> Unit,

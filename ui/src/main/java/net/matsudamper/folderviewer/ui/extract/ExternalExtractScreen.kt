@@ -36,11 +36,14 @@ fun ExternalExtractScreen(
                 defaultName = uiState.defaultName,
                 mode = uiState.mode,
                 isExtracting = uiState.isExtracting,
+                isExtractComplete = uiState.isExtractComplete,
+                statusMessage = uiState.statusMessage,
                 hintMessage = uiState.locationMessage,
                 progress = uiState.progress,
                 progressText = uiState.progressText,
                 onDismissRequest = uiState.callbacks::onDismissRequest,
                 onConfirm = uiState.callbacks::onConfirm,
+                onOpenResult = uiState.callbacks::onOpenResult,
             )
         }
     }
@@ -54,11 +57,15 @@ private fun ExternalExtractScreenPreview() {
             defaultName = "archive",
             mode = ExtractDialogMode.ZipFolder,
             isExtracting = false,
+            isExtractComplete = false,
+            statusMessage = null,
             locationMessage = "元の場所に書き込めないため、Documents/FolderViewer に展開します",
             callbacks = object : ExternalExtractUiState.Callbacks {
                 override fun onDismissRequest() = Unit
 
                 override fun onConfirm(outputName: String) = Unit
+
+                override fun onOpenResult() = Unit
             },
         ),
         snackbarHostState = SnackbarHostState(),

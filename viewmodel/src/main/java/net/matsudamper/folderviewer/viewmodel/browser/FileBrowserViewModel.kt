@@ -92,7 +92,8 @@ class FileBrowserViewModel @AssistedInject constructor(
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> = MutableStateFlow(ViewModelState())
 
     private val extractCoordinator by lazy {
-        FileBrowserExtractCoordinator(
+        createFileBrowserExtractCoordinator(
+            viewModelStateFlow = viewModelStateFlow,
             dependencies = FileBrowserExtractCoordinator.Dependencies(
                 application = getApplication(),
                 extractJobRepository = extractJobRepository,
@@ -108,13 +109,9 @@ class FileBrowserViewModel @AssistedInject constructor(
                     }
                 },
                 refreshFiles = { fetchFilesInternal() },
-                isExtractDialogOpenForJob = { jobId ->
-                    val dialog = viewModelStateFlow.value.extractDialog
-                    dialog?.isExtracting == true && dialog.jobId == jobId
-                },
-                closeExtractDialog = {
-                    viewModelStateFlow.update { it.copy(extractDialog = null) }
-                },
+                isExtractDialogOpenForJob = { false },
+                updateExtractDialogOnComplete = { _, _ -> },
+                updateExtractDialogOnFailed = { _, _ -> },
                 extractJobCompletionWatcher = extractJobCompletionWatcher,
                 getRepository = { getRepository() },
                 openWithExternalPlayer = { fileItem -> openWithExternalPlayer(fileItem) },
@@ -408,6 +405,8 @@ class FileBrowserViewModel @AssistedInject constructor(
                     extractDialog = ViewModelState.ExtractDialogState(
                         folderName = folderName,
                         isExtracting = false,
+                        isExtractComplete = false,
+                        statusMessage = null,
                         jobId = null,
                         mode = dialogMode,
                     ),
@@ -443,6 +442,8 @@ class FileBrowserViewModel @AssistedInject constructor(
                         extractDialog = ViewModelState.ExtractDialogState(
                             folderName = request.outputName,
                             isExtracting = true,
+                            isExtractComplete = false,
+                            statusMessage = null,
                             jobId = jobId,
                             mode = state.extractDialog?.mode ?: ExtractDialogMode.ZipFolder,
                         ),
@@ -455,6 +456,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         override fun onOpenExtractResult(jobId: Long) {
             viewModelScope.launch {
                 extractCoordinator.openExtractResult(jobId)
+                extractCoordinator.closeDialog(viewModelStateFlow)
             }
         }
 
@@ -1282,6 +1284,8 @@ class FileBrowserViewModel @AssistedInject constructor(
         data class ExtractDialogState(
             val folderName: String,
             val isExtracting: Boolean,
+            val isExtractComplete: Boolean,
+            val statusMessage: String?,
             val jobId: Long?,
             val mode: ExtractDialogMode,
         )

@@ -23,8 +23,11 @@ internal fun FileBrowserExtractDialog(
     defaultName: String,
     mode: ExtractDialogMode,
     isExtracting: Boolean,
+    isExtractComplete: Boolean,
+    statusMessage: String?,
     onDismissRequest: () -> Unit,
     onConfirm: (String) -> Unit,
+    onOpenResult: () -> Unit,
     hintMessage: String? = null,
     progress: Float? = null,
     progressText: String? = null,
@@ -44,6 +47,7 @@ internal fun FileBrowserExtractDialog(
         ExtractDialogMode.XzFile,
         -> "ファイル名"
     }
+    val showExtractProgress = isExtracting || isExtractComplete || statusMessage != null
     AlertDialog(
         onDismissRequest = onDismissRequest,
         title = { Text(dialogTitle) },
@@ -55,25 +59,34 @@ internal fun FileBrowserExtractDialog(
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
-                if (isExtracting) {
-                    if (progress != null) {
-                        LinearProgressIndicator(
-                            progress = { progress },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
-                        )
-                    } else {
-                        LinearProgressIndicator(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
+                if (showExtractProgress) {
+                    if (isExtracting) {
+                        if (progress != null) {
+                            LinearProgressIndicator(
+                                progress = { progress },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
+                            )
+                        } else {
+                            LinearProgressIndicator(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
+                            )
+                        }
+                        Text(
+                            text = progressText ?: "解凍中...",
+                            modifier = Modifier.padding(top = 8.dp),
                         )
                     }
-                    Text(
-                        text = progressText ?: "解凍中...",
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
+                    statusMessage?.let { message ->
+                        Text(
+                            text = message,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                    }
                 } else {
                     TextField(
                         value = extractNameInput,
@@ -85,7 +98,14 @@ internal fun FileBrowserExtractDialog(
             }
         },
         confirmButton = {
-            if (!isExtracting) {
+            if (showExtractProgress) {
+                TextButton(
+                    onClick = onOpenResult,
+                    enabled = isExtractComplete,
+                ) {
+                    Text("開く")
+                }
+            } else {
                 TextButton(
                     onClick = {
                         if (extractNameInput.isNotBlank()) {
@@ -100,7 +120,7 @@ internal fun FileBrowserExtractDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismissRequest) {
-                Text(if (isExtracting) "閉じる" else "キャンセル")
+                Text(if (showExtractProgress) "閉じる" else "キャンセル")
             }
         },
     )
@@ -113,8 +133,11 @@ private fun FileBrowserExtractDialogZipPreview() {
         defaultName = "archive",
         mode = ExtractDialogMode.ZipFolder,
         isExtracting = false,
+        isExtractComplete = false,
+        statusMessage = null,
         onDismissRequest = {},
         onConfirm = {},
+        onOpenResult = {},
     )
 }
 
@@ -125,8 +148,11 @@ private fun FileBrowserExtractDialogZstPreview() {
         defaultName = "archive.tar",
         mode = ExtractDialogMode.ZstFile,
         isExtracting = false,
+        isExtractComplete = false,
+        statusMessage = null,
         onDismissRequest = {},
         onConfirm = {},
+        onOpenResult = {},
     )
 }
 
@@ -137,8 +163,11 @@ private fun FileBrowserExtractDialogXzPreview() {
         defaultName = "archive.tar",
         mode = ExtractDialogMode.XzFile,
         isExtracting = false,
+        isExtractComplete = false,
+        statusMessage = null,
         onDismissRequest = {},
         onConfirm = {},
+        onOpenResult = {},
     )
 }
 
@@ -149,10 +178,13 @@ private fun FileBrowserExtractDialogExtractingFileCountPreview() {
         defaultName = "archive",
         mode = ExtractDialogMode.ZipFolder,
         isExtracting = true,
+        isExtractComplete = false,
+        statusMessage = null,
         progress = 0.35f,
         progressText = "35/100 ファイル",
         onDismissRequest = {},
         onConfirm = {},
+        onOpenResult = {},
     )
 }
 
@@ -163,9 +195,27 @@ private fun FileBrowserExtractDialogExtractingBytesPreview() {
         defaultName = "archive.tar.xz",
         mode = ExtractDialogMode.XzFile,
         isExtracting = true,
+        isExtractComplete = false,
+        statusMessage = null,
         progress = 0.6f,
         progressText = "12.0 MB/20.0 MB",
         onDismissRequest = {},
         onConfirm = {},
+        onOpenResult = {},
+    )
+}
+
+@Preview
+@Composable
+private fun FileBrowserExtractDialogCompletePreview() {
+    FileBrowserExtractDialog(
+        defaultName = "archive",
+        mode = ExtractDialogMode.ZipFolder,
+        isExtracting = false,
+        isExtractComplete = true,
+        statusMessage = "archiveに展開しました",
+        onDismissRequest = {},
+        onConfirm = {},
+        onOpenResult = {},
     )
 }
