@@ -54,6 +54,7 @@ class ExternalExtractActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.setBackgroundDrawableResource(android.R.color.transparent)
         enableEdgeToEdge()
         Coil.setImageLoader(imageLoader)
 
