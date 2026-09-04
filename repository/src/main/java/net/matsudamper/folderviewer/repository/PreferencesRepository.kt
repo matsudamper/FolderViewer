@@ -13,11 +13,13 @@ import com.google.protobuf.InvalidProtocolBufferException
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
+import net.matsudamper.folderviewer.common.StorageId
 import net.matsudamper.folderviewer.repository.proto.BrowserDisplayMode
 import net.matsudamper.folderviewer.repository.proto.BrowserPreferencesProto
 import net.matsudamper.folderviewer.repository.proto.ExternalPickerDisplayConfig
 import net.matsudamper.folderviewer.repository.proto.FileBrowserDisplayConfig
 import net.matsudamper.folderviewer.repository.proto.FolderBrowserDisplayConfig
+import net.matsudamper.folderviewer.repository.proto.FolderPathSortConfig
 import net.matsudamper.folderviewer.repository.proto.SortConfigProto
 
 private const val DataStorageFileName = "browser_preferences.pb"
@@ -64,6 +66,28 @@ class PreferencesRepository @Inject constructor(
     val externalPickerDisplayMode: Flow<DisplayMode> = context.browserPreferencesDataStore.data
         .map { proto ->
             proto.externalPickerDisplayConfig.displayMode.toDisplayMode()
+        }
+
+    fun folderBrowserFolderSortConfigForPath(pathKey: String): Flow<FileSortConfig> =
+        context.browserPreferencesDataStore.data.map { proto ->
+            proto.folderBrowserDisplayConfig.sortConfigForPath(pathKey).folderSort.toDomain()
+        }
+
+    fun folderBrowserFileSortConfigForPath(pathKey: String): Flow<FileSortConfig> =
+        context.browserPreferencesDataStore.data.map { proto ->
+            proto.folderBrowserDisplayConfig.sortConfigForPath(pathKey).fileSort.toDomain()
+        }
+
+    fun fileBrowserSortConfigForPath(pathKey: String): Flow<FileSortConfig> =
+        context.browserPreferencesDataStore.data.map { proto ->
+            proto.fileBrowserDisplayConfig.sortConfigByPathMap[pathKey]?.toDomain()
+                ?: proto.fileBrowserDisplayConfig.sortConfig.toDomain()
+        }
+
+    fun externalPickerSortConfigForPath(pathKey: String): Flow<FileSortConfig> =
+        context.browserPreferencesDataStore.data.map { proto ->
+            proto.externalPickerDisplayConfig.sortConfigByPathMap[pathKey]?.toDomain()
+                ?: proto.externalPickerDisplayConfig.sortConfig.toDomain()
         }
 
     suspend fun saveFolderBrowserFolderSortConfig(config: FileSortConfig) {
@@ -138,6 +162,68 @@ class PreferencesRepository @Inject constructor(
         }
     }
 
+    suspend fun saveFolderBrowserFolderSortConfigForPath(pathKey: String, config: FileSortConfig) {
+        context.browserPreferencesDataStore.updateData { currentPrefs ->
+            val displayConfig = currentPrefs.folderBrowserDisplayConfig
+            val pathSortConfig = displayConfig.sortConfigForPath(pathKey)
+            currentPrefs.toBuilder()
+                .setFolderBrowserDisplayConfig(
+                    displayConfig.toBuilder()
+                        .putSortConfigByPath(
+                            pathKey,
+                            pathSortConfig.toBuilder()
+                                .setFolderSort(config.toProto())
+                                .build(),
+                        )
+                        .build(),
+                )
+                .build()
+        }
+    }
+
+    suspend fun saveFolderBrowserFileSortConfigForPath(pathKey: String, config: FileSortConfig) {
+        context.browserPreferencesDataStore.updateData { currentPrefs ->
+            val displayConfig = currentPrefs.folderBrowserDisplayConfig
+            val pathSortConfig = displayConfig.sortConfigForPath(pathKey)
+            currentPrefs.toBuilder()
+                .setFolderBrowserDisplayConfig(
+                    displayConfig.toBuilder()
+                        .putSortConfigByPath(
+                            pathKey,
+                            pathSortConfig.toBuilder()
+                                .setFileSort(config.toProto())
+                                .build(),
+                        )
+                        .build(),
+                )
+                .build()
+        }
+    }
+
+    suspend fun saveFileBrowserSortConfigForPath(pathKey: String, config: FileSortConfig) {
+        context.browserPreferencesDataStore.updateData { currentPrefs ->
+            currentPrefs.toBuilder()
+                .setFileBrowserDisplayConfig(
+                    currentPrefs.fileBrowserDisplayConfig.toBuilder()
+                        .putSortConfigByPath(pathKey, config.toProto())
+                        .build(),
+                )
+                .build()
+        }
+    }
+
+    suspend fun saveExternalPickerSortConfigForPath(pathKey: String, config: FileSortConfig) {
+        context.browserPreferencesDataStore.updateData { currentPrefs ->
+            currentPrefs.toBuilder()
+                .setExternalPickerDisplayConfig(
+                    currentPrefs.externalPickerDisplayConfig.toBuilder()
+                        .putSortConfigByPath(pathKey, config.toProto())
+                        .build(),
+                )
+                .build()
+        }
+    }
+
     suspend fun saveExternalPickerDisplayMode(mode: DisplayMode) {
         context.browserPreferencesDataStore.updateData { currentPrefs ->
             currentPrefs.toBuilder()
@@ -148,6 +234,13 @@ class PreferencesRepository @Inject constructor(
                 )
                 .build()
         }
+    }
+
+    private fun FolderBrowserDisplayConfig.sortConfigForPath(pathKey: String): FolderPathSortConfig {
+        return sortConfigByPathMap[pathKey] ?: FolderPathSortConfig.newBuilder()
+            .setFolderSort(folderSort)
+            .setFileSort(fileSort)
+            .build()
     }
 
     private fun SortConfigProto.toDomain(): FileSortConfig {
@@ -204,6 +297,12 @@ class PreferencesRepository @Inject constructor(
     enum class DisplayMode {
         List,
         Grid,
+    }
+
+    companion object {
+        fun sortConfigPathKey(storageId: StorageId, displayPath: String?): String {
+            return "${storageId.id}:${displayPath ?: ""}"
+        }
     }
 }
 

@@ -50,6 +50,7 @@ import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 import net.matsudamper.folderviewer.ui.util.formatBytes
+import net.matsudamper.folderviewer.viewmodel.util.BrowserSortConfigHelper
 import net.matsudamper.folderviewer.viewmodel.util.FileUtil
 import net.matsudamper.folderviewer.viewmodel.util.ZipFileUtil
 import net.matsudamper.folderviewer.viewmodel.worker.FileDeleteWorker
@@ -140,15 +141,11 @@ class FileBrowserViewModel @AssistedInject constructor(
         override fun onSortConfigChanged(config: FileBrowserUiState.FileSortConfig) {
             viewModelStateFlow.update { it.copy(sortConfig = config) }
             viewModelScope.launch {
-                preferencesRepository.saveFileBrowserSortConfig(
-                    PreferencesRepository.FileSortConfig(
-                        key = when (config.key) {
-                            FileBrowserUiState.FileSortKey.Name -> PreferencesRepository.FileSortKey.Name
-                            FileBrowserUiState.FileSortKey.Date -> PreferencesRepository.FileSortKey.Date
-                            FileBrowserUiState.FileSortKey.Size -> PreferencesRepository.FileSortKey.Size
-                        },
-                        isAscending = config.isAscending,
-                    ),
+                BrowserSortConfigHelper.saveFileBrowserSortConfig(
+                    preferencesRepository,
+                    fileObjectId.storageId,
+                    arg.displayPath,
+                    config,
                 )
             }
         }
@@ -651,19 +648,12 @@ class FileBrowserViewModel @AssistedInject constructor(
     }
 
     private suspend fun loadSortConfig() {
-        preferencesRepository.fileBrowserSortConfig.collect { config ->
-            viewModelStateFlow.update {
-                it.copy(
-                    sortConfig = FileBrowserUiState.FileSortConfig(
-                        key = when (config.key) {
-                            PreferencesRepository.FileSortKey.Name -> FileBrowserUiState.FileSortKey.Name
-                            PreferencesRepository.FileSortKey.Date -> FileBrowserUiState.FileSortKey.Date
-                            PreferencesRepository.FileSortKey.Size -> FileBrowserUiState.FileSortKey.Size
-                        },
-                        isAscending = config.isAscending,
-                    ),
-                )
-            }
+        BrowserSortConfigHelper.fileBrowserSortConfigFlow(
+            preferencesRepository,
+            fileObjectId.storageId,
+            arg.displayPath,
+        ).collect { config ->
+            viewModelStateFlow.update { it.copy(sortConfig = config) }
         }
     }
 

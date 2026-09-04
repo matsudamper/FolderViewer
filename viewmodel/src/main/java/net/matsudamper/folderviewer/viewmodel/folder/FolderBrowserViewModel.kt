@@ -33,6 +33,7 @@ import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiEvent
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiState
+import net.matsudamper.folderviewer.viewmodel.util.BrowserSortConfigHelper
 import net.matsudamper.folderviewer.viewmodel.util.FileSortComparator
 import net.matsudamper.folderviewer.viewmodel.util.FileUtil
 
@@ -75,14 +76,24 @@ class FolderBrowserViewModel @AssistedInject constructor(
         override fun onFolderSortConfigChanged(config: FolderBrowserUiState.FileSortConfig) {
             viewModelStateFlow.update { it.copy(folderSortConfig = config) }
             viewModelScope.launch {
-                preferencesRepository.saveFolderBrowserFolderSortConfig(config.toRepository())
+                BrowserSortConfigHelper.saveFolderBrowserFolderSortConfig(
+                    preferencesRepository,
+                    arg.fileId.storageId,
+                    arg.displayPath,
+                    config,
+                )
             }
         }
 
         override fun onFileSortConfigChanged(config: FolderBrowserUiState.FileSortConfig) {
             viewModelStateFlow.update { it.copy(fileSortConfig = config) }
             viewModelScope.launch {
-                preferencesRepository.saveFolderBrowserFileSortConfig(config.toRepository())
+                BrowserSortConfigHelper.saveFolderBrowserFileSortConfig(
+                    preferencesRepository,
+                    arg.fileId.storageId,
+                    arg.displayPath,
+                    config,
+                )
             }
         }
 
@@ -181,27 +192,21 @@ class FolderBrowserViewModel @AssistedInject constructor(
 
     private suspend fun collectSortConfig() {
         combine(
-            preferencesRepository.folderBrowserFolderSortConfig,
-            preferencesRepository.folderBrowserFileSortConfig,
+            BrowserSortConfigHelper.folderBrowserFolderSortConfigFlow(
+                preferencesRepository,
+                arg.fileId.storageId,
+                arg.displayPath,
+            ),
+            BrowserSortConfigHelper.folderBrowserFileSortConfigFlow(
+                preferencesRepository,
+                arg.fileId.storageId,
+                arg.displayPath,
+            ),
         ) { folderConfig, fileConfig ->
             viewModelStateFlow.update {
                 it.copy(
-                    folderSortConfig = FolderBrowserUiState.FileSortConfig(
-                        key = when (folderConfig.key) {
-                            PreferencesRepository.FileSortKey.Name -> FolderBrowserUiState.FileSortKey.Name
-                            PreferencesRepository.FileSortKey.Date -> FolderBrowserUiState.FileSortKey.Date
-                            PreferencesRepository.FileSortKey.Size -> FolderBrowserUiState.FileSortKey.Size
-                        },
-                        isAscending = folderConfig.isAscending,
-                    ),
-                    fileSortConfig = FolderBrowserUiState.FileSortConfig(
-                        key = when (fileConfig.key) {
-                            PreferencesRepository.FileSortKey.Name -> FolderBrowserUiState.FileSortKey.Name
-                            PreferencesRepository.FileSortKey.Date -> FolderBrowserUiState.FileSortKey.Date
-                            PreferencesRepository.FileSortKey.Size -> FolderBrowserUiState.FileSortKey.Size
-                        },
-                        isAscending = fileConfig.isAscending,
-                    ),
+                    folderSortConfig = folderConfig,
+                    fileSortConfig = fileConfig,
                 )
             }
         }.collect()
@@ -230,17 +235,6 @@ class FolderBrowserViewModel @AssistedInject constructor(
                 viewModelStateFlow.update { it.copy(storageName = storage.name) }
             }
         }
-    }
-
-    private fun FolderBrowserUiState.FileSortConfig.toRepository(): PreferencesRepository.FileSortConfig {
-        return PreferencesRepository.FileSortConfig(
-            key = when (this.key) {
-                FolderBrowserUiState.FileSortKey.Name -> PreferencesRepository.FileSortKey.Name
-                FolderBrowserUiState.FileSortKey.Date -> PreferencesRepository.FileSortKey.Date
-                FolderBrowserUiState.FileSortKey.Size -> PreferencesRepository.FileSortKey.Size
-            },
-            isAscending = this.isAscending,
-        )
     }
 
     private suspend fun getRepository(): FileRepository {

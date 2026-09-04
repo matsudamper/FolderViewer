@@ -36,6 +36,7 @@ import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 import net.matsudamper.folderviewer.ui.picker.ExternalFilePickerUiEvent
 import net.matsudamper.folderviewer.ui.picker.ExternalFilePickerUiState
 import net.matsudamper.folderviewer.ui.util.formatBytes
+import net.matsudamper.folderviewer.viewmodel.util.BrowserSortConfigHelper
 import net.matsudamper.folderviewer.viewmodel.util.FileUtil
 
 @HiltViewModel(assistedFactory = ExternalFilePickerViewModel.Companion.Factory::class)
@@ -75,15 +76,11 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
         override fun onSortConfigChanged(config: FileBrowserUiState.FileSortConfig) {
             viewModelStateFlow.update { it.copy(sortConfig = config) }
             viewModelScope.launch {
-                preferencesRepository.saveExternalPickerSortConfig(
-                    PreferencesRepository.FileSortConfig(
-                        key = when (config.key) {
-                            FileBrowserUiState.FileSortKey.Name -> PreferencesRepository.FileSortKey.Name
-                            FileBrowserUiState.FileSortKey.Date -> PreferencesRepository.FileSortKey.Date
-                            FileBrowserUiState.FileSortKey.Size -> PreferencesRepository.FileSortKey.Size
-                        },
-                        isAscending = config.isAscending,
-                    ),
+                BrowserSortConfigHelper.saveExternalPickerSortConfig(
+                    preferencesRepository,
+                    arg.fileId.storageId,
+                    arg.displayPath,
+                    config,
                 )
             }
         }
@@ -255,19 +252,12 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
     }
 
     private suspend fun loadSortConfig() {
-        preferencesRepository.externalPickerSortConfig.collect { config ->
-            viewModelStateFlow.update {
-                it.copy(
-                    sortConfig = FileBrowserUiState.FileSortConfig(
-                        key = when (config.key) {
-                            PreferencesRepository.FileSortKey.Name -> FileBrowserUiState.FileSortKey.Name
-                            PreferencesRepository.FileSortKey.Date -> FileBrowserUiState.FileSortKey.Date
-                            PreferencesRepository.FileSortKey.Size -> FileBrowserUiState.FileSortKey.Size
-                        },
-                        isAscending = config.isAscending,
-                    ),
-                )
-            }
+        BrowserSortConfigHelper.externalPickerSortConfigFlow(
+            preferencesRepository,
+            arg.fileId.storageId,
+            arg.displayPath,
+        ).collect { config ->
+            viewModelStateFlow.update { it.copy(sortConfig = config) }
         }
     }
 
