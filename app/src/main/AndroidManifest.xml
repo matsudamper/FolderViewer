@@ -83,8 +83,10 @@
         <activity
             android:name=".ExternalExtractActivity"
             android:exported="true"
+            android:excludeFromRecents="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.FolderViewer">
+            android:taskAffinity=""
+            android:theme="@style/Theme.FolderViewer.Transparent">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

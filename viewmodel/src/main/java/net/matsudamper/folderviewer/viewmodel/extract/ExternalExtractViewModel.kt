@@ -71,8 +71,11 @@ class ExternalExtractViewModel @AssistedInject constructor(
         if (outputName.isBlank()) {
             return
         }
-        _uiState.value = _uiState.value.copy(isExtracting = true)
-        val jobId = runCatching {
+        _uiState.value = _uiState.value.copy(
+            isExtracting = true,
+            resultMessage = null,
+        )
+        runCatching {
             val operationId = extractJobRepository.createExternalJob(
                 ExtractJobRepository.NewExternalExtractJob(
                     sourceAbsolutePath = args.sourcePath,
@@ -97,25 +100,16 @@ class ExternalExtractViewModel @AssistedInject constructor(
             )
             WorkManager.getInstance(getApplication()).enqueue(workRequest)
             extractJobCompletionWatcher.watchJob(operationId)
-            observeJobFailure(operationId)
+            observeJobCompletion(operationId)
             startExtractProgressObservation(operationId)
             operationId
         }.getOrElse { e ->
-            _uiState.value = _uiState.value.copy(isExtracting = false)
-            viewModelEventChannel.send(
-                ViewModelEvent.ShowSnackbar(
-                    message = "解凍開始失敗: ${e.message}",
-                ),
+            _uiState.value = _uiState.value.copy(
+                isExtracting = false,
+                resultMessage = "解凍開始失敗: ${e.message}",
             )
             return
         }
-        viewModelEventChannel.send(
-            ViewModelEvent.ShowSnackbar(
-                message = "解凍を開始しました",
-                extractDetailJobId = jobId,
-                finishAfterDismiss = true,
-            ),
-        )
     }
 
     private fun startExtractProgressObservation(jobId: Long) {
@@ -133,31 +127,24 @@ class ExternalExtractViewModel @AssistedInject constructor(
         }
     }
 
-    private fun observeJobFailure(jobId: Long) {
+    private fun observeJobCompletion(jobId: Long) {
         viewModelScope.launch {
             val event = extractJobCompletionWatcher.completionUiEvents
                 .filter { it.jobId == jobId }
                 .first()
-            if (event is ExtractJobCompletionWatcher.CompletionUiEvent.Failed) {
-                _uiState.value = _uiState.value.copy(isExtracting = false)
-                viewModelEventChannel.send(
-                    ViewModelEvent.ShowSnackbar(
-                        message = event.message,
-                        extractDetailJobId = jobId,
-                    ),
-                )
-            }
+            extractProgressJob?.cancel()
+            extractProgressJob = null
+            _uiState.value = _uiState.value.copy(
+                isExtracting = false,
+                resultMessage = event.message,
+                progress = null,
+                progressText = null,
+            )
         }
     }
 
     sealed interface ViewModelEvent {
         data object Finish : ViewModelEvent
-
-        data class ShowSnackbar(
-            val message: String,
-            val extractDetailJobId: Long? = null,
-            val finishAfterDismiss: Boolean = false,
-        ) : ViewModelEvent
     }
 
     companion object {

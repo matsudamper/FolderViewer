@@ -2,4 +2,11 @@
 <resources>
 
     <style name="Theme.FolderViewer" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="Theme.FolderViewer.Transparent" parent="Theme.FolderViewer">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:colorBackgroundCacheHint">@null</item>
+    </style>
 </resources>

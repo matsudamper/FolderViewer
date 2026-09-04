@@ -98,7 +98,6 @@ class FileBrowserViewModel @AssistedInject constructor(
                 extractJobRepository = extractJobRepository,
                 operationRepository = operationRepository,
                 selectionModeRepository = selectionModeRepository,
-                uiChannelEvent = uiChannelEvent,
                 fileObjectId = fileObjectId,
                 displayPath = arg.displayPath,
                 getLocalFolderPath = { viewModelStateFlow.value.localFolderPath },
@@ -109,12 +108,9 @@ class FileBrowserViewModel @AssistedInject constructor(
                 },
                 refreshFiles = { fetchFilesInternal() },
                 isExtractDialogOpenForJob = { jobId ->
-                    val dialog = viewModelStateFlow.value.extractDialog
-                    dialog?.isExtracting == true && dialog.jobId == jobId
+                    viewModelStateFlow.value.extractDialog?.jobId == jobId
                 },
-                closeExtractDialog = {
-                    viewModelStateFlow.update { it.copy(extractDialog = null) }
-                },
+                viewModelStateFlow = viewModelStateFlow,
                 extractJobCompletionWatcher = extractJobCompletionWatcher,
                 getRepository = { getRepository() },
                 openWithExternalPlayer = { fileItem -> openWithExternalPlayer(fileItem) },
@@ -434,27 +430,32 @@ class FileBrowserViewModel @AssistedInject constructor(
             val request = pendingExtractRequest ?: return
             pendingExtractRequest = null
             viewModelScope.launch {
-                val jobId = extractCoordinator.enqueueExtract(request) ?: run {
-                    viewModelStateFlow.update { it.copy(extractDialog = null) }
-                    return@launch
-                }
-                viewModelStateFlow.update { state ->
-                    state.copy(
-                        extractDialog = ViewModelState.ExtractDialogState(
-                            folderName = request.outputName,
-                            isExtracting = true,
-                            jobId = jobId,
-                            mode = state.extractDialog?.mode ?: ExtractDialogMode.ZipFolder,
-                        ),
-                    )
-                }
-                extractCoordinator.startProgressObservation(viewModelScope, jobId)
-            }
-        }
+                when (val result = extractCoordinator.enqueueExtract(request)) {
+                    is EnqueueExtractResult.Failure -> {
+                        viewModelStateFlow.update { state ->
+                            state.copy(
+                                extractDialog = state.extractDialog?.copy(
+                                    isExtracting = false,
+                                    resultMessage = result.message,
+                                ),
+                            )
+                        }
+                    }
 
-        override fun onOpenExtractResult(jobId: Long) {
-            viewModelScope.launch {
-                extractCoordinator.openExtractResult(jobId)
+                    is EnqueueExtractResult.Success -> {
+                        viewModelStateFlow.update { state ->
+                            state.copy(
+                                extractDialog = ViewModelState.ExtractDialogState(
+                                    folderName = request.outputName,
+                                    isExtracting = true,
+                                    jobId = result.jobId,
+                                    mode = state.extractDialog?.mode ?: ExtractDialogMode.ZipFolder,
+                                ),
+                            )
+                        }
+                        extractCoordinator.startProgressObservation(viewModelScope, result.jobId)
+                    }
+                }
             }
         }
 
@@ -1284,6 +1285,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             val isExtracting: Boolean,
             val jobId: Long?,
             val mode: ExtractDialogMode,
+            val resultMessage: String? = null,
         )
 
         sealed interface SelectionState {

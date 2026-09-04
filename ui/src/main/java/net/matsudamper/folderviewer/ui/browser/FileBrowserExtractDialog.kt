@@ -28,6 +28,7 @@ internal fun FileBrowserExtractDialog(
     hintMessage: String? = null,
     progress: Float? = null,
     progressText: String? = null,
+    resultMessage: String? = null,
 ) {
     var extractNameInput by remember(defaultName, mode) {
         mutableStateOf(defaultName)
@@ -44,6 +45,7 @@ internal fun FileBrowserExtractDialog(
         ExtractDialogMode.XzFile,
         -> "ファイル名"
     }
+    val showResult = resultMessage != null
     AlertDialog(
         onDismissRequest = onDismissRequest,
         title = { Text(dialogTitle) },
@@ -55,37 +57,48 @@ internal fun FileBrowserExtractDialog(
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
-                if (isExtracting) {
-                    if (progress != null) {
-                        LinearProgressIndicator(
-                            progress = { progress },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
-                        )
-                    } else {
-                        LinearProgressIndicator(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
+                when {
+                    showResult -> {
+                        Text(
+                            text = resultMessage,
+                            style = MaterialTheme.typography.bodyMedium,
                         )
                     }
-                    Text(
-                        text = progressText ?: "解凍中...",
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                } else {
-                    TextField(
-                        value = extractNameInput,
-                        onValueChange = { extractNameInput = it },
-                        label = { Text(nameLabel) },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+
+                    isExtracting -> {
+                        if (progress != null) {
+                            LinearProgressIndicator(
+                                progress = { progress },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
+                            )
+                        } else {
+                            LinearProgressIndicator(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
+                            )
+                        }
+                        Text(
+                            text = progressText ?: "解凍中...",
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                    }
+
+                    else -> {
+                        TextField(
+                            value = extractNameInput,
+                            onValueChange = { extractNameInput = it },
+                            label = { Text(nameLabel) },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
             }
         },
         confirmButton = {
-            if (!isExtracting) {
+            if (!isExtracting && !showResult) {
                 TextButton(
                     onClick = {
                         if (extractNameInput.isNotBlank()) {
@@ -100,7 +113,7 @@ internal fun FileBrowserExtractDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismissRequest) {
-                Text(if (isExtracting) "閉じる" else "キャンセル")
+                Text(if (isExtracting || showResult) "閉じる" else "キャンセル")
             }
         },
     )
@@ -151,6 +164,19 @@ private fun FileBrowserExtractDialogExtractingFileCountPreview() {
         isExtracting = true,
         progress = 0.35f,
         progressText = "35/100 ファイル",
+        onDismissRequest = {},
+        onConfirm = {},
+    )
+}
+
+@Preview
+@Composable
+private fun FileBrowserExtractDialogResultPreview() {
+    FileBrowserExtractDialog(
+        defaultName = "archive",
+        mode = ExtractDialogMode.ZipFolder,
+        isExtracting = false,
+        resultMessage = "archiveに展開しました",
         onDismissRequest = {},
         onConfirm = {},
     )

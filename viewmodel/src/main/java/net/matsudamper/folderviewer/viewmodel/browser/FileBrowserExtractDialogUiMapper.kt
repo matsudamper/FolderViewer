@@ -11,6 +11,24 @@ internal fun FileBrowserExtractCoordinator.closeDialog(
     viewModelStateFlow.update { it.copy(extractDialog = null) }
 }
 
+internal fun FileBrowserExtractCoordinator.showExtractDialogResult(
+    viewModelStateFlow: MutableStateFlow<FileBrowserViewModel.ViewModelState>,
+    jobId: Long,
+    message: String,
+) {
+    stopProgressObservation()
+    viewModelStateFlow.update { state ->
+        val dialog = state.extractDialog ?: return@update state
+        if (dialog.jobId != jobId) return@update state
+        state.copy(
+            extractDialog = dialog.copy(
+                isExtracting = false,
+                resultMessage = message,
+            ),
+        )
+    }
+}
+
 internal fun mapExtractDialogUiState(
     dialog: FileBrowserViewModel.ViewModelState.ExtractDialogState,
     progress: ExtractDialogProgress?,
@@ -22,5 +40,6 @@ internal fun mapExtractDialogUiState(
         mode = dialog.mode,
         progress = progress?.progress,
         progressText = progress?.progressText,
+        resultMessage = dialog.resultMessage,
     )
 }
