@@ -80,17 +80,28 @@ internal object ZipFileUtil {
     }
 
     fun listFileEntries(zipFile: File): List<String> {
+        val fileNames = mutableListOf<String>()
         ZipFile(zipFile, ZIP_NAME_CHARSET).use { zip ->
+            var fileEntryCount = 0
             val entries = zip.entries()
-            val fileNames = mutableListOf<String>()
             while (entries.hasMoreElements()) {
                 val entry = entries.nextElement()
-                if (!entry.isDirectory) {
-                    fileNames += entry.name
+                if (entry.isDirectory) {
+                    continue
                 }
+                fileEntryCount = nextFileEntryCount(fileEntryCount)
+                fileNames += entry.name
             }
-            return fileNames
         }
+        return fileNames
+    }
+
+    private fun nextFileEntryCount(currentCount: Int): Int {
+        val nextCount = currentCount + 1
+        if (nextCount > MAX_ENTRY_COUNT) {
+            throw ExtractException.LimitExceeded("ZIPエントリ数が上限を超えています")
+        }
+        return nextCount
     }
 
     private fun extractZipContents(
