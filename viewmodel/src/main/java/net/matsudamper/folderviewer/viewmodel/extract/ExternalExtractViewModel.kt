@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +24,7 @@ import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.ui.browser.ExtractDialogMode
 import net.matsudamper.folderviewer.ui.extract.ExternalExtractUiState
 import net.matsudamper.folderviewer.viewmodel.browser.ExtractJobCompletionWatcher
+import net.matsudamper.folderviewer.viewmodel.util.ExtractProgressText
 import net.matsudamper.folderviewer.viewmodel.util.ExtractableFileNameUtil
 import net.matsudamper.folderviewer.viewmodel.worker.FileExtractWorker
 
@@ -31,8 +33,11 @@ class ExternalExtractViewModel @AssistedInject constructor(
     @Assisted private val args: ExternalExtractLaunchArgs,
     private val extractJobRepository: ExtractJobRepository,
     private val extractJobCompletionWatcher: ExtractJobCompletionWatcher,
+    private val operationRepository: OperationRepository,
     application: Application,
 ) : AndroidViewModel(application) {
+
+    private var extractProgressJob: Job? = null
 
     private val callbacks = object : ExternalExtractUiState.Callbacks {
         override fun onDismissRequest() {
@@ -93,6 +98,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
             WorkManager.getInstance(getApplication()).enqueue(workRequest)
             extractJobCompletionWatcher.watchJob(operationId)
             observeJobFailure(operationId)
+            startExtractProgressObservation(operationId)
             operationId
         }.getOrElse { e ->
             _uiState.value = _uiState.value.copy(isExtracting = false)
@@ -110,6 +116,21 @@ class ExternalExtractViewModel @AssistedInject constructor(
                 finishAfterDismiss = true,
             ),
         )
+    }
+
+    private fun startExtractProgressObservation(jobId: Long) {
+        extractProgressJob?.cancel()
+        extractProgressJob = viewModelScope.launch {
+            operationRepository.observeProgressById(jobId).collect { progress ->
+                if (progress == null) {
+                    return@collect
+                }
+                _uiState.value = _uiState.value.copy(
+                    progress = ExtractProgressText.progressRatio(progress),
+                    progressText = ExtractProgressText.fromOperationProgress(progress),
+                )
+            }
+        }
     }
 
     private fun observeJobFailure(jobId: Long) {
