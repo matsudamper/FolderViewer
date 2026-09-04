@@ -54,16 +54,20 @@ internal object CompressedFileUtil {
         progressListener: ExtractProgressListener? = null,
     ) {
         CountingInputStream(BufferedInputStream(FileInputStream(sourceFile))).use { countingInput ->
-            GzipCompressorInputStream(countingInput, true).use { gzipIn ->
-                BufferedOutputStream(FileOutputStream(outputFile)).use { output ->
-                    copyWithLimit(
-                        input = gzipIn,
-                        output = output,
-                        maxBytes = MAX_OUTPUT_SIZE_BYTES,
-                        onProgress = { progressListener?.onBytesTransferred(countingInput.bytesRead) },
-                    )
+            GzipCompressorInputStream.builder()
+                .setInputStream(countingInput)
+                .setDecompressConcatenated(true)
+                .get()
+                .use { gzipIn ->
+                    BufferedOutputStream(FileOutputStream(outputFile)).use { output ->
+                        copyWithLimit(
+                            input = gzipIn,
+                            output = output,
+                            maxBytes = MAX_OUTPUT_SIZE_BYTES,
+                            onProgress = { progressListener?.onBytesTransferred(countingInput.bytesRead) },
+                        )
+                    }
                 }
-            }
         }
     }
 
