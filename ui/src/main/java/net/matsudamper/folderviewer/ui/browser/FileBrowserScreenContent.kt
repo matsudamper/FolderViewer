@@ -290,6 +290,8 @@ internal fun FileBrowserScreenContent(
             defaultName = extractDialog.folderName,
             mode = extractDialog.mode,
             isExtracting = extractDialog.isExtracting,
+            progress = extractDialog.progress,
+            progressText = extractDialog.progressText,
             onDismissRequest = { uiState.callbacks.onDismissExtract() },
             onConfirm = { folderName -> uiState.callbacks.onConfirmExtract(folderName) },
         )

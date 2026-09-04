@@ -427,7 +427,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             }
             pendingExtractFileItem = null
             pendingExtractRequest = null
-            viewModelStateFlow.update { it.copy(extractDialog = null) }
+            extractCoordinator.closeDialog(viewModelStateFlow)
         }
 
         override fun onExtractPermissionResult() {
@@ -448,6 +448,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                         ),
                     )
                 }
+                extractCoordinator.startProgressObservation(viewModelScope, jobId)
             }
         }
 
@@ -520,7 +521,8 @@ class FileBrowserViewModel @AssistedInject constructor(
         viewModelStateFlow,
         selectionModeRepository.isSelectionMode,
         clipboardRepository.clipboardState,
-    ) { viewModelState, isSelectionMode, clipboardState ->
+        extractCoordinator.extractDialogProgress,
+    ) { viewModelState, isSelectionMode, clipboardState, extractDialogProgress ->
         val sortedFiles = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig))
         val selectedItems = when (viewModelState.selectedState) {
             is ViewModelState.SelectionState.NonSelected -> setOf()
@@ -595,12 +597,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                 zipHandler.isSingleExtractableFileSelected(selectedItems, viewModelState.rawFiles),
             isPasteMode = clipboardState != null,
             extractDialog = viewModelState.extractDialog?.let { dialog ->
-                FileBrowserUiState.ExtractDialogState(
-                    folderName = dialog.folderName,
-                    isExtracting = dialog.isExtracting,
-                    jobId = dialog.jobId,
-                    mode = dialog.mode,
-                )
+                mapExtractDialogUiState(dialog, extractDialogProgress)
             },
             contentState = contentState,
         )

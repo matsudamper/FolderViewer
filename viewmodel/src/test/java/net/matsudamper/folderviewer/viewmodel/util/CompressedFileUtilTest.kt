@@ -7,6 +7,7 @@ import java.nio.file.Files
 import java.util.zip.GZIPOutputStream
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.tukaani.xz.LZMA2Options
 import org.tukaani.xz.XZOutputStream
@@ -67,6 +68,28 @@ internal class CompressedFileUtilTest {
             val output = File(tempDir, "data.txt")
             CompressedFileUtil.decompress(source, output, CompressedFileUtil.Format.Xz)
             assertEquals(original, output.readText())
+        } finally {
+            tempDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun decompress_reportsCompressedInputBytesAsProgress() {
+        val tempDir = Files.createTempDirectory("compressed-file-util").toFile()
+        try {
+            val source = File(tempDir, "data.txt.xz")
+            val original = "hello xz".repeat(10_000)
+            XZOutputStream(FileOutputStream(source), LZMA2Options()).use { it.write(original.toByteArray()) }
+            val output = File(tempDir, "data.txt")
+            var maxReportedBytes = 0L
+            val progressListener = ExtractProgressListener(
+                bytesTransferredHandler = { bytes ->
+                    maxReportedBytes = maxOf(maxReportedBytes, bytes)
+                },
+            )
+            CompressedFileUtil.decompress(source, output, CompressedFileUtil.Format.Xz, progressListener)
+            assertEquals(original, output.readText())
+            assertTrue(maxReportedBytes <= source.length())
         } finally {
             tempDir.deleteRecursively()
         }

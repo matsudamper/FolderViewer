@@ -14,6 +14,8 @@ data class ExtractDetailUiState(
     val extractTypeLabel: String,
     val errorMessage: String?,
     val errorCause: String?,
+    val progress: Float?,
+    val progressText: String?,
     val callbacks: Callbacks,
 ) {
     enum class Status {

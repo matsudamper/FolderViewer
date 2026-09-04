@@ -1,5 +1,6 @@
 package net.matsudamper.folderviewer.ui.extract
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -18,6 +19,10 @@ fun ExternalExtractScreen(
     snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier,
 ) {
+    BackHandler {
+        uiState.callbacks.onDismissRequest()
+    }
+
     Scaffold(
         modifier = modifier,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -32,6 +37,8 @@ fun ExternalExtractScreen(
                 mode = uiState.mode,
                 isExtracting = uiState.isExtracting,
                 hintMessage = uiState.locationMessage,
+                progress = uiState.progress,
+                progressText = uiState.progressText,
                 onDismissRequest = uiState.callbacks::onDismissRequest,
                 onConfirm = uiState.callbacks::onConfirm,
             )

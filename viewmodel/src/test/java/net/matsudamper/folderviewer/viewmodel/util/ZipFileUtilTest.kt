@@ -98,4 +98,23 @@ internal class ZipFileUtilTest {
             tempDir.deleteRecursively()
         }
     }
+
+    @Test
+    fun listFileEntries_rejectsTooManyEntries() {
+        val tempDir = Files.createTempDirectory("zip-file-util").toFile()
+        try {
+            val zipFile = File(tempDir, "many.zip")
+            ZipOutputStream(zipFile.outputStream()).use { zipOut ->
+                repeat(10_001) { index ->
+                    zipOut.putNextEntry(ZipEntry("file$index.txt"))
+                    zipOut.write(byteArrayOf(0))
+                    zipOut.closeEntry()
+                }
+            }
+            val result = runCatching { ZipFileUtil.listFileEntries(zipFile) }
+            assertTrue(result.exceptionOrNull() is ZipFileUtil.ExtractException.LimitExceeded)
+        } finally {
+            tempDir.deleteRecursively()
+        }
+    }
 }

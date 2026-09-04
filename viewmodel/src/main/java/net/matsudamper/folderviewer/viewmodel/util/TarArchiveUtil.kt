@@ -32,7 +32,11 @@ internal object TarArchiveUtil {
         }
     }
 
-    fun extract(tarFile: File, destDir: File): List<File> {
+    fun extract(
+        tarFile: File,
+        destDir: File,
+        progressListener: ExtractProgressListener? = null,
+    ): List<File> {
         if (!destDir.mkdir()) {
             throw if (destDir.exists()) {
                 ExtractException.OutputAlreadyExists(destDir.name)
@@ -41,7 +45,7 @@ internal object TarArchiveUtil {
             }
         }
         return try {
-            extractContents(tarFile, destDir)
+            extractContents(tarFile, destDir, progressListener)
         } catch (e: Exception) {
             destDir.deleteRecursively()
             throw when (e) {
@@ -51,24 +55,39 @@ internal object TarArchiveUtil {
         }
     }
 
-    fun extractSingleFileEntry(tarFile: File, entry: EntryInfo, outputFile: File): File {
+    fun extractSingleFileEntry(
+        tarFile: File,
+        entry: EntryInfo,
+        outputFile: File,
+        progressListener: ExtractProgressListener? = null,
+    ): File {
         validateEntryName(entry.name)
         outputFile.parentFile?.mkdirs()
-        return copyMatchingEntry(tarFile, entry, outputFile)
+        return copyMatchingEntry(tarFile, entry, outputFile, progressListener)
             ?: throw ExtractException.InvalidArchive("tarエントリが見つかりません")
     }
 
-    private fun copyMatchingEntry(tarFile: File, entry: EntryInfo, outputFile: File): File? {
+    private fun copyMatchingEntry(
+        tarFile: File,
+        entry: EntryInfo,
+        outputFile: File,
+        progressListener: ExtractProgressListener?,
+    ): File? {
         FileInputStream(tarFile).use { input ->
-            return findAndCopyEntry(input, entry, outputFile)
+            return findAndCopyEntry(input, entry, outputFile, progressListener)
         }
     }
 
-    private fun findAndCopyEntry(input: InputStream, entry: EntryInfo, outputFile: File): File? {
+    private fun findAndCopyEntry(
+        input: InputStream,
+        entry: EntryInfo,
+        outputFile: File,
+        progressListener: ExtractProgressListener?,
+    ): File? {
         var header = readHeader(input)
         while (header != null) {
             val current = parseEntry(header)
-            val copied = tryCopyEntry(input, current, entry, outputFile)
+            val copied = tryCopyEntry(input, current, entry, outputFile, progressListener)
             if (copied != null) {
                 return copied
             }
@@ -83,21 +102,38 @@ internal object TarArchiveUtil {
         current: EntryInfo,
         target: EntryInfo,
         outputFile: File,
+        progressListener: ExtractProgressListener?,
     ): File? {
         if (current.isDirectory || current.isUnsupportedLink || current.name != target.name) {
             return null
         }
         outputFile.outputStream().use { output ->
-            copyEntryData(input, output, current.size)
+            copyEntryData(input, output, current.size, progressListener)
         }
         return outputFile
     }
 
-    private fun extractContents(tarFile: File, destDir: File): List<File> {
+    private class ExtractContext(
+        val destDir: File,
+        val extractedFiles: MutableList<File>,
+        var totalBytes: Long,
+        val progressListener: ExtractProgressListener?,
+    )
+
+    private fun extractContents(
+        tarFile: File,
+        destDir: File,
+        progressListener: ExtractProgressListener?,
+    ): List<File> {
         val extractedFiles = mutableListOf<File>()
         FileInputStream(tarFile).use { input ->
             var entryCount = 0
-            var totalBytes = 0L
+            val context = ExtractContext(
+                destDir = destDir,
+                extractedFiles = extractedFiles,
+                totalBytes = 0L,
+                progressListener = progressListener,
+            )
             var header = readHeader(input)
             while (header != null) {
                 val entry = parseEntry(header)
@@ -105,7 +141,7 @@ internal object TarArchiveUtil {
                 if (entryCount > MAX_ENTRY_COUNT) {
                     throw ExtractException.LimitExceeded("tarエントリ数が上限を超えています")
                 }
-                totalBytes = extractEntry(input, entry, destDir, extractedFiles, totalBytes)
+                extractEntry(input, entry, context)
                 header = readHeader(input)
             }
         }
@@ -118,30 +154,29 @@ internal object TarArchiveUtil {
     private fun extractEntry(
         input: InputStream,
         entry: EntryInfo,
-        destDir: File,
-        extractedFiles: MutableList<File>,
-        totalBytes: Long,
-    ): Long {
+        context: ExtractContext,
+    ) {
         validateEntryName(entry.name)
         if (entry.isUnsupportedLink) {
             skipEntryData(input, entry.size)
             throw ExtractException.InvalidArchive("シンボリックリンクまたはハードリンクはサポートされていません")
         }
-        val entryFile = File(destDir, entry.name)
-        validateEntryPath(destDir, entryFile)
+        val entryFile = File(context.destDir, entry.name)
+        validateEntryPath(context.destDir, entryFile)
         if (entry.isDirectory) {
             entryFile.mkdirs()
             skipEntryData(input, entry.size)
-            return totalBytes
+            return
         }
         entryFile.parentFile?.mkdirs()
         val written = entryFile.outputStream().use { output ->
-            copyEntryData(input, output, entry.size)
+            copyEntryData(input, output, entry.size, context.progressListener)
         }
-        val updatedTotal = totalBytes + written
+        val updatedTotal = context.totalBytes + written
         ensureTotalSizeWithinLimit(updatedTotal)
-        extractedFiles += entryFile
-        return updatedTotal
+        context.totalBytes = updatedTotal
+        context.extractedFiles += entryFile
+        context.progressListener?.onFileCompleted()
     }
 
     private fun readEntries(input: InputStream): List<EntryInfo> {
@@ -241,7 +276,12 @@ internal object TarArchiveUtil {
         }
     }
 
-    private fun copyEntryData(input: InputStream, output: OutputStream, size: Long): Long {
+    private fun copyEntryData(
+        input: InputStream,
+        output: OutputStream,
+        size: Long,
+        progressListener: ExtractProgressListener?,
+    ): Long {
         val buffer = ByteArray(BLOCK_SIZE)
         var remaining = size
         var total = 0L
@@ -255,6 +295,7 @@ internal object TarArchiveUtil {
             output.write(buffer, 0, read)
             total += read
             remaining -= read
+            progressListener?.onBytesTransferred(total)
         }
         val padding = (BLOCK_SIZE - (size % BLOCK_SIZE)) % BLOCK_SIZE
         if (padding > 0) {

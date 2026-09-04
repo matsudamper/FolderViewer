@@ -231,8 +231,10 @@ class SharePointFileRepository(
     ) {
         val requestBody = CreateUploadSessionPostRequestBody().also { body ->
             body.item = DriveItemUploadableProperties().also { item ->
-                item.additionalData = mapOf(
-                    "@microsoft.graph.conflictBehavior" to if (overwrite) "replace" else "fail",
+                item.setAdditionalData(
+                    mapOf(
+                        "@microsoft.graph.conflictBehavior" to if (overwrite) "replace" else "fail",
+                    ),
                 )
             }
         }
