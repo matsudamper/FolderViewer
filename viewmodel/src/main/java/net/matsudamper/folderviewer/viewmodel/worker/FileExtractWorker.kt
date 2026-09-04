@@ -24,6 +24,7 @@ import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.viewmodel.util.CompressedFileUtil
 import net.matsudamper.folderviewer.viewmodel.util.DecompressedOutputNameResolver
 import net.matsudamper.folderviewer.viewmodel.util.ExtractMediaScanner
+import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputConflictChecker
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputNameValidator
 import net.matsudamper.folderviewer.viewmodel.util.ExtractProgressListener
 import net.matsudamper.folderviewer.viewmodel.util.TarArchiveUtil
@@ -257,6 +258,7 @@ internal object ExtractWorkerExecutor {
         progressReporter: ExtractProgressReporter,
     ): Result<File> {
         return runCatching {
+            ExtractOutputConflictChecker.requireNoConflict(meta)
             val sourceFile = resolveSourceFile(meta, storageRepository)
             when (meta.extractType) {
                 ExtractJobRepository.ExtractType.Zip -> extractZip(
@@ -445,9 +447,8 @@ internal object ExtractWorkerExecutor {
                 progressListener = progressListener,
             )
             progressReporter.flushByteProgress()
-            val entryBaseName = entry.name.substringAfterLast('/')
             val resolvedName = DecompressedOutputNameResolver.resolveFileName(
-                outputName = entryBaseName.ifEmpty { meta.outputName },
+                outputName = meta.outputName,
                 decompressedFile = tempOutput,
             )
             return publishDecompressedFile(
@@ -515,9 +516,13 @@ internal object ExtractWorkerExecutor {
             ExtractMediaScanner.scanExtractedMediaFiles(appContext, listOf(recovered))
             return recovered
         }
-        if (outputFile.exists()) {
+        ExtractOutputConflictChecker.findConflict(
+            parentPath = meta.localFolderPath,
+            outputName = outputName,
+            outputKind = ExtractOutputConflictChecker.OutputKind.File,
+        )?.let { conflict ->
             ExtractTempFileSupport.cleanupTempFile(tempFile)
-            error("同じ名前のファイルが既に存在します: ${outputFile.name}")
+            error(conflict.message)
         }
         try {
             ExtractTempFileSupport.publishTempFile(tempFile, outputFile)

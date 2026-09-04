@@ -27,6 +27,7 @@ import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.ExtractDialogMode
 import net.matsudamper.folderviewer.ui.extract.ExternalExtractUiState
 import net.matsudamper.folderviewer.viewmodel.browser.ExtractJobCompletionWatcher
+import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputConflictChecker
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputLocationResolver
 import net.matsudamper.folderviewer.viewmodel.util.ExtractProgressText
 import net.matsudamper.folderviewer.viewmodel.util.ExtractableFileNameUtil
@@ -89,6 +90,19 @@ class ExternalExtractViewModel @AssistedInject constructor(
 
     private suspend fun enqueueExtract(outputName: String) {
         if (outputName.isBlank()) {
+            return
+        }
+        val conflictMessage = ExtractOutputConflictChecker.conflictMessage(
+            parentPath = args.outputParentPath,
+            outputName = outputName,
+            extractType = args.extractType.toExtractJobType(),
+        )
+        if (conflictMessage != null) {
+            _uiState.value = _uiState.value.copy(
+                isExtracting = false,
+                isExtractComplete = false,
+                statusMessage = conflictMessage,
+            )
             return
         }
         _uiState.value = _uiState.value.copy(
