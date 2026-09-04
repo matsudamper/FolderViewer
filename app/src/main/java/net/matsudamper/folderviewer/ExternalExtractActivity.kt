@@ -1,5 +1,7 @@
 package net.matsudamper.folderviewer
 
+import android.content.ClipData
+import android.content.ComponentName
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -29,6 +31,7 @@ import net.matsudamper.folderviewer.ui.theme.FolderViewerTheme
 import net.matsudamper.folderviewer.viewmodel.extract.ExternalExtractIntentHandler
 import net.matsudamper.folderviewer.viewmodel.extract.ExternalExtractLaunchArgs
 import net.matsudamper.folderviewer.viewmodel.extract.ExternalExtractViewModel
+import net.matsudamper.folderviewer.viewmodel.extract.ExternalIncomingUriResolution
 
 @AndroidEntryPoint
 class ExternalExtractActivity : ComponentActivity() {
@@ -37,6 +40,7 @@ class ExternalExtractActivity : ComponentActivity() {
 
     private var viewModelArgs by mutableStateOf<ExternalExtractLaunchArgs?>(null)
     private var launchErrorMessage by mutableStateOf<String?>(null)
+    private var handledIncomingUri by mutableStateOf(false)
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -45,7 +49,6 @@ class ExternalExtractActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Coil.setImageLoader(imageLoader)
-        requestNotificationPermissionIfNeeded()
 
         val uri = extractTargetUri(intent)
         if (uri == null) {
@@ -53,12 +56,31 @@ class ExternalExtractActivity : ComponentActivity() {
         } else {
             lifecycleScope.launch {
                 val resolved = withContext(Dispatchers.IO) {
-                    ExternalExtractIntentHandler.resolveLaunchArgs(this@ExternalExtractActivity, uri)
+                    ExternalExtractIntentHandler.resolve(
+                        context = this@ExternalExtractActivity,
+                        uri = uri,
+                        mimeType = intent.type,
+                    )
                 }
-                if (resolved == null) {
-                    launchErrorMessage = "対応していないファイルです"
-                } else {
-                    viewModelArgs = resolved
+                when (resolved) {
+                    is ExternalIncomingUriResolution.Extractable -> {
+                        requestNotificationPermissionIfNeeded()
+                        viewModelArgs = resolved.args
+                    }
+
+                    is ExternalIncomingUriResolution.Directory -> {
+                        val launched = openDirectoryWithChooser(resolved.uri, resolved.mimeType)
+                        if (launched) {
+                            handledIncomingUri = true
+                            finish()
+                        } else {
+                            launchErrorMessage = "フォルダを開けませんでした"
+                        }
+                    }
+
+                    ExternalIncomingUriResolution.Unsupported -> {
+                        launchErrorMessage = "対応していないファイルです"
+                    }
                 }
             }
         }
@@ -72,7 +94,7 @@ class ExternalExtractActivity : ComponentActivity() {
                 }
 
                 val args = viewModelArgs
-                if (args == null && launchErrorMessage == null) {
+                if (args == null && launchErrorMessage == null && !handledIncomingUri) {
                     Box(modifier = Modifier.fillMaxSize())
                     return@FolderViewerTheme
                 }
@@ -99,6 +121,37 @@ class ExternalExtractActivity : ComponentActivity() {
     private fun extractTargetUri(intent: Intent): Uri? {
         intent.data?.let { return it }
         return IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
+    }
+
+    private fun openDirectoryWithChooser(uri: Uri, mimeType: String): Boolean {
+        val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, mimeType)
+            clipData = ClipData.newRawUri("", uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        forwardUriGrantFlags(source = intent, target = viewIntent)
+        val chooserIntent = Intent.createChooser(viewIntent, null).apply {
+            putExtra(
+                Intent.EXTRA_EXCLUDE_COMPONENTS,
+                arrayOf(ComponentName(this@ExternalExtractActivity, ExternalExtractActivity::class.java)),
+            )
+        }
+        forwardUriGrantFlags(source = intent, target = chooserIntent)
+        return runCatching {
+            startActivity(chooserIntent)
+        }.isSuccess
+    }
+
+    private fun forwardUriGrantFlags(source: Intent, target: Intent) {
+        if (source.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION != 0) {
+            target.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        if (source.flags and Intent.FLAG_GRANT_WRITE_URI_PERMISSION != 0) {
+            target.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        }
+        if (source.flags and Intent.FLAG_GRANT_PREFIX_URI_PERMISSION != 0) {
+            target.addFlags(Intent.FLAG_GRANT_PREFIX_URI_PERMISSION)
+        }
     }
 
     private fun requestNotificationPermissionIfNeeded() {
