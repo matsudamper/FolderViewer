@@ -22,6 +22,7 @@ import net.matsudamper.folderviewer.repository.ClipboardRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.PasteJobRepository
 import net.matsudamper.folderviewer.ui.upload.UploadProgressUiState
+import net.matsudamper.folderviewer.viewmodel.util.ExtractProgressText
 import net.matsudamper.folderviewer.viewmodel.worker.FilePasteWorker
 
 @HiltViewModel
@@ -301,10 +302,12 @@ class UploadProgressViewModel @Inject constructor(
 
     private fun createExtractItem(op: OperationRepository.OperationProgress): UploadProgressUiState.UploadItem {
         val state = mapState(op.status)
-        val progressText = when (state) {
-            UploadProgressUiState.UploadState.RUNNING -> "解凍中"
-            UploadProgressUiState.UploadState.SUCCEEDED -> "完了"
-            UploadProgressUiState.UploadState.FAILED -> op.errorMessage ?: "失敗"
+        val isRunning = state == UploadProgressUiState.UploadState.RUNNING
+        val progress = if (isRunning) ExtractProgressText.progressRatio(op) else null
+        val progressText = when {
+            isRunning -> ExtractProgressText.fromOperationProgress(op) ?: "解凍中"
+            state == UploadProgressUiState.UploadState.SUCCEEDED -> "完了"
+            state == UploadProgressUiState.UploadState.FAILED -> op.errorMessage ?: "失敗"
             else -> null
         }
         return UploadProgressUiState.UploadItem.Extract(
@@ -313,7 +316,7 @@ class UploadProgressViewModel @Inject constructor(
             description = op.errorMessage ?: op.description,
             state = state,
             canNavigate = true,
-            progress = null,
+            progress = progress,
             progressText = progressText,
         )
     }

@@ -37,6 +37,8 @@ fun ExternalExtractScreen(
                 mode = uiState.mode,
                 isExtracting = uiState.isExtracting,
                 hintMessage = uiState.locationMessage,
+                progress = uiState.progress,
+                progressText = uiState.progressText,
                 onDismissRequest = uiState.callbacks::onDismissRequest,
                 onConfirm = uiState.callbacks::onConfirm,
             )

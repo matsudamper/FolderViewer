@@ -2,8 +2,9 @@ package net.matsudamper.folderviewer.ui.browser
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -13,9 +14,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 
 @Composable
 internal fun FileBrowserExtractDialog(
@@ -25,6 +26,8 @@ internal fun FileBrowserExtractDialog(
     onDismissRequest: () -> Unit,
     onConfirm: (String) -> Unit,
     hintMessage: String? = null,
+    progress: Float? = null,
+    progressText: String? = null,
 ) {
     var extractNameInput by remember(defaultName, mode) {
         mutableStateOf(defaultName)
@@ -53,10 +56,24 @@ internal fun FileBrowserExtractDialog(
                     )
                 }
                 if (isExtracting) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                    if (progress != null) {
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                        )
+                    } else {
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                        )
+                    }
+                    Text(
+                        text = progressText ?: "解凍中...",
+                        modifier = Modifier.padding(top = 8.dp),
                     )
-                    Text("解凍中...")
                 } else {
                     TextField(
                         value = extractNameInput,
@@ -68,11 +85,7 @@ internal fun FileBrowserExtractDialog(
             }
         },
         confirmButton = {
-            if (isExtracting) {
-                TextButton(onClick = onDismissRequest) {
-                    Text("閉じる")
-                }
-            } else {
+            if (!isExtracting) {
                 TextButton(
                     onClick = {
                         if (extractNameInput.isNotBlank()) {
@@ -86,10 +99,8 @@ internal fun FileBrowserExtractDialog(
             }
         },
         dismissButton = {
-            if (!isExtracting) {
-                TextButton(onClick = onDismissRequest) {
-                    Text("キャンセル")
-                }
+            TextButton(onClick = onDismissRequest) {
+                Text(if (isExtracting) "閉じる" else "キャンセル")
             }
         },
     )
@@ -133,11 +144,27 @@ private fun FileBrowserExtractDialogXzPreview() {
 
 @Preview
 @Composable
-private fun FileBrowserExtractDialogExtractingPreview() {
+private fun FileBrowserExtractDialogExtractingFileCountPreview() {
     FileBrowserExtractDialog(
         defaultName = "archive",
         mode = ExtractDialogMode.ZipFolder,
         isExtracting = true,
+        progress = 0.35f,
+        progressText = "35/100 ファイル",
+        onDismissRequest = {},
+        onConfirm = {},
+    )
+}
+
+@Preview
+@Composable
+private fun FileBrowserExtractDialogExtractingBytesPreview() {
+    FileBrowserExtractDialog(
+        defaultName = "archive.tar.xz",
+        mode = ExtractDialogMode.XzFile,
+        isExtracting = true,
+        progress = 0.6f,
+        progressText = "12.0 MB/20.0 MB",
         onDismissRequest = {},
         onConfirm = {},
     )

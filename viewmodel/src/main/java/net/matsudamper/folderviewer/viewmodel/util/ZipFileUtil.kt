@@ -48,7 +48,11 @@ internal object ZipFileUtil {
         }
     }
 
-    fun extractZip(zipFile: File, destDir: File): List<File> {
+    fun extractZip(
+        zipFile: File,
+        destDir: File,
+        progressListener: ExtractProgressListener? = null,
+    ): List<File> {
         if (!destDir.mkdir()) {
             throw if (destDir.exists()) {
                 ExtractException.OutputAlreadyExists(destDir.name)
@@ -57,7 +61,7 @@ internal object ZipFileUtil {
             }
         }
         return try {
-            extractZipContents(zipFile, destDir)
+            extractZipContents(zipFile, destDir, progressListener)
         } catch (e: Exception) {
             destDir.deleteRecursively()
             throw when (e) {
@@ -75,7 +79,36 @@ internal object ZipFileUtil {
         }
     }
 
-    private fun extractZipContents(zipFile: File, destDir: File): List<File> {
+    fun listFileEntries(zipFile: File): List<String> {
+        val fileNames = mutableListOf<String>()
+        ZipFile(zipFile, ZIP_NAME_CHARSET).use { zip ->
+            var fileEntryCount = 0
+            val entries = zip.entries()
+            while (entries.hasMoreElements()) {
+                val entry = entries.nextElement()
+                if (entry.isDirectory) {
+                    continue
+                }
+                fileEntryCount = nextFileEntryCount(fileEntryCount)
+                fileNames += entry.name
+            }
+        }
+        return fileNames
+    }
+
+    private fun nextFileEntryCount(currentCount: Int): Int {
+        val nextCount = currentCount + 1
+        if (nextCount > MAX_ENTRY_COUNT) {
+            throw ExtractException.LimitExceeded("ZIPエントリ数が上限を超えています")
+        }
+        return nextCount
+    }
+
+    private fun extractZipContents(
+        zipFile: File,
+        destDir: File,
+        progressListener: ExtractProgressListener?,
+    ): List<File> {
         val extractedFiles = mutableListOf<File>()
         ZipFile(zipFile, ZIP_NAME_CHARSET).use { zip ->
             val entries = zip.entries()
@@ -94,6 +127,7 @@ internal object ZipFileUtil {
                 ensureTotalSizeWithinLimit(totalBytes)
                 if (!entry.isDirectory) {
                     extractedFiles += File(destDir, entry.name)
+                    progressListener?.onFileCompleted()
                 }
             }
             if (!sawEntry) {

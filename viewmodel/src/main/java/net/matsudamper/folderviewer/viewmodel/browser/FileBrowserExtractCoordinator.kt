@@ -6,7 +6,11 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.ExtractJobRepository
@@ -16,6 +20,7 @@ import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.SelectionModeRepository
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
 import net.matsudamper.folderviewer.viewmodel.util.CompressedFileUtil
+import net.matsudamper.folderviewer.viewmodel.util.ExtractProgressText
 import net.matsudamper.folderviewer.viewmodel.worker.FileExtractWorker
 
 internal data class PendingExtractRequest(
@@ -27,6 +32,32 @@ internal data class PendingExtractRequest(
 internal class FileBrowserExtractCoordinator(
     private val dependencies: Dependencies,
 ) {
+    private var progressJob: Job? = null
+    private val dialogProgressFlow = MutableStateFlow<ExtractDialogProgress?>(null)
+    val extractDialogProgress: StateFlow<ExtractDialogProgress?> = dialogProgressFlow.asStateFlow()
+
+    fun startProgressObservation(scope: CoroutineScope, jobId: Long) {
+        progressJob?.cancel()
+        dialogProgressFlow.value = null
+        progressJob = scope.launch {
+            dependencies.operationRepository.observeProgressById(jobId).collect { progress ->
+                if (progress == null) {
+                    return@collect
+                }
+                dialogProgressFlow.value = ExtractDialogProgress(
+                    progress = ExtractProgressText.progressRatio(progress),
+                    progressText = ExtractProgressText.fromOperationProgress(progress),
+                )
+            }
+        }
+    }
+
+    fun stopProgressObservation() {
+        progressJob?.cancel()
+        progressJob = null
+        dialogProgressFlow.value = null
+    }
+
     suspend fun enqueueExtract(request: PendingExtractRequest): Long? {
         return runCatching {
             val localFolderPath = dependencies.getLocalFolderPath() ?: run {
@@ -91,6 +122,7 @@ internal class FileBrowserExtractCoordinator(
                     is ExtractJobCompletionWatcher.CompletionUiEvent.Completed -> {
                         dependencies.refreshFiles()
                         if (dependencies.isExtractDialogOpenForJob(event.jobId)) {
+                            stopProgressObservation()
                             dependencies.closeExtractDialog()
                         } else {
                             dependencies.uiChannelEvent.send(
@@ -104,6 +136,7 @@ internal class FileBrowserExtractCoordinator(
 
                     is ExtractJobCompletionWatcher.CompletionUiEvent.Failed -> {
                         if (dependencies.isExtractDialogOpenForJob(event.jobId)) {
+                            stopProgressObservation()
                             dependencies.closeExtractDialog()
                         } else {
                             dependencies.uiChannelEvent.send(
@@ -179,3 +212,8 @@ internal class FileBrowserExtractCoordinator(
         }
     }
 }
+
+internal data class ExtractDialogProgress(
+    val progress: Float?,
+    val progressText: String?,
+)

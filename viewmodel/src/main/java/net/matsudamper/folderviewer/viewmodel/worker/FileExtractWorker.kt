@@ -25,6 +25,7 @@ import net.matsudamper.folderviewer.viewmodel.util.CompressedFileUtil
 import net.matsudamper.folderviewer.viewmodel.util.DecompressedOutputNameResolver
 import net.matsudamper.folderviewer.viewmodel.util.ExtractMediaScanner
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputNameValidator
+import net.matsudamper.folderviewer.viewmodel.util.ExtractProgressListener
 import net.matsudamper.folderviewer.viewmodel.util.TarArchiveUtil
 import net.matsudamper.folderviewer.viewmodel.util.ZipFileUtil
 
@@ -71,12 +72,26 @@ internal class FileExtractWorker @AssistedInject constructor(
 
     private suspend fun executeJob(meta: ExtractJobRepository.ExtractJobMeta): Result {
         val notificationId = EXTRACT_NOTIFICATION_BASE_ID + meta.id.toInt()
-        setForeground(createForegroundInfo(notificationId, meta.sourceFileName))
+        val notificationUpdater = ExtractProgressNotificationUpdater(
+            context = workerContext,
+            notificationId = notificationId,
+            contentIntent = operationNotificationIntentFactory.createUploadProgressIntent(),
+        )
+        notificationUpdater.update(meta.sourceFileName, null, null)
+        setForeground(notificationUpdater.createForegroundInfo())
 
+        val progressReporter = ExtractProgressReporter(
+            extractJobRepository = extractJobRepository,
+            operationId = meta.id,
+            onProgressChanged = { progressText, progressRatio ->
+                notificationUpdater.update(meta.sourceFileName, progressText, progressRatio)
+            },
+        )
         val extractResult = ExtractWorkerExecutor.run(
             meta = meta,
             storageRepository = storageRepository,
             appContext = workerContext,
+            progressReporter = progressReporter,
         )
         return extractResult.fold(
             onSuccess = { outputFile ->
@@ -143,41 +158,11 @@ internal class FileExtractWorker @AssistedInject constructor(
     override suspend fun getForegroundInfo(): ForegroundInfo {
         val operationId = inputData.getLong(KEY_EXTRACT_OPERATION_ID, -1L)
         val notificationId = EXTRACT_NOTIFICATION_BASE_ID + operationId.toInt()
-        return createForegroundInfo(notificationId, null)
-    }
-
-    private fun createForegroundInfo(notificationId: Int, fileName: String?): ForegroundInfo {
-        createNotificationChannel()
-        val title = "解凍中"
-        val text = fileName ?: "処理中"
-        val notification = NotificationCompat.Builder(workerContext, CHANNEL_ID)
-            .setContentTitle(title)
-            .setContentText(text)
-            .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setOngoing(true)
-            .setContentIntent(operationNotificationIntentFactory.createUploadProgressIntent())
-            .build()
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            ForegroundInfo(
-                notificationId,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
-            )
-        } else {
-            ForegroundInfo(notificationId, notification)
-        }
-    }
-
-    private fun createNotificationChannel() {
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            "解凍",
-            NotificationManager.IMPORTANCE_LOW,
-        ).apply {
-            description = "ファイルの解凍状態を表示します"
-        }
-        val notificationManager = workerContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.createNotificationChannel(channel)
+        return ExtractProgressNotificationUpdater(
+            context = workerContext,
+            notificationId = notificationId,
+            contentIntent = operationNotificationIntentFactory.createUploadProgressIntent(),
+        ).createForegroundInfo()
     }
 
     companion object {
@@ -190,22 +175,103 @@ internal class FileExtractWorker @AssistedInject constructor(
     }
 }
 
+private class ExtractProgressNotificationUpdater(
+    private val context: Context,
+    private val notificationId: Int,
+    private val contentIntent: android.app.PendingIntent,
+) {
+    private var lastProgressMax: Int = 0
+    private var lastProgressValue: Int = 0
+    private var lastProgressText: String? = null
+
+    fun update(fileName: String?, progressText: String?, progressRatio: Float?) {
+        if (progressRatio != null) {
+            lastProgressMax = PROGRESS_MAX
+            lastProgressValue = (progressRatio * PROGRESS_MAX).toInt().coerceIn(0, PROGRESS_MAX)
+        } else {
+            lastProgressMax = 0
+            lastProgressValue = 0
+        }
+        lastProgressText = progressText
+        postNotification(fileName, progressText)
+    }
+
+    fun createForegroundInfo(): ForegroundInfo {
+        createNotificationChannel()
+        val notification = buildNotification(null, lastProgressText)
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ForegroundInfo(
+                notificationId,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+            )
+        } else {
+            ForegroundInfo(notificationId, notification)
+        }
+    }
+
+    private fun postNotification(fileName: String?, progressText: String?) {
+        createNotificationChannel()
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.notify(notificationId, buildNotification(fileName, progressText))
+    }
+
+    private fun buildNotification(fileName: String?, progressText: String?): android.app.Notification {
+        val title = "解凍中"
+        val text = progressText ?: fileName ?: "処理中"
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setOngoing(true)
+            .setContentIntent(contentIntent)
+        if (lastProgressMax > 0) {
+            builder.setProgress(lastProgressMax, lastProgressValue, false)
+        }
+        return builder.build()
+    }
+
+    private fun createNotificationChannel() {
+        val channel = NotificationChannel(
+            CHANNEL_ID,
+            "解凍",
+            NotificationManager.IMPORTANCE_LOW,
+        ).apply {
+            description = "ファイルの解凍状態を表示します"
+        }
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.createNotificationChannel(channel)
+    }
+
+    companion object {
+        private const val CHANNEL_ID = "extract_channel"
+        private const val PROGRESS_MAX = 100
+    }
+}
+
 internal object ExtractWorkerExecutor {
     suspend fun run(
         meta: ExtractJobRepository.ExtractJobMeta,
         storageRepository: StorageRepository,
         appContext: Context,
+        progressReporter: ExtractProgressReporter,
     ): Result<File> {
         return runCatching {
             val sourceFile = resolveSourceFile(meta, storageRepository)
             when (meta.extractType) {
-                ExtractJobRepository.ExtractType.Zip -> extractZip(sourceFile, meta, appContext)
+                ExtractJobRepository.ExtractType.Zip -> extractZip(
+                    sourceFile = sourceFile,
+                    meta = meta,
+                    appContext = appContext,
+                    progressReporter = progressReporter,
+                )
 
                 ExtractJobRepository.ExtractType.TarXz -> extractTar(
                     sourceFile = sourceFile,
                     meta = meta,
                     format = CompressedFileUtil.Format.Xz,
                     appContext = appContext,
+                    progressReporter = progressReporter,
                 )
 
                 ExtractJobRepository.ExtractType.TarZst -> extractTar(
@@ -213,6 +279,7 @@ internal object ExtractWorkerExecutor {
                     meta = meta,
                     format = CompressedFileUtil.Format.Zst,
                     appContext = appContext,
+                    progressReporter = progressReporter,
                 )
 
                 ExtractJobRepository.ExtractType.Zst -> extractCompressed(
@@ -220,6 +287,7 @@ internal object ExtractWorkerExecutor {
                     meta = meta,
                     format = CompressedFileUtil.Format.Zst,
                     appContext = appContext,
+                    progressReporter = progressReporter,
                 )
 
                 ExtractJobRepository.ExtractType.Xz -> extractCompressed(
@@ -227,6 +295,7 @@ internal object ExtractWorkerExecutor {
                     meta = meta,
                     format = CompressedFileUtil.Format.Xz,
                     appContext = appContext,
+                    progressReporter = progressReporter,
                 )
             }
         }
@@ -250,27 +319,47 @@ internal object ExtractWorkerExecutor {
         }
     }
 
-    private fun extractZip(
+    private suspend fun extractZip(
         sourceFile: File,
         meta: ExtractJobRepository.ExtractJobMeta,
         appContext: Context,
+        progressReporter: ExtractProgressReporter,
     ): File {
+        val fileNames = ZipFileUtil.listFileEntries(sourceFile)
+        progressReporter.startFileCountProgress(fileNames)
+        val progressListener = createFileCountListener(progressReporter)
         val extractDir = ExtractOutputNameValidator.resolveChildFile(meta.localFolderPath, meta.outputName)
             ?: error("無効なフォルダ名です")
-        val extractedFiles = ZipFileUtil.extractZip(sourceFile, extractDir)
+        val extractedFiles = ZipFileUtil.extractZip(
+            zipFile = sourceFile,
+            destDir = extractDir,
+            progressListener = progressListener,
+        )
         ExtractMediaScanner.scanExtractedMediaFiles(appContext, extractedFiles)
         return extractDir
     }
 
-    private fun extractCompressed(
+    private suspend fun extractCompressed(
         sourceFile: File,
         meta: ExtractJobRepository.ExtractJobMeta,
         format: CompressedFileUtil.Format,
         appContext: Context,
+        progressReporter: ExtractProgressReporter,
     ): File {
+        progressReporter.startByteProgress(
+            totalBytes = sourceFile.length(),
+            label = sourceFile.name,
+        )
+        val progressListener = createByteListener(progressReporter)
         val tempFile = ExtractTempFileSupport.createTempFile(meta.localFolderPath)
         try {
-            CompressedFileUtil.decompress(sourceFile, tempFile, format)
+            CompressedFileUtil.decompress(
+                sourceFile = sourceFile,
+                outputFile = tempFile,
+                format = format,
+                progressListener = progressListener,
+            )
+            progressReporter.flushByteProgress()
             val resolvedName = DecompressedOutputNameResolver.resolveFileName(meta.outputName, tempFile)
             return publishDecompressedFile(
                 tempFile = tempFile,
@@ -284,15 +373,27 @@ internal object ExtractWorkerExecutor {
         }
     }
 
-    private fun extractTar(
+    private suspend fun extractTar(
         sourceFile: File,
         meta: ExtractJobRepository.ExtractJobMeta,
         format: CompressedFileUtil.Format,
         appContext: Context,
+        progressReporter: ExtractProgressReporter,
     ): File {
+        progressReporter.startByteProgress(
+            totalBytes = sourceFile.length(),
+            label = sourceFile.name,
+        )
+        val decompressListener = createByteListener(progressReporter)
         val tempTar = ExtractTempFileSupport.createTempFile(meta.localFolderPath)
         try {
-            CompressedFileUtil.decompress(sourceFile, tempTar, format)
+            CompressedFileUtil.decompress(
+                sourceFile = sourceFile,
+                outputFile = tempTar,
+                format = format,
+                progressListener = decompressListener,
+            )
+            progressReporter.flushByteProgress()
             val fileEntries = TarArchiveUtil.listEntries(tempTar).filter { !it.isDirectory }
             if (fileEntries.size == 1) {
                 return extractSingleTarEntry(
@@ -300,23 +401,43 @@ internal object ExtractWorkerExecutor {
                     entry = fileEntries.first(),
                     meta = meta,
                     appContext = appContext,
+                    progressReporter = progressReporter,
                 )
             }
-            return extractTarToFolder(tempTar, meta, appContext)
+            return extractTarToFolder(
+                tempTar = tempTar,
+                meta = meta,
+                appContext = appContext,
+                progressReporter = progressReporter,
+                fileEntries = fileEntries,
+            )
         } finally {
             ExtractTempFileSupport.cleanupTempFile(tempTar)
         }
     }
 
-    private fun extractSingleTarEntry(
+    private suspend fun extractSingleTarEntry(
         tempTar: File,
         entry: TarArchiveUtil.EntryInfo,
         meta: ExtractJobRepository.ExtractJobMeta,
         appContext: Context,
+        progressReporter: ExtractProgressReporter,
     ): File {
+        val totalBytes = entry.size.takeIf { it > 0 } ?: tempTar.length()
+        progressReporter.startByteProgress(
+            totalBytes = totalBytes,
+            label = entry.name,
+        )
+        val progressListener = createByteListener(progressReporter)
         val tempOutput = ExtractTempFileSupport.createTempFile(meta.localFolderPath)
         try {
-            TarArchiveUtil.extractSingleFileEntry(tempTar, entry, tempOutput)
+            TarArchiveUtil.extractSingleFileEntry(
+                tarFile = tempTar,
+                entry = entry,
+                outputFile = tempOutput,
+                progressListener = progressListener,
+            )
+            progressReporter.flushByteProgress()
             val entryBaseName = entry.name.substringAfterLast('/')
             val resolvedName = DecompressedOutputNameResolver.resolveFileName(
                 outputName = entryBaseName.ifEmpty { meta.outputName },
@@ -334,16 +455,40 @@ internal object ExtractWorkerExecutor {
         }
     }
 
-    private fun extractTarToFolder(
+    private suspend fun extractTarToFolder(
         tempTar: File,
         meta: ExtractJobRepository.ExtractJobMeta,
         appContext: Context,
+        progressReporter: ExtractProgressReporter,
+        fileEntries: List<TarArchiveUtil.EntryInfo>,
     ): File {
+        progressReporter.startFileCountProgress(fileEntries.map { it.name })
+        val progressListener = createFileCountListener(progressReporter)
         val extractDir = ExtractOutputNameValidator.resolveChildFile(meta.localFolderPath, meta.outputName)
             ?: error("無効なフォルダ名です")
-        val extractedFiles = TarArchiveUtil.extract(tempTar, extractDir)
+        val extractedFiles = TarArchiveUtil.extract(
+            tarFile = tempTar,
+            destDir = extractDir,
+            progressListener = progressListener,
+        )
         ExtractMediaScanner.scanExtractedMediaFiles(appContext, extractedFiles)
         return extractDir
+    }
+
+    private fun createByteListener(progressReporter: ExtractProgressReporter): ExtractProgressListener {
+        return ExtractProgressListener(
+            bytesTransferredHandler = { bytes ->
+                progressReporter.updateBytes(bytes)
+            },
+        )
+    }
+
+    private fun createFileCountListener(progressReporter: ExtractProgressReporter): ExtractProgressListener {
+        return ExtractProgressListener(
+            fileCompletedHandler = {
+                progressReporter.onFileCompleted()
+            },
+        )
     }
 
     private fun publishDecompressedFile(
