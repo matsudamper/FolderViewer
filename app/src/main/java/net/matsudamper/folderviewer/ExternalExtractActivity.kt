@@ -131,23 +131,26 @@ class ExternalExtractActivity : ComponentActivity() {
 
                             is ExternalExtractViewModel.ViewModelEvent.ShowSnackbar -> {
                                 val extractDetailJobId = event.extractDetailJobId
-                                val result = snackbarHostState.showDismissibleSnackbar(
-                                    message = event.message,
-                                    actionLabel = extractDetailJobId?.let { detailActionLabel },
-                                )
-                                if (
-                                    result == SnackbarResult.ActionPerformed &&
-                                    extractDetailJobId != null
-                                ) {
-                                    startActivity(
-                                        OperationDetailActivity.createExtractDetailIntent(
-                                            this@ExternalExtractActivity,
-                                            extractDetailJobId,
-                                        ),
+                                val finishAfterDismiss = event.finishAfterDismiss
+                                launch {
+                                    val result = snackbarHostState.showDismissibleSnackbar(
+                                        message = event.message,
+                                        actionLabel = extractDetailJobId?.let { detailActionLabel },
                                     )
-                                }
-                                if (event.finishAfterDismiss) {
-                                    finish()
+                                    if (
+                                        result == SnackbarResult.ActionPerformed &&
+                                        extractDetailJobId != null
+                                    ) {
+                                        startActivity(
+                                            OperationDetailActivity.createExtractDetailIntent(
+                                                this@ExternalExtractActivity,
+                                                extractDetailJobId,
+                                            ),
+                                        )
+                                    }
+                                    if (finishAfterDismiss) {
+                                        finish()
+                                    }
                                 }
                             }
                         }

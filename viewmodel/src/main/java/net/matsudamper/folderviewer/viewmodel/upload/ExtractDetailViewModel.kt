@@ -19,6 +19,7 @@ import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.upload.ExtractDetailUiState
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputLocationResolver
+import net.matsudamper.folderviewer.viewmodel.util.ExtractProgressText
 
 @HiltViewModel
 class ExtractDetailViewModel @Inject constructor(
@@ -116,6 +117,9 @@ class ExtractDetailViewModel @Inject constructor(
             )
         val canOpenOutputFile = allowOutputActions && meta != null &&
             ExtractOutputLocationResolver.resolveOpenOutputFile(meta, storageRepository, errorMessage) != null
+        val isRunning = uiStatus == ExtractDetailUiState.Status.RUNNING
+        val progressRatio = if (isRunning) ExtractProgressText.progressRatio(progress) else null
+        val progressText = if (isRunning) ExtractProgressText.fromOperationProgress(progress) else null
 
         return ExtractDetailUiState(
             jobName = progress.name,
@@ -129,6 +133,8 @@ class ExtractDetailViewModel @Inject constructor(
             extractTypeLabel = meta?.extractType.toLabel(),
             errorMessage = progress.errorMessage,
             errorCause = progress.errorCause,
+            progress = progressRatio,
+            progressText = progressText,
             callbacks = callbacks,
         )
     }
