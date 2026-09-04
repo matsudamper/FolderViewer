@@ -10,6 +10,7 @@ data class ExternalExtractLaunchArgs(
 
 enum class ExtractLaunchType {
     Zip,
+    TarGz,
     TarXz,
     TarZst,
     Zst,
@@ -37,6 +38,8 @@ internal object ExternalExtractLaunchArgsMapper {
     private fun net.matsudamper.folderviewer.viewmodel.browser.ExtractableFileType.toLaunchType(): ExtractLaunchType {
         return when (this) {
             net.matsudamper.folderviewer.viewmodel.browser.ExtractableFileType.Zip -> ExtractLaunchType.Zip
+
+            net.matsudamper.folderviewer.viewmodel.browser.ExtractableFileType.TarGz -> ExtractLaunchType.TarGz
 
             net.matsudamper.folderviewer.viewmodel.browser.ExtractableFileType.TarXz -> ExtractLaunchType.TarXz
 

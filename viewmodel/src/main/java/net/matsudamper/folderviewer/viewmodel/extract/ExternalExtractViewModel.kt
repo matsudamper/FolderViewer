@@ -171,6 +171,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
 private fun ExtractLaunchType.toExtractDialogMode(): ExtractDialogMode {
     return when (this) {
         ExtractLaunchType.Zip,
+        ExtractLaunchType.TarGz,
         ExtractLaunchType.TarXz,
         ExtractLaunchType.TarZst,
         -> ExtractDialogMode.ZipFolder
@@ -184,6 +185,7 @@ private fun ExtractLaunchType.toExtractDialogMode(): ExtractDialogMode {
 private fun ExtractLaunchType.toExtractJobType(): ExtractJobRepository.ExtractType {
     return when (this) {
         ExtractLaunchType.Zip -> ExtractJobRepository.ExtractType.Zip
+        ExtractLaunchType.TarGz -> ExtractJobRepository.ExtractType.TarGz
         ExtractLaunchType.TarXz -> ExtractJobRepository.ExtractType.TarXz
         ExtractLaunchType.TarZst -> ExtractJobRepository.ExtractType.TarZst
         ExtractLaunchType.Zst -> ExtractJobRepository.ExtractType.Zst
@@ -194,6 +196,8 @@ private fun ExtractLaunchType.toExtractJobType(): ExtractJobRepository.ExtractTy
 private fun ExtractLaunchType.toExtractableType(): net.matsudamper.folderviewer.viewmodel.browser.ExtractableFileType {
     return when (this) {
         ExtractLaunchType.Zip -> net.matsudamper.folderviewer.viewmodel.browser.ExtractableFileType.Zip
+
+        ExtractLaunchType.TarGz -> net.matsudamper.folderviewer.viewmodel.browser.ExtractableFileType.TarGz
 
         ExtractLaunchType.TarXz -> net.matsudamper.folderviewer.viewmodel.browser.ExtractableFileType.TarXz
 

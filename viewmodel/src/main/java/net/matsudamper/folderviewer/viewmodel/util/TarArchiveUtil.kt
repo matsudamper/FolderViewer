@@ -23,6 +23,7 @@ internal object TarArchiveUtil {
         val name: String,
         val size: Long,
         val isDirectory: Boolean,
+        val isUnsupportedLink: Boolean = false,
     )
 
     fun listEntries(tarFile: File): List<EntryInfo> {
@@ -103,7 +104,7 @@ internal object TarArchiveUtil {
         outputFile: File,
         progressListener: ExtractProgressListener?,
     ): File? {
-        if (current.isDirectory || current.name != target.name) {
+        if (current.isDirectory || current.isUnsupportedLink || current.name != target.name) {
             return null
         }
         outputFile.outputStream().use { output ->
@@ -156,6 +157,10 @@ internal object TarArchiveUtil {
         context: ExtractContext,
     ) {
         validateEntryName(entry.name)
+        if (entry.isUnsupportedLink) {
+            skipEntryData(input, entry.size)
+            throw ExtractException.InvalidArchive("シンボリックリンクまたはハードリンクはサポートされていません")
+        }
         val entryFile = File(context.destDir, entry.name)
         validateEntryPath(context.destDir, entryFile)
         if (entry.isDirectory) {
@@ -222,8 +227,9 @@ internal object TarArchiveUtil {
         val size = parseOctal(header, 124, 12)
         val typeFlag = header[156].toInt().toChar()
         val isDirectory = typeFlag == '5' || fullName.endsWith('/')
+        val isUnsupportedLink = typeFlag == '1' || typeFlag == '2'
         val name = fullName.trimEnd('/')
-        return EntryInfo(name = name, size = size, isDirectory = isDirectory)
+        return EntryInfo(name = name, size = size, isDirectory = isDirectory, isUnsupportedLink = isUnsupportedLink)
     }
 
     private fun isUstarHeader(header: ByteArray): Boolean {

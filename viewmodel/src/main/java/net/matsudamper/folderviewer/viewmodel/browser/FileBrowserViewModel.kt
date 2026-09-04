@@ -51,7 +51,6 @@ import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 import net.matsudamper.folderviewer.ui.util.formatBytes
 import net.matsudamper.folderviewer.viewmodel.util.FileUtil
-import net.matsudamper.folderviewer.viewmodel.util.ZipFileUtil
 import net.matsudamper.folderviewer.viewmodel.worker.FileDeleteWorker
 import net.matsudamper.folderviewer.viewmodel.worker.FilePasteWorker
 import net.matsudamper.folderviewer.viewmodel.worker.FileUploadWorker

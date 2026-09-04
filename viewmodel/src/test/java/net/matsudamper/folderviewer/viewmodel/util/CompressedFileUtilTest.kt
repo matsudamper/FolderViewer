@@ -1,8 +1,10 @@
 package net.matsudamper.folderviewer.viewmodel.util
 
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.file.Files
+import java.util.zip.GZIPOutputStream
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -36,6 +38,24 @@ internal class CompressedFileUtilTest {
             "archive.tar",
             CompressedFileUtil.defaultOutputName("archive.tar.xz", CompressedFileUtil.Format.Xz),
         )
+    }
+
+    @Test
+    fun decompress_decompressesConcatenatedGzip() {
+        val tempDir = Files.createTempDirectory("compressed-file-util").toFile()
+        try {
+            val source = File(tempDir, "data.txt.gz")
+            val gzipBytes = ByteArrayOutputStream().apply {
+                GZIPOutputStream(this).use { it.write("part1".toByteArray()) }
+                GZIPOutputStream(this).use { it.write("part2".toByteArray()) }
+            }.toByteArray()
+            source.writeBytes(gzipBytes)
+            val output = File(tempDir, "data.txt")
+            CompressedFileUtil.decompressGzip(source, output)
+            assertEquals("part1part2", output.readText())
+        } finally {
+            tempDir.deleteRecursively()
+        }
     }
 
     @Test

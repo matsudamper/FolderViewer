@@ -12,6 +12,18 @@ internal class ExtractableFileNameUtilTest {
     }
 
     @Test
+    fun detect_returnsTarGzForTarGzExtension() {
+        assertEquals(
+            ExtractableFileType.TarGz,
+            ExtractableFileNameUtil.detect("archive.tar.gz"),
+        )
+        assertEquals(
+            ExtractableFileType.TarGz,
+            ExtractableFileNameUtil.detect("archive.tgz"),
+        )
+    }
+
+    @Test
     fun detect_returnsTarZstForTarZstExtension() {
         assertEquals(
             ExtractableFileType.TarZst,
@@ -69,6 +81,24 @@ internal class ExtractableFileNameUtilTest {
             ExtractableFileNameUtil.defaultOutputName(
                 fileName = "foo.apk.xz.apk",
                 type = ExtractableFileType.Compressed(CompressedFileUtil.Format.Xz),
+            ),
+        )
+    }
+
+    @Test
+    fun defaultOutputName_removesTarGzExtension() {
+        assertEquals(
+            "archive",
+            ExtractableFileNameUtil.defaultOutputName(
+                fileName = "archive.tar.gz",
+                type = ExtractableFileType.TarGz,
+            ),
+        )
+        assertEquals(
+            "archive",
+            ExtractableFileNameUtil.defaultOutputName(
+                fileName = "archive.tgz",
+                type = ExtractableFileType.TarGz,
             ),
         )
     }

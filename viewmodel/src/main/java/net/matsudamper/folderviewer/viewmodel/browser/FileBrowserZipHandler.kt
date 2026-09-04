@@ -20,6 +20,8 @@ import net.matsudamper.folderviewer.viewmodel.util.ZipFileUtil
 internal sealed interface ExtractableFileType {
     data object Zip : ExtractableFileType
 
+    data object TarGz : ExtractableFileType
+
     data object TarXz : ExtractableFileType
 
     data object TarZst : ExtractableFileType
@@ -188,6 +190,7 @@ internal class FileBrowserZipHandler(
 private fun ExtractableFileType.toExtractDialogMode(): ExtractDialogMode {
     return when (this) {
         ExtractableFileType.Zip,
+        ExtractableFileType.TarGz,
         ExtractableFileType.TarXz,
         ExtractableFileType.TarZst,
         -> ExtractDialogMode.ZipFolder
