@@ -8,6 +8,7 @@ import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.OutputStream
 import com.github.luben.zstd.ZstdInputStream
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import org.tukaani.xz.XZInputStream
 
 internal object CompressedFileUtil {
@@ -44,6 +45,29 @@ internal object CompressedFileUtil {
         when (format) {
             Format.Zst -> decompressZst(sourceFile, outputFile, progressListener)
             Format.Xz -> decompressXz(sourceFile, outputFile, progressListener)
+        }
+    }
+
+    fun decompressGzip(
+        sourceFile: File,
+        outputFile: File,
+        progressListener: ExtractProgressListener? = null,
+    ) {
+        CountingInputStream(BufferedInputStream(FileInputStream(sourceFile))).use { countingInput ->
+            GzipCompressorInputStream.builder()
+                .setInputStream(countingInput)
+                .setDecompressConcatenated(true)
+                .get()
+                .use { gzipIn ->
+                    BufferedOutputStream(FileOutputStream(outputFile)).use { output ->
+                        copyWithLimit(
+                            input = gzipIn,
+                            output = output,
+                            maxBytes = MAX_OUTPUT_SIZE_BYTES,
+                            onProgress = { progressListener?.onBytesTransferred(countingInput.bytesRead) },
+                        )
+                    }
+                }
         }
     }
 

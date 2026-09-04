@@ -266,20 +266,32 @@ internal object ExtractWorkerExecutor {
                     progressReporter = progressReporter,
                 )
 
+                ExtractJobRepository.ExtractType.TarGz -> extractTar(
+                    sourceFile = sourceFile,
+                    meta = meta,
+                    appContext = appContext,
+                    progressReporter = progressReporter,
+                    decompress = CompressedFileUtil::decompressGzip,
+                )
+
                 ExtractJobRepository.ExtractType.TarXz -> extractTar(
                     sourceFile = sourceFile,
                     meta = meta,
-                    format = CompressedFileUtil.Format.Xz,
                     appContext = appContext,
                     progressReporter = progressReporter,
+                    decompress = { source, output, listener ->
+                        CompressedFileUtil.decompress(source, output, CompressedFileUtil.Format.Xz, listener)
+                    },
                 )
 
                 ExtractJobRepository.ExtractType.TarZst -> extractTar(
                     sourceFile = sourceFile,
                     meta = meta,
-                    format = CompressedFileUtil.Format.Zst,
                     appContext = appContext,
                     progressReporter = progressReporter,
+                    decompress = { source, output, listener ->
+                        CompressedFileUtil.decompress(source, output, CompressedFileUtil.Format.Zst, listener)
+                    },
                 )
 
                 ExtractJobRepository.ExtractType.Zst -> extractCompressed(
@@ -376,9 +388,9 @@ internal object ExtractWorkerExecutor {
     private suspend fun extractTar(
         sourceFile: File,
         meta: ExtractJobRepository.ExtractJobMeta,
-        format: CompressedFileUtil.Format,
         appContext: Context,
         progressReporter: ExtractProgressReporter,
+        decompress: (File, File, ExtractProgressListener?) -> Unit,
     ): File {
         progressReporter.startByteProgress(
             totalBytes = sourceFile.length(),
@@ -387,14 +399,9 @@ internal object ExtractWorkerExecutor {
         val decompressListener = createByteListener(progressReporter)
         val tempTar = ExtractTempFileSupport.createTempFile(meta.localFolderPath)
         try {
-            CompressedFileUtil.decompress(
-                sourceFile = sourceFile,
-                outputFile = tempTar,
-                format = format,
-                progressListener = decompressListener,
-            )
+            decompress(sourceFile, tempTar, decompressListener)
             progressReporter.flushByteProgress()
-            val fileEntries = TarArchiveUtil.listEntries(tempTar).filter { !it.isDirectory }
+            val fileEntries = TarArchiveUtil.listEntries(tempTar).filter { !it.isDirectory && !it.isUnsupportedLink }
             if (fileEntries.size == 1) {
                 return extractSingleTarEntry(
                     tempTar = tempTar,

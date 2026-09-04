@@ -56,6 +56,7 @@ class ExtractJobRepository @Inject internal constructor(
     private suspend fun createJobInternal(params: CreateJobParams): Long {
         val name = when (params.extractType) {
             ExtractType.Zip,
+            ExtractType.TarGz,
             ExtractType.TarXz,
             ExtractType.TarZst,
             -> "${params.sourceFileName}を展開"
@@ -243,6 +244,7 @@ class ExtractJobRepository @Inject internal constructor(
 
     enum class ExtractType {
         Zip,
+        TarGz,
         TarXz,
         TarZst,
         Zst,
