@@ -85,28 +85,42 @@ internal class FileBrowserExtractCoordinator(
         }
     }
 
-    suspend fun startExtractJob(jobId: Long) {
-        val inputData = Data.Builder()
-            .putLong(FileExtractWorker.KEY_EXTRACT_OPERATION_ID, jobId)
-            .build()
-        val workRequest = OneTimeWorkRequestBuilder<FileExtractWorker>()
-            .setInputData(inputData)
-            .addTag(FileExtractWorker.TAG_EXTRACT)
-            .build()
-        dependencies.extractJobRepository.updateStatus(
-            operationId = jobId,
-            status = OperationRepository.OperationStatus.ENQUEUED,
-            workerId = workRequest.id.toString(),
-        )
-        WorkManager.getInstance(dependencies.application).enqueue(workRequest)
-        dependencies.clearSelection()
-        dependencies.selectionModeRepository.setSelectionMode(false)
-        dependencies.extractJobCompletionWatcher.watchJob(jobId)
+    suspend fun startExtractJob(jobId: Long): Boolean {
+        return runCatching {
+            val inputData = Data.Builder()
+                .putLong(FileExtractWorker.KEY_EXTRACT_OPERATION_ID, jobId)
+                .build()
+            val workRequest = OneTimeWorkRequestBuilder<FileExtractWorker>()
+                .setInputData(inputData)
+                .addTag(FileExtractWorker.TAG_EXTRACT)
+                .build()
+            dependencies.extractJobRepository.updateStatus(
+                operationId = jobId,
+                status = OperationRepository.OperationStatus.ENQUEUED,
+                workerId = workRequest.id.toString(),
+            )
+            WorkManager.getInstance(dependencies.application).enqueue(workRequest)
+            dependencies.clearSelection()
+            dependencies.selectionModeRepository.setSelectionMode(false)
+            dependencies.extractJobCompletionWatcher.watchJob(jobId)
+            true
+        }.getOrElse { e ->
+            when (e) {
+                is CancellationException -> throw e
+
+                else -> {
+                    e.printStackTrace()
+                    false
+                }
+            }
+        }
     }
 
     suspend fun enqueueExtract(request: PendingExtractRequest): Long? {
         val jobId = createExtractJob(request) ?: return null
-        startExtractJob(jobId)
+        if (!startExtractJob(jobId)) {
+            return null
+        }
         return jobId
     }
 

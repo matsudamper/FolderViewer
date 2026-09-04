@@ -464,7 +464,20 @@ class FileBrowserViewModel @AssistedInject constructor(
                         ),
                     )
                 }
-                extractCoordinator.startExtractJob(jobId)
+                val started = extractCoordinator.startExtractJob(jobId)
+                if (!started) {
+                    viewModelStateFlow.update { state ->
+                        val dialog = state.extractDialog ?: return@update state
+                        state.copy(
+                            extractDialog = dialog.copy(
+                                isExtracting = false,
+                                isExtractComplete = false,
+                                statusMessage = "解凍開始失敗",
+                            ),
+                        )
+                    }
+                    return@launch
+                }
                 extractCoordinator.startProgressObservation(viewModelScope, jobId)
             }
         }
