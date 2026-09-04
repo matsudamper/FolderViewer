@@ -52,10 +52,15 @@ internal object CompressedFileUtil {
         outputFile: File,
         progressListener: ExtractProgressListener?,
     ) {
-        BufferedInputStream(FileInputStream(sourceFile)).use { input ->
-            ZstdInputStream(input).use { zstInput ->
+        CountingInputStream(BufferedInputStream(FileInputStream(sourceFile))).use { countingInput ->
+            ZstdInputStream(countingInput).use { zstInput ->
                 BufferedOutputStream(FileOutputStream(outputFile)).use { output ->
-                    copyWithLimit(zstInput, output, MAX_OUTPUT_SIZE_BYTES, progressListener)
+                    copyWithLimit(
+                        input = zstInput,
+                        output = output,
+                        maxBytes = MAX_OUTPUT_SIZE_BYTES,
+                        onProgress = { progressListener?.onBytesTransferred(countingInput.bytesRead) },
+                    )
                 }
             }
         }
@@ -66,10 +71,15 @@ internal object CompressedFileUtil {
         outputFile: File,
         progressListener: ExtractProgressListener?,
     ) {
-        BufferedInputStream(FileInputStream(sourceFile)).use { input ->
-            XZInputStream(input, XZ_MEMORY_LIMIT_KIB).use { xzInput ->
+        CountingInputStream(BufferedInputStream(FileInputStream(sourceFile))).use { countingInput ->
+            XZInputStream(countingInput, XZ_MEMORY_LIMIT_KIB).use { xzInput ->
                 BufferedOutputStream(FileOutputStream(outputFile)).use { output ->
-                    copyWithLimit(xzInput, output, MAX_OUTPUT_SIZE_BYTES, progressListener)
+                    copyWithLimit(
+                        input = xzInput,
+                        output = output,
+                        maxBytes = MAX_OUTPUT_SIZE_BYTES,
+                        onProgress = { progressListener?.onBytesTransferred(countingInput.bytesRead) },
+                    )
                 }
             }
         }
@@ -79,7 +89,7 @@ internal object CompressedFileUtil {
         input: InputStream,
         output: OutputStream,
         maxBytes: Long,
-        progressListener: ExtractProgressListener?,
+        onProgress: (() -> Unit)? = null,
     ) {
         val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
         var total = 0L
@@ -91,7 +101,34 @@ internal object CompressedFileUtil {
             total += read
             ensureOutputSizeWithinLimit(total, maxBytes)
             output.write(buffer, 0, read)
-            progressListener?.onBytesTransferred(total)
+            onProgress?.invoke()
+        }
+    }
+
+    private class CountingInputStream(
+        private val delegate: InputStream,
+    ) : InputStream() {
+        var bytesRead: Long = 0
+            private set
+
+        override fun read(): Int {
+            val value = delegate.read()
+            if (value != -1) {
+                bytesRead++
+            }
+            return value
+        }
+
+        override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+            val read = delegate.read(buffer, offset, length)
+            if (read > 0) {
+                bytesRead += read
+            }
+            return read
+        }
+
+        override fun close() {
+            delegate.close()
         }
     }
 
