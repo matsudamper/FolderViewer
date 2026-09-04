@@ -67,14 +67,16 @@ class ExtractJobCompletionWatcher @Inject constructor(
         }
     }
 
-    suspend fun openExtractResult(jobId: Long) {
+    suspend fun openExtractResult(jobId: Long): Boolean {
         resolveNavigation(jobId)?.let { navigation ->
             _pendingNavigation.emit(navigation)
-            return
+            return true
         }
         resolveExternalOpen(jobId)?.let { externalOpen ->
             _pendingExternalOpen.emit(externalOpen)
+            return true
         }
+        return false
     }
 
     private suspend fun handleTerminalStatus(
