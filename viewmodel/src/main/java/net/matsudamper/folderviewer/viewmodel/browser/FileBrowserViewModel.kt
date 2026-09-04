@@ -403,9 +403,10 @@ class FileBrowserViewModel @AssistedInject constructor(
                 state.copy(
                     extractDialog = ViewModelState.ExtractDialogState(
                         folderName = folderName,
-                        isExtracting = false,
+                        isExtracting = true,
                         jobId = null,
                         mode = dialogMode,
+                        isAwaitingExtractPermission = true,
                     ),
                 )
             }
@@ -415,20 +416,26 @@ class FileBrowserViewModel @AssistedInject constructor(
         }
 
         override fun onDismissExtract() {
-            val dialogState = viewModelStateFlow.value.extractDialog
-            if (dialogState?.isExtracting == true && dialogState.jobId != null) {
-                viewModelScope.launch {
-                    extractJobRepository.disableOpenOnComplete(dialogState.jobId)
-                }
+            if (viewModelStateFlow.value.extractDialog?.isAwaitingExtractPermission == true) {
+                return
             }
-            pendingExtractFileItem = null
-            pendingExtractRequest = null
-            extractCoordinator.closeDialog(viewModelStateFlow)
+            dismissExtractDialog()
+        }
+
+        override fun onCancelExtract() {
+            dismissExtractDialog()
         }
 
         override fun onExtractPermissionResult() {
             val request = pendingExtractRequest ?: return
             pendingExtractRequest = null
+            viewModelStateFlow.update { state ->
+                state.copy(
+                    extractDialog = state.extractDialog?.copy(
+                        isAwaitingExtractPermission = false,
+                    ),
+                )
+            }
             viewModelScope.launch {
                 when (val result = extractCoordinator.enqueueExtract(request)) {
                     is EnqueueExtractResult.Failure -> {
@@ -457,6 +464,18 @@ class FileBrowserViewModel @AssistedInject constructor(
                     }
                 }
             }
+        }
+
+        private fun dismissExtractDialog() {
+            val dialogState = viewModelStateFlow.value.extractDialog
+            if (dialogState?.isExtracting == true && dialogState.jobId != null) {
+                viewModelScope.launch {
+                    extractJobRepository.disableOpenOnComplete(dialogState.jobId)
+                }
+            }
+            pendingExtractFileItem = null
+            pendingExtractRequest = null
+            extractCoordinator.closeDialog(viewModelStateFlow)
         }
 
         override fun onDeleteClick() {
@@ -1286,6 +1305,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             val jobId: Long?,
             val mode: ExtractDialogMode,
             val resultMessage: String? = null,
+            val isAwaitingExtractPermission: Boolean = false,
         )
 
         sealed interface SelectionState {

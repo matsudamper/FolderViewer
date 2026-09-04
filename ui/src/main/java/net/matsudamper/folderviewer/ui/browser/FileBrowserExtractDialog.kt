@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 
 @Composable
 internal fun FileBrowserExtractDialog(
@@ -29,6 +30,8 @@ internal fun FileBrowserExtractDialog(
     progress: Float? = null,
     progressText: String? = null,
     resultMessage: String? = null,
+    isAwaitingExtractPermission: Boolean = false,
+    onCancel: () -> Unit,
 ) {
     var extractNameInput by remember(defaultName, mode) {
         mutableStateOf(defaultName)
@@ -48,6 +51,10 @@ internal fun FileBrowserExtractDialog(
     val showResult = resultMessage != null
     AlertDialog(
         onDismissRequest = onDismissRequest,
+        properties = DialogProperties(
+            dismissOnClickOutside = !isAwaitingExtractPermission,
+            dismissOnBackPress = !isAwaitingExtractPermission,
+        ),
         title = { Text(dialogTitle) },
         text = {
             Column {
@@ -81,7 +88,11 @@ internal fun FileBrowserExtractDialog(
                             )
                         }
                         Text(
-                            text = progressText ?: "解凍中...",
+                            text = progressText ?: if (isAwaitingExtractPermission) {
+                                "準備中..."
+                            } else {
+                                "解凍中..."
+                            },
                             modifier = Modifier.padding(top = 8.dp),
                         )
                     }
@@ -112,7 +123,7 @@ internal fun FileBrowserExtractDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismissRequest) {
+            TextButton(onClick = onCancel) {
                 Text(if (isExtracting || showResult) "閉じる" else "キャンセル")
             }
         },
@@ -127,6 +138,7 @@ private fun FileBrowserExtractDialogZipPreview() {
         mode = ExtractDialogMode.ZipFolder,
         isExtracting = false,
         onDismissRequest = {},
+        onCancel = {},
         onConfirm = {},
     )
 }
@@ -139,6 +151,7 @@ private fun FileBrowserExtractDialogZstPreview() {
         mode = ExtractDialogMode.ZstFile,
         isExtracting = false,
         onDismissRequest = {},
+        onCancel = {},
         onConfirm = {},
     )
 }
@@ -151,6 +164,7 @@ private fun FileBrowserExtractDialogXzPreview() {
         mode = ExtractDialogMode.XzFile,
         isExtracting = false,
         onDismissRequest = {},
+        onCancel = {},
         onConfirm = {},
     )
 }
@@ -165,6 +179,7 @@ private fun FileBrowserExtractDialogExtractingFileCountPreview() {
         progress = 0.35f,
         progressText = "35/100 ファイル",
         onDismissRequest = {},
+        onCancel = {},
         onConfirm = {},
     )
 }
@@ -178,6 +193,7 @@ private fun FileBrowserExtractDialogResultPreview() {
         isExtracting = false,
         resultMessage = "archiveに展開しました",
         onDismissRequest = {},
+        onCancel = {},
         onConfirm = {},
     )
 }
@@ -192,6 +208,7 @@ private fun FileBrowserExtractDialogExtractingBytesPreview() {
         progress = 0.6f,
         progressText = "12.0 MB/20.0 MB",
         onDismissRequest = {},
+        onCancel = {},
         onConfirm = {},
     )
 }

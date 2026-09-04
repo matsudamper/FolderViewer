@@ -41,5 +41,6 @@ internal fun mapExtractDialogUiState(
         progress = progress?.progress,
         progressText = progress?.progressText,
         resultMessage = dialog.resultMessage,
+        isAwaitingExtractPermission = dialog.isAwaitingExtractPermission,
     )
 }

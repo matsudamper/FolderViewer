@@ -30,6 +30,7 @@ data class FileBrowserUiState(
         val progress: Float? = null,
         val progressText: String? = null,
         val resultMessage: String? = null,
+        val isAwaitingExtractPermission: Boolean = false,
     )
 
     sealed interface ContentState {
@@ -101,6 +102,7 @@ data class FileBrowserUiState(
         fun onExtractClick()
         fun onConfirmExtract(folderName: String)
         fun onDismissExtract()
+        fun onCancelExtract()
         fun onExtractPermissionResult()
         fun onDeleteClick()
         fun onConfirmDelete()

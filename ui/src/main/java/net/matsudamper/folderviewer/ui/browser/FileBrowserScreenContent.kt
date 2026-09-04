@@ -293,7 +293,9 @@ internal fun FileBrowserScreenContent(
             progress = extractDialog.progress,
             progressText = extractDialog.progressText,
             resultMessage = extractDialog.resultMessage,
+            isAwaitingExtractPermission = extractDialog.isAwaitingExtractPermission,
             onDismissRequest = { uiState.callbacks.onDismissExtract() },
+            onCancel = { uiState.callbacks.onCancelExtract() },
             onConfirm = { folderName -> uiState.callbacks.onConfirmExtract(folderName) },
         )
     }
@@ -364,6 +366,7 @@ private fun Preview() {
                 override fun onExtractClick() = Unit
                 override fun onConfirmExtract(folderName: String) = Unit
                 override fun onDismissExtract() = Unit
+                override fun onCancelExtract() = Unit
                 override fun onExtractPermissionResult() = Unit
                 override fun onDeleteClick() = Unit
                 override fun onConfirmDelete() = Unit

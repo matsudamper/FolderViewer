@@ -20,10 +20,13 @@ fun FileBrowserScreen(
     modifier: Modifier = Modifier,
 ) {
     BackHandler {
-        if (uiState.extractDialog != null) {
-            uiState.callbacks.onDismissExtract()
-        } else {
-            uiState.callbacks.onBack()
+        val extractDialog = uiState.extractDialog
+        when {
+            extractDialog?.isAwaitingExtractPermission == true -> Unit
+
+            extractDialog != null -> uiState.callbacks.onDismissExtract()
+
+            else -> uiState.callbacks.onBack()
         }
     }
 
