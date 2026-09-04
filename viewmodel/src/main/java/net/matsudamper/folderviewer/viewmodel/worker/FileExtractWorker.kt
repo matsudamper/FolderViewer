@@ -359,6 +359,7 @@ internal object ExtractWorkerExecutor {
                 format = format,
                 progressListener = progressListener,
             )
+            progressReporter.flushByteProgress()
             val resolvedName = DecompressedOutputNameResolver.resolveFileName(meta.outputName, tempFile)
             return publishDecompressedFile(
                 tempFile = tempFile,
@@ -392,6 +393,7 @@ internal object ExtractWorkerExecutor {
                 format = format,
                 progressListener = decompressListener,
             )
+            progressReporter.flushByteProgress()
             val fileEntries = TarArchiveUtil.listEntries(tempTar).filter { !it.isDirectory }
             if (fileEntries.size == 1) {
                 return extractSingleTarEntry(
@@ -407,6 +409,7 @@ internal object ExtractWorkerExecutor {
                 meta = meta,
                 appContext = appContext,
                 progressReporter = progressReporter,
+                fileEntries = fileEntries,
             )
         } finally {
             ExtractTempFileSupport.cleanupTempFile(tempTar)
@@ -434,6 +437,7 @@ internal object ExtractWorkerExecutor {
                 outputFile = tempOutput,
                 progressListener = progressListener,
             )
+            progressReporter.flushByteProgress()
             val entryBaseName = entry.name.substringAfterLast('/')
             val resolvedName = DecompressedOutputNameResolver.resolveFileName(
                 outputName = entryBaseName.ifEmpty { meta.outputName },
@@ -456,11 +460,9 @@ internal object ExtractWorkerExecutor {
         meta: ExtractJobRepository.ExtractJobMeta,
         appContext: Context,
         progressReporter: ExtractProgressReporter,
+        fileEntries: List<TarArchiveUtil.EntryInfo>,
     ): File {
-        val fileNames = TarArchiveUtil.listEntries(tempTar)
-            .filter { !it.isDirectory }
-            .map { it.name }
-        progressReporter.startFileCountProgress(fileNames)
+        progressReporter.startFileCountProgress(fileEntries.map { it.name })
         val progressListener = createFileCountListener(progressReporter)
         val extractDir = ExtractOutputNameValidator.resolveChildFile(meta.localFolderPath, meta.outputName)
             ?: error("無効なフォルダ名です")

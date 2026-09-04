@@ -11,12 +11,18 @@ internal class ExtractProgressReporter(
 ) {
     private var byteProgressFileId: Long? = null
     private var byteTotalBytes: Long = 0
+    private var latestTransferredBytes: Long = 0
+    private var lastPersistedBytes: Long = -1
+    private var lastPersistedAtMs: Long = 0
     private var fileProgressIds: List<Long> = emptyList()
     private var nextFileIndex = 0
 
     suspend fun startByteProgress(totalBytes: Long, label: String) {
         clearProgress()
         byteTotalBytes = totalBytes
+        latestTransferredBytes = 0
+        lastPersistedBytes = -1
+        lastPersistedAtMs = 0
         byteProgressFileId = extractJobRepository.initializeByteProgress(
             operationId = operationId,
             totalBytes = totalBytes,
@@ -39,11 +45,41 @@ internal class ExtractProgressReporter(
     }
 
     fun updateBytes(transferredBytes: Long) {
+        latestTransferredBytes = transferredBytes
+        persistByteProgressIfNeeded(transferredBytes)
+    }
+
+    fun flushByteProgress() {
+        persistByteProgressIfNeeded(latestTransferredBytes, force = true)
+    }
+
+    private fun persistByteProgressIfNeeded(transferredBytes: Long, force: Boolean = false) {
         val fileId = byteProgressFileId ?: return
+        if (!force && !shouldPersistByteProgress(transferredBytes)) {
+            return
+        }
+        if (!force && transferredBytes == lastPersistedBytes) {
+            return
+        }
+        lastPersistedBytes = transferredBytes
+        lastPersistedAtMs = System.currentTimeMillis()
         runBlocking {
             extractJobRepository.updateByteProgress(fileId, transferredBytes)
         }
         notifyByteProgress(transferredBytes)
+    }
+
+    private fun shouldPersistByteProgress(transferredBytes: Long): Boolean {
+        if (byteTotalBytes > 0 && transferredBytes >= byteTotalBytes) {
+            return true
+        }
+        if (lastPersistedBytes < 0) {
+            return true
+        }
+        if (transferredBytes - lastPersistedBytes >= MIN_BYTE_UPDATE_INTERVAL) {
+            return true
+        }
+        return System.currentTimeMillis() - lastPersistedAtMs >= MIN_TIME_UPDATE_INTERVAL_MS
     }
 
     fun onFileCompleted() {
@@ -62,6 +98,9 @@ internal class ExtractProgressReporter(
         extractJobRepository.clearProgress(operationId)
         byteProgressFileId = null
         byteTotalBytes = 0
+        latestTransferredBytes = 0
+        lastPersistedBytes = -1
+        lastPersistedAtMs = 0
         fileProgressIds = emptyList()
         nextFileIndex = 0
     }
@@ -90,5 +129,10 @@ internal class ExtractProgressReporter(
             "$completedFiles/$totalFiles ファイル",
             ratio,
         )
+    }
+
+    private companion object {
+        private const val MIN_BYTE_UPDATE_INTERVAL = 512L * 1024
+        private const val MIN_TIME_UPDATE_INTERVAL_MS = 200L
     }
 }
