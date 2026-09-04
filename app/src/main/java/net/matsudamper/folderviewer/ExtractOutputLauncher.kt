@@ -1,7 +1,9 @@
 package net.matsudamper.folderviewer
 
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.os.Environment
 import android.provider.DocumentsContract
 import androidx.core.content.FileProvider
 import java.io.File
@@ -13,7 +15,7 @@ internal object ExtractOutputLauncher {
         viewSourceUri: ViewSourceUri,
         fileName: String,
         mimeType: String?,
-    ) {
+    ): Boolean {
         val uri = when (viewSourceUri) {
             is ViewSourceUri.LocalFile -> {
                 FileProvider.getUriForFile(
@@ -38,41 +40,61 @@ internal object ExtractOutputLauncher {
         if (isApk && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O &&
             !context.packageManager.canRequestPackageInstalls()
         ) {
-            runCatching {
+            return runCatching {
                 context.startActivity(
                     Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
                         data = android.net.Uri.parse("package:${context.packageName}")
                     },
                 )
-            }
-            return
+                false
+            }.getOrDefault(false)
         }
         val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, mimeType ?: "*/*")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        runCatching {
-            context.startActivity(intent)
-        }
+        return startActivitySafely(context, intent)
     }
 
     fun openOutputFolder(
         context: Context,
         absolutePath: String,
-    ) {
-        val relativePath = File(absolutePath)
-            .relativeToOrNull(android.os.Environment.getExternalStorageDirectory())
-            ?.path
-            .orEmpty()
-        val uri = DocumentsContract.buildDocumentUri(
-            "com.android.externalstorage.documents",
-            "primary:$relativePath",
+    ): Boolean {
+        val folder = File(absolutePath)
+        if (!folder.isDirectory) {
+            return false
+        }
+        val primaryRelativePath = folder.relativeToOrNull(Environment.getExternalStorageDirectory())?.path
+        if (primaryRelativePath != null && !primaryRelativePath.startsWith("..")) {
+            val uri = DocumentsContract.buildDocumentUri(
+                "com.android.externalstorage.documents",
+                "primary:$primaryRelativePath",
+            )
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, DocumentsContract.Document.MIME_TYPE_DIR)
+            }
+            if (startActivitySafely(context, intent)) {
+                return true
+            }
+        }
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            folder,
         )
         val intent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(uri, DocumentsContract.Document.MIME_TYPE_DIR)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        runCatching {
+        return startActivitySafely(context, intent)
+    }
+
+    private fun startActivitySafely(context: Context, intent: Intent): Boolean {
+        return try {
             context.startActivity(intent)
+            true
+        } catch (_: ActivityNotFoundException) {
+            false
         }
     }
 }

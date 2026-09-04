@@ -46,6 +46,7 @@ class ExternalExtractActivity : ComponentActivity() {
 
     private var viewModelArgs by mutableStateOf<ExternalExtractLaunchArgs?>(null)
     private var launchErrorMessage by mutableStateOf<String?>(null)
+    private var openResultErrorMessage by mutableStateOf<String?>(null)
     private var handledIncomingUri by mutableStateOf(false)
 
     private val notificationPermissionLauncher = registerForActivityResult(
@@ -127,8 +128,13 @@ class ExternalExtractActivity : ComponentActivity() {
                     creationCallback = { factory -> factory.create(args) },
                 )
                 val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
+                val displayUiState = if (openResultErrorMessage != null) {
+                    uiState.copy(statusMessage = openResultErrorMessage)
+                } else {
+                    uiState
+                }
                 ExternalExtractScreen(
-                    uiState = uiState,
+                    uiState = displayUiState,
                 )
 
                 androidx.compose.runtime.LaunchedEffect(viewModel) {
@@ -146,22 +152,41 @@ class ExternalExtractActivity : ComponentActivity() {
                                 finish()
                             }
 
+                            is ExternalExtractViewModel.ViewModelEvent.NavigateToFileBrowser -> {
+                                startActivity(
+                                    MainActivity.createOpenFileBrowserIntent(
+                                        context = this@ExternalExtractActivity,
+                                        fileId = event.fileId,
+                                        displayPath = event.displayPath,
+                                    ),
+                                )
+                                finish()
+                            }
+
                             is ExternalExtractViewModel.ViewModelEvent.OpenOutputFile -> {
-                                ExtractOutputLauncher.openOutputFile(
+                                val opened = ExtractOutputLauncher.openOutputFile(
                                     context = this@ExternalExtractActivity,
                                     viewSourceUri = event.viewSourceUri,
                                     fileName = event.fileName,
                                     mimeType = event.mimeType,
                                 )
-                                finish()
+                                if (opened) {
+                                    finish()
+                                } else {
+                                    openResultErrorMessage = "解凍結果を開けませんでした"
+                                }
                             }
 
                             is ExternalExtractViewModel.ViewModelEvent.OpenOutputFolder -> {
-                                ExtractOutputLauncher.openOutputFolder(
+                                val opened = ExtractOutputLauncher.openOutputFolder(
                                     context = this@ExternalExtractActivity,
                                     absolutePath = event.absolutePath,
                                 )
-                                finish()
+                                if (opened) {
+                                    finish()
+                                } else {
+                                    openResultErrorMessage = "解凍結果を開けませんでした"
+                                }
                             }
                         }
                     }
