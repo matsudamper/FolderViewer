@@ -95,7 +95,6 @@ class ExternalExtractViewModel @AssistedInject constructor(
         val conflictMessage = ExtractOutputConflictChecker.conflictMessage(
             parentPath = args.outputParentPath,
             outputName = outputName,
-            extractType = args.extractType.toExtractJobType(),
         )
         if (conflictMessage != null) {
             _uiState.value = _uiState.value.copy(

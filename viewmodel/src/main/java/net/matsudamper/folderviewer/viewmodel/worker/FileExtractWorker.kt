@@ -519,7 +519,6 @@ internal object ExtractWorkerExecutor {
         ExtractOutputConflictChecker.findConflict(
             parentPath = meta.localFolderPath,
             outputName = outputName,
-            outputKind = ExtractOutputConflictChecker.OutputKind.File,
         )?.let { conflict ->
             ExtractTempFileSupport.cleanupTempFile(tempFile)
             error(conflict.message)

@@ -400,7 +400,6 @@ class FileBrowserViewModel @AssistedInject constructor(
                 val conflictMessage = ExtractOutputConflictChecker.conflictMessage(
                     parentPath = localFolderPath,
                     outputName = folderName,
-                    extractType = extractType,
                 )
                 if (conflictMessage != null) {
                     viewModelStateFlow.update { state ->
