@@ -144,6 +144,24 @@ class ExternalExtractActivity : ComponentActivity() {
                                 )
                                 finish()
                             }
+
+                            is ExternalExtractViewModel.ViewModelEvent.OpenOutputFile -> {
+                                ExtractOutputLauncher.openOutputFile(
+                                    context = this@ExternalExtractActivity,
+                                    viewSourceUri = event.viewSourceUri,
+                                    fileName = event.fileName,
+                                    mimeType = event.mimeType,
+                                )
+                                finish()
+                            }
+
+                            is ExternalExtractViewModel.ViewModelEvent.OpenOutputFolder -> {
+                                ExtractOutputLauncher.openOutputFolder(
+                                    context = this@ExternalExtractActivity,
+                                    absolutePath = event.absolutePath,
+                                )
+                                finish()
+                            }
                         }
                     }
                 }

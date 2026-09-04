@@ -21,9 +21,12 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import net.matsudamper.folderviewer.repository.ExtractJobRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
+import net.matsudamper.folderviewer.repository.StorageRepository
+import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.ExtractDialogMode
 import net.matsudamper.folderviewer.ui.extract.ExternalExtractUiState
 import net.matsudamper.folderviewer.viewmodel.browser.ExtractJobCompletionWatcher
+import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputLocationResolver
 import net.matsudamper.folderviewer.viewmodel.util.ExtractProgressText
 import net.matsudamper.folderviewer.viewmodel.util.ExtractableFileNameUtil
 import net.matsudamper.folderviewer.viewmodel.worker.FileExtractWorker
@@ -34,6 +37,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
     private val extractJobRepository: ExtractJobRepository,
     private val extractJobCompletionWatcher: ExtractJobCompletionWatcher,
     private val operationRepository: OperationRepository,
+    private val storageRepository: StorageRepository,
     application: Application,
 ) : AndroidViewModel(application) {
 
@@ -52,6 +56,13 @@ class ExternalExtractViewModel @AssistedInject constructor(
         }
 
         override fun onOpenResult() {
+            val jobId = activeJobId ?: return
+            viewModelScope.launch {
+                openExtractOutput(jobId)
+            }
+        }
+
+        override fun onOpenDetail() {
             val jobId = activeJobId ?: return
             viewModelEventChannel.trySend(ViewModelEvent.OpenExtractDetail(jobId))
         }
@@ -171,11 +182,42 @@ class ExternalExtractViewModel @AssistedInject constructor(
         }
     }
 
+    private suspend fun openExtractOutput(jobId: Long) {
+        val meta = extractJobRepository.getJobMeta(jobId) ?: return
+        ExtractOutputLocationResolver.resolveOpenOutputFile(meta, storageRepository)?.let { target ->
+            viewModelEventChannel.send(
+                ViewModelEvent.OpenOutputFile(
+                    viewSourceUri = target.viewSourceUri,
+                    fileName = target.fileName,
+                    mimeType = target.mimeType,
+                ),
+            )
+            return
+        }
+        ExtractOutputLocationResolver.resolveOpenOutputFolder(meta, storageRepository)?.let { target ->
+            viewModelEventChannel.send(ViewModelEvent.OpenOutputFolder(target.absolutePath))
+            return
+        }
+        _uiState.value = _uiState.value.copy(
+            statusMessage = "解凍結果を開けませんでした",
+        )
+    }
+
     sealed interface ViewModelEvent {
         data object Finish : ViewModelEvent
 
         data class OpenExtractDetail(
             val jobId: Long,
+        ) : ViewModelEvent
+
+        data class OpenOutputFile(
+            val viewSourceUri: ViewSourceUri,
+            val fileName: String,
+            val mimeType: String?,
+        ) : ViewModelEvent
+
+        data class OpenOutputFolder(
+            val absolutePath: String,
         ) : ViewModelEvent
     }
 

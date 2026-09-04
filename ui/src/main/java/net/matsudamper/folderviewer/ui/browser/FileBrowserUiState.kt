@@ -104,6 +104,7 @@ data class FileBrowserUiState(
         fun onDismissExtract()
         fun onExtractPermissionResult()
         fun onOpenExtractResult(jobId: Long)
+        fun onOpenExtractDetail(jobId: Long)
         fun onDeleteClick()
         fun onConfirmDelete()
         fun onPasteClick()

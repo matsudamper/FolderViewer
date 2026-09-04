@@ -1,6 +1,8 @@
 package net.matsudamper.folderviewer.ui.browser
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
@@ -28,6 +30,7 @@ internal fun FileBrowserExtractDialog(
     onDismissRequest: () -> Unit,
     onConfirm: (String) -> Unit,
     onOpenResult: () -> Unit,
+    onOpenDetail: () -> Unit,
     hintMessage: String? = null,
     progress: Float? = null,
     progressText: String? = null,
@@ -99,11 +102,19 @@ internal fun FileBrowserExtractDialog(
         },
         confirmButton = {
             if (showExtractProgress) {
-                TextButton(
-                    onClick = onOpenResult,
-                    enabled = isExtractComplete,
-                ) {
-                    Text("開く")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = onOpenDetail,
+                        enabled = isExtractComplete,
+                    ) {
+                        Text("詳細を開く")
+                    }
+                    TextButton(
+                        onClick = onOpenResult,
+                        enabled = isExtractComplete,
+                    ) {
+                        Text("開く")
+                    }
                 }
             } else {
                 TextButton(
@@ -138,6 +149,7 @@ private fun FileBrowserExtractDialogZipPreview() {
         onDismissRequest = {},
         onConfirm = {},
         onOpenResult = {},
+        onOpenDetail = {},
     )
 }
 
@@ -153,6 +165,7 @@ private fun FileBrowserExtractDialogZstPreview() {
         onDismissRequest = {},
         onConfirm = {},
         onOpenResult = {},
+        onOpenDetail = {},
     )
 }
 
@@ -168,6 +181,7 @@ private fun FileBrowserExtractDialogXzPreview() {
         onDismissRequest = {},
         onConfirm = {},
         onOpenResult = {},
+        onOpenDetail = {},
     )
 }
 
@@ -185,6 +199,7 @@ private fun FileBrowserExtractDialogExtractingFileCountPreview() {
         onDismissRequest = {},
         onConfirm = {},
         onOpenResult = {},
+        onOpenDetail = {},
     )
 }
 
@@ -202,6 +217,7 @@ private fun FileBrowserExtractDialogExtractingBytesPreview() {
         onDismissRequest = {},
         onConfirm = {},
         onOpenResult = {},
+        onOpenDetail = {},
     )
 }
 
@@ -217,5 +233,6 @@ private fun FileBrowserExtractDialogCompletePreview() {
         onDismissRequest = {},
         onConfirm = {},
         onOpenResult = {},
+        onOpenDetail = {},
     )
 }

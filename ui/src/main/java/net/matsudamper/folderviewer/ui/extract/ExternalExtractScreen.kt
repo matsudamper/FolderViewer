@@ -31,6 +31,7 @@ fun ExternalExtractScreen(
             onDismissRequest = uiState.callbacks::onDismissRequest,
             onConfirm = uiState.callbacks::onConfirm,
             onOpenResult = uiState.callbacks::onOpenResult,
+            onOpenDetail = uiState.callbacks::onOpenDetail,
         )
     }
 }
@@ -52,6 +53,8 @@ private fun ExternalExtractScreenPreview() {
                 override fun onConfirm(outputName: String) = Unit
 
                 override fun onOpenResult() = Unit
+
+                override fun onOpenDetail() = Unit
             },
         ),
     )

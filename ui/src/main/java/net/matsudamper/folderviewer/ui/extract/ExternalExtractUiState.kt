@@ -19,5 +19,7 @@ data class ExternalExtractUiState(
         fun onConfirm(outputName: String)
 
         fun onOpenResult()
+
+        fun onOpenDetail()
     }
 }

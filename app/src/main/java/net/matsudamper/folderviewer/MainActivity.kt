@@ -735,6 +735,10 @@ private fun FileBrowserEventHandler(
                     }
                 }
 
+                is FileBrowserViewModel.ViewModelEvent.NavigateToExtractDetail -> {
+                    navigator.navigate(ExtractDetail(operationId = event.jobId))
+                }
+
                 is FileBrowserViewModel.ViewModelEvent.OpenFolderWithExternalApp -> {
                     val relativePath = File(event.path)
                         .relativeToOrNull(android.os.Environment.getExternalStorageDirectory())

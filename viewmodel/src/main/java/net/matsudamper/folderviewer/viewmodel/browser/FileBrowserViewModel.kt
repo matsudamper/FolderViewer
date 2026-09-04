@@ -505,6 +505,15 @@ class FileBrowserViewModel @AssistedInject constructor(
             }
         }
 
+        override fun onOpenExtractDetail(jobId: Long) {
+            viewModelScope.launch {
+                viewModelEventChannel.send(ViewModelEvent.NavigateToExtractDetail(jobId))
+                if (viewModelStateFlow.value.extractDialog?.jobId == jobId) {
+                    extractCoordinator.closeDialog(viewModelStateFlow)
+                }
+            }
+        }
+
         override fun onDeleteClick() {
             val selectedIds = when (val s = viewModelStateFlow.value.selectedState) {
                 is ViewModelState.SelectionState.NonSelected -> return
@@ -835,6 +844,10 @@ class FileBrowserViewModel @AssistedInject constructor(
         data object RequestNotificationPermissionForDelete : ViewModelEvent
 
         data object RequestNotificationPermissionForExtract : ViewModelEvent
+
+        data class NavigateToExtractDetail(
+            val jobId: Long,
+        ) : ViewModelEvent
 
         data class OpenFolderWithExternalApp(val path: String) : ViewModelEvent
 
