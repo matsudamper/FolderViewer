@@ -6,8 +6,10 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import kotlinx.coroutines.flow.Flow
 import net.matsudamper.folderviewer.ui.util.showDismissibleSnackbar
@@ -33,12 +35,13 @@ fun FileBrowserScreen(
     val showCreateDirectoryDialog = remember { mutableStateOf(false) }
     val showCompressDialog = remember { mutableStateOf(false) }
     val deleteConfirmCount = remember { mutableStateOf<Int?>(null) }
+    val currentExtractDialog by rememberUpdatedState(uiState.extractDialog)
 
-    LaunchedEffect(uiEvent, uiState.extractDialog) {
+    LaunchedEffect(uiEvent) {
         uiEvent.collect { event ->
             when (event) {
                 is FileBrowserUiEvent.ShowSnackbar -> {
-                    if (uiState.extractDialog != null && event.openExtractJobId != null) {
+                    if (currentExtractDialog != null && event.openExtractJobId != null) {
                         return@collect
                     }
                     val actionLabel = when {

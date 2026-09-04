@@ -30,6 +30,8 @@ internal object FileBrowserExtractDialogPresenter {
                 extractDialog = FileBrowserViewModel.ViewModelState.ExtractDialogState(
                     folderName = input.outputName,
                     isExtracting = false,
+                    isExtractComplete = false,
+                    statusMessage = null,
                     jobId = null,
                     mode = input.mode,
                 ),

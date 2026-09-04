@@ -12,16 +12,15 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.core.content.IntentCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -33,10 +32,8 @@ import coil.Coil
 import coil.ImageLoader
 import dagger.hilt.android.AndroidEntryPoint
 import jakarta.inject.Inject
-import net.matsudamper.folderviewer.ui.R
 import net.matsudamper.folderviewer.ui.extract.ExternalExtractScreen
 import net.matsudamper.folderviewer.ui.theme.FolderViewerTheme
-import net.matsudamper.folderviewer.ui.util.showDismissibleSnackbar
 import net.matsudamper.folderviewer.viewmodel.extract.ExternalExtractIntentHandler
 import net.matsudamper.folderviewer.viewmodel.extract.ExternalExtractLaunchArgs
 import net.matsudamper.folderviewer.viewmodel.extract.ExternalExtractViewModel
@@ -49,6 +46,7 @@ class ExternalExtractActivity : ComponentActivity() {
 
     private var viewModelArgs by mutableStateOf<ExternalExtractLaunchArgs?>(null)
     private var launchErrorMessage by mutableStateOf<String?>(null)
+    private var openResultErrorMessage by mutableStateOf<String?>(null)
     private var handledIncomingUri by mutableStateOf(false)
 
     private val notificationPermissionLauncher = registerForActivityResult(
@@ -57,6 +55,7 @@ class ExternalExtractActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.setBackgroundDrawableResource(android.R.color.transparent)
         enableEdgeToEdge()
         Coil.setImageLoader(imageLoader)
 
@@ -97,17 +96,23 @@ class ExternalExtractActivity : ComponentActivity() {
 
         setContent {
             FolderViewerTheme {
-                val snackbarHostState = remember { SnackbarHostState() }
-                val detailActionLabel = stringResource(R.string.snackbar_action_detail)
-
-                androidx.compose.runtime.LaunchedEffect(launchErrorMessage) {
-                    val message = launchErrorMessage ?: return@LaunchedEffect
-                    snackbarHostState.showDismissibleSnackbar(message = message)
-                    finish()
+                val launchError = launchErrorMessage
+                if (launchError != null) {
+                    AlertDialog(
+                        onDismissRequest = { finish() },
+                        title = { Text("エラー") },
+                        text = { Text(launchError) },
+                        confirmButton = {
+                            TextButton(onClick = { finish() }) {
+                                Text("OK")
+                            }
+                        },
+                    )
+                    return@FolderViewerTheme
                 }
 
                 val args = viewModelArgs
-                if (args == null && launchErrorMessage == null && !handledIncomingUri) {
+                if (args == null && !handledIncomingUri) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
@@ -123,9 +128,13 @@ class ExternalExtractActivity : ComponentActivity() {
                     creationCallback = { factory -> factory.create(args) },
                 )
                 val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
+                val displayUiState = if (openResultErrorMessage != null) {
+                    uiState.copy(statusMessage = openResultErrorMessage)
+                } else {
+                    uiState
+                }
                 ExternalExtractScreen(
-                    uiState = uiState,
-                    snackbarHostState = snackbarHostState,
+                    uiState = displayUiState,
                 )
 
                 androidx.compose.runtime.LaunchedEffect(viewModel) {
@@ -133,28 +142,50 @@ class ExternalExtractActivity : ComponentActivity() {
                         when (event) {
                             ExternalExtractViewModel.ViewModelEvent.Finish -> finish()
 
-                            is ExternalExtractViewModel.ViewModelEvent.ShowSnackbar -> {
-                                val extractDetailJobId = event.extractDetailJobId
-                                val finishAfterDismiss = event.finishAfterDismiss
-                                launch {
-                                    val result = snackbarHostState.showDismissibleSnackbar(
-                                        message = event.message,
-                                        actionLabel = extractDetailJobId?.let { detailActionLabel },
-                                    )
-                                    if (
-                                        result == SnackbarResult.ActionPerformed &&
-                                        extractDetailJobId != null
-                                    ) {
-                                        startActivity(
-                                            OperationDetailActivity.createExtractDetailIntent(
-                                                this@ExternalExtractActivity,
-                                                extractDetailJobId,
-                                            ),
-                                        )
-                                    }
-                                    if (finishAfterDismiss) {
-                                        finish()
-                                    }
+                            is ExternalExtractViewModel.ViewModelEvent.OpenExtractDetail -> {
+                                startActivity(
+                                    OperationDetailActivity.createExtractDetailIntent(
+                                        this@ExternalExtractActivity,
+                                        event.jobId,
+                                    ),
+                                )
+                                finish()
+                            }
+
+                            is ExternalExtractViewModel.ViewModelEvent.NavigateToFileBrowser -> {
+                                startActivity(
+                                    MainActivity.createOpenFileBrowserIntent(
+                                        context = this@ExternalExtractActivity,
+                                        fileId = event.fileId,
+                                        displayPath = event.displayPath,
+                                    ),
+                                )
+                                finish()
+                            }
+
+                            is ExternalExtractViewModel.ViewModelEvent.OpenOutputFile -> {
+                                val opened = ExtractOutputLauncher.openOutputFile(
+                                    context = this@ExternalExtractActivity,
+                                    viewSourceUri = event.viewSourceUri,
+                                    fileName = event.fileName,
+                                    mimeType = event.mimeType,
+                                )
+                                if (opened) {
+                                    finish()
+                                } else {
+                                    openResultErrorMessage = "解凍結果を開けませんでした"
+                                }
+                            }
+
+                            is ExternalExtractViewModel.ViewModelEvent.OpenOutputFolder -> {
+                                val opened = ExtractOutputLauncher.openOutputFolder(
+                                    context = this@ExternalExtractActivity,
+                                    absolutePath = event.absolutePath,
+                                )
+                                if (opened) {
+                                    finish()
+                                } else {
+                                    openResultErrorMessage = "解凍結果を開けませんでした"
                                 }
                             }
                         }

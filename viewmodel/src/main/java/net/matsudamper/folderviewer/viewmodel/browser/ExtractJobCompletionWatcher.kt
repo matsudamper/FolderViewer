@@ -67,14 +67,16 @@ class ExtractJobCompletionWatcher @Inject constructor(
         }
     }
 
-    suspend fun openExtractResult(jobId: Long) {
+    suspend fun openExtractResult(jobId: Long): Boolean {
         resolveNavigation(jobId)?.let { navigation ->
             _pendingNavigation.emit(navigation)
-            return
+            return true
         }
         resolveExternalOpen(jobId)?.let { externalOpen ->
             _pendingExternalOpen.emit(externalOpen)
+            return true
         }
+        return false
     }
 
     private suspend fun handleTerminalStatus(
@@ -110,6 +112,15 @@ class ExtractJobCompletionWatcher @Inject constructor(
                     CompletionUiEvent.Failed(
                         jobId = jobId,
                         message = progress.errorMessage ?: "解凍に失敗しました",
+                    ),
+                )
+            }
+
+            OperationRepository.OperationStatus.CANCELLED -> {
+                _completionUiEvents.emit(
+                    CompletionUiEvent.Cancelled(
+                        jobId = jobId,
+                        message = "解凍がキャンセルされました",
                     ),
                 )
             }
@@ -187,6 +198,11 @@ class ExtractJobCompletionWatcher @Inject constructor(
         ) : CompletionUiEvent
 
         data class Failed(
+            override val jobId: Long,
+            override val message: String,
+        ) : CompletionUiEvent
+
+        data class Cancelled(
             override val jobId: Long,
             override val message: String,
         ) : CompletionUiEvent
