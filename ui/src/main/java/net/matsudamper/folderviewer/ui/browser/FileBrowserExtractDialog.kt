@@ -105,9 +105,8 @@ internal fun FileBrowserExtractDialog(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(
                         onClick = onOpenDetail,
-                        enabled = isExtractComplete,
                     ) {
-                        Text("詳細を開く")
+                        Text("詳細")
                     }
                     TextButton(
                         onClick = onOpenResult,
