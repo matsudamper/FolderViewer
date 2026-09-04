@@ -58,6 +58,7 @@ jobs:
         with:
           name: ${{ env.APK_NAME || 'debug-apk' }}
           path: app/build/outputs/apk/debug/*.apk
+          archive: false
 
       - name: Compress APK for S3 upload
         if: github.event_name == 'pull_request'
@@ -87,6 +88,7 @@ jobs:
         with:
           name: apk-qr-code-github
           path: qrcode-github.png
+          archive: false
 
       - name: Generate S3 QR code
         if: github.event_name == 'pull_request' && steps.upload_s3.outputs.url != ''
@@ -99,6 +101,7 @@ jobs:
         with:
           name: apk-qr-code-s3
           path: qrcode-s3.png
+          archive: false
 
       - name: Comment APK download URLs
         if: github.event_name == 'pull_request'
@@ -110,7 +113,7 @@ jobs:
             ✅ **Debug APK is ready!**
             | Storage | 圧縮方式 | Download Link | QR Code |
             | :--- | :--- | :--- | :--- |
-            | 🐙 GitHub Artifacts | zip | [Download](${{ steps.upload_apk.outputs.artifact-url }}) | [View](${{ steps.github_qr_artifact.outputs.artifact-url }}) |
+            | 🐙 GitHub Artifacts | 非圧縮 | [Download](${{ steps.upload_apk.outputs.artifact-url }}) | [View](${{ steps.github_qr_artifact.outputs.artifact-url }}) |
             ${{ steps.upload_s3.outputs.url && format('| ☁️ S3 | xz | [Download]({0}) | [View]({1}) |', steps.upload_s3.outputs.url, steps.s3_qr_artifact.outputs.artifact-url) || format('| ☁️ S3 | - | ⚠️ アップロード失敗 ([run]({0}/{1}/actions/runs/{2})) | - |', github.server_url, github.repository, github.run_id) }}
             ---
             *Artifact Name: `${{ env.APK_NAME }}`*
