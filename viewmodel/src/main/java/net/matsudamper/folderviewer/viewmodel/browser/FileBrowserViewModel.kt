@@ -486,10 +486,15 @@ class FileBrowserViewModel @AssistedInject constructor(
             viewModelScope.launch {
                 val opened = extractCoordinator.openExtractResult(jobId)
                 if (opened) {
-                    extractCoordinator.closeDialog(viewModelStateFlow)
+                    if (viewModelStateFlow.value.extractDialog?.jobId == jobId) {
+                        extractCoordinator.closeDialog(viewModelStateFlow)
+                    }
                 } else {
                     viewModelStateFlow.update { state ->
                         val dialog = state.extractDialog ?: return@update state
+                        if (dialog.jobId != jobId) {
+                            return@update state
+                        }
                         state.copy(
                             extractDialog = dialog.copy(
                                 statusMessage = "解凍結果を開けませんでした",
