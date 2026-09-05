@@ -23,8 +23,8 @@ message FolderBrowserDisplayConfig {
 }
 
 message FolderPathSortConfig {
-  SortConfigProto folder_sort = 1;
-  SortConfigProto file_sort = 2;
+  optional SortConfigProto folder_sort = 1;
+  optional SortConfigProto file_sort = 2;
 }
 
 message FileBrowserDisplayConfig {

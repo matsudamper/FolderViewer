@@ -70,12 +70,24 @@ class PreferencesRepository @Inject constructor(
 
     fun folderBrowserFolderSortConfigForPath(pathKey: String): Flow<FileSortConfig> =
         context.browserPreferencesDataStore.data.map { proto ->
-            proto.folderBrowserDisplayConfig.sortConfigForPath(pathKey).folderSort.toDomain()
+            val displayConfig = proto.folderBrowserDisplayConfig
+            val pathConfig = displayConfig.sortConfigByPathMap[pathKey]
+            if (pathConfig != null && pathConfig.hasFolderSort()) {
+                pathConfig.folderSort.toDomain()
+            } else {
+                displayConfig.folderSort.toDomain()
+            }
         }
 
     fun folderBrowserFileSortConfigForPath(pathKey: String): Flow<FileSortConfig> =
         context.browserPreferencesDataStore.data.map { proto ->
-            proto.folderBrowserDisplayConfig.sortConfigForPath(pathKey).fileSort.toDomain()
+            val displayConfig = proto.folderBrowserDisplayConfig
+            val pathConfig = displayConfig.sortConfigByPathMap[pathKey]
+            if (pathConfig != null && pathConfig.hasFileSort()) {
+                pathConfig.fileSort.toDomain()
+            } else {
+                displayConfig.fileSort.toDomain()
+            }
         }
 
     fun fileBrowserSortConfigForPath(pathKey: String): Flow<FileSortConfig> =
@@ -165,16 +177,17 @@ class PreferencesRepository @Inject constructor(
     suspend fun saveFolderBrowserFolderSortConfigForPath(pathKey: String, config: FileSortConfig) {
         context.browserPreferencesDataStore.updateData { currentPrefs ->
             val displayConfig = currentPrefs.folderBrowserDisplayConfig
-            val pathSortConfig = displayConfig.sortConfigForPath(pathKey)
+            val existingPathConfig = displayConfig.sortConfigByPathMap[pathKey]
+            val updatedPathConfig = (
+                existingPathConfig?.toBuilder()
+                    ?: FolderPathSortConfig.newBuilder()
+                )
+                .setFolderSort(config.toProto())
+                .build()
             currentPrefs.toBuilder()
                 .setFolderBrowserDisplayConfig(
                     displayConfig.toBuilder()
-                        .putSortConfigByPath(
-                            pathKey,
-                            pathSortConfig.toBuilder()
-                                .setFolderSort(config.toProto())
-                                .build(),
-                        )
+                        .putSortConfigByPath(pathKey, updatedPathConfig)
                         .build(),
                 )
                 .build()
@@ -184,16 +197,17 @@ class PreferencesRepository @Inject constructor(
     suspend fun saveFolderBrowserFileSortConfigForPath(pathKey: String, config: FileSortConfig) {
         context.browserPreferencesDataStore.updateData { currentPrefs ->
             val displayConfig = currentPrefs.folderBrowserDisplayConfig
-            val pathSortConfig = displayConfig.sortConfigForPath(pathKey)
+            val existingPathConfig = displayConfig.sortConfigByPathMap[pathKey]
+            val updatedPathConfig = (
+                existingPathConfig?.toBuilder()
+                    ?: FolderPathSortConfig.newBuilder()
+                )
+                .setFileSort(config.toProto())
+                .build()
             currentPrefs.toBuilder()
                 .setFolderBrowserDisplayConfig(
                     displayConfig.toBuilder()
-                        .putSortConfigByPath(
-                            pathKey,
-                            pathSortConfig.toBuilder()
-                                .setFileSort(config.toProto())
-                                .build(),
-                        )
+                        .putSortConfigByPath(pathKey, updatedPathConfig)
                         .build(),
                 )
                 .build()
@@ -234,13 +248,6 @@ class PreferencesRepository @Inject constructor(
                 )
                 .build()
         }
-    }
-
-    private fun FolderBrowserDisplayConfig.sortConfigForPath(pathKey: String): FolderPathSortConfig {
-        return sortConfigByPathMap[pathKey] ?: FolderPathSortConfig.newBuilder()
-            .setFolderSort(folderSort)
-            .setFileSort(fileSort)
-            .build()
     }
 
     private fun SortConfigProto.toDomain(): FileSortConfig {
