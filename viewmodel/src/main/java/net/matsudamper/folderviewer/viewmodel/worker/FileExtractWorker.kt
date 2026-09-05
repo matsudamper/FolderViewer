@@ -22,10 +22,10 @@ import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.viewmodel.util.CompressedFileUtil
+import net.matsudamper.folderviewer.viewmodel.util.ExternalExtractStagingSupport
 import net.matsudamper.folderviewer.viewmodel.util.ExtractMediaScanner
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputConflictChecker
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputNameValidator
-import net.matsudamper.folderviewer.viewmodel.util.ExternalExtractStagingSupport
 import net.matsudamper.folderviewer.viewmodel.util.ExtractProgressListener
 import net.matsudamper.folderviewer.viewmodel.util.TarArchiveUtil
 import net.matsudamper.folderviewer.viewmodel.util.ZipFileUtil

@@ -27,10 +27,10 @@ import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.ExtractDialogMode
 import net.matsudamper.folderviewer.ui.extract.ExternalExtractUiState
 import net.matsudamper.folderviewer.viewmodel.browser.ExtractJobCompletionWatcher
+import net.matsudamper.folderviewer.viewmodel.util.ExternalExtractStagingSupport
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputLocationResolver
 import net.matsudamper.folderviewer.viewmodel.util.ExtractProgressText
 import net.matsudamper.folderviewer.viewmodel.util.ExtractableFileNameUtil
-import net.matsudamper.folderviewer.viewmodel.util.ExternalExtractStagingSupport
 import net.matsudamper.folderviewer.viewmodel.worker.FileExtractWorker
 
 @HiltViewModel(assistedFactory = ExternalExtractViewModel.Companion.Factory::class)
