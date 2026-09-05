@@ -98,6 +98,7 @@ class ExtractJobCompletionWatcher @Inject constructor(
                 _pendingExternalFolderOpen.emit(
                     PendingExtractExternalFolderOpen(
                         jobId = jobId,
+                        parentFileObjectId = meta.parentFileObjectId,
                         absolutePath = result.target.absolutePath,
                     ),
                 )
@@ -194,7 +195,7 @@ class ExtractJobCompletionWatcher @Inject constructor(
         _pendingExternalOpen.emit(
             PendingExtractExternalOpen(
                 jobId = jobId,
-                parentFileObjectId = null,
+                parentFileObjectId = meta.parentFileObjectId,
                 fileId = null,
                 directOpen = PendingExtractExternalOpen.DirectOpen(
                     viewSourceUri = target.viewSourceUri,
@@ -247,6 +248,7 @@ class ExtractJobCompletionWatcher @Inject constructor(
 
     data class PendingExtractExternalFolderOpen(
         val jobId: Long,
+        val parentFileObjectId: FileObjectId?,
         val absolutePath: String,
     )
 }
