@@ -193,32 +193,43 @@ class ExternalExtractViewModel @AssistedInject constructor(
 
     private suspend fun openExtractOutput(jobId: Long) {
         val meta = extractJobRepository.getJobMeta(jobId) ?: return
-        ExtractOutputLocationResolver.resolveNavigateToOutput(meta, storageRepository)?.let { target ->
-            viewModelEventChannel.send(
-                ViewModelEvent.NavigateToFileBrowser(
-                    fileId = target.fileId,
-                    displayPath = target.displayPath,
-                ),
+        when (
+            val result = ExtractOutputLocationResolver.resolveOpenExtractResult(
+                meta = meta,
+                storageRepository = storageRepository,
             )
-            return
+        ) {
+            is ExtractOutputLocationResolver.OpenExtractResult.OpenFile -> {
+                viewModelEventChannel.send(
+                    ViewModelEvent.OpenOutputFile(
+                        viewSourceUri = result.target.viewSourceUri,
+                        fileName = result.target.fileName,
+                        mimeType = result.target.mimeType,
+                    ),
+                )
+            }
+
+            is ExtractOutputLocationResolver.OpenExtractResult.NavigateToOutput -> {
+                viewModelEventChannel.send(
+                    ViewModelEvent.NavigateToFileBrowser(
+                        fileId = result.target.fileId,
+                        displayPath = result.target.displayPath,
+                    ),
+                )
+            }
+
+            is ExtractOutputLocationResolver.OpenExtractResult.OpenFolder -> {
+                viewModelEventChannel.send(
+                    ViewModelEvent.OpenOutputFolder(result.target.absolutePath),
+                )
+            }
+
+            null -> {
+                _uiState.value = _uiState.value.copy(
+                    statusMessage = "解凍結果を開けませんでした",
+                )
+            }
         }
-        ExtractOutputLocationResolver.resolveOpenOutputFile(meta, storageRepository)?.let { target ->
-            viewModelEventChannel.send(
-                ViewModelEvent.OpenOutputFile(
-                    viewSourceUri = target.viewSourceUri,
-                    fileName = target.fileName,
-                    mimeType = target.mimeType,
-                ),
-            )
-            return
-        }
-        ExtractOutputLocationResolver.resolveOpenOutputFolderPath(meta)?.let { target ->
-            viewModelEventChannel.send(ViewModelEvent.OpenOutputFolder(target.absolutePath))
-            return
-        }
-        _uiState.value = _uiState.value.copy(
-            statusMessage = "解凍結果を開けませんでした",
-        )
     }
 
     sealed interface ViewModelEvent {

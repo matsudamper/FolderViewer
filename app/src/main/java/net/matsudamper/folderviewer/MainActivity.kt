@@ -870,6 +870,22 @@ private fun FileBrowserEventHandler(
                         mimeType = event.mimeType,
                     )
                 }
+
+                is FileBrowserViewModel.ViewModelEvent.OpenOutputFile -> {
+                    ExtractOutputLauncher.openOutputFile(
+                        context = context,
+                        viewSourceUri = event.viewSourceUri,
+                        fileName = event.fileName,
+                        mimeType = event.mimeType,
+                    )
+                }
+
+                is FileBrowserViewModel.ViewModelEvent.OpenOutputFolder -> {
+                    ExtractOutputLauncher.openOutputFolder(
+                        context = context,
+                        absolutePath = event.absolutePath,
+                    )
+                }
             }
         }
     }

@@ -115,6 +115,10 @@ class FileBrowserViewModel @AssistedInject constructor(
                 extractJobCompletionWatcher = extractJobCompletionWatcher,
                 getRepository = { getRepository() },
                 openWithExternalPlayer = { fileItem -> openWithExternalPlayer(fileItem) },
+                openFileFromUri = { viewSourceUri, fileName, mimeType ->
+                    openFileFromUri(viewSourceUri, fileName, mimeType)
+                },
+                openOutputFolder = { absolutePath -> openOutputFolder(absolutePath) },
             ),
         )
     }
@@ -700,6 +704,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         }
         extractCoordinator.observeCompletionEvents(viewModelScope)
         extractCoordinator.observeExternalOpenEvents(viewModelScope)
+        extractCoordinator.observeExternalFolderOpenEvents(viewModelScope)
     }
 
     private suspend fun loadSortConfig() {
@@ -850,6 +855,16 @@ class FileBrowserViewModel @AssistedInject constructor(
         ) : ViewModelEvent
 
         data class OpenFolderWithExternalApp(val path: String) : ViewModelEvent
+
+        data class OpenOutputFile(
+            val viewSourceUri: ViewSourceUri,
+            val fileName: String,
+            val mimeType: String?,
+        ) : ViewModelEvent
+
+        data class OpenOutputFolder(
+            val absolutePath: String,
+        ) : ViewModelEvent
 
         data class OpenWithExternalPlayer(
             val viewSourceUri: ViewSourceUri,
@@ -1245,6 +1260,26 @@ class FileBrowserViewModel @AssistedInject constructor(
                 )
             }
         }
+    }
+
+    private suspend fun openFileFromUri(
+        viewSourceUri: ViewSourceUri,
+        fileName: String,
+        mimeType: String?,
+    ) {
+        viewModelEventChannel.send(
+            ViewModelEvent.OpenOutputFile(
+                viewSourceUri = viewSourceUri,
+                fileName = fileName,
+                mimeType = mimeType,
+            ),
+        )
+    }
+
+    private suspend fun openOutputFolder(absolutePath: String) {
+        viewModelEventChannel.send(
+            ViewModelEvent.OpenOutputFolder(absolutePath),
+        )
     }
 
     private suspend fun openWithExternalPlayer(fileItem: FileItem) {
