@@ -78,8 +78,7 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
             viewModelScope.launch {
                 BrowserSortConfigHelper.saveExternalPickerSortConfig(
                     preferencesRepository,
-                    arg.fileId.storageId,
-                    arg.displayPath,
+                    arg.fileId,
                     config,
                 )
             }
@@ -254,8 +253,7 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
     private suspend fun loadSortConfig() {
         BrowserSortConfigHelper.externalPickerSortConfigFlow(
             preferencesRepository,
-            arg.fileId.storageId,
-            arg.displayPath,
+            arg.fileId,
         ).collect { config ->
             viewModelStateFlow.update { it.copy(sortConfig = config) }
         }

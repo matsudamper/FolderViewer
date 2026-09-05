@@ -2,7 +2,7 @@ package net.matsudamper.folderviewer.viewmodel.util
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import net.matsudamper.folderviewer.common.StorageId
+import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.PreferencesRepository
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiState
@@ -10,88 +10,80 @@ import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiState
 internal object BrowserSortConfigHelper {
     fun fileBrowserSortConfigFlow(
         preferencesRepository: PreferencesRepository,
-        storageId: StorageId,
-        displayPath: String?,
+        fileObjectId: FileObjectId,
     ): Flow<FileBrowserUiState.FileSortConfig> {
         return preferencesRepository.fileBrowserSortConfigForPath(
-            PreferencesRepository.sortConfigPathKey(storageId, displayPath),
+            PreferencesRepository.sortConfigPathKey(fileObjectId),
         ).map { it.toFileBrowserUiState() }
     }
 
     suspend fun saveFileBrowserSortConfig(
         preferencesRepository: PreferencesRepository,
-        storageId: StorageId,
-        displayPath: String?,
+        fileObjectId: FileObjectId,
         config: FileBrowserUiState.FileSortConfig,
     ) {
         preferencesRepository.saveFileBrowserSortConfigForPath(
-            pathKey = PreferencesRepository.sortConfigPathKey(storageId, displayPath),
+            pathKey = PreferencesRepository.sortConfigPathKey(fileObjectId),
             config = config.toRepository(),
         )
     }
 
     fun folderBrowserFolderSortConfigFlow(
         preferencesRepository: PreferencesRepository,
-        storageId: StorageId,
-        displayPath: String?,
+        fileObjectId: FileObjectId,
     ): Flow<FolderBrowserUiState.FileSortConfig> {
         return preferencesRepository.folderBrowserFolderSortConfigForPath(
-            PreferencesRepository.sortConfigPathKey(storageId, displayPath),
+            PreferencesRepository.sortConfigPathKey(fileObjectId),
         ).map { it.toFolderBrowserUiState() }
     }
 
     fun folderBrowserFileSortConfigFlow(
         preferencesRepository: PreferencesRepository,
-        storageId: StorageId,
-        displayPath: String?,
+        fileObjectId: FileObjectId,
     ): Flow<FolderBrowserUiState.FileSortConfig> {
         return preferencesRepository.folderBrowserFileSortConfigForPath(
-            PreferencesRepository.sortConfigPathKey(storageId, displayPath),
+            PreferencesRepository.sortConfigPathKey(fileObjectId),
         ).map { it.toFolderBrowserUiState() }
     }
 
     suspend fun saveFolderBrowserFolderSortConfig(
         preferencesRepository: PreferencesRepository,
-        storageId: StorageId,
-        displayPath: String?,
+        fileObjectId: FileObjectId,
         config: FolderBrowserUiState.FileSortConfig,
     ) {
         preferencesRepository.saveFolderBrowserFolderSortConfigForPath(
-            pathKey = PreferencesRepository.sortConfigPathKey(storageId, displayPath),
+            pathKey = PreferencesRepository.sortConfigPathKey(fileObjectId),
             config = config.toRepository(),
         )
     }
 
     suspend fun saveFolderBrowserFileSortConfig(
         preferencesRepository: PreferencesRepository,
-        storageId: StorageId,
-        displayPath: String?,
+        fileObjectId: FileObjectId,
         config: FolderBrowserUiState.FileSortConfig,
     ) {
         preferencesRepository.saveFolderBrowserFileSortConfigForPath(
-            pathKey = PreferencesRepository.sortConfigPathKey(storageId, displayPath),
+            pathKey = PreferencesRepository.sortConfigPathKey(fileObjectId),
             config = config.toRepository(),
         )
     }
 
     fun externalPickerSortConfigFlow(
         preferencesRepository: PreferencesRepository,
-        storageId: StorageId,
-        displayPath: String?,
+        fileObjectId: FileObjectId,
     ): Flow<FileBrowserUiState.FileSortConfig> {
         return preferencesRepository.externalPickerSortConfigForPath(
-            PreferencesRepository.sortConfigPathKey(storageId, displayPath),
+            PreferencesRepository.sortConfigPathKey(fileObjectId),
         ).map { it.toFileBrowserUiState() }
     }
 
     suspend fun saveExternalPickerSortConfig(
         preferencesRepository: PreferencesRepository,
-        storageId: StorageId,
-        displayPath: String?,
+        fileObjectId: FileObjectId,
         config: FileBrowserUiState.FileSortConfig,
     ) {
         preferencesRepository.saveExternalPickerSortConfigForPath(
-            pathKey = PreferencesRepository.sortConfigPathKey(storageId, displayPath),
+            pathKey = PreferencesRepository.sortConfigPathKey(fileObjectId),
             config = config.toRepository(),
         )
     }

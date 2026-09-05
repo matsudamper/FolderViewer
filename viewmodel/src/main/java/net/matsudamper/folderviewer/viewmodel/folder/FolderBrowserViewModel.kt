@@ -78,8 +78,7 @@ class FolderBrowserViewModel @AssistedInject constructor(
             viewModelScope.launch {
                 BrowserSortConfigHelper.saveFolderBrowserFolderSortConfig(
                     preferencesRepository,
-                    arg.fileId.storageId,
-                    arg.displayPath,
+                    arg.fileId,
                     config,
                 )
             }
@@ -90,8 +89,7 @@ class FolderBrowserViewModel @AssistedInject constructor(
             viewModelScope.launch {
                 BrowserSortConfigHelper.saveFolderBrowserFileSortConfig(
                     preferencesRepository,
-                    arg.fileId.storageId,
-                    arg.displayPath,
+                    arg.fileId,
                     config,
                 )
             }
@@ -194,13 +192,11 @@ class FolderBrowserViewModel @AssistedInject constructor(
         combine(
             BrowserSortConfigHelper.folderBrowserFolderSortConfigFlow(
                 preferencesRepository,
-                arg.fileId.storageId,
-                arg.displayPath,
+                arg.fileId,
             ),
             BrowserSortConfigHelper.folderBrowserFileSortConfigFlow(
                 preferencesRepository,
-                arg.fileId.storageId,
-                arg.displayPath,
+                arg.fileId,
             ),
         ) { folderConfig, fileConfig ->
             viewModelStateFlow.update {

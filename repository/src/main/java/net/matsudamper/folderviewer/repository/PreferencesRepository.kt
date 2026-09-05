@@ -13,7 +13,7 @@ import com.google.protobuf.InvalidProtocolBufferException
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
-import net.matsudamper.folderviewer.common.StorageId
+import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.proto.BrowserDisplayMode
 import net.matsudamper.folderviewer.repository.proto.BrowserPreferencesProto
 import net.matsudamper.folderviewer.repository.proto.ExternalPickerDisplayConfig
@@ -300,8 +300,12 @@ class PreferencesRepository @Inject constructor(
     }
 
     companion object {
-        fun sortConfigPathKey(storageId: StorageId, displayPath: String?): String {
-            return "${storageId.id}:${displayPath ?: ""}"
+        fun sortConfigPathKey(fileObjectId: FileObjectId): String {
+            val pathId = when (fileObjectId) {
+                is FileObjectId.Root -> ""
+                is FileObjectId.Item -> fileObjectId.id
+            }
+            return "${fileObjectId.storageId.id}:$pathId"
         }
     }
 }

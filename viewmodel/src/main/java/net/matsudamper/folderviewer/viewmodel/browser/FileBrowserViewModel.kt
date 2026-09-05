@@ -137,8 +137,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             viewModelScope.launch {
                 BrowserSortConfigHelper.saveFileBrowserSortConfig(
                     preferencesRepository,
-                    fileObjectId.storageId,
-                    arg.displayPath,
+                    fileObjectId,
                     config,
                 )
             }
@@ -699,8 +698,7 @@ class FileBrowserViewModel @AssistedInject constructor(
     private suspend fun loadSortConfig() {
         BrowserSortConfigHelper.fileBrowserSortConfigFlow(
             preferencesRepository,
-            fileObjectId.storageId,
-            arg.displayPath,
+            fileObjectId,
         ).collect { config ->
             viewModelStateFlow.update { it.copy(sortConfig = config) }
         }
