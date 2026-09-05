@@ -1,27 +1,25 @@
 package net.matsudamper.folderviewer.ui.settings
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -61,28 +59,27 @@ fun SettingsScreen(
             SnackbarHost(hostState = snackbarHostState)
         },
     ) { innerPadding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
+                .padding(innerPadding)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.SpaceBetween,
-                horizontalAlignment = Alignment.Start,
-            ) {
-                Column {
-                    Text(text = stringResource(R.string.cache))
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Button(
-                        onClick = { uiState.callbacks.onClearDiskCache() },
-                    ) {
-                        Text(text = stringResource(R.string.clear_disk_cache))
-                    }
+            Column {
+                Text(text = stringResource(R.string.cache))
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = { uiState.callbacks.onClearDiskCache() },
+                ) {
+                    Text(text = stringResource(R.string.clear_disk_cache))
                 }
-                TextButton(
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+            Column {
+                Text(text = stringResource(R.string.app_info))
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
                     onClick = { uiState.callbacks.onOpenGitHubReleases() },
                 ) {
                     Text(text = stringResource(R.string.github_releases))

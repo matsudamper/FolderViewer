@@ -22,8 +22,9 @@ import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.viewmodel.util.CompressedFileUtil
-import net.matsudamper.folderviewer.viewmodel.util.DecompressedOutputNameResolver
+import net.matsudamper.folderviewer.viewmodel.util.ExternalExtractStagingSupport
 import net.matsudamper.folderviewer.viewmodel.util.ExtractMediaScanner
+import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputConflictChecker
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputNameValidator
 import net.matsudamper.folderviewer.viewmodel.util.ExtractProgressListener
 import net.matsudamper.folderviewer.viewmodel.util.TarArchiveUtil
@@ -95,6 +96,10 @@ internal class FileExtractWorker @AssistedInject constructor(
         )
         return extractResult.fold(
             onSuccess = { outputFile ->
+                ExternalExtractStagingSupport.deleteStagedSourceIfNeeded(
+                    meta.sourceAbsolutePath,
+                    workerContext.cacheDir,
+                )
                 extractJobRepository.completeJob(meta.id, outputFile.absolutePath)
                 ExtractTempFileSupport.clearMarker(workerContext, meta.id)
                 notifyCompleted(meta, outputFile)
@@ -257,6 +262,7 @@ internal object ExtractWorkerExecutor {
         progressReporter: ExtractProgressReporter,
     ): Result<File> {
         return runCatching {
+            ExtractOutputConflictChecker.requireNoConflict(meta, appContext)
             val sourceFile = resolveSourceFile(meta, storageRepository)
             when (meta.extractType) {
                 ExtractJobRepository.ExtractType.Zip -> extractZip(
@@ -372,11 +378,10 @@ internal object ExtractWorkerExecutor {
                 progressListener = progressListener,
             )
             progressReporter.flushByteProgress()
-            val resolvedName = DecompressedOutputNameResolver.resolveFileName(meta.outputName, tempFile)
             return publishDecompressedFile(
                 tempFile = tempFile,
                 meta = meta,
-                outputName = resolvedName,
+                outputName = meta.outputName,
                 appContext = appContext,
             )
         } catch (e: Throwable) {
@@ -445,15 +450,10 @@ internal object ExtractWorkerExecutor {
                 progressListener = progressListener,
             )
             progressReporter.flushByteProgress()
-            val entryBaseName = entry.name.substringAfterLast('/')
-            val resolvedName = DecompressedOutputNameResolver.resolveFileName(
-                outputName = entryBaseName.ifEmpty { meta.outputName },
-                decompressedFile = tempOutput,
-            )
             return publishDecompressedFile(
                 tempFile = tempOutput,
                 meta = meta,
-                outputName = resolvedName,
+                outputName = meta.outputName,
                 appContext = appContext,
             )
         } catch (e: Throwable) {
@@ -515,9 +515,12 @@ internal object ExtractWorkerExecutor {
             ExtractMediaScanner.scanExtractedMediaFiles(appContext, listOf(recovered))
             return recovered
         }
-        if (outputFile.exists()) {
+        ExtractOutputConflictChecker.findConflict(
+            parentPath = meta.localFolderPath,
+            outputName = outputName,
+        )?.let { conflict ->
             ExtractTempFileSupport.cleanupTempFile(tempFile)
-            error("同じ名前のファイルが既に存在します: ${outputFile.name}")
+            error(conflict.message)
         }
         try {
             ExtractTempFileSupport.publishTempFile(tempFile, outputFile)

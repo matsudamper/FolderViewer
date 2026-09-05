@@ -19,11 +19,16 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.ExtractJobRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
+import net.matsudamper.folderviewer.repository.StorageRepository
+import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.ExtractDialogMode
 import net.matsudamper.folderviewer.ui.extract.ExternalExtractUiState
 import net.matsudamper.folderviewer.viewmodel.browser.ExtractJobCompletionWatcher
+import net.matsudamper.folderviewer.viewmodel.util.ExternalExtractStagingSupport
+import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputLocationResolver
 import net.matsudamper.folderviewer.viewmodel.util.ExtractProgressText
 import net.matsudamper.folderviewer.viewmodel.util.ExtractableFileNameUtil
 import net.matsudamper.folderviewer.viewmodel.worker.FileExtractWorker
@@ -34,13 +39,21 @@ class ExternalExtractViewModel @AssistedInject constructor(
     private val extractJobRepository: ExtractJobRepository,
     private val extractJobCompletionWatcher: ExtractJobCompletionWatcher,
     private val operationRepository: OperationRepository,
+    private val storageRepository: StorageRepository,
     application: Application,
 ) : AndroidViewModel(application) {
 
     private var extractProgressJob: Job? = null
+    private var activeJobId: Long? = null
 
     private val callbacks = object : ExternalExtractUiState.Callbacks {
         override fun onDismissRequest() {
+            if (!_uiState.value.isExtracting) {
+                ExternalExtractStagingSupport.deleteStagedSourceIfNeeded(
+                    args.sourcePath,
+                    getApplication<Application>().cacheDir,
+                )
+            }
             viewModelEventChannel.trySend(ViewModelEvent.Finish)
         }
 
@@ -48,6 +61,18 @@ class ExternalExtractViewModel @AssistedInject constructor(
             viewModelScope.launch {
                 enqueueExtract(outputName.trim())
             }
+        }
+
+        override fun onOpenResult() {
+            val jobId = activeJobId ?: return
+            viewModelScope.launch {
+                openExtractOutput(jobId)
+            }
+        }
+
+        override fun onOpenDetail() {
+            val jobId = activeJobId ?: return
+            viewModelEventChannel.trySend(ViewModelEvent.OpenExtractDetail(jobId))
         }
     }
 
@@ -62,6 +87,8 @@ class ExternalExtractViewModel @AssistedInject constructor(
             defaultName = ExtractableFileNameUtil.defaultOutputName(args.fileName, args.extractType.toExtractableType()),
             mode = args.extractType.toExtractDialogMode(),
             isExtracting = false,
+            isExtractComplete = false,
+            statusMessage = null,
             locationMessage = args.locationMessage,
             callbacks = callbacks,
         )
@@ -71,7 +98,12 @@ class ExternalExtractViewModel @AssistedInject constructor(
         if (outputName.isBlank()) {
             return
         }
-        _uiState.value = _uiState.value.copy(isExtracting = true)
+        _uiState.value = _uiState.value.copy(
+            defaultName = outputName,
+            isExtracting = true,
+            isExtractComplete = false,
+            statusMessage = null,
+        )
         val jobId = runCatching {
             val operationId = extractJobRepository.createExternalJob(
                 ExtractJobRepository.NewExternalExtractJob(
@@ -83,6 +115,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
                     openOnComplete = false,
                 ),
             )
+            activeJobId = operationId
             val inputData = Data.Builder()
                 .putLong(FileExtractWorker.KEY_EXTRACT_OPERATION_ID, operationId)
                 .build()
@@ -96,26 +129,20 @@ class ExternalExtractViewModel @AssistedInject constructor(
                 workerId = workRequest.id.toString(),
             )
             WorkManager.getInstance(getApplication()).enqueue(workRequest)
-            extractJobCompletionWatcher.watchJob(operationId)
-            observeJobFailure(operationId)
+            observeJobCompletion(operationId)
             startExtractProgressObservation(operationId)
+            extractJobCompletionWatcher.watchJob(operationId)
             operationId
         }.getOrElse { e ->
-            _uiState.value = _uiState.value.copy(isExtracting = false)
-            viewModelEventChannel.send(
-                ViewModelEvent.ShowSnackbar(
-                    message = "解凍開始失敗: ${e.message}",
-                ),
+            activeJobId = null
+            _uiState.value = _uiState.value.copy(
+                isExtracting = false,
+                isExtractComplete = false,
+                statusMessage = "解凍開始失敗: ${e.message}",
             )
             return
         }
-        viewModelEventChannel.send(
-            ViewModelEvent.ShowSnackbar(
-                message = "解凍を開始しました",
-                extractDetailJobId = jobId,
-                finishAfterDismiss = true,
-            ),
-        )
+        activeJobId = jobId
     }
 
     private fun startExtractProgressObservation(jobId: Long) {
@@ -133,18 +160,81 @@ class ExternalExtractViewModel @AssistedInject constructor(
         }
     }
 
-    private fun observeJobFailure(jobId: Long) {
+    private fun stopExtractProgressObservation() {
+        extractProgressJob?.cancel()
+        extractProgressJob = null
+    }
+
+    private fun observeJobCompletion(jobId: Long) {
         viewModelScope.launch {
             val event = extractJobCompletionWatcher.completionUiEvents
                 .filter { it.jobId == jobId }
                 .first()
-            if (event is ExtractJobCompletionWatcher.CompletionUiEvent.Failed) {
-                _uiState.value = _uiState.value.copy(isExtracting = false)
+            stopExtractProgressObservation()
+            when (event) {
+                is ExtractJobCompletionWatcher.CompletionUiEvent.Completed -> {
+                    _uiState.value = _uiState.value.copy(
+                        isExtracting = false,
+                        isExtractComplete = true,
+                        statusMessage = event.message,
+                    )
+                }
+
+                is ExtractJobCompletionWatcher.CompletionUiEvent.Failed -> {
+                    _uiState.value = _uiState.value.copy(
+                        isExtracting = false,
+                        isExtractComplete = false,
+                        statusMessage = event.message,
+                    )
+                }
+
+                is ExtractJobCompletionWatcher.CompletionUiEvent.Cancelled -> {
+                    _uiState.value = _uiState.value.copy(
+                        isExtracting = false,
+                        isExtractComplete = false,
+                        statusMessage = event.message,
+                    )
+                }
+            }
+        }
+    }
+
+    private suspend fun openExtractOutput(jobId: Long) {
+        val meta = extractJobRepository.getJobMeta(jobId) ?: return
+        when (
+            val result = ExtractOutputLocationResolver.resolveOpenExtractResult(
+                meta = meta,
+                storageRepository = storageRepository,
+            )
+        ) {
+            is ExtractOutputLocationResolver.OpenExtractResult.OpenFile -> {
                 viewModelEventChannel.send(
-                    ViewModelEvent.ShowSnackbar(
-                        message = event.message,
-                        extractDetailJobId = jobId,
+                    ViewModelEvent.OpenOutputFile(
+                        viewSourceUri = result.target.viewSourceUri,
+                        fileName = result.target.fileName,
+                        mimeType = result.target.mimeType,
                     ),
+                )
+            }
+
+            is ExtractOutputLocationResolver.OpenExtractResult.NavigateToOutput -> {
+                viewModelEventChannel.send(
+                    ViewModelEvent.NavigateToFileBrowser(
+                        fileId = result.target.fileId,
+                        displayPath = result.target.displayPath,
+                    ),
+                )
+            }
+
+            is ExtractOutputLocationResolver.OpenExtractResult.OpenFolder -> {
+                viewModelEventChannel.send(
+                    ViewModelEvent.OpenOutputFolder(result.target.absolutePath),
+                )
+            }
+
+            null -> {
+                _uiState.value = _uiState.value.copy(
+                    statusMessage = "解凍結果を開けませんでした",
                 )
             }
         }
@@ -153,10 +243,23 @@ class ExternalExtractViewModel @AssistedInject constructor(
     sealed interface ViewModelEvent {
         data object Finish : ViewModelEvent
 
-        data class ShowSnackbar(
-            val message: String,
-            val extractDetailJobId: Long? = null,
-            val finishAfterDismiss: Boolean = false,
+        data class OpenExtractDetail(
+            val jobId: Long,
+        ) : ViewModelEvent
+
+        data class NavigateToFileBrowser(
+            val fileId: FileObjectId,
+            val displayPath: String?,
+        ) : ViewModelEvent
+
+        data class OpenOutputFile(
+            val viewSourceUri: ViewSourceUri,
+            val fileName: String,
+            val mimeType: String?,
+        ) : ViewModelEvent
+
+        data class OpenOutputFolder(
+            val absolutePath: String,
         ) : ViewModelEvent
     }
 

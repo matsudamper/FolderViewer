@@ -76,6 +76,7 @@ import kotlin.math.abs
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import coil.Coil
 import coil.ImageLoader
 import dagger.hilt.android.AndroidEntryPoint
@@ -101,6 +102,7 @@ import net.matsudamper.folderviewer.navigation.rememberNavigationState
 import net.matsudamper.folderviewer.navigation.toEntries
 import net.matsudamper.folderviewer.repository.ExtractJobRepository
 import net.matsudamper.folderviewer.repository.PermissionUtil
+import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.FileBrowserScreen
 import net.matsudamper.folderviewer.ui.browser.ImageViewerScreen
@@ -133,6 +135,7 @@ import net.matsudamper.folderviewer.viewmodel.upload.ExtractDetailViewModel
 import net.matsudamper.folderviewer.viewmodel.upload.PasteDetailViewModel
 import net.matsudamper.folderviewer.viewmodel.upload.UploadDetailViewModel
 import net.matsudamper.folderviewer.viewmodel.upload.UploadProgressViewModel
+import net.matsudamper.folderviewer.viewmodel.util.FileUtil
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -145,11 +148,16 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var extractJobRepository: ExtractJobRepository
 
+    @Inject
+    lateinit var storageRepository: StorageRepository
+
     private val navigateToUploadProgressRequest = mutableStateOf(false)
+    private val pendingFileBrowserNavigation = mutableStateOf<PendingFileBrowserNavigation?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         updateUploadProgressNavigation(intent)
+        updateFileBrowserNavigation(intent)
         enableEdgeToEdge()
         Coil.setImageLoader(imageLoader)
 
@@ -158,8 +166,11 @@ class MainActivity : ComponentActivity() {
                 AppContent(
                     extractJobCompletionWatcher = extractJobCompletionWatcher,
                     extractJobRepository = extractJobRepository,
+                    storageRepository = storageRepository,
                     navigateToUploadProgressOnStart = navigateToUploadProgressRequest.value,
                     onUploadProgressNavigationHandled = { navigateToUploadProgressRequest.value = false },
+                    pendingFileBrowserNavigation = pendingFileBrowserNavigation.value,
+                    onFileBrowserNavigationHandled = { pendingFileBrowserNavigation.value = null },
                 )
             }
         }
@@ -169,6 +180,25 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         updateUploadProgressNavigation(intent)
+        updateFileBrowserNavigation(intent)
+    }
+
+    private fun updateFileBrowserNavigation(intent: Intent?) {
+        pendingFileBrowserNavigation.value = consumeFileBrowserNavigationIntent(intent)
+    }
+
+    private fun consumeFileBrowserNavigationIntent(intent: Intent?): PendingFileBrowserNavigation? {
+        if (intent == null) {
+            return null
+        }
+        val fileIdJson = intent.getStringExtra(EXTRA_OPEN_FILE_BROWSER_FILE_ID) ?: return null
+        val displayPath = intent.getStringExtra(EXTRA_OPEN_FILE_BROWSER_DISPLAY_PATH)
+        intent.removeExtra(EXTRA_OPEN_FILE_BROWSER_FILE_ID)
+        intent.removeExtra(EXTRA_OPEN_FILE_BROWSER_DISPLAY_PATH)
+        return PendingFileBrowserNavigation(
+            fileIdJson = fileIdJson,
+            displayPath = displayPath,
+        )
     }
 
     private fun updateUploadProgressNavigation(intent: Intent?) {
@@ -188,21 +218,48 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_NAVIGATE_TO_UPLOAD_PROGRESS = "extra_navigate_to_upload_progress"
+        private const val EXTRA_OPEN_FILE_BROWSER_FILE_ID = "extra_open_file_browser_file_id"
+        private const val EXTRA_OPEN_FILE_BROWSER_DISPLAY_PATH = "extra_open_file_browser_display_path"
+
+        fun createOpenFileBrowserIntent(
+            context: android.content.Context,
+            fileId: FileObjectId,
+            displayPath: String?,
+        ): Intent {
+            return Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra(EXTRA_OPEN_FILE_BROWSER_FILE_ID, Json.encodeToString(fileId))
+                putExtra(EXTRA_OPEN_FILE_BROWSER_DISPLAY_PATH, displayPath)
+            }
+        }
     }
 }
+
+private data class PendingFileBrowserNavigation(
+    val fileIdJson: String,
+    val displayPath: String?,
+)
 
 @Composable
 private fun AppContent(
     extractJobCompletionWatcher: ExtractJobCompletionWatcher,
     extractJobRepository: ExtractJobRepository,
+    storageRepository: StorageRepository,
     navigateToUploadProgressOnStart: Boolean,
     onUploadProgressNavigationHandled: () -> Unit,
+    pendingFileBrowserNavigation: PendingFileBrowserNavigation?,
+    onFileBrowserNavigationHandled: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val pagerState = rememberPagerState { 2 }
     var isPredictiveBackInProgress by remember { mutableStateOf(false) }
     val backDispatcherOwner = LocalOnBackPressedDispatcherOwner.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    ExtractPendingOpenEffect(
+        extractJobCompletionWatcher = extractJobCompletionWatcher,
+        extractJobRepository = extractJobRepository,
+        storageRepository = storageRepository,
+    )
     DisposableEffect(backDispatcherOwner, lifecycleOwner) {
         if (backDispatcherOwner == null) return@DisposableEffect onDispose { }
         val dispatcher = backDispatcherOwner.onBackPressedDispatcher
@@ -255,6 +312,8 @@ private fun AppContent(
                     extractJobRepository = extractJobRepository,
                     navigateToUploadProgressOnStart = navigateToUploadProgressOnStart,
                     onUploadProgressNavigationHandled = onUploadProgressNavigationHandled,
+                    pendingFileBrowserNavigation = pendingFileBrowserNavigation,
+                    onFileBrowserNavigationHandled = onFileBrowserNavigationHandled,
                 )
 
                 NavDisplay(
@@ -302,6 +361,8 @@ private fun GlobalNavigationEffect(
     extractJobRepository: ExtractJobRepository,
     navigateToUploadProgressOnStart: Boolean,
     onUploadProgressNavigationHandled: () -> Unit,
+    pendingFileBrowserNavigation: PendingFileBrowserNavigation?,
+    onFileBrowserNavigationHandled: () -> Unit,
 ) {
     LaunchedEffect(navigateToUploadProgressOnStart, pagerState.currentPage, pageIndex) {
         if (!navigateToUploadProgressOnStart || pagerState.currentPage != pageIndex) {
@@ -309,6 +370,21 @@ private fun GlobalNavigationEffect(
         }
         navigator.navigate(UploadProgress)
         onUploadProgressNavigationHandled()
+    }
+
+    LaunchedEffect(pendingFileBrowserNavigation, pagerState.currentPage, pageIndex) {
+        val navigation = pendingFileBrowserNavigation ?: return@LaunchedEffect
+        if (pagerState.currentPage != pageIndex) {
+            return@LaunchedEffect
+        }
+        val fileId = Json.decodeFromString<FileObjectId>(navigation.fileIdJson)
+        navigator.navigate(
+            FileBrowser(
+                displayPath = navigation.displayPath,
+                fileId = fileId,
+            ),
+        )
+        onFileBrowserNavigationHandled()
     }
 
     LaunchedEffect(pagerState.currentPage, pageIndex, extractJobCompletionWatcher) {
@@ -323,6 +399,62 @@ private fun GlobalNavigationEffect(
                 ),
             )
             extractJobRepository.markOpenOnCompleteHandled(navigation.jobId)
+        }
+    }
+}
+
+@Composable
+private fun ExtractPendingOpenEffect(
+    extractJobCompletionWatcher: ExtractJobCompletionWatcher,
+    extractJobRepository: ExtractJobRepository,
+    storageRepository: StorageRepository,
+) {
+    val context = LocalContext.current
+    LaunchedEffect(extractJobCompletionWatcher, extractJobRepository, storageRepository) {
+        launch {
+            extractJobCompletionWatcher.pendingExternalOpen.collect { event ->
+                val parentFileObjectId = event.parentFileObjectId ?: return@collect
+                val directOpen = event.directOpen
+                if (directOpen != null) {
+                    val opened = ExtractOutputLauncher.openOutputFile(
+                        context = context,
+                        viewSourceUri = directOpen.viewSourceUri,
+                        fileName = directOpen.fileName,
+                        mimeType = directOpen.mimeType,
+                    )
+                    if (opened) {
+                        extractJobRepository.markOpenOnCompleteHandled(event.jobId)
+                    }
+                    return@collect
+                }
+                val fileId = event.fileId ?: return@collect
+                val repository = storageRepository.getFileRepository(parentFileObjectId.storageId)
+                    ?: return@collect
+                val file = repository.getFiles(parentFileObjectId).find { it.id == fileId }
+                    ?: return@collect
+                val viewSourceUri = repository.getViewSourceUri(file.id)
+                val mimeType = FileUtil.getMimeType(file.displayPath)
+                val opened = ExtractOutputLauncher.openOutputFile(
+                    context = context,
+                    viewSourceUri = viewSourceUri,
+                    fileName = file.displayPath,
+                    mimeType = mimeType,
+                )
+                if (opened) {
+                    extractJobRepository.markOpenOnCompleteHandled(event.jobId)
+                }
+            }
+        }
+        launch {
+            extractJobCompletionWatcher.pendingExternalFolderOpen.collect { event ->
+                val opened = ExtractOutputLauncher.openOutputFolder(
+                    context = context,
+                    absolutePath = event.absolutePath,
+                )
+                if (opened) {
+                    extractJobRepository.markOpenOnCompleteHandled(event.jobId)
+                }
+            }
         }
     }
 }
@@ -735,21 +867,15 @@ private fun FileBrowserEventHandler(
                     }
                 }
 
+                is FileBrowserViewModel.ViewModelEvent.NavigateToExtractDetail -> {
+                    navigator.navigate(ExtractDetail(operationId = event.jobId))
+                }
+
                 is FileBrowserViewModel.ViewModelEvent.OpenFolderWithExternalApp -> {
-                    val relativePath = File(event.path)
-                        .relativeToOrNull(android.os.Environment.getExternalStorageDirectory())
-                        ?.path
-                        .orEmpty()
-                    val uri = android.provider.DocumentsContract.buildDocumentUri(
-                        "com.android.externalstorage.documents",
-                        "primary:$relativePath",
+                    ExtractOutputLauncher.openOutputFolder(
+                        context = context,
+                        absolutePath = event.path,
                     )
-                    val intent = Intent(Intent.ACTION_VIEW).apply {
-                        setDataAndType(uri, android.provider.DocumentsContract.Document.MIME_TYPE_DIR)
-                    }
-                    runCatching {
-                        context.startActivity(intent)
-                    }
                 }
 
                 is FileBrowserViewModel.ViewModelEvent.ShareFiles -> {
@@ -947,7 +1073,9 @@ private fun EntryProviderScope<NavKey>.fileBrowserEntry(navigator: Navigator) {
             uiState = uiStateValue,
             uiEvent = viewModel.uiEvent,
             onNavigateToUploadProgress = { navigator.navigate(UploadProgress) },
-            onOpenExtractResult = { jobId -> uiStateValue.callbacks.onOpenExtractResult(jobId) },
+            onOpenExtractResult = { jobId ->
+                uiStateValue.callbacks.onOpenExtractResult(jobId)
+            },
             onNavigateToExtractDetail = { jobId ->
                 navigator.navigate(ExtractDetail(operationId = jobId))
             },
