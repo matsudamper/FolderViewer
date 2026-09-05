@@ -1,11 +1,12 @@
 package net.matsudamper.folderviewer.ui.settings
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -58,34 +59,30 @@ fun SettingsScreen(
             SnackbarHost(hostState = snackbarHostState)
         },
     ) { innerPadding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
+                .padding(innerPadding)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-            ) {
-                Column {
-                    Text(text = stringResource(R.string.cache))
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Button(
-                        onClick = { uiState.callbacks.onClearDiskCache() },
-                    ) {
-                        Text(text = stringResource(R.string.clear_disk_cache))
-                    }
+            Column {
+                Text(text = stringResource(R.string.cache))
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = { uiState.callbacks.onClearDiskCache() },
+                ) {
+                    Text(text = stringResource(R.string.clear_disk_cache))
                 }
-                Spacer(modifier = Modifier.height(24.dp))
-                Column {
-                    Text(text = stringResource(R.string.app_info))
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = { uiState.callbacks.onOpenGitHubReleases() },
-                    ) {
-                        Text(text = stringResource(R.string.github_releases))
-                    }
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+            Column {
+                Text(text = stringResource(R.string.app_info))
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { uiState.callbacks.onOpenGitHubReleases() },
+                ) {
+                    Text(text = stringResource(R.string.github_releases))
                 }
             }
         }
