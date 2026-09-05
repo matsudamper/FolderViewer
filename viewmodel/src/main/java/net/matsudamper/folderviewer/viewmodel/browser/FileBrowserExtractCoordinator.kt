@@ -227,8 +227,10 @@ internal class FileBrowserExtractCoordinator(
                 if (parentFileObjectId != dependencies.fileObjectId) {
                     return@collect
                 }
-                dependencies.openOutputFolder(event.absolutePath)
-                dependencies.extractJobRepository.markOpenOnCompleteHandled(event.jobId)
+                val opened = dependencies.openOutputFolder(event.absolutePath)
+                if (opened) {
+                    dependencies.extractJobRepository.markOpenOnCompleteHandled(event.jobId)
+                }
             }
         }
     }
@@ -251,7 +253,7 @@ internal class FileBrowserExtractCoordinator(
         val getRepository: suspend () -> FileRepository,
         val openWithExternalPlayer: suspend (FileItem) -> Unit,
         val openFileFromUri: suspend (ViewSourceUri, String, String?) -> Unit,
-        val openOutputFolder: suspend (String) -> Unit,
+        val openOutputFolder: suspend (String) -> Boolean,
     )
 
     suspend fun openExtractResult(jobId: Long): Boolean {
