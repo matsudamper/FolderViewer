@@ -121,7 +121,6 @@ import net.matsudamper.folderviewer.ui.upload.UploadDetailScreen
 import net.matsudamper.folderviewer.ui.upload.UploadProgressScreen
 import net.matsudamper.folderviewer.ui.util.showDismissibleSnackbar
 import net.matsudamper.folderviewer.viewmodel.browser.ExtractJobCompletionWatcher
-import net.matsudamper.folderviewer.viewmodel.util.FileUtil
 import net.matsudamper.folderviewer.viewmodel.browser.FileBrowserViewModel
 import net.matsudamper.folderviewer.viewmodel.browser.ImageViewerViewModel
 import net.matsudamper.folderviewer.viewmodel.folder.FolderBrowserViewModel
@@ -136,6 +135,7 @@ import net.matsudamper.folderviewer.viewmodel.upload.ExtractDetailViewModel
 import net.matsudamper.folderviewer.viewmodel.upload.PasteDetailViewModel
 import net.matsudamper.folderviewer.viewmodel.upload.UploadDetailViewModel
 import net.matsudamper.folderviewer.viewmodel.upload.UploadProgressViewModel
+import net.matsudamper.folderviewer.viewmodel.util.FileUtil
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
