@@ -50,7 +50,6 @@ import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 import net.matsudamper.folderviewer.ui.util.formatBytes
-import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputConflictChecker
 import net.matsudamper.folderviewer.viewmodel.util.FileUtil
 import net.matsudamper.folderviewer.viewmodel.worker.FileDeleteWorker
 import net.matsudamper.folderviewer.viewmodel.worker.FilePasteWorker
@@ -395,28 +394,6 @@ class FileBrowserViewModel @AssistedInject constructor(
                 zipHandler = zipHandler,
                 currentMode = viewModelStateFlow.value.extractDialog?.mode,
             )
-            val localFolderPath = viewModelStateFlow.value.localFolderPath
-            if (localFolderPath != null) {
-                val conflictMessage = ExtractOutputConflictChecker.conflictMessage(
-                    parentPath = localFolderPath,
-                    outputName = folderName,
-                )
-                if (conflictMessage != null) {
-                    viewModelStateFlow.update { state ->
-                        state.copy(
-                            extractDialog = ViewModelState.ExtractDialogState(
-                                folderName = folderName,
-                                isExtracting = false,
-                                isExtractComplete = false,
-                                statusMessage = conflictMessage,
-                                jobId = null,
-                                mode = dialogMode,
-                            ),
-                        )
-                    }
-                    return
-                }
-            }
             pendingExtractFileItem = zipFileItem
             pendingExtractRequest = PendingExtractRequest(
                 fileItem = zipFileItem,

@@ -4,7 +4,6 @@ import android.content.Context
 import android.net.Uri
 import net.matsudamper.folderviewer.viewmodel.util.ExternalDirectoryUriInspector
 import net.matsudamper.folderviewer.viewmodel.util.ExternalExtractPathResolver
-import net.matsudamper.folderviewer.viewmodel.util.SourceFileConflictException
 
 object ExternalExtractIntentHandler {
     fun resolve(
@@ -36,15 +35,11 @@ object ExternalExtractIntentHandler {
         context: Context,
         uri: Uri,
     ): ExternalIncomingUriResolution {
-        return try {
-            val launchArgs = resolveLaunchArgs(context, uri)
-            if (launchArgs == null) {
-                ExternalIncomingUriResolution.Unsupported
-            } else {
-                ExternalIncomingUriResolution.Extractable(launchArgs)
-            }
-        } catch (e: SourceFileConflictException) {
-            ExternalIncomingUriResolution.Failed(e.message ?: "ファイルを開けませんでした")
+        val launchArgs = resolveLaunchArgs(context, uri)
+        return if (launchArgs == null) {
+            ExternalIncomingUriResolution.Unsupported
+        } else {
+            ExternalIncomingUriResolution.Extractable(launchArgs)
         }
     }
 

@@ -81,9 +81,10 @@ internal object ExternalExtractPathResolver {
         uri: Uri,
         fileName: String,
     ): ResolvedExtractFile? {
-        val directory = fallbackDocumentsDirectory()
-        directory.mkdirs()
-        val sourceFile = resolveAvailableSourceFile(directory, fileName)
+        val outputDirectory = fallbackDocumentsDirectory()
+        outputDirectory.mkdirs()
+        val stagingDirectory = File(context.cacheDir, "external-extract-source").apply { mkdirs() }
+        val sourceFile = File.createTempFile("source-", null, stagingDirectory)
         val inputStream = context.contentResolver.openInputStream(uri) ?: return null
         return runCatching {
             inputStream.use { input ->
@@ -96,8 +97,8 @@ internal object ExternalExtractPathResolver {
             }
             ResolvedExtractFile(
                 sourceFile = sourceFile,
-                outputParentPath = directory.absolutePath,
-                fileName = sourceFile.name,
+                outputParentPath = outputDirectory.absolutePath,
+                fileName = fileName,
                 usedFallbackOutputLocation = true,
             )
         }.onFailure {
@@ -129,16 +130,4 @@ internal object ExternalExtractPathResolver {
         val documents = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
         return File(documents, "FolderViewer")
     }
-
-    private fun resolveAvailableSourceFile(directory: File, fileName: String): File {
-        val candidate = File(directory, fileName)
-        if (!candidate.exists()) {
-            return candidate
-        }
-        throw SourceFileConflictException(fileName)
-    }
 }
-
-internal class SourceFileConflictException(
-    fileName: String,
-) : IllegalStateException("同じ名前のファイルが既に存在します: $fileName")
