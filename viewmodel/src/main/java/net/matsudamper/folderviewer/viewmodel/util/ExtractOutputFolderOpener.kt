@@ -1,5 +1,6 @@
 package net.matsudamper.folderviewer.viewmodel.util
 
+import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -43,6 +44,9 @@ object ExtractOutputFolderOpener {
     }
 
     private fun startActivitySafely(context: Context, intent: Intent): Boolean {
+        if (context !is Activity) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
         return try {
             context.startActivity(intent)
             true

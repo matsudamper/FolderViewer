@@ -15,10 +15,8 @@ import kotlinx.coroutines.launch
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.ExtractJobRepository
 import net.matsudamper.folderviewer.repository.FileItem
-import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.SelectionModeRepository
-import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
 import net.matsudamper.folderviewer.viewmodel.util.CompressedFileUtil
 import net.matsudamper.folderviewer.viewmodel.util.ExtractProgressText
@@ -190,51 +188,6 @@ internal class FileBrowserExtractCoordinator(
         }
     }
 
-    fun observeExternalOpenEvents(scope: CoroutineScope) {
-        scope.launch {
-            dependencies.extractJobCompletionWatcher.pendingExternalOpen.collect { event ->
-                val parentFileObjectId = event.parentFileObjectId ?: return@collect
-                if (parentFileObjectId != dependencies.fileObjectId) {
-                    return@collect
-                }
-                val directOpen = event.directOpen
-                if (directOpen != null) {
-                    dependencies.openFileFromUri(
-                        directOpen.viewSourceUri,
-                        directOpen.fileName,
-                        directOpen.mimeType,
-                    )
-                    dependencies.extractJobRepository.markOpenOnCompleteHandled(event.jobId)
-                    return@collect
-                }
-                val fileId = event.fileId ?: return@collect
-                val file = try {
-                    dependencies.getRepository().getFiles(parentFileObjectId)
-                        .find { it.id == fileId }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    return@collect
-                } ?: return@collect
-                dependencies.openWithExternalPlayer(file)
-                dependencies.extractJobRepository.markOpenOnCompleteHandled(event.jobId)
-            }
-        }
-        scope.launch {
-            dependencies.extractJobCompletionWatcher.pendingExternalFolderOpen.collect { event ->
-                val parentFileObjectId = event.parentFileObjectId ?: return@collect
-                if (parentFileObjectId != dependencies.fileObjectId) {
-                    return@collect
-                }
-                val opened = dependencies.openOutputFolder(event.absolutePath)
-                if (opened) {
-                    dependencies.extractJobRepository.markOpenOnCompleteHandled(event.jobId)
-                }
-            }
-        }
-    }
-
     internal data class Dependencies(
         val application: Application,
         val extractJobRepository: ExtractJobRepository,
@@ -250,10 +203,6 @@ internal class FileBrowserExtractCoordinator(
         val updateExtractDialogOnComplete: (Long, String) -> Unit,
         val updateExtractDialogOnFailed: (Long, String) -> Unit,
         val extractJobCompletionWatcher: ExtractJobCompletionWatcher,
-        val getRepository: suspend () -> FileRepository,
-        val openWithExternalPlayer: suspend (FileItem) -> Unit,
-        val openFileFromUri: suspend (ViewSourceUri, String, String?) -> Unit,
-        val openOutputFolder: suspend (String) -> Boolean,
     )
 
     suspend fun openExtractResult(jobId: Long): Boolean {

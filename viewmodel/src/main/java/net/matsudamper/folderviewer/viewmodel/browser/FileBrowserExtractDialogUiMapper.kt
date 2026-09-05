@@ -1,9 +1,7 @@
 package net.matsudamper.folderviewer.viewmodel.browser
 
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
-import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 
 internal fun FileBrowserExtractCoordinator.closeDialog(
@@ -105,22 +103,6 @@ internal fun createFileBrowserExtractCoordinator(
                     message = message,
                 )
             },
-        ),
-    )
-}
-
-internal suspend fun sendExtractOutputFileEvent(
-    viewModelEventChannel: Channel<FileBrowserViewModel.ViewModelEvent>,
-    viewSourceUri: ViewSourceUri,
-    fileName: String,
-    mimeType: String?,
-) {
-    viewModelEventChannel.send(
-        FileBrowserViewModel.ViewModelEvent.OpenWithExternalPlayer(
-            viewSourceUri = viewSourceUri,
-            fileId = null,
-            fileName = fileName,
-            mimeType = mimeType,
         ),
     )
 }

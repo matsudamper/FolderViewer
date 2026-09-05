@@ -50,7 +50,6 @@ import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 import net.matsudamper.folderviewer.ui.util.formatBytes
-import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputFolderOpener
 import net.matsudamper.folderviewer.viewmodel.util.FileUtil
 import net.matsudamper.folderviewer.viewmodel.worker.FileDeleteWorker
 import net.matsudamper.folderviewer.viewmodel.worker.FilePasteWorker
@@ -114,14 +113,6 @@ class FileBrowserViewModel @AssistedInject constructor(
                 updateExtractDialogOnComplete = { _, _ -> },
                 updateExtractDialogOnFailed = { _, _ -> },
                 extractJobCompletionWatcher = extractJobCompletionWatcher,
-                getRepository = { getRepository() },
-                openWithExternalPlayer = { fileItem -> openWithExternalPlayer(fileItem) },
-                openFileFromUri = { uri, name, mime ->
-                    sendExtractOutputFileEvent(viewModelEventChannel, uri, name, mime)
-                },
-                openOutputFolder = { path ->
-                    ExtractOutputFolderOpener.open(getApplication(), path)
-                },
             ),
         )
     }
@@ -706,7 +697,6 @@ class FileBrowserViewModel @AssistedInject constructor(
             }
         }
         extractCoordinator.observeCompletionEvents(viewModelScope)
-        extractCoordinator.observeExternalOpenEvents(viewModelScope)
     }
 
     private suspend fun loadSortConfig() {
