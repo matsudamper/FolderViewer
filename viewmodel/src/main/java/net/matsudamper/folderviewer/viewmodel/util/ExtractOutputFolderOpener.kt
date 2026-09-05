@@ -8,7 +8,7 @@ import android.provider.DocumentsContract
 import androidx.core.content.FileProvider
 import java.io.File
 
-internal object ExtractOutputFolderOpener {
+object ExtractOutputFolderOpener {
     fun open(
         context: Context,
         absolutePath: String,

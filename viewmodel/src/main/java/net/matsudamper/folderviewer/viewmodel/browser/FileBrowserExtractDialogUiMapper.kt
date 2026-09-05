@@ -124,12 +124,3 @@ internal suspend fun sendExtractOutputFileEvent(
         ),
     )
 }
-
-internal suspend fun sendOpenFolderWithExternalAppEvent(
-    viewModelEventChannel: Channel<FileBrowserViewModel.ViewModelEvent>,
-    absolutePath: String,
-) {
-    viewModelEventChannel.send(
-        FileBrowserViewModel.ViewModelEvent.OpenFolderWithExternalApp(absolutePath),
-    )
-}
