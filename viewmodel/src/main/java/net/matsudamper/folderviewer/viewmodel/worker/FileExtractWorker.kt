@@ -88,18 +88,18 @@ internal class FileExtractWorker @AssistedInject constructor(
                 notificationUpdater.update(meta.sourceFileName, progressText, progressRatio)
             },
         )
-        val extractResult = try {
-            ExtractWorkerExecutor.run(
-                meta = meta,
-                storageRepository = storageRepository,
-                appContext = workerContext,
-                progressReporter = progressReporter,
-            )
-        } finally {
-            ExternalExtractStagingSupport.deleteStagedSourceIfNeeded(meta.sourceAbsolutePath)
-        }
+        val extractResult = ExtractWorkerExecutor.run(
+            meta = meta,
+            storageRepository = storageRepository,
+            appContext = workerContext,
+            progressReporter = progressReporter,
+        )
         return extractResult.fold(
             onSuccess = { outputFile ->
+                ExternalExtractStagingSupport.deleteStagedSourceIfNeeded(
+                    meta.sourceAbsolutePath,
+                    workerContext.cacheDir,
+                )
                 extractJobRepository.completeJob(meta.id, outputFile.absolutePath)
                 ExtractTempFileSupport.clearMarker(workerContext, meta.id)
                 notifyCompleted(meta, outputFile)

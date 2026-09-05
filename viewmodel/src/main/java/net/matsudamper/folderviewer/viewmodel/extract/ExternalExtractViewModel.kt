@@ -49,7 +49,10 @@ class ExternalExtractViewModel @AssistedInject constructor(
     private val callbacks = object : ExternalExtractUiState.Callbacks {
         override fun onDismissRequest() {
             if (!_uiState.value.isExtracting) {
-                ExternalExtractStagingSupport.deleteStagedSourceIfNeeded(args.sourcePath)
+                ExternalExtractStagingSupport.deleteStagedSourceIfNeeded(
+                    args.sourcePath,
+                    getApplication<Application>().cacheDir,
+                )
             }
             viewModelEventChannel.trySend(ViewModelEvent.Finish)
         }

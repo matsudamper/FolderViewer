@@ -81,28 +81,30 @@ internal object ExternalExtractPathResolver {
         uri: Uri,
         fileName: String,
     ): ResolvedExtractFile? {
-        val outputDirectory = fallbackDocumentsDirectory()
-        outputDirectory.mkdirs()
-        val stagingDirectory = File(context.cacheDir, "external-extract-source").apply { mkdirs() }
-        val sourceFile = File.createTempFile("source-", null, stagingDirectory)
-        val inputStream = context.contentResolver.openInputStream(uri) ?: return null
+        var sourceFile: File? = null
         return runCatching {
+            val outputDirectory = fallbackDocumentsDirectory()
+            outputDirectory.mkdirs()
+            val stagingDirectory = ExternalExtractStagingSupport.stagingDirectory(context.cacheDir).apply { mkdirs() }
+            sourceFile = File.createTempFile("source-", null, stagingDirectory)
+            val stagedFile = sourceFile
+            val inputStream = context.contentResolver.openInputStream(uri) ?: error("input stream unavailable")
             inputStream.use { input ->
-                sourceFile.outputStream().use { output ->
+                stagedFile.outputStream().use { output ->
                     copyWithLimit(input, output)
                 }
             }
-            if (!sourceFile.isFile) {
+            if (!stagedFile.isFile) {
                 error("invalid file")
             }
             ResolvedExtractFile(
-                sourceFile = sourceFile,
+                sourceFile = stagedFile,
                 outputParentPath = outputDirectory.absolutePath,
                 fileName = fileName,
                 usedFallbackOutputLocation = true,
             )
         }.onFailure {
-            sourceFile.delete()
+            sourceFile?.delete()
         }.getOrNull()
     }
 
