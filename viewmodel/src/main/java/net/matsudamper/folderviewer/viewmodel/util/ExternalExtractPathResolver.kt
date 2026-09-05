@@ -81,27 +81,30 @@ internal object ExternalExtractPathResolver {
         uri: Uri,
         fileName: String,
     ): ResolvedExtractFile? {
-        val directory = fallbackDocumentsDirectory()
-        directory.mkdirs()
-        val sourceFile = resolveAvailableSourceFile(directory, fileName)
-        val inputStream = context.contentResolver.openInputStream(uri) ?: return null
+        var sourceFile: File? = null
         return runCatching {
+            val outputDirectory = fallbackDocumentsDirectory()
+            outputDirectory.mkdirs()
+            val stagingDirectory = ExternalExtractStagingSupport.stagingDirectory(context.cacheDir).apply { mkdirs() }
+            sourceFile = File.createTempFile("source-", null, stagingDirectory)
+            val stagedFile = sourceFile
+            val inputStream = context.contentResolver.openInputStream(uri) ?: error("input stream unavailable")
             inputStream.use { input ->
-                sourceFile.outputStream().use { output ->
+                stagedFile.outputStream().use { output ->
                     copyWithLimit(input, output)
                 }
             }
-            if (!sourceFile.isFile) {
+            if (!stagedFile.isFile) {
                 error("invalid file")
             }
             ResolvedExtractFile(
-                sourceFile = sourceFile,
-                outputParentPath = directory.absolutePath,
-                fileName = sourceFile.name,
+                sourceFile = stagedFile,
+                outputParentPath = outputDirectory.absolutePath,
+                fileName = fileName,
                 usedFallbackOutputLocation = true,
             )
         }.onFailure {
-            sourceFile.delete()
+            sourceFile?.delete()
         }.getOrNull()
     }
 
@@ -128,16 +131,5 @@ internal object ExternalExtractPathResolver {
     private fun fallbackDocumentsDirectory(): File {
         val documents = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
         return File(documents, "FolderViewer")
-    }
-
-    private fun resolveAvailableSourceFile(directory: File, fileName: String): File {
-        val candidate = File(directory, fileName)
-        if (!candidate.exists()) {
-            return candidate
-        }
-        val dotIndex = fileName.lastIndexOf('.')
-        val baseName = if (dotIndex > 0) fileName.substring(0, dotIndex) else fileName
-        val extension = if (dotIndex > 0) fileName.substring(dotIndex) else ""
-        return File(directory, "${baseName}_${System.currentTimeMillis()}$extension")
     }
 }

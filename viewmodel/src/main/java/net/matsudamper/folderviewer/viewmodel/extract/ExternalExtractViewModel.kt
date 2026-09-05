@@ -27,6 +27,7 @@ import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.ExtractDialogMode
 import net.matsudamper.folderviewer.ui.extract.ExternalExtractUiState
 import net.matsudamper.folderviewer.viewmodel.browser.ExtractJobCompletionWatcher
+import net.matsudamper.folderviewer.viewmodel.util.ExternalExtractStagingSupport
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputLocationResolver
 import net.matsudamper.folderviewer.viewmodel.util.ExtractProgressText
 import net.matsudamper.folderviewer.viewmodel.util.ExtractableFileNameUtil
@@ -47,6 +48,12 @@ class ExternalExtractViewModel @AssistedInject constructor(
 
     private val callbacks = object : ExternalExtractUiState.Callbacks {
         override fun onDismissRequest() {
+            if (!_uiState.value.isExtracting) {
+                ExternalExtractStagingSupport.deleteStagedSourceIfNeeded(
+                    args.sourcePath,
+                    getApplication<Application>().cacheDir,
+                )
+            }
             viewModelEventChannel.trySend(ViewModelEvent.Finish)
         }
 
@@ -92,6 +99,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
             return
         }
         _uiState.value = _uiState.value.copy(
+            defaultName = outputName,
             isExtracting = true,
             isExtractComplete = false,
             statusMessage = null,
