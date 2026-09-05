@@ -196,9 +196,9 @@ internal class FileBrowserExtractCoordinator(
                 val directOpen = event.directOpen
                 if (directOpen != null) {
                     dependencies.openFileFromUri(
-                        viewSourceUri = directOpen.viewSourceUri,
-                        fileName = directOpen.fileName,
-                        mimeType = directOpen.mimeType,
+                        directOpen.viewSourceUri,
+                        directOpen.fileName,
+                        directOpen.mimeType,
                     )
                     dependencies.extractJobRepository.markOpenOnCompleteHandled(event.jobId)
                     return@collect
