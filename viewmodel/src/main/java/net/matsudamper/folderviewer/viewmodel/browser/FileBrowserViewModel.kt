@@ -397,21 +397,10 @@ class FileBrowserViewModel @AssistedInject constructor(
             )
             val localFolderPath = viewModelStateFlow.value.localFolderPath
             if (localFolderPath != null) {
-                val conflictMessage = when (extractType) {
-                    is ExtractableFileType.Compressed -> {
-                        ExtractOutputConflictChecker.conflictMessageForCompressedOutput(
-                            parentPath = localFolderPath,
-                            outputName = folderName,
-                        )
-                    }
-
-                    else -> {
-                        ExtractOutputConflictChecker.conflictMessage(
-                            parentPath = localFolderPath,
-                            outputName = folderName,
-                        )
-                    }
-                }
+                val conflictMessage = ExtractOutputConflictChecker.conflictMessage(
+                    parentPath = localFolderPath,
+                    outputName = folderName,
+                )
                 if (conflictMessage != null) {
                     viewModelStateFlow.update { state ->
                         state.copy(

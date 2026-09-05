@@ -101,24 +101,6 @@ internal class ExtractOutputConflictCheckerTest {
     }
 
     @Test
-    fun findConflictForCompressedOutput_detectsApkCandidateConflict() {
-        val root = Files.createTempDirectory("extract-output-conflict").toFile()
-        try {
-            File(root, "app.apk").apply { writeText("duplicate") }
-            val conflict = ExtractOutputConflictChecker.findConflictForCompressedOutput(
-                parentPath = root.absolutePath,
-                outputName = "app.xz",
-            )
-            assertEquals(
-                "同じ名前のファイルが既に存在します: app.apk",
-                conflict?.message,
-            )
-        } finally {
-            root.deleteRecursively()
-        }
-    }
-
-    @Test
     fun conflictMessage_returnsNullWhenOutputDoesNotExist() {
         val root = Files.createTempDirectory("extract-output-conflict").toFile()
         try {

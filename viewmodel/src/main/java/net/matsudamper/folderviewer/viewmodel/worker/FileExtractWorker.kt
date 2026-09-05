@@ -22,7 +22,6 @@ import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.viewmodel.util.CompressedFileUtil
-import net.matsudamper.folderviewer.viewmodel.util.DecompressedOutputNameResolver
 import net.matsudamper.folderviewer.viewmodel.util.ExtractMediaScanner
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputConflictChecker
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputNameValidator
@@ -374,11 +373,10 @@ internal object ExtractWorkerExecutor {
                 progressListener = progressListener,
             )
             progressReporter.flushByteProgress()
-            val resolvedName = DecompressedOutputNameResolver.resolveFileName(meta.outputName, tempFile)
             return publishDecompressedFile(
                 tempFile = tempFile,
                 meta = meta,
-                outputName = resolvedName,
+                outputName = meta.outputName,
                 appContext = appContext,
             )
         } catch (e: Throwable) {
@@ -447,14 +445,10 @@ internal object ExtractWorkerExecutor {
                 progressListener = progressListener,
             )
             progressReporter.flushByteProgress()
-            val resolvedName = DecompressedOutputNameResolver.resolveFileName(
-                outputName = meta.outputName,
-                decompressedFile = tempOutput,
-            )
             return publishDecompressedFile(
                 tempFile = tempOutput,
                 meta = meta,
-                outputName = resolvedName,
+                outputName = meta.outputName,
                 appContext = appContext,
             )
         } catch (e: Throwable) {

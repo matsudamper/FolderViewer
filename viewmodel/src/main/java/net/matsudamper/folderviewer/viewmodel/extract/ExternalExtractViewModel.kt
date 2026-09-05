@@ -92,19 +92,10 @@ class ExternalExtractViewModel @AssistedInject constructor(
         if (outputName.isBlank()) {
             return
         }
-        val conflictMessage = when (args.extractType) {
-            ExtractLaunchType.Zst,
-            ExtractLaunchType.Xz,
-            -> ExtractOutputConflictChecker.conflictMessageForCompressedOutput(
-                parentPath = args.outputParentPath,
-                outputName = outputName,
-            )
-
-            else -> ExtractOutputConflictChecker.conflictMessage(
-                parentPath = args.outputParentPath,
-                outputName = outputName,
-            )
-        }
+        val conflictMessage = ExtractOutputConflictChecker.conflictMessage(
+            parentPath = args.outputParentPath,
+            outputName = outputName,
+        )
         if (conflictMessage != null) {
             _uiState.value = _uiState.value.copy(
                 isExtracting = false,
