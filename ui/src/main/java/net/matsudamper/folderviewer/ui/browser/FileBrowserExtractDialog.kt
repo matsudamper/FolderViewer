@@ -129,7 +129,7 @@ internal fun FileBrowserExtractDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismissRequest) {
-                Text(if (showExtractProgress) "閉じる" else "キャンセル")
+                Text(if (showResultActions) "閉じる" else "キャンセル")
             }
         },
     )
