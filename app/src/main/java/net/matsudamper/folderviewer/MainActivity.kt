@@ -102,6 +102,7 @@ import net.matsudamper.folderviewer.navigation.rememberNavigationState
 import net.matsudamper.folderviewer.navigation.toEntries
 import net.matsudamper.folderviewer.repository.ExtractJobRepository
 import net.matsudamper.folderviewer.repository.PermissionUtil
+import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.FileBrowserScreen
 import net.matsudamper.folderviewer.ui.browser.ImageViewerScreen
@@ -134,6 +135,7 @@ import net.matsudamper.folderviewer.viewmodel.upload.ExtractDetailViewModel
 import net.matsudamper.folderviewer.viewmodel.upload.PasteDetailViewModel
 import net.matsudamper.folderviewer.viewmodel.upload.UploadDetailViewModel
 import net.matsudamper.folderviewer.viewmodel.upload.UploadProgressViewModel
+import net.matsudamper.folderviewer.viewmodel.util.FileUtil
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -145,6 +147,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var extractJobRepository: ExtractJobRepository
+
+    @Inject
+    lateinit var storageRepository: StorageRepository
 
     private val navigateToUploadProgressRequest = mutableStateOf(false)
     private val pendingFileBrowserNavigation = mutableStateOf<PendingFileBrowserNavigation?>(null)
@@ -161,6 +166,7 @@ class MainActivity : ComponentActivity() {
                 AppContent(
                     extractJobCompletionWatcher = extractJobCompletionWatcher,
                     extractJobRepository = extractJobRepository,
+                    storageRepository = storageRepository,
                     navigateToUploadProgressOnStart = navigateToUploadProgressRequest.value,
                     onUploadProgressNavigationHandled = { navigateToUploadProgressRequest.value = false },
                     pendingFileBrowserNavigation = pendingFileBrowserNavigation.value,
@@ -238,6 +244,7 @@ private data class PendingFileBrowserNavigation(
 private fun AppContent(
     extractJobCompletionWatcher: ExtractJobCompletionWatcher,
     extractJobRepository: ExtractJobRepository,
+    storageRepository: StorageRepository,
     navigateToUploadProgressOnStart: Boolean,
     onUploadProgressNavigationHandled: () -> Unit,
     pendingFileBrowserNavigation: PendingFileBrowserNavigation?,
@@ -248,6 +255,11 @@ private fun AppContent(
     var isPredictiveBackInProgress by remember { mutableStateOf(false) }
     val backDispatcherOwner = LocalOnBackPressedDispatcherOwner.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    ExtractPendingOpenEffect(
+        extractJobCompletionWatcher = extractJobCompletionWatcher,
+        extractJobRepository = extractJobRepository,
+        storageRepository = storageRepository,
+    )
     DisposableEffect(backDispatcherOwner, lifecycleOwner) {
         if (backDispatcherOwner == null) return@DisposableEffect onDispose { }
         val dispatcher = backDispatcherOwner.onBackPressedDispatcher
@@ -387,6 +399,62 @@ private fun GlobalNavigationEffect(
                 ),
             )
             extractJobRepository.markOpenOnCompleteHandled(navigation.jobId)
+        }
+    }
+}
+
+@Composable
+private fun ExtractPendingOpenEffect(
+    extractJobCompletionWatcher: ExtractJobCompletionWatcher,
+    extractJobRepository: ExtractJobRepository,
+    storageRepository: StorageRepository,
+) {
+    val context = LocalContext.current
+    LaunchedEffect(extractJobCompletionWatcher, extractJobRepository, storageRepository) {
+        launch {
+            extractJobCompletionWatcher.pendingExternalOpen.collect { event ->
+                val parentFileObjectId = event.parentFileObjectId ?: return@collect
+                val directOpen = event.directOpen
+                if (directOpen != null) {
+                    val opened = ExtractOutputLauncher.openOutputFile(
+                        context = context,
+                        viewSourceUri = directOpen.viewSourceUri,
+                        fileName = directOpen.fileName,
+                        mimeType = directOpen.mimeType,
+                    )
+                    if (opened) {
+                        extractJobRepository.markOpenOnCompleteHandled(event.jobId)
+                    }
+                    return@collect
+                }
+                val fileId = event.fileId ?: return@collect
+                val repository = storageRepository.getFileRepository(parentFileObjectId.storageId)
+                    ?: return@collect
+                val file = repository.getFiles(parentFileObjectId).find { it.id == fileId }
+                    ?: return@collect
+                val viewSourceUri = repository.getViewSourceUri(file.id)
+                val mimeType = FileUtil.getMimeType(file.displayPath)
+                val opened = ExtractOutputLauncher.openOutputFile(
+                    context = context,
+                    viewSourceUri = viewSourceUri,
+                    fileName = file.displayPath,
+                    mimeType = mimeType,
+                )
+                if (opened) {
+                    extractJobRepository.markOpenOnCompleteHandled(event.jobId)
+                }
+            }
+        }
+        launch {
+            extractJobCompletionWatcher.pendingExternalFolderOpen.collect { event ->
+                val opened = ExtractOutputLauncher.openOutputFolder(
+                    context = context,
+                    absolutePath = event.absolutePath,
+                )
+                if (opened) {
+                    extractJobRepository.markOpenOnCompleteHandled(event.jobId)
+                }
+            }
         }
     }
 }
@@ -804,20 +872,10 @@ private fun FileBrowserEventHandler(
                 }
 
                 is FileBrowserViewModel.ViewModelEvent.OpenFolderWithExternalApp -> {
-                    val relativePath = File(event.path)
-                        .relativeToOrNull(android.os.Environment.getExternalStorageDirectory())
-                        ?.path
-                        .orEmpty()
-                    val uri = android.provider.DocumentsContract.buildDocumentUri(
-                        "com.android.externalstorage.documents",
-                        "primary:$relativePath",
+                    ExtractOutputLauncher.openOutputFolder(
+                        context = context,
+                        absolutePath = event.path,
                     )
-                    val intent = Intent(Intent.ACTION_VIEW).apply {
-                        setDataAndType(uri, android.provider.DocumentsContract.Document.MIME_TYPE_DIR)
-                    }
-                    runCatching {
-                        context.startActivity(intent)
-                    }
                 }
 
                 is FileBrowserViewModel.ViewModelEvent.ShareFiles -> {

@@ -90,6 +90,8 @@ internal class ExtractOutputLocationResolverTest {
     private fun createMeta(
         localFolderPath: String,
         outputName: String,
+        outputAbsolutePath: String? = null,
+        sourceAbsolutePath: String = "/tmp/source.zip",
     ): ExtractJobRepository.ExtractJobMeta {
         return ExtractJobRepository.ExtractJobMeta(
             id = 1L,
@@ -102,8 +104,8 @@ internal class ExtractOutputLocationResolverTest {
             localFolderPath = localFolderPath,
             openOnComplete = false,
             openOnCompleteHandled = false,
-            outputAbsolutePath = null,
-            sourceAbsolutePath = "/tmp/source.zip",
+            outputAbsolutePath = outputAbsolutePath,
+            sourceAbsolutePath = sourceAbsolutePath,
         )
     }
 }

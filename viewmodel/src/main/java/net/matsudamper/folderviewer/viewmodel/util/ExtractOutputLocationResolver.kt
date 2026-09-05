@@ -27,6 +27,20 @@ internal object ExtractOutputLocationResolver {
         val absolutePath: String,
     )
 
+    sealed interface OpenExtractResult {
+        data class OpenFile(
+            val target: OpenFileTarget,
+        ) : OpenExtractResult
+
+        data class NavigateToOutput(
+            val target: NavigateTarget,
+        ) : OpenExtractResult
+
+        data class OpenFolder(
+            val target: OpenFolderTarget,
+        ) : OpenExtractResult
+    }
+
     fun isDuplicateOutputError(errorMessage: String?): Boolean {
         return errorMessage?.contains(DUPLICATE_OUTPUT_ERROR_MARKER) == true
     }
@@ -65,6 +79,28 @@ internal object ExtractOutputLocationResolver {
             outputFile.parentFile?.absolutePath ?: return null
         }
         return resolveLocalStorageNavigation(folderPath, storageRepository)
+    }
+
+    suspend fun resolveOpenExtractResult(
+        meta: ExtractJobRepository.ExtractJobMeta,
+        storageRepository: StorageRepository,
+        errorMessage: String? = null,
+    ): OpenExtractResult? {
+        val outputPath = outputAbsolutePath(meta, errorMessage) ?: return null
+        val outputFile = File(outputPath)
+        if (outputFile.isFile) {
+            resolveOpenOutputFile(meta, storageRepository, errorMessage)?.let { target ->
+                return OpenExtractResult.OpenFile(target)
+            }
+            return null
+        }
+        resolveNavigateToOutput(meta, storageRepository, errorMessage)?.let { target ->
+            return OpenExtractResult.NavigateToOutput(target)
+        }
+        resolveOpenOutputFolderPath(meta, errorMessage)?.let { target ->
+            return OpenExtractResult.OpenFolder(target)
+        }
+        return null
     }
 
     suspend fun resolveOpenOutputFile(

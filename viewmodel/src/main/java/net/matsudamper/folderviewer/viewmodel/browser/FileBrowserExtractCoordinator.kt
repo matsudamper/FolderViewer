@@ -15,7 +15,6 @@ import kotlinx.coroutines.launch
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.ExtractJobRepository
 import net.matsudamper.folderviewer.repository.FileItem
-import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.SelectionModeRepository
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
@@ -189,27 +188,6 @@ internal class FileBrowserExtractCoordinator(
         }
     }
 
-    fun observeExternalOpenEvents(scope: CoroutineScope) {
-        scope.launch {
-            dependencies.extractJobCompletionWatcher.pendingExternalOpen.collect { event ->
-                if (event.parentFileObjectId != dependencies.fileObjectId) {
-                    return@collect
-                }
-                val file = try {
-                    dependencies.getRepository().getFiles(event.parentFileObjectId)
-                        .find { it.id == event.fileId }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    return@collect
-                } ?: return@collect
-                dependencies.openWithExternalPlayer(file)
-                dependencies.extractJobRepository.markOpenOnCompleteHandled(event.jobId)
-            }
-        }
-    }
-
     internal data class Dependencies(
         val application: Application,
         val extractJobRepository: ExtractJobRepository,
@@ -225,8 +203,6 @@ internal class FileBrowserExtractCoordinator(
         val updateExtractDialogOnComplete: (Long, String) -> Unit,
         val updateExtractDialogOnFailed: (Long, String) -> Unit,
         val extractJobCompletionWatcher: ExtractJobCompletionWatcher,
-        val getRepository: suspend () -> FileRepository,
-        val openWithExternalPlayer: suspend (FileItem) -> Unit,
     )
 
     suspend fun openExtractResult(jobId: Long): Boolean {

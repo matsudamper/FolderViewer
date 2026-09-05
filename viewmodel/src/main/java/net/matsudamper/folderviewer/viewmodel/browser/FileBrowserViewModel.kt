@@ -113,8 +113,6 @@ class FileBrowserViewModel @AssistedInject constructor(
                 updateExtractDialogOnComplete = { _, _ -> },
                 updateExtractDialogOnFailed = { _, _ -> },
                 extractJobCompletionWatcher = extractJobCompletionWatcher,
-                getRepository = { getRepository() },
-                openWithExternalPlayer = { fileItem -> openWithExternalPlayer(fileItem) },
             ),
         )
     }
@@ -699,7 +697,6 @@ class FileBrowserViewModel @AssistedInject constructor(
             }
         }
         extractCoordinator.observeCompletionEvents(viewModelScope)
-        extractCoordinator.observeExternalOpenEvents(viewModelScope)
     }
 
     private suspend fun loadSortConfig() {
@@ -853,7 +850,7 @@ class FileBrowserViewModel @AssistedInject constructor(
 
         data class OpenWithExternalPlayer(
             val viewSourceUri: ViewSourceUri,
-            val fileId: FileObjectId.Item,
+            val fileId: FileObjectId.Item?,
             val fileName: String,
             val mimeType: String?,
         ) : ViewModelEvent
