@@ -25,6 +25,7 @@ import net.matsudamper.folderviewer.viewmodel.util.CompressedFileUtil
 import net.matsudamper.folderviewer.viewmodel.util.ExtractMediaScanner
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputConflictChecker
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputNameValidator
+import net.matsudamper.folderviewer.viewmodel.util.ExternalExtractStagingSupport
 import net.matsudamper.folderviewer.viewmodel.util.ExtractProgressListener
 import net.matsudamper.folderviewer.viewmodel.util.TarArchiveUtil
 import net.matsudamper.folderviewer.viewmodel.util.ZipFileUtil
@@ -87,12 +88,16 @@ internal class FileExtractWorker @AssistedInject constructor(
                 notificationUpdater.update(meta.sourceFileName, progressText, progressRatio)
             },
         )
-        val extractResult = ExtractWorkerExecutor.run(
-            meta = meta,
-            storageRepository = storageRepository,
-            appContext = workerContext,
-            progressReporter = progressReporter,
-        )
+        val extractResult = try {
+            ExtractWorkerExecutor.run(
+                meta = meta,
+                storageRepository = storageRepository,
+                appContext = workerContext,
+                progressReporter = progressReporter,
+            )
+        } finally {
+            ExternalExtractStagingSupport.deleteStagedSourceIfNeeded(meta.sourceAbsolutePath)
+        }
         return extractResult.fold(
             onSuccess = { outputFile ->
                 extractJobRepository.completeJob(meta.id, outputFile.absolutePath)
@@ -257,7 +262,7 @@ internal object ExtractWorkerExecutor {
         progressReporter: ExtractProgressReporter,
     ): Result<File> {
         return runCatching {
-            ExtractOutputConflictChecker.requireNoConflict(meta)
+            ExtractOutputConflictChecker.requireNoConflict(meta, appContext)
             val sourceFile = resolveSourceFile(meta, storageRepository)
             when (meta.extractType) {
                 ExtractJobRepository.ExtractType.Zip -> extractZip(

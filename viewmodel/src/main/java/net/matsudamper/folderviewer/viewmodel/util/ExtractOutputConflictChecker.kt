@@ -1,6 +1,8 @@
 package net.matsudamper.folderviewer.viewmodel.util
 
+import android.content.Context
 import net.matsudamper.folderviewer.repository.ExtractJobRepository
+import net.matsudamper.folderviewer.viewmodel.worker.ExtractTempFileSupport
 
 internal object ExtractOutputConflictChecker {
     sealed class Conflict(
@@ -48,7 +50,14 @@ internal object ExtractOutputConflictChecker {
 
     fun requireNoConflict(
         meta: ExtractJobRepository.ExtractJobMeta,
+        appContext: Context,
     ) {
+        val outputFile = ExtractOutputNameValidator.resolveChildFile(meta.localFolderPath, meta.outputName)
+        if (outputFile != null &&
+            ExtractTempFileSupport.recoverOutputIfAlreadyPublished(appContext, meta.id, outputFile) != null
+        ) {
+            return
+        }
         findConflict(meta.localFolderPath, meta.outputName)?.let { conflict ->
             error(conflict.message)
         }
