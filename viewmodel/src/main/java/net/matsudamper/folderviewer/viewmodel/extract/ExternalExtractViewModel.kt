@@ -92,6 +92,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
             return
         }
         _uiState.value = _uiState.value.copy(
+            defaultName = outputName,
             isExtracting = true,
             isExtractComplete = false,
             statusMessage = null,
