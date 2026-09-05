@@ -26,6 +26,7 @@
     <string name="unknown_error">不明なエラー</string>
     <string name="cache">キャッシュ</string>
     <string name="clear_disk_cache">ディスクキャッシュをクリア</string>
+    <string name="app_info">アプリ情報</string>
     <string name="github_releases">GitHub リリース</string>
     <string name="github_releases_url">https://github.com/matsudamper/FolderViewer/releases</string>
     <string name="github_releases_open_error">リンクを開けませんでした</string>
