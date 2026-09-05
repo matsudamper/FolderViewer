@@ -804,20 +804,10 @@ private fun FileBrowserEventHandler(
                 }
 
                 is FileBrowserViewModel.ViewModelEvent.OpenFolderWithExternalApp -> {
-                    val relativePath = File(event.path)
-                        .relativeToOrNull(android.os.Environment.getExternalStorageDirectory())
-                        ?.path
-                        .orEmpty()
-                    val uri = android.provider.DocumentsContract.buildDocumentUri(
-                        "com.android.externalstorage.documents",
-                        "primary:$relativePath",
+                    ExtractOutputLauncher.openOutputFolder(
+                        context = context,
+                        absolutePath = event.path,
                     )
-                    val intent = Intent(Intent.ACTION_VIEW).apply {
-                        setDataAndType(uri, android.provider.DocumentsContract.Document.MIME_TYPE_DIR)
-                    }
-                    runCatching {
-                        context.startActivity(intent)
-                    }
                 }
 
                 is FileBrowserViewModel.ViewModelEvent.ShareFiles -> {
@@ -868,22 +858,6 @@ private fun FileBrowserEventHandler(
                         viewSourceUri = event.viewSourceUri,
                         fileName = event.fileName,
                         mimeType = event.mimeType,
-                    )
-                }
-
-                is FileBrowserViewModel.ViewModelEvent.OpenOutputFile -> {
-                    ExtractOutputLauncher.openOutputFile(
-                        context = context,
-                        viewSourceUri = event.viewSourceUri,
-                        fileName = event.fileName,
-                        mimeType = event.mimeType,
-                    )
-                }
-
-                is FileBrowserViewModel.ViewModelEvent.OpenOutputFolder -> {
-                    ExtractOutputLauncher.openOutputFolder(
-                        context = context,
-                        absolutePath = event.absolutePath,
                     )
                 }
             }

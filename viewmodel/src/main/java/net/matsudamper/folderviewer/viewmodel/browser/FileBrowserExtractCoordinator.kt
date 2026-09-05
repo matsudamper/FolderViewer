@@ -221,9 +221,6 @@ internal class FileBrowserExtractCoordinator(
                 dependencies.extractJobRepository.markOpenOnCompleteHandled(event.jobId)
             }
         }
-    }
-
-    fun observeExternalFolderOpenEvents(scope: CoroutineScope) {
         scope.launch {
             dependencies.extractJobCompletionWatcher.pendingExternalFolderOpen.collect { event ->
                 dependencies.openOutputFolder(event.absolutePath)
