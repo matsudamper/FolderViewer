@@ -135,9 +135,10 @@ internal object ExternalExtractPathResolver {
         if (!candidate.exists()) {
             return candidate
         }
-        val dotIndex = fileName.lastIndexOf('.')
-        val baseName = if (dotIndex > 0) fileName.substring(0, dotIndex) else fileName
-        val extension = if (dotIndex > 0) fileName.substring(dotIndex) else ""
-        return File(directory, "${baseName}_${System.currentTimeMillis()}$extension")
+        throw SourceFileConflictException(fileName)
     }
 }
+
+internal class SourceFileConflictException(
+    fileName: String,
+) : IllegalStateException("同じ名前のファイルが既に存在します: $fileName")

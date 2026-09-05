@@ -30,6 +30,15 @@ internal object ExtractOutputConflictChecker {
         }
     }
 
+    fun findConflictForCompressedOutput(
+        parentPath: String,
+        outputName: String,
+    ): Conflict? {
+        findConflict(parentPath, outputName)?.let { return it }
+        val apkCandidate = DecompressedOutputNameResolver.apkCandidateName(outputName) ?: return null
+        return findConflict(parentPath, apkCandidate)
+    }
+
     fun requireNoConflict(
         parentPath: String,
         outputName: String,
@@ -46,11 +55,23 @@ internal object ExtractOutputConflictChecker {
         return findConflict(parentPath, outputName)?.message
     }
 
+    fun conflictMessageForCompressedOutput(
+        parentPath: String,
+        outputName: String,
+    ): String? {
+        return findConflictForCompressedOutput(parentPath, outputName)?.message
+    }
+
     fun requireNoConflict(
         meta: ExtractJobRepository.ExtractJobMeta,
     ) {
-        findConflict(meta.localFolderPath, meta.outputName)?.let { conflict ->
-            error(conflict.message)
+        val conflict = when (meta.extractType) {
+            ExtractJobRepository.ExtractType.Zst,
+            ExtractJobRepository.ExtractType.Xz,
+            -> findConflictForCompressedOutput(meta.localFolderPath, meta.outputName)
+
+            else -> findConflict(meta.localFolderPath, meta.outputName)
         }
+        conflict?.let { error(it.message) }
     }
 }

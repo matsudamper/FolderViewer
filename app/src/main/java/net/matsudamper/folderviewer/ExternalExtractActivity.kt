@@ -90,6 +90,10 @@ class ExternalExtractActivity : ComponentActivity() {
                     ExternalIncomingUriResolution.Unsupported -> {
                         launchErrorMessage = "対応していないファイルです"
                     }
+
+                    is ExternalIncomingUriResolution.Failed -> {
+                        launchErrorMessage = resolved.message
+                    }
                 }
             }
         }

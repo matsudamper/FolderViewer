@@ -11,4 +11,8 @@ sealed interface ExternalIncomingUriResolution {
     ) : ExternalIncomingUriResolution
 
     data object Unsupported : ExternalIncomingUriResolution
+
+    data class Failed(
+        val message: String,
+    ) : ExternalIncomingUriResolution
 }

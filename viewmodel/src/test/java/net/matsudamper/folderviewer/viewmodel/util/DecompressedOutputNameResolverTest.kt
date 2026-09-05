@@ -3,6 +3,7 @@ package net.matsudamper.folderviewer.viewmodel.util
 import java.io.File
 import java.nio.file.Files
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 internal class DecompressedOutputNameResolverTest {
@@ -29,6 +30,32 @@ internal class DecompressedOutputNameResolverTest {
         } finally {
             tempDir.deleteRecursively()
         }
+    }
+
+    @Test
+    fun resolveFileName_keepsApkContainingOutputName() {
+        val tempDir = Files.createTempDirectory("decompressed-output-name").toFile()
+        try {
+            val file = File(tempDir, "output")
+            file.writeBytes(zipMagic())
+            val outputName = "app-FolderViewer.apk_1788578378971"
+            assertEquals(
+                outputName,
+                DecompressedOutputNameResolver.resolveFileName(outputName, file),
+            )
+        } finally {
+            tempDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun apkCandidateName_returnsNullForApkContainingOutputName() {
+        assertNull(DecompressedOutputNameResolver.apkCandidateName("app.apk_1788578378971"))
+    }
+
+    @Test
+    fun apkCandidateName_returnsApkNameForCompressionExtension() {
+        assertEquals("foo.apk", DecompressedOutputNameResolver.apkCandidateName("foo.xz"))
     }
 
     @Test

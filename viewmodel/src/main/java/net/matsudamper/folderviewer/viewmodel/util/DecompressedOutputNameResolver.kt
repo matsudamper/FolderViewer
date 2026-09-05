@@ -5,7 +5,7 @@ import java.io.FileInputStream
 
 internal object DecompressedOutputNameResolver {
     fun resolveFileName(outputName: String, decompressedFile: File): String {
-        if (outputName.endsWith(".apk", ignoreCase = true)) {
+        if (!shouldApplyApkRename(outputName)) {
             return outputName
         }
         if (!isZipMagic(decompressedFile)) {
@@ -13,14 +13,31 @@ internal object DecompressedOutputNameResolver {
         }
         return if (outputName.contains('.')) {
             val baseName = outputName.substringBeforeLast('.')
-            if (baseName.endsWith(".apk", ignoreCase = true)) {
-                outputName
-            } else {
-                "$baseName.apk"
-            }
+            "$baseName.apk"
         } else {
             "$outputName.apk"
         }
+    }
+
+    fun apkCandidateName(outputName: String): String? {
+        if (!shouldApplyApkRename(outputName)) {
+            return null
+        }
+        return if (outputName.contains('.')) {
+            "${outputName.substringBeforeLast('.')}.apk"
+        } else {
+            "$outputName.apk"
+        }
+    }
+
+    private fun shouldApplyApkRename(outputName: String): Boolean {
+        if (outputName.endsWith(".apk", ignoreCase = true)) {
+            return false
+        }
+        if (outputName.contains(".apk", ignoreCase = true)) {
+            return false
+        }
+        return true
     }
 
     private fun isZipMagic(file: File): Boolean {
