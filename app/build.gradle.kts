@@ -21,31 +21,29 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    signingConfigs {
-        val isCI = System.getenv("CI") != null
-        if (isCI) {
-            create("ci") {
-                val keystoreFile = System.getenv("DEBUG_KEYSTORE_FILE")
-                requireNotNull(keystoreFile) { "DEBUG_KEYSTORE_FILE environment variable is required in CI" }
-                storeFile = rootProject.file(keystoreFile)
-                storePassword = "android"
-                keyAlias = "androiddebugkey"
-                keyPassword = "android"
-            }
+    val isCI = System.getenv("CI") != null
+    val ciSigningConfig = if (isCI) {
+        signingConfigs.create("ci") {
+            val keystoreFile = System.getenv("DEBUG_KEYSTORE_FILE")
+            requireNotNull(keystoreFile) { "DEBUG_KEYSTORE_FILE environment variable is required in CI" }
+            storeFile = rootProject.file(keystoreFile)
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
         }
+    } else {
+        null
     }
 
     buildTypes {
         debug {
-            val isCI = System.getenv("CI") != null
-            if (isCI) {
-                signingConfig = signingConfigs.getByName("ci")
+            if (ciSigningConfig != null) {
+                signingConfig = ciSigningConfig
             }
         }
         release {
-            val isCI = System.getenv("CI") != null
-            if (isCI) {
-                signingConfig = signingConfigs.getByName("ci")
+            if (ciSigningConfig != null) {
+                signingConfig = ciSigningConfig
             }
             isMinifyEnabled = true
             isShrinkResources = true
