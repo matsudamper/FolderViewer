@@ -44,8 +44,10 @@ android {
         }
         release {
             val isCI = System.getenv("CI") != null
-            if (isCI) {
-                signingConfig = signingConfigs.getByName("ci")
+            signingConfig = if (isCI) {
+                signingConfigs.getByName("ci")
+            } else {
+                signingConfigs.getByName("debug")
             }
             isMinifyEnabled = true
             isShrinkResources = true
