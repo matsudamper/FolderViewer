@@ -21,3 +21,22 @@
 #-renamesourcefileattribute SourceFile
 
 -dontwarn com.aayushatharva.brotli4j.**
+
+-dontwarn com.google.auto.value.AutoValue
+-dontwarn com.jcraft.jzlib.**
+-dontwarn com.nimbusds.jose.util.StandardCharset
+-dontwarn com.sun.net.httpserver.**
+-dontwarn io.micrometer.**
+-dontwarn io.netty.incubator.**
+-dontwarn java.awt.Desktop
+-dontwarn java.awt.Desktop$Action
+-dontwarn java.lang.management.**
+-dontwarn java.rmi.UnmarshalException
+-dontwarn javax.el.**
+-dontwarn javax.naming.directory.**
+-dontwarn org.apache.log4j.**
+-dontwarn org.apache.logging.log4j.**
+-dontwarn org.eclipse.jetty.alpn.**
+-dontwarn org.eclipse.jetty.npn.**
+-dontwarn org.ietf.jgss.**
+-dontwarn reactor.blockhound.**
