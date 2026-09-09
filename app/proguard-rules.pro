@@ -22,7 +22,6 @@
 
 -dontwarn com.aayushatharva.brotli4j.**
 
-# microsoftGraph / azureIdentity / smbj が参照するが実行時には使わないオプション依存
 -dontwarn com.google.auto.value.AutoValue
 -dontwarn com.jcraft.jzlib.**
 -dontwarn com.nimbusds.jose.util.StandardCharset
