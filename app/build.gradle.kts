@@ -14,9 +14,9 @@ android {
         applicationId = "net.matsudamper.folderviewer"
         minSdk = 28
         targetSdk = 36
-        val ciVersion = System.getenv("VERSION")?.toIntOrNull()
+        val ciVersion = System.getenv("VERSION")
         versionCode = 1
-        versionName = if (ciVersion != null) "Release-$ciVersion" else "1.0"
+        versionName = ciVersion ?: "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
