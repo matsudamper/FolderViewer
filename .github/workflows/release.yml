@@ -32,39 +32,13 @@ jobs:
           DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
         run: echo "$DEBUG_KEYSTORE_BASE64" | base64 -d > debug.keystore
 
-      - name: Increment VERSION
-        if: success()
-        env:
-          GH_TOKEN: ${{ secrets.GH_ACTIONS_PAT_RELEASE }}
-          BEFORE_VERSION: ${{ vars.VERSION }}
-        run: |
-          # バージョンのバリデーション
-          if [ -z "$BEFORE_VERSION" ]; then
-            echo "Error: VERSION variable is not set"
-            exit 1
-          fi
-          
-          if ! [[ "$BEFORE_VERSION" =~ ^[0-9]+$ ]]; then
-            echo "Error: VERSION must be a non-negative integer, got: $BEFORE_VERSION"
-            exit 1
-          fi
-          
-          # 現在のバージョンをインクリメント
-          NEW_VERSION=$((BEFORE_VERSION + 1))
-          echo "Current version: $BEFORE_VERSION"
-          echo "New version: $NEW_VERSION"
-          
-          # GitHub CLIを使用してEnvironment変数を更新
-          if ! gh variable set VERSION -b "$NEW_VERSION" --env Release; then
-            echo "Error: Failed to update VERSION variable"
-            exit 1
-          fi
-          
-          echo "Successfully updated VERSION to $NEW_VERSION"
+      - name: Set release version
+        id: version
+        run: echo "value=$(date +%Y%m%d-%H%M%S)" >> "$GITHUB_OUTPUT"
 
       - name: Build Release APK
         env:
-          VERSION: ${{ vars.VERSION }}
+          VERSION: ${{ steps.version.outputs.value }}
         run: ./gradlew assembleRelease
 
       - name: Zip Release APK
@@ -76,8 +50,8 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
-          tag_name: Release-${{ vars.VERSION }}
-          name: Release ${{ vars.VERSION }}
+          tag_name: Release-${{ steps.version.outputs.value }}
+          name: Release ${{ steps.version.outputs.value }}
           draft: false
           prerelease: false
           files: app/build/outputs/apk/release/*.zip
