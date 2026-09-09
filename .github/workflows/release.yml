@@ -39,7 +39,7 @@ jobs:
       - name: Build Release APK
         env:
           VERSION: ${{ steps.version.outputs.value }}
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease -Pandroid.injected.signing.store.file="$GITHUB_WORKSPACE/debug.keystore" -Pandroid.injected.signing.store.password=android -Pandroid.injected.signing.key.alias=androiddebugkey -Pandroid.injected.signing.key.password=android
 
       - name: Zip Release APK
         run: |
