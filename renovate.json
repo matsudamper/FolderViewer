@@ -12,6 +12,12 @@
       ],
       "groupName": "kotlin monorepo",
       "groupSlug": "kotlin-monorepo"
+    },
+    {
+      "matchPackageNames": [
+        "com.google.devtools.ksp"
+      ],
+      "automerge": true
     }
   ]
 }
