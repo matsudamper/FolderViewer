@@ -13,9 +13,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderState
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
+import androidx.compose.material3.rememberSliderState
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -47,17 +47,15 @@ internal fun DisplayConfigDropDownMenu(
         Column(
             modifier = Modifier.padding(horizontal = 8.dp),
         ) {
-            val sliderState = remember {
-                SliderState(
-                    value = when (displayConfig.displaySize) {
-                        UiDisplayConfig.DisplaySize.Small -> 0f
-                        UiDisplayConfig.DisplaySize.Medium -> 1f
-                        UiDisplayConfig.DisplaySize.Large -> 2f
-                    },
-                    steps = 1,
-                    valueRange = 0f..2f,
-                )
-            }
+            val sliderState = rememberSliderState(
+                value = when (displayConfig.displaySize) {
+                    UiDisplayConfig.DisplaySize.Small -> 0f
+                    UiDisplayConfig.DisplaySize.Medium -> 1f
+                    UiDisplayConfig.DisplaySize.Large -> 2f
+                },
+                steps = 1,
+                trackRange = 0f..2f,
+            )
             val sliderStateSize by remember {
                 derivedStateOf {
                     when (sliderState.value) {
