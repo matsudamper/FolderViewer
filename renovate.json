@@ -2,5 +2,22 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
+  ],
+  "packageRules": [
+    {
+      "matchPackageNames": [
+        "org.jetbrains.kotlin.android",
+        "org.jetbrains.kotlin.plugin.compose",
+        "org.jetbrains.kotlin.plugin.serialization"
+      ],
+      "groupName": "kotlin monorepo",
+      "groupSlug": "kotlin-monorepo"
+    },
+    {
+      "matchPackageNames": [
+        "com.google.devtools.ksp"
+      ],
+      "automerge": true
+    }
   ]
 }
