@@ -9,6 +9,7 @@ data class ExternalExtractUiState(
     val isExtractComplete: Boolean,
     val statusMessage: String?,
     val locationMessage: String?,
+    val canDeleteSource: Boolean,
     val progress: Float? = null,
     val progressText: String? = null,
     val callbacks: Callbacks,
@@ -21,5 +22,7 @@ data class ExternalExtractUiState(
         fun onOpenResult()
 
         fun onOpenDetail()
+
+        fun onDeleteSourceRequested()
     }
 }

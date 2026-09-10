@@ -1,11 +1,16 @@
 package net.matsudamper.folderviewer.viewmodel.extract
 
 import android.app.Application
+import android.content.ContentResolver
+import android.net.Uri
+import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import java.io.File
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +20,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -45,16 +51,21 @@ class ExternalExtractViewModel @AssistedInject constructor(
 
     private var extractProgressJob: Job? = null
     private var activeJobId: Long? = null
+    private var deleteSourceRequested = false
 
     private val callbacks = object : ExternalExtractUiState.Callbacks {
         override fun onDismissRequest() {
-            if (!_uiState.value.isExtracting) {
-                ExternalExtractStagingSupport.deleteStagedSourceIfNeeded(
-                    args.sourcePath,
-                    getApplication<Application>().cacheDir,
-                )
+            if (_uiState.value.isExtracting) {
+                viewModelEventChannel.trySend(ViewModelEvent.Finish)
+                return
             }
-            viewModelEventChannel.trySend(ViewModelEvent.Finish)
+            viewModelScope.launch {
+                if (!deleteSourceIfRequested()) {
+                    return@launch
+                }
+                deleteStagedSourceIfNeeded()
+                viewModelEventChannel.send(ViewModelEvent.Finish)
+            }
         }
 
         override fun onConfirm(outputName: String) {
@@ -66,13 +77,27 @@ class ExternalExtractViewModel @AssistedInject constructor(
         override fun onOpenResult() {
             val jobId = activeJobId ?: return
             viewModelScope.launch {
+                if (!deleteSourceIfRequested()) {
+                    return@launch
+                }
+                deleteStagedSourceIfNeeded()
                 openExtractOutput(jobId)
             }
         }
 
         override fun onOpenDetail() {
             val jobId = activeJobId ?: return
-            viewModelEventChannel.trySend(ViewModelEvent.OpenExtractDetail(jobId))
+            viewModelScope.launch {
+                if (!deleteSourceIfRequested()) {
+                    return@launch
+                }
+                deleteStagedSourceIfNeeded()
+                viewModelEventChannel.send(ViewModelEvent.OpenExtractDetail(jobId))
+            }
+        }
+
+        override fun onDeleteSourceRequested() {
+            deleteSourceRequested = true
         }
     }
 
@@ -90,8 +115,19 @@ class ExternalExtractViewModel @AssistedInject constructor(
             isExtractComplete = false,
             statusMessage = null,
             locationMessage = args.locationMessage,
+            canDeleteSource = canDeleteSource(),
             callbacks = callbacks,
         )
+    }
+
+    private fun canDeleteSource(): Boolean {
+        return when (Uri.parse(args.sourceUri).scheme) {
+            ContentResolver.SCHEME_CONTENT,
+            ContentResolver.SCHEME_FILE,
+            -> true
+
+            else -> false
+        }
     }
 
     private suspend fun enqueueExtract(outputName: String) {
@@ -197,6 +233,62 @@ class ExternalExtractViewModel @AssistedInject constructor(
                 }
             }
         }
+    }
+
+    private suspend fun deleteSourceIfRequested(): Boolean {
+        if (!deleteSourceRequested) {
+            return true
+        }
+        deleteSourceRequested = false
+        val deleted = withContext(Dispatchers.IO) {
+            deleteOriginalSource()
+        }
+        if (!deleted) {
+            _uiState.value = _uiState.value.copy(
+                statusMessage = "元のファイルを削除できませんでした",
+            )
+        }
+        return deleted
+    }
+
+    private fun deleteOriginalSource(): Boolean {
+        val application = getApplication<Application>()
+        val sourceUri = Uri.parse(args.sourceUri)
+        val deletedByUri = when (sourceUri.scheme) {
+            ContentResolver.SCHEME_FILE -> {
+                sourceUri.path?.let { path ->
+                    runCatching { File(path).delete() }.getOrDefault(false)
+                } ?: false
+            }
+
+            ContentResolver.SCHEME_CONTENT -> {
+                runCatching {
+                    DocumentFile.fromSingleUri(application, sourceUri)?.delete() == true
+                }.getOrDefault(false) ||
+                    runCatching {
+                        application.contentResolver.delete(sourceUri, null, null) > 0
+                    }.getOrDefault(false)
+            }
+
+            else -> false
+        }
+        if (deletedByUri) {
+            return true
+        }
+        if (ExternalExtractStagingSupport.isStagedSource(args.sourcePath, application.cacheDir)) {
+            return false
+        }
+        return runCatching {
+            val sourceFile = File(args.sourcePath)
+            sourceFile.isFile && sourceFile.delete()
+        }.getOrDefault(false)
+    }
+
+    private fun deleteStagedSourceIfNeeded() {
+        ExternalExtractStagingSupport.deleteStagedSourceIfNeeded(
+            args.sourcePath,
+            getApplication<Application>().cacheDir,
+        )
     }
 
     private suspend fun openExtractOutput(jobId: Long) {
