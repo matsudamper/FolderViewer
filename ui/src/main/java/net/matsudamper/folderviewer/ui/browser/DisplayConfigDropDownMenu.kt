@@ -54,7 +54,7 @@ internal fun DisplayConfigDropDownMenu(
                     UiDisplayConfig.DisplaySize.Large -> 2f
                 },
                 steps = 1,
-                valueRange = 0f..2f,
+                trackRange = 0f..2f,
             )
             val sliderStateSize by remember {
                 derivedStateOf {
