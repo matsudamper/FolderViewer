@@ -1,27 +1,29 @@
-# Add project specific ProGuard rules here.
-# You can control the set of applied configuration files using the
-# proguardFiles setting in build.gradle.
-#
-# For more details, see
-#   http://developer.android.com/guide/developing/tools/proguard.html
+# protobuf-javalite は生成クラスのフィールドを "<フィールド名>_" の文字列で
+# リフレクション参照するため、リネームされると起動時に RuntimeException になる
+-keepclassmembers class * extends com.google.protobuf.GeneratedMessageLite {
+    <fields>;
+}
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# azure-core は HttpClient 実装を META-INF/services から ServiceLoader で解決する。
+# インタフェース側を残さないと services エントリごと APK から落ちる
+-keep class com.azure.core.http.HttpClientProvider
+-keep class * implements com.azure.core.http.HttpClientProvider { *; }
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# azure-core の ReflectionSerializable は fromJson/toJson をメソッド名で引く
+-keepclassmembers class * implements com.azure.json.JsonSerializable {
+    public static ** fromJson(com.azure.json.JsonReader);
+    public ** toJson(com.azure.json.JsonWriter);
+}
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# SharePoint 連携の入口。ここを keep しないと R8 が SDK 呼び出しごと
+# 到達不能とみなして削除し、release だけ SharePoint が機能しなくなる
+-keep class com.azure.identity.ClientSecretCredentialBuilder { *; }
+-keep class com.azure.identity.implementation.IdentityClient { *; }
+-keep class com.microsoft.graph.serviceclient.GraphServiceClient { *; }
+-keep class com.microsoft.graph.core.tasks.LargeFileUploadTask { *; }
 
+# 以下は Android 上に存在しないサーバ向け依存への参照。R8 の Missing class 対策
 -dontwarn com.aayushatharva.brotli4j.**
-
 -dontwarn com.google.auto.value.AutoValue
 -dontwarn com.jcraft.jzlib.**
 -dontwarn com.nimbusds.jose.util.StandardCharset
