@@ -74,9 +74,8 @@ internal object TarArchiveUtil {
         outputFile: File,
         progressListener: ExtractProgressListener?,
     ): File? {
-        val maxOutputSizeBytes = ExtractStorageLimit.maxWritableBytes(outputFile.parentFile ?: outputFile)
         FileInputStream(tarFile).use { input ->
-            return findAndCopyEntry(input, entry, outputFile, progressListener, maxOutputSizeBytes)
+            return findAndCopyEntry(input, entry, outputFile, progressListener)
         }
     }
 
@@ -85,7 +84,6 @@ internal object TarArchiveUtil {
         entry: EntryInfo,
         outputFile: File,
         progressListener: ExtractProgressListener?,
-        maxOutputSizeBytes: Long,
     ): File? {
         var header = readHeader(input)
         while (header != null) {
@@ -96,7 +94,6 @@ internal object TarArchiveUtil {
                 target = entry,
                 outputFile = outputFile,
                 progressListener = progressListener,
-                maxOutputSizeBytes = maxOutputSizeBytes,
             )
             if (copied != null) {
                 return copied
@@ -113,11 +110,11 @@ internal object TarArchiveUtil {
         target: EntryInfo,
         outputFile: File,
         progressListener: ExtractProgressListener?,
-        maxOutputSizeBytes: Long,
     ): File? {
         if (current.isDirectory || current.isUnsupportedLink || current.name != target.name) {
             return null
         }
+        val maxOutputSizeBytes = ExtractStorageLimit.maxWritableBytes(outputFile.parentFile ?: outputFile)
         outputFile.outputStream().use { output ->
             copyEntryData(
                 input = input,
