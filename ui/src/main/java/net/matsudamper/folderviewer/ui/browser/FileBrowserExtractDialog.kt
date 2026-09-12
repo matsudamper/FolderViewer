@@ -5,7 +5,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -16,7 +18,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
@@ -27,16 +31,23 @@ internal fun FileBrowserExtractDialog(
     isExtracting: Boolean,
     isExtractComplete: Boolean,
     statusMessage: String?,
+    showDeleteSourceOption: Boolean,
     onDismissRequest: () -> Unit,
     onConfirm: (String) -> Unit,
     onOpenResult: () -> Unit,
     onOpenDetail: () -> Unit,
+    onDeleteSourceRequested: () -> Unit,
+    resultActionsEnabled: Boolean = true,
+    onClose: () -> Unit = onDismissRequest,
     hintMessage: String? = null,
     progress: Float? = null,
     progressText: String? = null,
 ) {
     var extractNameInput by remember(defaultName, mode) {
         mutableStateOf(defaultName)
+    }
+    var deleteSourceFile by remember(defaultName, mode, isExtractComplete) {
+        mutableStateOf(false)
     }
     val dialogTitle = when (mode) {
         ExtractDialogMode.ZipFolder -> "アーカイブを展開"
@@ -51,6 +62,14 @@ internal fun FileBrowserExtractDialog(
         -> "ファイル名"
     }
     val showResultActions = isExtracting || isExtractComplete
+    val runResultAction: (() -> Unit) -> Unit = { action ->
+        if (resultActionsEnabled) {
+            if (isExtractComplete && showDeleteSourceOption && deleteSourceFile) {
+                onDeleteSourceRequested()
+            }
+            action()
+        }
+    }
     AlertDialog(
         onDismissRequest = onDismissRequest,
         title = { Text(dialogTitle) },
@@ -97,19 +116,40 @@ internal fun FileBrowserExtractDialog(
                         modifier = Modifier.padding(top = 8.dp),
                     )
                 }
+                if (isExtractComplete && showDeleteSourceOption) {
+                    Row(
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp)
+                            .toggleable(
+                                value = deleteSourceFile,
+                                role = Role.Checkbox,
+                                onValueChange = { deleteSourceFile = it },
+                            ),
+                    ) {
+                        Checkbox(
+                            checked = deleteSourceFile,
+                            onCheckedChange = null,
+                        )
+                        Text("元のファイルを削除する")
+                    }
+                }
             }
         },
         confirmButton = {
             if (showResultActions) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(
-                        onClick = onOpenDetail,
+                        onClick = { runResultAction(onOpenDetail) },
+                        enabled = resultActionsEnabled,
                     ) {
                         Text("詳細")
                     }
                     TextButton(
-                        onClick = onOpenResult,
-                        enabled = isExtractComplete,
+                        onClick = { runResultAction(onOpenResult) },
+                        enabled = isExtractComplete && resultActionsEnabled,
                     ) {
                         Text("開く")
                     }
@@ -128,7 +168,16 @@ internal fun FileBrowserExtractDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismissRequest) {
+            TextButton(
+                onClick = {
+                    if (showResultActions) {
+                        runResultAction(onClose)
+                    } else {
+                        onDismissRequest()
+                    }
+                },
+                enabled = !showResultActions || resultActionsEnabled,
+            ) {
                 Text(if (showResultActions) "閉じる" else "キャンセル")
             }
         },
@@ -144,10 +193,12 @@ private fun FileBrowserExtractDialogZipPreview() {
         isExtracting = false,
         isExtractComplete = false,
         statusMessage = null,
+        showDeleteSourceOption = true,
         onDismissRequest = {},
         onConfirm = {},
         onOpenResult = {},
         onOpenDetail = {},
+        onDeleteSourceRequested = {},
     )
 }
 
@@ -160,10 +211,12 @@ private fun FileBrowserExtractDialogZstPreview() {
         isExtracting = false,
         isExtractComplete = false,
         statusMessage = null,
+        showDeleteSourceOption = true,
         onDismissRequest = {},
         onConfirm = {},
         onOpenResult = {},
         onOpenDetail = {},
+        onDeleteSourceRequested = {},
     )
 }
 
@@ -176,10 +229,12 @@ private fun FileBrowserExtractDialogXzPreview() {
         isExtracting = false,
         isExtractComplete = false,
         statusMessage = null,
+        showDeleteSourceOption = true,
         onDismissRequest = {},
         onConfirm = {},
         onOpenResult = {},
         onOpenDetail = {},
+        onDeleteSourceRequested = {},
     )
 }
 
@@ -192,12 +247,14 @@ private fun FileBrowserExtractDialogExtractingFileCountPreview() {
         isExtracting = true,
         isExtractComplete = false,
         statusMessage = null,
+        showDeleteSourceOption = true,
         progress = 0.35f,
         progressText = "35/100 ファイル",
         onDismissRequest = {},
         onConfirm = {},
         onOpenResult = {},
         onOpenDetail = {},
+        onDeleteSourceRequested = {},
     )
 }
 
@@ -210,12 +267,14 @@ private fun FileBrowserExtractDialogExtractingBytesPreview() {
         isExtracting = true,
         isExtractComplete = false,
         statusMessage = null,
+        showDeleteSourceOption = true,
         progress = 0.6f,
         progressText = "12.0 MB/20.0 MB",
         onDismissRequest = {},
         onConfirm = {},
         onOpenResult = {},
         onOpenDetail = {},
+        onDeleteSourceRequested = {},
     )
 }
 
@@ -228,10 +287,12 @@ private fun FileBrowserExtractDialogFailedPreview() {
         isExtracting = false,
         isExtractComplete = false,
         statusMessage = "同じ名前のフォルダが既に存在します: archive",
+        showDeleteSourceOption = true,
         onDismissRequest = {},
         onConfirm = {},
         onOpenResult = {},
         onOpenDetail = {},
+        onDeleteSourceRequested = {},
     )
 }
 
@@ -244,9 +305,11 @@ private fun FileBrowserExtractDialogCompletePreview() {
         isExtracting = false,
         isExtractComplete = true,
         statusMessage = "archiveに展開しました",
+        showDeleteSourceOption = true,
         onDismissRequest = {},
         onConfirm = {},
         onOpenResult = {},
         onOpenDetail = {},
+        onDeleteSourceRequested = {},
     )
 }

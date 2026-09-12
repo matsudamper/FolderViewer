@@ -292,6 +292,7 @@ internal fun FileBrowserScreenContent(
             isExtracting = extractDialog.isExtracting,
             isExtractComplete = extractDialog.isExtractComplete,
             statusMessage = extractDialog.statusMessage,
+            showDeleteSourceOption = true,
             progress = extractDialog.progress,
             progressText = extractDialog.progressText,
             onDismissRequest = { uiState.callbacks.onDismissExtract() },
@@ -306,6 +307,7 @@ internal fun FileBrowserScreenContent(
                     uiState.callbacks.onOpenExtractDetail(jobId)
                 }
             },
+            onDeleteSourceRequested = callbacks::onDeleteExtractSource,
         )
     }
 
@@ -378,6 +380,7 @@ private fun Preview() {
                 override fun onExtractPermissionResult() = Unit
                 override fun onOpenExtractResult(jobId: Long) = Unit
                 override fun onOpenExtractDetail(jobId: Long) = Unit
+                override fun onDeleteExtractSource() = Unit
                 override fun onDeleteClick() = Unit
                 override fun onConfirmDelete() = Unit
                 override fun onPasteClick() = Unit

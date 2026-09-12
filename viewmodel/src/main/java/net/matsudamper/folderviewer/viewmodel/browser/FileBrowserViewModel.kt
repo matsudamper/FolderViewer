@@ -508,6 +508,13 @@ class FileBrowserViewModel @AssistedInject constructor(
             }
         }
 
+        override fun onDeleteExtractSource() {
+            val sourceFile = pendingExtractFileItem ?: return
+            pendingExtractFileItem = null
+            pendingDeleteItems = listOf(sourceFile)
+            viewModelEventChannel.trySend(ViewModelEvent.RequestNotificationPermissionForDelete)
+        }
+
         override fun onDeleteClick() {
             val selectedIds = when (val s = viewModelStateFlow.value.selectedState) {
                 is ViewModelState.SelectionState.NonSelected -> return
