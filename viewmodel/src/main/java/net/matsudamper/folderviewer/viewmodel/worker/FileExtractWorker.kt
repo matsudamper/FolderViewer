@@ -54,6 +54,7 @@ internal class FileExtractWorker @AssistedInject constructor(
             executeJob(meta)
         } catch (e: CancellationException) {
             withContext(NonCancellable) {
+                deleteStagedSourceIfNeeded(meta)
                 extractJobRepository.updateStatus(
                     operationId = operationId,
                     status = OperationRepository.OperationStatus.CANCELLED,
@@ -62,6 +63,7 @@ internal class FileExtractWorker @AssistedInject constructor(
             throw e
         } catch (e: Throwable) {
             e.printStackTrace()
+            deleteStagedSourceIfNeeded(meta)
             extractJobRepository.updateError(
                 operationId = operationId,
                 errorMessage = e.message,
@@ -97,16 +99,14 @@ internal class FileExtractWorker @AssistedInject constructor(
         )
         return extractResult.fold(
             onSuccess = { outputFile ->
-                ExternalExtractStagingSupport.deleteStagedSourceIfNeeded(
-                    meta.sourceAbsolutePath,
-                    workerContext.cacheDir,
-                )
+                deleteStagedSourceIfNeeded(meta)
                 extractJobRepository.completeJob(meta.id, outputFile.absolutePath)
                 ExtractTempFileSupport.clearMarker(workerContext, meta.id)
                 notifyCompleted(meta, outputFile)
                 Result.success()
             },
             onFailure = { error ->
+                deleteStagedSourceIfNeeded(meta)
                 extractJobRepository.updateError(
                     operationId = meta.id,
                     errorMessage = error.message,
@@ -115,6 +115,13 @@ internal class FileExtractWorker @AssistedInject constructor(
                 notifyFailed(meta.id, error.message ?: error.toString())
                 Result.failure()
             },
+        )
+    }
+
+    private fun deleteStagedSourceIfNeeded(meta: ExtractJobRepository.ExtractJobMeta) {
+        ExternalExtractStagingSupport.deleteStagedSourceIfNeeded(
+            meta.sourceAbsolutePath,
+            workerContext.cacheDir,
         )
     }
 
