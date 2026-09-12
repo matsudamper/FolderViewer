@@ -42,6 +42,12 @@ internal interface OperationDao {
 
     @Query(
         "UPDATE operations SET status = :status, errorMessage = :errorMessage, errorCause = :errorCause, " +
+            "pauseRequested = 0 WHERE id = :id",
+    )
+    suspend fun updateError(id: Long, status: String, errorMessage: String?, errorCause: String?)
+
+    @Query(
+        "UPDATE operations SET status = :status, errorMessage = :errorMessage, errorCause = :errorCause, " +
             "pauseRequested = 0 WHERE id = :id AND status = 'RUNNING'",
     )
     suspend fun updateErrorIfRunning(id: Long, status: String, errorMessage: String?, errorCause: String?): Int
