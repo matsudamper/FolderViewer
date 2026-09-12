@@ -153,6 +153,7 @@ internal object ZipFileUtil {
         destDir: File,
         progressListener: ExtractProgressListener?,
     ) {
+        progressListener?.checkCancellation()
         val entryFile = File(destDir, entry.name)
         validateZipEntryPath(destDir, entryFile)
         if (entry.isDirectory) {
