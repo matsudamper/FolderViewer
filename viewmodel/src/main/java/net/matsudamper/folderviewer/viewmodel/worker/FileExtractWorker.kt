@@ -48,20 +48,17 @@ internal class FileExtractWorker @AssistedInject constructor(
         val meta = extractJobRepository.getJobMeta(operationId) ?: return@withContext Result.failure()
 
         try {
-            extractJobRepository.updateStatus(
-                operationId = operationId,
-                status = OperationRepository.OperationStatus.RUNNING,
-                workerId = id.toString(),
-            )
+            val started = extractJobRepository.startJob(operationId, id.toString())
+            if (!started) {
+                deleteStagedSourceIfNeeded(meta)
+                return@withContext Result.success()
+            }
             executeJob(meta)
         } catch (e: CancellationException) {
             withContext(NonCancellable) {
                 deleteStagedSourceIfNeeded(meta)
                 ExtractTempFileSupport.clearMarker(workerContext, meta.id)
-                extractJobRepository.updateStatus(
-                    operationId = operationId,
-                    status = OperationRepository.OperationStatus.CANCELLED,
-                )
+                extractJobRepository.cancelJob(operationId)
             }
             throw e
         } catch (e: Throwable) {
@@ -442,7 +439,8 @@ internal object ExtractWorkerExecutor {
         try {
             decompress(sourceFile, tempTar, decompressListener)
             progressReporter.flushByteProgress()
-            val fileEntries = TarArchiveUtil.listEntries(tempTar).filter { !it.isDirectory && !it.isUnsupportedLink }
+            val fileEntries = TarArchiveUtil.listEntries(tempTar, decompressListener)
+                .filter { !it.isDirectory && !it.isUnsupportedLink }
             if (fileEntries.size == 1) {
                 return extractSingleTarEntry(
                     tempTar = tempTar,

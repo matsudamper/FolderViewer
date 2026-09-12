@@ -21,6 +21,7 @@ import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.upload.ExtractDetailUiState
+import net.matsudamper.folderviewer.viewmodel.util.ExternalExtractStagingSupport
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputLocationResolver
 import net.matsudamper.folderviewer.viewmodel.util.ExtractProgressText
 
@@ -153,7 +154,14 @@ class ExtractDetailViewModel @Inject constructor(
 
     private fun cancelExtractJob(operationId: Long, workerId: String?) {
         viewModelScope.launch {
-            extractJobRepository.cancelJob(operationId)
+            val meta = extractJobRepository.getJobMeta(operationId)
+            val previousStatus = extractJobRepository.cancelJob(operationId) ?: return@launch
+            if (previousStatus == OperationRepository.OperationStatus.ENQUEUED) {
+                ExternalExtractStagingSupport.deleteStagedSourceIfNeeded(
+                    meta?.sourceAbsolutePath,
+                    getApplication<Application>().cacheDir,
+                )
+            }
             val uuid = workerId?.let { value ->
                 runCatching { UUID.fromString(value) }.getOrNull()
             } ?: return@launch

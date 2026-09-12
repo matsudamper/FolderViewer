@@ -29,6 +29,18 @@ internal interface OperationDao {
     suspend fun updateStatusAndWorkerId(id: Long, status: String, workerId: String?)
 
     @Query(
+        "UPDATE operations SET status = 'RUNNING', workerId = :workerId, pauseRequested = 0 " +
+            "WHERE id = :id AND status = 'ENQUEUED'",
+    )
+    suspend fun markRunningIfEnqueued(id: Long, workerId: String): Int
+
+    @Query(
+        "UPDATE operations SET status = 'CANCELLED', workerId = NULL, pauseRequested = 0 " +
+            "WHERE id = :id AND status IN ('ENQUEUED', 'RUNNING')",
+    )
+    suspend fun cancelIfActive(id: Long): Int
+
+    @Query(
         "UPDATE operations SET status = :status, errorMessage = :errorMessage, errorCause = :errorCause, " +
             "pauseRequested = 0 WHERE id = :id",
     )

@@ -52,7 +52,6 @@ internal object ZipFileUtil {
         destDir: File,
         progressListener: ExtractProgressListener? = null,
     ): List<File> {
-        val maxTotalSizeBytes = ExtractStorageLimit.maxWritableBytes(destDir.parentFile ?: destDir)
         if (!destDir.mkdir()) {
             throw if (destDir.exists()) {
                 ExtractException.OutputAlreadyExists(destDir.name)
@@ -61,7 +60,7 @@ internal object ZipFileUtil {
             }
         }
         return try {
-            extractZipContents(zipFile, destDir, progressListener, maxTotalSizeBytes)
+            extractZipContents(zipFile, destDir, progressListener)
         } catch (e: Exception) {
             destDir.deleteRecursively()
             throw when (e) {
@@ -109,14 +108,12 @@ internal object ZipFileUtil {
         zipFile: File,
         destDir: File,
         progressListener: ExtractProgressListener?,
-        maxTotalSizeBytes: Long,
     ): List<File> {
         val extractedFiles = mutableListOf<File>()
         ZipFile(zipFile, ZIP_NAME_CHARSET).use { zip ->
             val entries = zip.entries()
             var entryCount = 0
             var sawEntry = false
-            var totalBytes = 0L
             while (entries.hasMoreElements()) {
                 val entry = entries.nextElement()
                 sawEntry = true
@@ -124,16 +121,12 @@ internal object ZipFileUtil {
                 if (entryCount > MAX_ENTRY_COUNT) {
                     throw ExtractException.LimitExceeded("ZIPエントリ数が上限を超えています")
                 }
-                val remainingBytes = (maxTotalSizeBytes - totalBytes).coerceAtLeast(0L)
-                val written = extractZipEntry(
+                extractZipEntry(
                     zip = zip,
                     entry = entry,
                     destDir = destDir,
-                    maxBytes = remainingBytes,
                     progressListener = progressListener,
                 )
-                totalBytes += written
-                ensureTotalSizeWithinLimit(totalBytes, maxTotalSizeBytes)
                 if (!entry.isDirectory) {
                     extractedFiles += File(destDir, entry.name)
                     progressListener?.onFileCompleted()
@@ -144,13 +137,6 @@ internal object ZipFileUtil {
             }
         }
         return extractedFiles
-    }
-
-    private fun ensureTotalSizeWithinLimit(totalBytes: Long, maxBytes: Long) {
-        if (totalBytes <= maxBytes) {
-            return
-        }
-        throw ExtractException.LimitExceeded("展開サイズが上限を超えています")
     }
 
     private fun toExtractException(e: Exception): ExtractException {
@@ -165,19 +151,23 @@ internal object ZipFileUtil {
         zip: ZipFile,
         entry: ZipEntry,
         destDir: File,
-        maxBytes: Long,
         progressListener: ExtractProgressListener?,
-    ): Long {
+    ) {
         val entryFile = File(destDir, entry.name)
         validateZipEntryPath(destDir, entryFile)
         if (entry.isDirectory) {
             entryFile.mkdirs()
-            return 0L
+            return
         }
         entryFile.parentFile?.mkdirs()
-        return zip.getInputStream(entry).use { input ->
+        zip.getInputStream(entry).use { input ->
             entryFile.outputStream().use { output ->
-                copyWithLimit(input, output, maxBytes, progressListener)
+                copyWithLimit(
+                    input = input,
+                    output = output,
+                    outputDirectory = destDir,
+                    progressListener = progressListener,
+                )
             }
         }
     }
@@ -185,22 +175,26 @@ internal object ZipFileUtil {
     private fun copyWithLimit(
         input: InputStream,
         output: OutputStream,
-        maxBytes: Long,
+        outputDirectory: File,
         progressListener: ExtractProgressListener?,
-    ): Long {
+    ) {
         val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-        var total = 0L
         while (true) {
             progressListener?.checkCancellation()
             val read = input.read(buffer)
             if (read == -1) {
                 break
             }
-            total += read
-            ensureTotalSizeWithinLimit(total, maxBytes)
+            ensureOutputSpaceAvailable(outputDirectory, read.toLong())
             output.write(buffer, 0, read)
         }
-        return total
+    }
+
+    private fun ensureOutputSpaceAvailable(outputDirectory: File, bytesToWrite: Long) {
+        if (ExtractStorageLimit.canWrite(outputDirectory, bytesToWrite)) {
+            return
+        }
+        throw ExtractException.LimitExceeded("展開サイズが上限を超えています")
     }
 
     private fun validateZipEntryPath(destDir: File, entryFile: File) {

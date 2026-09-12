@@ -222,12 +222,26 @@ class ExtractJobRepository @Inject internal constructor(
         operationDao.updateStatusAndWorkerId(id = operationId, status = status.name, workerId = workerId)
     }
 
-    suspend fun cancelJob(operationId: Long) {
-        operationDao.updateStatusAndWorkerId(
-            id = operationId,
-            status = OperationRepository.OperationStatus.CANCELLED.name,
-            workerId = null,
-        )
+    suspend fun startJob(operationId: Long, workerId: String): Boolean {
+        return operationDao.markRunningIfEnqueued(operationId, workerId) > 0
+    }
+
+    suspend fun cancelJob(operationId: Long): OperationRepository.OperationStatus? {
+        return database.withTransaction {
+            val operation = operationDao.getById(operationId) ?: return@withTransaction null
+            val status = OperationRepository.OperationStatus.entries.firstOrNull { it.name == operation.status }
+                ?: return@withTransaction null
+            if (
+                status != OperationRepository.OperationStatus.ENQUEUED &&
+                status != OperationRepository.OperationStatus.RUNNING
+            ) {
+                return@withTransaction null
+            }
+            if (operationDao.cancelIfActive(operationId) == 0) {
+                return@withTransaction null
+            }
+            status
+        }
     }
 
     suspend fun updateError(operationId: Long, errorMessage: String?, errorCause: String?) {

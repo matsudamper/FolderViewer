@@ -25,9 +25,12 @@ internal object TarArchiveUtil {
         val isUnsupportedLink: Boolean = false,
     )
 
-    fun listEntries(tarFile: File): List<EntryInfo> {
+    fun listEntries(
+        tarFile: File,
+        progressListener: ExtractProgressListener? = null,
+    ): List<EntryInfo> {
         FileInputStream(tarFile).use { input ->
-            return readEntries(input)
+            return readEntries(input, progressListener)
         }
     }
 
@@ -36,7 +39,6 @@ internal object TarArchiveUtil {
         destDir: File,
         progressListener: ExtractProgressListener? = null,
     ): List<File> {
-        val maxTotalSizeBytes = ExtractStorageLimit.maxWritableBytes(destDir.parentFile ?: destDir)
         if (!destDir.mkdir()) {
             throw if (destDir.exists()) {
                 ExtractException.OutputAlreadyExists(destDir.name)
@@ -45,7 +47,7 @@ internal object TarArchiveUtil {
             }
         }
         return try {
-            extractContents(tarFile, destDir, progressListener, maxTotalSizeBytes)
+            extractContents(tarFile, destDir, progressListener)
         } catch (e: Exception) {
             destDir.deleteRecursively()
             throw when (e) {
@@ -98,7 +100,7 @@ internal object TarArchiveUtil {
             if (copied != null) {
                 return copied
             }
-            skipEntryData(input, current.size)
+            skipEntryData(input, current.size, progressListener)
             header = readHeader(input)
         }
         return null
@@ -114,14 +116,14 @@ internal object TarArchiveUtil {
         if (current.isDirectory || current.isUnsupportedLink || current.name != target.name) {
             return null
         }
-        val maxOutputSizeBytes = ExtractStorageLimit.maxWritableBytes(outputFile.parentFile ?: outputFile)
+        val outputDirectory = outputFile.parentFile ?: outputFile
         outputFile.outputStream().use { output ->
             copyEntryData(
                 input = input,
                 output = output,
                 size = current.size,
                 progressListener = progressListener,
-                maxBytes = maxOutputSizeBytes,
+                outputDirectory = outputDirectory,
             )
         }
         return outputFile
@@ -130,8 +132,6 @@ internal object TarArchiveUtil {
     private class ExtractContext(
         val destDir: File,
         val extractedFiles: MutableList<File>,
-        var totalBytes: Long,
-        val maxTotalSizeBytes: Long,
         val progressListener: ExtractProgressListener?,
     )
 
@@ -139,7 +139,6 @@ internal object TarArchiveUtil {
         tarFile: File,
         destDir: File,
         progressListener: ExtractProgressListener?,
-        maxTotalSizeBytes: Long,
     ): List<File> {
         val extractedFiles = mutableListOf<File>()
         FileInputStream(tarFile).use { input ->
@@ -147,8 +146,6 @@ internal object TarArchiveUtil {
             val context = ExtractContext(
                 destDir = destDir,
                 extractedFiles = extractedFiles,
-                totalBytes = 0L,
-                maxTotalSizeBytes = maxTotalSizeBytes,
                 progressListener = progressListener,
             )
             var header = readHeader(input)
@@ -175,35 +172,34 @@ internal object TarArchiveUtil {
     ) {
         validateEntryName(entry.name)
         if (entry.isUnsupportedLink) {
-            skipEntryData(input, entry.size)
+            skipEntryData(input, entry.size, context.progressListener)
             throw ExtractException.InvalidArchive("シンボリックリンクまたはハードリンクはサポートされていません")
         }
         val entryFile = File(context.destDir, entry.name)
         validateEntryPath(context.destDir, entryFile)
         if (entry.isDirectory) {
             entryFile.mkdirs()
-            skipEntryData(input, entry.size)
+            skipEntryData(input, entry.size, context.progressListener)
             return
         }
         entryFile.parentFile?.mkdirs()
-        val remainingBytes = (context.maxTotalSizeBytes - context.totalBytes).coerceAtLeast(0L)
-        val written = entryFile.outputStream().use { output ->
+        entryFile.outputStream().use { output ->
             copyEntryData(
                 input = input,
                 output = output,
                 size = entry.size,
                 progressListener = context.progressListener,
-                maxBytes = remainingBytes,
+                outputDirectory = context.destDir,
             )
         }
-        val updatedTotal = context.totalBytes + written
-        ensureTotalSizeWithinLimit(updatedTotal, context.maxTotalSizeBytes)
-        context.totalBytes = updatedTotal
         context.extractedFiles += entryFile
         context.progressListener?.onFileCompleted()
     }
 
-    private fun readEntries(input: InputStream): List<EntryInfo> {
+    private fun readEntries(
+        input: InputStream,
+        progressListener: ExtractProgressListener?,
+    ): List<EntryInfo> {
         val entries = mutableListOf<EntryInfo>()
         var entryCount = 0
         var header = readHeader(input)
@@ -214,7 +210,7 @@ internal object TarArchiveUtil {
                 throw ExtractException.LimitExceeded("tarエントリ数が上限を超えています")
             }
             entries += entry
-            skipEntryData(input, entry.size)
+            skipEntryData(input, entry.size, progressListener)
             header = readHeader(input)
         }
         return entries
@@ -280,10 +276,15 @@ internal object TarArchiveUtil {
         return value.toLong(8)
     }
 
-    private fun skipEntryData(input: InputStream, size: Long) {
+    private fun skipEntryData(
+        input: InputStream,
+        size: Long,
+        progressListener: ExtractProgressListener?,
+    ) {
         var remaining = size
         val buffer = ByteArray(BLOCK_SIZE)
         while (remaining > 0) {
+            progressListener?.checkCancellation()
             val toRead = minOf(remaining, buffer.size.toLong()).toInt()
             val read = input.read(buffer, 0, toRead)
             if (read == -1) {
@@ -293,6 +294,7 @@ internal object TarArchiveUtil {
         }
         val padding = (BLOCK_SIZE - (size % BLOCK_SIZE)) % BLOCK_SIZE
         if (padding > 0) {
+            progressListener?.checkCancellation()
             val skipped = input.skip(padding)
             if (skipped < padding) {
                 throw ExtractException.InvalidArchive("tarエントリが途中で終端しています")
@@ -305,8 +307,8 @@ internal object TarArchiveUtil {
         output: OutputStream,
         size: Long,
         progressListener: ExtractProgressListener?,
-        maxBytes: Long,
-    ): Long {
+        outputDirectory: File,
+    ) {
         val buffer = ByteArray(BLOCK_SIZE)
         var remaining = size
         var total = 0L
@@ -317,7 +319,7 @@ internal object TarArchiveUtil {
             if (read == -1) {
                 throw ExtractException.InvalidArchive("tarエントリが途中で終端しています")
             }
-            ensureEntrySizeWithinLimit(total + read, maxBytes)
+            ensureOutputSpaceAvailable(outputDirectory, read.toLong())
             output.write(buffer, 0, read)
             total += read
             remaining -= read
@@ -325,23 +327,16 @@ internal object TarArchiveUtil {
         }
         val padding = (BLOCK_SIZE - (size % BLOCK_SIZE)) % BLOCK_SIZE
         if (padding > 0) {
+            progressListener?.checkCancellation()
             val skipped = input.skip(padding)
             if (skipped < padding) {
                 throw ExtractException.InvalidArchive("tarエントリが途中で終端しています")
             }
         }
-        return total
     }
 
-    private fun ensureEntrySizeWithinLimit(total: Long, maxBytes: Long) {
-        if (total <= maxBytes) {
-            return
-        }
-        throw ExtractException.LimitExceeded("展開サイズが上限を超えています")
-    }
-
-    private fun ensureTotalSizeWithinLimit(totalBytes: Long, maxBytes: Long) {
-        if (totalBytes <= maxBytes) {
+    private fun ensureOutputSpaceAvailable(outputDirectory: File, bytesToWrite: Long) {
+        if (ExtractStorageLimit.canWrite(outputDirectory, bytesToWrite)) {
             return
         }
         throw ExtractException.LimitExceeded("展開サイズが上限を超えています")
