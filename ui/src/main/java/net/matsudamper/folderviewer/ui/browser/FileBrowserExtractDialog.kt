@@ -35,6 +35,8 @@ internal fun FileBrowserExtractDialog(
     onOpenResult: () -> Unit,
     onOpenDetail: () -> Unit,
     onDeleteSourceRequested: () -> Unit,
+    resultActionsEnabled: Boolean = true,
+    onClose: () -> Unit = onDismissRequest,
     hintMessage: String? = null,
     progress: Float? = null,
     progressText: String? = null,
@@ -59,10 +61,12 @@ internal fun FileBrowserExtractDialog(
     }
     val showResultActions = isExtracting || isExtractComplete
     val runResultAction: (() -> Unit) -> Unit = { action ->
-        if (isExtractComplete && showDeleteSourceOption && deleteSourceFile) {
-            onDeleteSourceRequested()
+        if (resultActionsEnabled) {
+            if (isExtractComplete && showDeleteSourceOption && deleteSourceFile) {
+                onDeleteSourceRequested()
+            }
+            action()
         }
-        action()
     }
     AlertDialog(
         onDismissRequest = onDismissRequest,
@@ -129,12 +133,13 @@ internal fun FileBrowserExtractDialog(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(
                         onClick = { runResultAction(onOpenDetail) },
+                        enabled = resultActionsEnabled,
                     ) {
                         Text("詳細")
                     }
                     TextButton(
                         onClick = { runResultAction(onOpenResult) },
-                        enabled = isExtractComplete,
+                        enabled = isExtractComplete && resultActionsEnabled,
                     ) {
                         Text("開く")
                     }
@@ -156,11 +161,12 @@ internal fun FileBrowserExtractDialog(
             TextButton(
                 onClick = {
                     if (showResultActions) {
-                        runResultAction(onDismissRequest)
+                        runResultAction(onClose)
                     } else {
                         onDismissRequest()
                     }
                 },
+                enabled = !showResultActions || resultActionsEnabled,
             ) {
                 Text(if (showResultActions) "閉じる" else "キャンセル")
             }

@@ -10,12 +10,15 @@ data class ExternalExtractUiState(
     val statusMessage: String?,
     val locationMessage: String?,
     val canDeleteSource: Boolean,
+    val isResultActionInProgress: Boolean,
     val progress: Float? = null,
     val progressText: String? = null,
     val callbacks: Callbacks,
 ) {
     interface Callbacks {
         fun onDismissRequest()
+
+        fun onClose()
 
         fun onConfirm(outputName: String)
 

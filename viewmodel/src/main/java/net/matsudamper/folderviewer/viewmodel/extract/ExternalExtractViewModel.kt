@@ -10,6 +10,7 @@ import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import java.io.File
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -55,16 +56,29 @@ class ExternalExtractViewModel @AssistedInject constructor(
 
     private val callbacks = object : ExternalExtractUiState.Callbacks {
         override fun onDismissRequest() {
-            if (_uiState.value.isExtracting) {
+            val state = _uiState.value
+            if (state.isResultActionInProgress) {
+                return
+            }
+            if (state.isExtracting) {
                 viewModelEventChannel.trySend(ViewModelEvent.Finish)
                 return
             }
             viewModelScope.launch {
-                if (!deleteSourceIfRequested()) {
-                    return@launch
-                }
                 deleteStagedSourceIfNeeded()
                 viewModelEventChannel.send(ViewModelEvent.Finish)
+            }
+        }
+
+        override fun onClose() {
+            if (_uiState.value.isExtracting) {
+                viewModelEventChannel.trySend(ViewModelEvent.Finish)
+                return
+            }
+            startResultAction {
+                deleteStagedSourceIfNeeded()
+                viewModelEventChannel.send(ViewModelEvent.Finish)
+                true
             }
         }
 
@@ -76,23 +90,16 @@ class ExternalExtractViewModel @AssistedInject constructor(
 
         override fun onOpenResult() {
             val jobId = activeJobId ?: return
-            viewModelScope.launch {
-                if (!deleteSourceIfRequested()) {
-                    return@launch
-                }
-                deleteStagedSourceIfNeeded()
+            startResultAction {
                 openExtractOutput(jobId)
             }
         }
 
         override fun onOpenDetail() {
             val jobId = activeJobId ?: return
-            viewModelScope.launch {
-                if (!deleteSourceIfRequested()) {
-                    return@launch
-                }
-                deleteStagedSourceIfNeeded()
+            startResultAction {
                 viewModelEventChannel.send(ViewModelEvent.OpenExtractDetail(jobId))
+                true
             }
         }
 
@@ -116,6 +123,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
             statusMessage = null,
             locationMessage = args.locationMessage,
             canDeleteSource = canDeleteSource(),
+            isResultActionInProgress = false,
             callbacks = callbacks,
         )
     }
@@ -127,6 +135,32 @@ class ExternalExtractViewModel @AssistedInject constructor(
             -> true
 
             else -> false
+        }
+    }
+
+    private fun startResultAction(action: suspend () -> Boolean) {
+        if (_uiState.value.isResultActionInProgress) {
+            return
+        }
+        _uiState.value = _uiState.value.copy(isResultActionInProgress = true)
+        viewModelScope.launch {
+            val completed = try {
+                if (!deleteSourceIfRequested()) {
+                    false
+                } else {
+                    action()
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                _uiState.value = _uiState.value.copy(
+                    statusMessage = e.message ?: "操作を完了できませんでした",
+                )
+                false
+            }
+            if (!completed) {
+                _uiState.value = _uiState.value.copy(isResultActionInProgress = false)
+            }
         }
     }
 
@@ -291,9 +325,9 @@ class ExternalExtractViewModel @AssistedInject constructor(
         )
     }
 
-    private suspend fun openExtractOutput(jobId: Long) {
-        val meta = extractJobRepository.getJobMeta(jobId) ?: return
-        when (
+    private suspend fun openExtractOutput(jobId: Long): Boolean {
+        val meta = extractJobRepository.getJobMeta(jobId) ?: return false
+        return when (
             val result = ExtractOutputLocationResolver.resolveOpenExtractResult(
                 meta = meta,
                 storageRepository = storageRepository,
@@ -307,6 +341,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
                         mimeType = result.target.mimeType,
                     ),
                 )
+                true
             }
 
             is ExtractOutputLocationResolver.OpenExtractResult.NavigateToOutput -> {
@@ -316,18 +351,21 @@ class ExternalExtractViewModel @AssistedInject constructor(
                         displayPath = result.target.displayPath,
                     ),
                 )
+                true
             }
 
             is ExtractOutputLocationResolver.OpenExtractResult.OpenFolder -> {
                 viewModelEventChannel.send(
                     ViewModelEvent.OpenOutputFolder(result.target.absolutePath),
                 )
+                true
             }
 
             null -> {
                 _uiState.value = _uiState.value.copy(
                     statusMessage = "解凍結果を開けませんでした",
                 )
+                false
             }
         }
     }
