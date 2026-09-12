@@ -15,6 +15,8 @@ import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -55,6 +57,7 @@ internal class FileExtractWorker @AssistedInject constructor(
         } catch (e: CancellationException) {
             withContext(NonCancellable) {
                 deleteStagedSourceIfNeeded(meta)
+                ExtractTempFileSupport.clearMarker(workerContext, meta.id)
                 extractJobRepository.updateStatus(
                     operationId = operationId,
                     status = OperationRepository.OperationStatus.CANCELLED,
@@ -99,11 +102,19 @@ internal class FileExtractWorker @AssistedInject constructor(
         )
         return extractResult.fold(
             onSuccess = { outputFile ->
-                deleteStagedSourceIfNeeded(meta)
-                extractJobRepository.completeJob(meta.id, outputFile.absolutePath)
-                ExtractTempFileSupport.clearMarker(workerContext, meta.id)
-                notifyCompleted(meta, outputFile)
-                Result.success()
+                try {
+                    deleteStagedSourceIfNeeded(meta)
+                    val completed = extractJobRepository.completeJob(meta.id, outputFile.absolutePath)
+                    if (!completed) {
+                        throw CancellationException("解凍がキャンセルされました")
+                    }
+                    ExtractTempFileSupport.clearMarker(workerContext, meta.id)
+                    notifyCompleted(meta, outputFile)
+                    Result.success()
+                } catch (e: CancellationException) {
+                    cleanupOutputAfterCancellation(meta, outputFile)
+                    throw e
+                }
             },
             onFailure = { error ->
                 deleteStagedSourceIfNeeded(meta)
@@ -116,6 +127,11 @@ internal class FileExtractWorker @AssistedInject constructor(
                 Result.failure()
             },
         )
+    }
+
+    private fun cleanupOutputAfterCancellation(meta: ExtractJobRepository.ExtractJobMeta, outputFile: File) {
+        outputFile.deleteRecursively()
+        ExtractTempFileSupport.clearMarker(workerContext, meta.id)
     }
 
     private fun deleteStagedSourceIfNeeded(meta: ExtractJobRepository.ExtractJobMeta) {
@@ -332,6 +348,10 @@ internal object ExtractWorkerExecutor {
                     progressReporter = progressReporter,
                 )
             }
+        }.onFailure { error ->
+            if (error is CancellationException) {
+                throw error
+            }
         }
     }
 
@@ -498,18 +518,26 @@ internal object ExtractWorkerExecutor {
         return extractDir
     }
 
-    private fun createByteListener(progressReporter: ExtractProgressReporter): ExtractProgressListener {
+    private suspend fun createByteListener(progressReporter: ExtractProgressReporter): ExtractProgressListener {
+        val coroutineContext = currentCoroutineContext()
         return ExtractProgressListener(
             bytesTransferredHandler = { bytes ->
                 progressReporter.updateBytes(bytes)
             },
+            cancellationCheckHandler = {
+                coroutineContext.ensureActive()
+            },
         )
     }
 
-    private fun createFileCountListener(progressReporter: ExtractProgressReporter): ExtractProgressListener {
+    private suspend fun createFileCountListener(progressReporter: ExtractProgressReporter): ExtractProgressListener {
+        val coroutineContext = currentCoroutineContext()
         return ExtractProgressListener(
             fileCompletedHandler = {
                 progressReporter.onFileCompleted()
+            },
+            cancellationCheckHandler = {
+                coroutineContext.ensureActive()
             },
         )
     }

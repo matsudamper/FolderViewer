@@ -32,5 +32,7 @@ data class ExtractDetailUiState(
         fun onNavigateToOutputClick()
 
         fun onOpenOutputFileClick()
+
+        fun onCancelClick()
     }
 }

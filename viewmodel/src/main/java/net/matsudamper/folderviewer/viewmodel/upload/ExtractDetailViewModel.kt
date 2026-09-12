@@ -1,8 +1,11 @@
 package net.matsudamper.folderviewer.viewmodel.upload
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.WorkManager
 import java.io.File
+import java.util.UUID
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,10 +26,11 @@ import net.matsudamper.folderviewer.viewmodel.util.ExtractProgressText
 
 @HiltViewModel
 class ExtractDetailViewModel @Inject constructor(
+    application: Application,
     private val operationRepository: OperationRepository,
     private val extractJobRepository: ExtractJobRepository,
     private val storageRepository: StorageRepository,
-) : ViewModel() {
+) : AndroidViewModel(application) {
 
     private val viewModelEventChannel = Channel<ViewModelEvent>(Channel.UNLIMITED)
     val viewModelEventFlow = viewModelEventChannel.receiveAsFlow()
@@ -36,6 +40,7 @@ class ExtractDetailViewModel @Inject constructor(
 
     private var initJob: Job? = null
     private var currentOperationId: Long? = null
+    private var currentWorkerId: String? = null
     private var currentErrorMessage: String? = null
 
     private val callbacks = object : ExtractDetailUiState.Callbacks {
@@ -58,6 +63,11 @@ class ExtractDetailViewModel @Inject constructor(
                 openOutputFile(operationId)
             }
         }
+
+        override fun onCancelClick() {
+            val operationId = currentOperationId ?: return
+            cancelExtractJob(operationId, currentWorkerId)
+        }
     }
 
     fun init(operationId: Long) {
@@ -68,10 +78,12 @@ class ExtractDetailViewModel @Inject constructor(
         initJob = viewModelScope.launch {
             operationRepository.observeProgressById(operationId).collect { progress ->
                 if (progress == null) {
+                    currentWorkerId = null
                     _uiState.value = null
                     return@collect
                 }
                 val meta = extractJobRepository.getJobMeta(operationId)
+                currentWorkerId = progress.workerId
                 currentErrorMessage = progress.errorMessage
                 _uiState.value = createUiState(progress, meta)
             }
@@ -137,6 +149,16 @@ class ExtractDetailViewModel @Inject constructor(
             progressText = progressText,
             callbacks = callbacks,
         )
+    }
+
+    private fun cancelExtractJob(operationId: Long, workerId: String?) {
+        viewModelScope.launch {
+            extractJobRepository.cancelJob(operationId)
+            val uuid = workerId?.let { value ->
+                runCatching { UUID.fromString(value) }.getOrNull()
+            } ?: return@launch
+            WorkManager.getInstance(getApplication()).cancelWorkById(uuid)
+        }
     }
 
     private suspend fun navigateToOutput(operationId: Long) {

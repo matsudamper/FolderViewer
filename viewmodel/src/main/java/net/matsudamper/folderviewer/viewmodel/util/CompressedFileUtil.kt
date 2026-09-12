@@ -12,7 +12,6 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import org.tukaani.xz.XZInputStream
 
 internal object CompressedFileUtil {
-    private const val MAX_OUTPUT_SIZE_BYTES = 2L * 1024 * 1024 * 1024
     private const val XZ_MEMORY_LIMIT_KIB = 64 * 1024
 
     enum class Format(
@@ -53,6 +52,7 @@ internal object CompressedFileUtil {
         outputFile: File,
         progressListener: ExtractProgressListener? = null,
     ) {
+        val maxOutputSizeBytes = ExtractStorageLimit.maxWritableBytes(outputFile.parentFile ?: outputFile)
         CountingInputStream(BufferedInputStream(FileInputStream(sourceFile))).use { countingInput ->
             GzipCompressorInputStream.builder()
                 .setInputStream(countingInput)
@@ -63,7 +63,8 @@ internal object CompressedFileUtil {
                         copyWithLimit(
                             input = gzipIn,
                             output = output,
-                            maxBytes = MAX_OUTPUT_SIZE_BYTES,
+                            maxBytes = maxOutputSizeBytes,
+                            cancellationCheck = { progressListener?.checkCancellation() },
                             onProgress = { progressListener?.onBytesTransferred(countingInput.bytesRead) },
                         )
                     }
@@ -76,13 +77,15 @@ internal object CompressedFileUtil {
         outputFile: File,
         progressListener: ExtractProgressListener?,
     ) {
+        val maxOutputSizeBytes = ExtractStorageLimit.maxWritableBytes(outputFile.parentFile ?: outputFile)
         CountingInputStream(BufferedInputStream(FileInputStream(sourceFile))).use { countingInput ->
             ZstdInputStream(countingInput).use { zstInput ->
                 BufferedOutputStream(FileOutputStream(outputFile)).use { output ->
                     copyWithLimit(
                         input = zstInput,
                         output = output,
-                        maxBytes = MAX_OUTPUT_SIZE_BYTES,
+                        maxBytes = maxOutputSizeBytes,
+                        cancellationCheck = { progressListener?.checkCancellation() },
                         onProgress = { progressListener?.onBytesTransferred(countingInput.bytesRead) },
                     )
                 }
@@ -95,13 +98,15 @@ internal object CompressedFileUtil {
         outputFile: File,
         progressListener: ExtractProgressListener?,
     ) {
+        val maxOutputSizeBytes = ExtractStorageLimit.maxWritableBytes(outputFile.parentFile ?: outputFile)
         CountingInputStream(BufferedInputStream(FileInputStream(sourceFile))).use { countingInput ->
             XZInputStream(countingInput, XZ_MEMORY_LIMIT_KIB).use { xzInput ->
                 BufferedOutputStream(FileOutputStream(outputFile)).use { output ->
                     copyWithLimit(
                         input = xzInput,
                         output = output,
-                        maxBytes = MAX_OUTPUT_SIZE_BYTES,
+                        maxBytes = maxOutputSizeBytes,
+                        cancellationCheck = { progressListener?.checkCancellation() },
                         onProgress = { progressListener?.onBytesTransferred(countingInput.bytesRead) },
                     )
                 }
@@ -113,11 +118,13 @@ internal object CompressedFileUtil {
         input: InputStream,
         output: OutputStream,
         maxBytes: Long,
+        cancellationCheck: (() -> Unit)? = null,
         onProgress: (() -> Unit)? = null,
     ) {
         val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
         var total = 0L
         while (true) {
+            cancellationCheck?.invoke()
             val read = input.read(buffer)
             if (read == -1) {
                 break

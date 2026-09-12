@@ -150,9 +150,13 @@ class ExtractJobRepository @Inject internal constructor(
         )
     }
 
-    suspend fun completeJob(operationId: Long, outputAbsolutePath: String) {
+    suspend fun completeJob(operationId: Long, outputAbsolutePath: String): Boolean {
         val outputFile = File(outputAbsolutePath)
-        database.withTransaction {
+        return database.withTransaction {
+            val operation = operationDao.getById(operationId) ?: return@withTransaction false
+            if (operation.status == OperationRepository.OperationStatus.CANCELLED.name) {
+                return@withTransaction false
+            }
             extractOperationDao.updateOutputAbsolutePath(operationId, outputAbsolutePath)
             if (outputFile.isFile) {
                 extractOperationDao.updateOutputName(operationId, outputFile.name)
@@ -163,6 +167,7 @@ class ExtractJobRepository @Inject internal constructor(
                 status = OperationRepository.OperationStatus.COMPLETED.name,
                 workerId = null,
             )
+            true
         }
     }
 
@@ -215,6 +220,14 @@ class ExtractJobRepository @Inject internal constructor(
 
     suspend fun updateStatus(operationId: Long, status: OperationRepository.OperationStatus, workerId: String? = null) {
         operationDao.updateStatusAndWorkerId(id = operationId, status = status.name, workerId = workerId)
+    }
+
+    suspend fun cancelJob(operationId: Long) {
+        operationDao.updateStatusAndWorkerId(
+            id = operationId,
+            status = OperationRepository.OperationStatus.CANCELLED.name,
+            workerId = null,
+        )
     }
 
     suspend fun updateError(operationId: Long, errorMessage: String?, errorCause: String?) {
