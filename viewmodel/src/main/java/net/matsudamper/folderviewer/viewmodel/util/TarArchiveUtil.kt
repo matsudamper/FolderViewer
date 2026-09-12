@@ -8,6 +8,7 @@ import kotlinx.coroutines.CancellationException
 
 internal object TarArchiveUtil {
     private const val BLOCK_SIZE = 512
+    private const val COPY_BUFFER_SIZE = 1024 * 1024
     private const val MAX_ENTRY_COUNT = 10_000
 
     sealed class ExtractException(message: String) : Exception(message) {
@@ -89,6 +90,7 @@ internal object TarArchiveUtil {
     ): File? {
         var header = readHeader(input)
         while (header != null) {
+            progressListener?.checkCancellation()
             val current = parseEntry(header)
             val copied = tryCopyEntry(
                 input = input,
@@ -150,6 +152,7 @@ internal object TarArchiveUtil {
             )
             var header = readHeader(input)
             while (header != null) {
+                progressListener?.checkCancellation()
                 val entry = parseEntry(header)
                 entryCount++
                 if (entryCount > MAX_ENTRY_COUNT) {
@@ -170,6 +173,7 @@ internal object TarArchiveUtil {
         entry: EntryInfo,
         context: ExtractContext,
     ) {
+        context.progressListener?.checkCancellation()
         validateEntryName(entry.name)
         if (entry.isUnsupportedLink) {
             skipEntryData(input, entry.size, context.progressListener)
@@ -204,6 +208,7 @@ internal object TarArchiveUtil {
         var entryCount = 0
         var header = readHeader(input)
         while (header != null) {
+            progressListener?.checkCancellation()
             val entry = parseEntry(header)
             entryCount++
             if (entryCount > MAX_ENTRY_COUNT) {
@@ -282,7 +287,7 @@ internal object TarArchiveUtil {
         progressListener: ExtractProgressListener?,
     ) {
         var remaining = size
-        val buffer = ByteArray(BLOCK_SIZE)
+        val buffer = ByteArray(COPY_BUFFER_SIZE)
         while (remaining > 0) {
             progressListener?.checkCancellation()
             val toRead = minOf(remaining, buffer.size.toLong()).toInt()
@@ -309,7 +314,7 @@ internal object TarArchiveUtil {
         progressListener: ExtractProgressListener?,
         outputDirectory: File,
     ) {
-        val buffer = ByteArray(BLOCK_SIZE)
+        val buffer = ByteArray(COPY_BUFFER_SIZE)
         var remaining = size
         var total = 0L
         while (remaining > 0) {
