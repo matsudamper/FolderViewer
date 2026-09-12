@@ -2,6 +2,7 @@ package net.matsudamper.folderviewer.repository
 
 import androidx.room.withTransaction
 import java.io.File
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
@@ -223,7 +224,7 @@ class ExtractJobRepository @Inject internal constructor(
     }
 
     suspend fun startJob(operationId: Long, workerId: String): Boolean {
-        return operationDao.markRunningIfEnqueued(operationId, workerId) > 0
+        return operationDao.markRunningIfEnqueuedOrSameWorker(operationId, workerId) > 0
     }
 
     suspend fun cancelJob(operationId: Long): OperationRepository.OperationStatus? {
@@ -245,12 +246,15 @@ class ExtractJobRepository @Inject internal constructor(
     }
 
     suspend fun updateError(operationId: Long, errorMessage: String?, errorCause: String?) {
-        operationDao.updateError(
+        val updated = operationDao.updateErrorIfRunning(
             id = operationId,
             status = OperationRepository.OperationStatus.FAILED.name,
             errorMessage = errorMessage,
             errorCause = errorCause,
         )
+        if (updated == 0) {
+            throw CancellationException("解凍がキャンセルされました")
+        }
     }
 
     suspend fun markOpenOnCompleteHandled(operationId: Long) {
