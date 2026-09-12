@@ -202,10 +202,10 @@ private class ExtractProgressNotificationUpdater(
         lastProgressText = progressText
 
         val nowMs = SystemClock.elapsedRealtime()
-        val lastNotificationAtMs = lastNotificationAtMs
-        if (lastNotificationAtMs == null || nowMs - lastNotificationAtMs >= MIN_NOTIFICATION_UPDATE_INTERVAL_MS) {
+        val previousNotificationAtMs = lastNotificationAtMs
+        if (previousNotificationAtMs == null || nowMs - previousNotificationAtMs >= MIN_NOTIFICATION_UPDATE_INTERVAL_MS) {
             postNotification(fileName, progressText)
-            this.lastNotificationAtMs = nowMs
+            lastNotificationAtMs = nowMs
         }
     }
 
