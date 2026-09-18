@@ -15,6 +15,13 @@
     },
     {
       "matchPackageNames": [
+        "com.android.application",
+        "com.android.library"
+      ],
+      "automerge": true
+    },
+    {
+      "matchPackageNames": [
         "com.google.devtools.ksp"
       ],
       "automerge": true
