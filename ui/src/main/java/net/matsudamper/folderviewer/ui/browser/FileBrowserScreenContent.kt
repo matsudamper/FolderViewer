@@ -292,6 +292,12 @@ internal fun FileBrowserScreenContent(
             isExtracting = extractDialog.isExtracting,
             isExtractComplete = extractDialog.isExtractComplete,
             statusMessage = extractDialog.statusMessage,
+            statusMessageLinkText = extractDialog.statusMessageLinkText,
+            onStatusMessageLinkClick = {
+                extractDialog.jobId?.let { jobId ->
+                    uiState.callbacks.onOpenExtractResult(jobId)
+                }
+            },
             showDeleteSourceOption = true,
             progress = extractDialog.progress,
             progressText = extractDialog.progressText,

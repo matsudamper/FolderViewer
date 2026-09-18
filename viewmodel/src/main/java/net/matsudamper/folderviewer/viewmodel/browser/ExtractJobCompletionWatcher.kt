@@ -71,12 +71,13 @@ class ExtractJobCompletionWatcher @Inject constructor(
         }
     }
 
-    suspend fun openExtractResult(jobId: Long): Boolean {
+    suspend fun openExtractResult(jobId: Long, errorMessage: String?): Boolean {
         val meta = extractJobRepository.getJobMeta(jobId) ?: return false
         return when (
             val result = ExtractOutputLocationResolver.resolveOpenExtractResult(
                 meta = meta,
                 storageRepository = storageRepository,
+                errorMessage = errorMessage,
             )
         ) {
             is ExtractOutputLocationResolver.OpenExtractResult.OpenFile -> {
@@ -164,7 +165,7 @@ class ExtractJobCompletionWatcher @Inject constructor(
         if (!meta.openOnComplete || meta.openOnCompleteHandled) {
             return
         }
-        openExtractResult(jobId)
+        openExtractResult(jobId, errorMessage = null)
     }
 
     private suspend fun emitOpenFile(
