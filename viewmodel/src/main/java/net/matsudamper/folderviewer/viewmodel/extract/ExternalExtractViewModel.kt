@@ -121,6 +121,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
             isExtracting = false,
             isExtractComplete = false,
             statusMessage = null,
+            statusMessageLinkText = null,
             locationMessage = args.locationMessage,
             canDeleteSource = canDeleteSource(),
             isResultActionInProgress = false,
@@ -155,6 +156,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
             } catch (e: Throwable) {
                 _uiState.value = _uiState.value.copy(
                     statusMessage = e.message ?: "操作を完了できませんでした",
+                    statusMessageLinkText = null,
                 )
                 false
             }
@@ -173,6 +175,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
             isExtracting = true,
             isExtractComplete = false,
             statusMessage = null,
+            statusMessageLinkText = null,
         )
         val jobId = runCatching {
             val operationId = extractJobRepository.createExternalJob(
@@ -209,6 +212,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
                 isExtracting = false,
                 isExtractComplete = false,
                 statusMessage = "解凍開始失敗: ${e.message}",
+                statusMessageLinkText = null,
             )
             return
         }
@@ -247,6 +251,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
                         isExtracting = false,
                         isExtractComplete = true,
                         statusMessage = event.message,
+                        statusMessageLinkText = null,
                     )
                 }
 
@@ -255,6 +260,8 @@ class ExternalExtractViewModel @AssistedInject constructor(
                         isExtracting = false,
                         isExtractComplete = false,
                         statusMessage = event.message,
+                        statusMessageLinkText = ExtractOutputLocationResolver
+                            .parseDuplicateOutputName(event.message),
                     )
                 }
 
@@ -263,6 +270,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
                         isExtracting = false,
                         isExtractComplete = false,
                         statusMessage = event.message,
+                        statusMessageLinkText = null,
                     )
                 }
             }
@@ -280,6 +288,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
         if (!deleted) {
             _uiState.value = _uiState.value.copy(
                 statusMessage = "元のファイルを削除できませんでした",
+                statusMessageLinkText = null,
             )
         }
         return deleted
@@ -364,6 +373,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
             null -> {
                 _uiState.value = _uiState.value.copy(
                     statusMessage = "解凍結果を開けませんでした",
+                    statusMessageLinkText = null,
                 )
                 false
             }
