@@ -340,6 +340,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
             val result = ExtractOutputLocationResolver.resolveOpenExtractResult(
                 meta = meta,
                 storageRepository = storageRepository,
+                errorMessage = _uiState.value.statusMessage,
             )
         ) {
             is ExtractOutputLocationResolver.OpenExtractResult.OpenFile -> {
