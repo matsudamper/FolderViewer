@@ -31,7 +31,8 @@
         "net.engawapg.lib:zoomable",
         "com.google.protobuf:{/,}**",
         "io.ktor:{/,}**",
-        "androidx.compose.material3:material3"
+        "androidx.compose.material3:material3",
+        "matsudamper/actions"
       ],
       "automerge": true
     }
