@@ -86,6 +86,7 @@ internal object ExternalExtractPathResolver {
             val outputDirectory = fallbackDocumentsDirectory()
             outputDirectory.mkdirs()
             val stagingDirectory = ExternalExtractStagingSupport.stagingDirectory(context.cacheDir).apply { mkdirs() }
+            ExternalExtractStagingSupport.deleteExpiredStagedSources(context.cacheDir, System.currentTimeMillis())
             sourceFile = File.createTempFile("source-", null, stagingDirectory)
             val stagedFile = sourceFile
             val inputStream = context.contentResolver.openInputStream(uri) ?: error("input stream unavailable")
