@@ -25,6 +25,15 @@
         "com.google.devtools.ksp"
       ],
       "automerge": true
+    },
+    {
+      "matchPackageNames": [
+        "net.engawapg.lib:zoomable",
+        "com.google.protobuf:{/,}**",
+        "io.ktor:{/,}**",
+        "androidx.compose.material3:material3"
+      ],
+      "automerge": true
     }
   ]
 }
