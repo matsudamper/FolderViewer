@@ -227,7 +227,7 @@ class ExtractJobRepository @Inject internal constructor(
         return operationDao.markRunningIfEnqueuedOrSameWorker(operationId, workerId) > 0
     }
 
-    suspend fun cancelJob(operationId: Long): OperationRepository.OperationStatus? {
+    suspend fun cancelJob(operationId: Long): CancelJobResult? {
         return database.withTransaction {
             val operation = operationDao.getById(operationId) ?: return@withTransaction null
             val status = OperationRepository.OperationStatus.entries.firstOrNull { it.name == operation.status }
@@ -241,7 +241,10 @@ class ExtractJobRepository @Inject internal constructor(
             if (operationDao.cancelIfActive(operationId) == 0) {
                 return@withTransaction null
             }
-            status
+            CancelJobResult(
+                previousStatus = status,
+                workerId = operation.workerId,
+            )
         }
     }
 
@@ -272,6 +275,11 @@ class ExtractJobRepository @Inject internal constructor(
     suspend fun getPendingOpenOnCompleteJobIds(): List<Long> {
         return extractOperationDao.getPendingOpenOnCompleteOperationIds()
     }
+
+    data class CancelJobResult(
+        val previousStatus: OperationRepository.OperationStatus,
+        val workerId: String?,
+    )
 
     enum class ExtractType {
         Zip,
