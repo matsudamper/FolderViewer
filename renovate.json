@@ -32,6 +32,7 @@
         "com.google.protobuf:{/,}**",
         "io.ktor:{/,}**",
         "androidx.compose.material3:material3",
+        "androidx.core:core-ktx",
         "matsudamper/actions"
       ],
       "automerge": true
