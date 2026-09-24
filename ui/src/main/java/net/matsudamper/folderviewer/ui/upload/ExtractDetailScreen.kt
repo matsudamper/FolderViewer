@@ -135,9 +135,11 @@ public fun ExtractDetailScreen(
                             title = stringResource(R.string.upload_detail_error_info),
                         ) {
                             if (uiState.errorMessage != null) {
-                                InfoRow(
+                                InfoLinkRow(
                                     label = stringResource(R.string.upload_detail_error_message),
                                     value = uiState.errorMessage,
+                                    linkText = uiState.errorMessageLinkText,
+                                    onLinkClick = { uiState.callbacks.onExistingOutputLinkClick() },
                                 )
                             }
                             if (uiState.errorCause != null) {
@@ -206,6 +208,7 @@ private val previewExtractCallbacks = object : ExtractDetailUiState.Callbacks {
     override fun onBackClick() = Unit
     override fun onNavigateToOutputClick() = Unit
     override fun onOpenOutputFileClick() = Unit
+    override fun onExistingOutputLinkClick() = Unit
 }
 
 @Preview(showBackground = true)
@@ -224,6 +227,7 @@ private fun ExtractDetailScreenDuplicateFilePreview() {
                 canOpenOutputFile = true,
                 extractTypeLabel = "XZ（.xz）",
                 errorMessage = "同じ名前のファイルが既に存在します: app.apk",
+                errorMessageLinkText = "app.apk",
                 errorCause = null,
                 progress = null,
                 progressText = null,
@@ -249,6 +253,7 @@ private fun ExtractDetailScreenPreview() {
                 canOpenOutputFile = false,
                 extractTypeLabel = "ZIP（フォルダ）",
                 errorMessage = "同じ名前のフォルダが既に存在します: archive",
+                errorMessageLinkText = "archive",
                 errorCause = "java.lang.IllegalStateException",
                 progress = null,
                 progressText = null,
@@ -274,6 +279,7 @@ private fun ExtractDetailScreenRunningPreview() {
                 canOpenOutputFile = false,
                 extractTypeLabel = "ZIP（フォルダ）",
                 errorMessage = null,
+                errorMessageLinkText = null,
                 errorCause = null,
                 progress = 0.42f,
                 progressText = "42/100 ファイル",

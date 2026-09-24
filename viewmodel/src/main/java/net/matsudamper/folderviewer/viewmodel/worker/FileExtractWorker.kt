@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.ServiceInfo
 import android.os.Build
+import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
@@ -96,10 +97,7 @@ internal class FileExtractWorker @AssistedInject constructor(
         )
         return extractResult.fold(
             onSuccess = { outputFile ->
-                ExternalExtractStagingSupport.deleteStagedSourceIfNeeded(
-                    meta.sourceAbsolutePath,
-                    workerContext.cacheDir,
-                )
+                deleteStagedSourceIfNeeded(meta)
                 extractJobRepository.completeJob(meta.id, outputFile.absolutePath)
                 ExtractTempFileSupport.clearMarker(workerContext, meta.id)
                 notifyCompleted(meta, outputFile)
@@ -114,6 +112,13 @@ internal class FileExtractWorker @AssistedInject constructor(
                 notifyFailed(meta.id, error.message ?: error.toString())
                 Result.failure()
             },
+        )
+    }
+
+    private fun deleteStagedSourceIfNeeded(meta: ExtractJobRepository.ExtractJobMeta) {
+        ExternalExtractStagingSupport.deleteStagedSourceIfNeeded(
+            meta.sourceAbsolutePath,
+            workerContext.cacheDir,
         )
     }
 
@@ -188,6 +193,7 @@ private class ExtractProgressNotificationUpdater(
     private var lastProgressMax: Int = 0
     private var lastProgressValue: Int = 0
     private var lastProgressText: String? = null
+    private var lastNotificationAtMs: Long? = null
 
     fun update(fileName: String?, progressText: String?, progressRatio: Float?) {
         if (progressRatio != null) {
@@ -198,7 +204,13 @@ private class ExtractProgressNotificationUpdater(
             lastProgressValue = 0
         }
         lastProgressText = progressText
-        postNotification(fileName, progressText)
+
+        val nowMs = SystemClock.elapsedRealtime()
+        val previousNotificationAtMs = lastNotificationAtMs
+        if (previousNotificationAtMs == null || nowMs - previousNotificationAtMs >= MIN_NOTIFICATION_UPDATE_INTERVAL_MS) {
+            postNotification(fileName, progressText)
+            lastNotificationAtMs = nowMs
+        }
     }
 
     fun createForegroundInfo(): ForegroundInfo {
@@ -251,6 +263,7 @@ private class ExtractProgressNotificationUpdater(
     companion object {
         private const val CHANNEL_ID = "extract_channel"
         private const val PROGRESS_MAX = 100
+        private const val MIN_NOTIFICATION_UPDATE_INTERVAL_MS = 1_000L
     }
 }
 

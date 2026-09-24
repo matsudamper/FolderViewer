@@ -45,6 +45,9 @@ object ExternalExtractIntentHandler {
 
     fun resolveLaunchArgs(context: Context, uri: Uri): ExternalExtractLaunchArgs? {
         val resolved = ExternalExtractPathResolver.resolve(context, uri) ?: return null
-        return ExternalExtractLaunchArgsMapper.fromResolved(resolved)
+        return ExternalExtractLaunchArgsMapper.fromResolved(
+            resolved = resolved,
+            sourceUri = uri.toString(),
+        )
     }
 }

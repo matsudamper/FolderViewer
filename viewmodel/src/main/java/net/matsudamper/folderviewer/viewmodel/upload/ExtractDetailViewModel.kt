@@ -58,6 +58,15 @@ class ExtractDetailViewModel @Inject constructor(
                 openOutputFile(operationId)
             }
         }
+
+        override fun onExistingOutputLinkClick() {
+            val operationId = currentOperationId ?: return
+            viewModelScope.launch {
+                if (!openOutputFile(operationId)) {
+                    navigateToOutput(operationId)
+                }
+            }
+        }
     }
 
     fun init(operationId: Long) {
@@ -132,6 +141,11 @@ class ExtractDetailViewModel @Inject constructor(
             canOpenOutputFile = canOpenOutputFile,
             extractTypeLabel = meta?.extractType.toLabel(),
             errorMessage = progress.errorMessage,
+            errorMessageLinkText = if (canNavigateToOutput || canOpenOutputFile) {
+                ExtractOutputLocationResolver.parseDuplicateOutputName(errorMessage)
+            } else {
+                null
+            },
             errorCause = progress.errorCause,
             progress = progressRatio,
             progressText = progressText,
@@ -156,10 +170,11 @@ class ExtractDetailViewModel @Inject constructor(
         }
     }
 
-    private suspend fun openOutputFile(operationId: Long) {
-        val meta = extractJobRepository.getJobMeta(operationId) ?: return
+    private suspend fun openOutputFile(operationId: Long): Boolean {
+        val meta = extractJobRepository.getJobMeta(operationId) ?: return false
         val errorMessage = currentErrorMessage
-        val target = ExtractOutputLocationResolver.resolveOpenOutputFile(meta, storageRepository, errorMessage) ?: return
+        val target = ExtractOutputLocationResolver.resolveOpenOutputFile(meta, storageRepository, errorMessage)
+            ?: return false
         viewModelEventChannel.send(
             ViewModelEvent.OpenOutputFile(
                 viewSourceUri = target.viewSourceUri,
@@ -167,6 +182,7 @@ class ExtractDetailViewModel @Inject constructor(
                 mimeType = target.mimeType,
             ),
         )
+        return true
     }
 
     private fun ExtractJobRepository.ExtractType?.toLabel(): String {

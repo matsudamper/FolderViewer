@@ -478,7 +478,10 @@ class FileBrowserViewModel @AssistedInject constructor(
 
         override fun onOpenExtractResult(jobId: Long) {
             viewModelScope.launch {
-                val opened = extractCoordinator.openExtractResult(jobId)
+                val opened = extractCoordinator.openExtractResult(
+                    jobId = jobId,
+                    errorMessage = viewModelStateFlow.value.extractDialog?.statusMessage,
+                )
                 if (opened) {
                     if (viewModelStateFlow.value.extractDialog?.jobId == jobId) {
                         extractCoordinator.closeDialog(viewModelStateFlow)
@@ -506,6 +509,13 @@ class FileBrowserViewModel @AssistedInject constructor(
                     extractCoordinator.closeDialog(viewModelStateFlow)
                 }
             }
+        }
+
+        override fun onDeleteExtractSource() {
+            val sourceFile = pendingExtractFileItem ?: return
+            pendingExtractFileItem = null
+            pendingDeleteItems = listOf(sourceFile)
+            viewModelEventChannel.trySend(ViewModelEvent.RequestNotificationPermissionForDelete)
         }
 
         override fun onDeleteClick() {

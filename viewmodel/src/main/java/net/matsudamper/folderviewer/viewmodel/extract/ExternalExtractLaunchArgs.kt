@@ -2,6 +2,7 @@ package net.matsudamper.folderviewer.viewmodel.extract
 
 data class ExternalExtractLaunchArgs(
     val sourcePath: String,
+    val sourceUri: String,
     val outputParentPath: String,
     val fileName: String,
     val extractType: ExtractLaunchType,
@@ -18,7 +19,10 @@ enum class ExtractLaunchType {
 }
 
 internal object ExternalExtractLaunchArgsMapper {
-    fun fromResolved(resolved: net.matsudamper.folderviewer.viewmodel.util.ExternalExtractPathResolver.ResolvedExtractFile): ExternalExtractLaunchArgs {
+    fun fromResolved(
+        resolved: net.matsudamper.folderviewer.viewmodel.util.ExternalExtractPathResolver.ResolvedExtractFile,
+        sourceUri: String,
+    ): ExternalExtractLaunchArgs {
         val extractType = net.matsudamper.folderviewer.viewmodel.util.ExtractableFileNameUtil.detect(resolved.fileName)
             ?: error("unsupported file")
         val locationMessage = if (resolved.usedFallbackOutputLocation) {
@@ -28,6 +32,7 @@ internal object ExternalExtractLaunchArgsMapper {
         }
         return ExternalExtractLaunchArgs(
             sourcePath = resolved.sourceFile.absolutePath,
+            sourceUri = sourceUri,
             outputParentPath = resolved.outputParentPath,
             fileName = resolved.fileName,
             extractType = extractType.toLaunchType(),

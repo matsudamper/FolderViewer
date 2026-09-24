@@ -15,7 +15,24 @@
     },
     {
       "matchPackageNames": [
-        "com.google.devtools.ksp"
+        "com.android.application:com.android.application.gradle.plugin",
+        "com.android.library:com.android.library.gradle.plugin"
+      ],
+      "automerge": true
+    },
+    {
+      "matchPackageNames": [
+        "com.google.devtools.ksp:com.google.devtools.ksp.gradle.plugin"
+      ],
+      "automerge": true
+    },
+    {
+      "matchPackageNames": [
+        "net.engawapg.lib:zoomable",
+        "com.google.protobuf:{/,}**",
+        "io.ktor:{/,}**",
+        "androidx.compose.material3:material3",
+        "matsudamper/actions"
       ],
       "automerge": true
     }

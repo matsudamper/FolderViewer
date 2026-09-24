@@ -25,13 +25,19 @@ fun ExternalExtractScreen(
             isExtracting = uiState.isExtracting,
             isExtractComplete = uiState.isExtractComplete,
             statusMessage = uiState.statusMessage,
+            statusMessageLinkText = uiState.statusMessageLinkText,
+            onStatusMessageLinkClick = uiState.callbacks::onOpenResult,
+            showDeleteSourceOption = uiState.canDeleteSource,
+            resultActionsEnabled = !uiState.isResultActionInProgress,
             hintMessage = uiState.locationMessage,
             progress = uiState.progress,
             progressText = uiState.progressText,
             onDismissRequest = uiState.callbacks::onDismissRequest,
+            onClose = uiState.callbacks::onClose,
             onConfirm = uiState.callbacks::onConfirm,
             onOpenResult = uiState.callbacks::onOpenResult,
             onOpenDetail = uiState.callbacks::onOpenDetail,
+            onDeleteSourceRequested = uiState.callbacks::onDeleteSourceRequested,
         )
     }
 }
@@ -44,17 +50,24 @@ private fun ExternalExtractScreenPreview() {
             defaultName = "archive",
             mode = ExtractDialogMode.ZipFolder,
             isExtracting = false,
-            isExtractComplete = false,
-            statusMessage = null,
-            locationMessage = "元の場所に書き込めないため、Documents/FolderViewer に展開します",
+            isExtractComplete = true,
+            statusMessage = "archiveに展開しました",
+            statusMessageLinkText = null,
+            locationMessage = null,
+            canDeleteSource = true,
+            isResultActionInProgress = false,
             callbacks = object : ExternalExtractUiState.Callbacks {
                 override fun onDismissRequest() = Unit
+
+                override fun onClose() = Unit
 
                 override fun onConfirm(outputName: String) = Unit
 
                 override fun onOpenResult() = Unit
 
                 override fun onOpenDetail() = Unit
+
+                override fun onDeleteSourceRequested() = Unit
             },
         ),
     )
