@@ -41,7 +41,6 @@ class ExtractDetailViewModel @Inject constructor(
 
     private var initJob: Job? = null
     private var currentOperationId: Long? = null
-    private var currentWorkerId: String? = null
     private var currentErrorMessage: String? = null
 
     private val callbacks = object : ExtractDetailUiState.Callbacks {
@@ -67,7 +66,7 @@ class ExtractDetailViewModel @Inject constructor(
 
         override fun onCancelClick() {
             val operationId = currentOperationId ?: return
-            cancelExtractJob(operationId, currentWorkerId)
+            cancelExtractJob(operationId)
         }
     }
 
@@ -75,16 +74,17 @@ class ExtractDetailViewModel @Inject constructor(
         if (initJob?.isActive == true && currentOperationId == operationId) {
             return
         }
+        initJob?.cancel()
         currentOperationId = operationId
+        currentErrorMessage = null
+        _uiState.value = null
         initJob = viewModelScope.launch {
             operationRepository.observeProgressById(operationId).collect { progress ->
                 if (progress == null) {
-                    currentWorkerId = null
                     _uiState.value = null
                     return@collect
                 }
                 val meta = extractJobRepository.getJobMeta(operationId)
-                currentWorkerId = progress.workerId
                 currentErrorMessage = progress.errorMessage
                 _uiState.value = createUiState(progress, meta)
             }
@@ -152,17 +152,17 @@ class ExtractDetailViewModel @Inject constructor(
         )
     }
 
-    private fun cancelExtractJob(operationId: Long, workerId: String?) {
+    private fun cancelExtractJob(operationId: Long) {
         viewModelScope.launch {
             val meta = extractJobRepository.getJobMeta(operationId)
-            val previousStatus = extractJobRepository.cancelJob(operationId) ?: return@launch
-            if (previousStatus == OperationRepository.OperationStatus.ENQUEUED) {
+            val cancelResult = extractJobRepository.cancelJob(operationId) ?: return@launch
+            if (cancelResult.previousStatus == OperationRepository.OperationStatus.ENQUEUED) {
                 ExternalExtractStagingSupport.deleteStagedSourceIfNeeded(
                     meta?.sourceAbsolutePath,
                     getApplication<Application>().cacheDir,
                 )
             }
-            val uuid = workerId?.let { value ->
+            val uuid = cancelResult.workerId?.let { value ->
                 runCatching { UUID.fromString(value) }.getOrNull()
             } ?: return@launch
             WorkManager.getInstance(getApplication()).cancelWorkById(uuid)
