@@ -151,12 +151,10 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var storageRepository: StorageRepository
 
-    private val navigateToUploadProgressRequest = mutableStateOf(false)
     private val pendingFileBrowserNavigation = mutableStateOf<PendingFileBrowserNavigation?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        updateUploadProgressNavigation(intent)
         updateFileBrowserNavigation(intent)
         enableEdgeToEdge()
         Coil.setImageLoader(imageLoader)
@@ -167,8 +165,6 @@ class MainActivity : ComponentActivity() {
                     extractJobCompletionWatcher = extractJobCompletionWatcher,
                     extractJobRepository = extractJobRepository,
                     storageRepository = storageRepository,
-                    navigateToUploadProgressOnStart = navigateToUploadProgressRequest.value,
-                    onUploadProgressNavigationHandled = { navigateToUploadProgressRequest.value = false },
                     pendingFileBrowserNavigation = pendingFileBrowserNavigation.value,
                     onFileBrowserNavigationHandled = { pendingFileBrowserNavigation.value = null },
                 )
@@ -179,7 +175,6 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        updateUploadProgressNavigation(intent)
         updateFileBrowserNavigation(intent)
     }
 
@@ -201,23 +196,7 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    private fun updateUploadProgressNavigation(intent: Intent?) {
-        navigateToUploadProgressRequest.value = consumeUploadProgressNavigationIntent(intent)
-    }
-
-    private fun consumeUploadProgressNavigationIntent(intent: Intent?): Boolean {
-        if (intent == null) {
-            return false
-        }
-        val shouldNavigate = intent.getBooleanExtra(EXTRA_NAVIGATE_TO_UPLOAD_PROGRESS, false)
-        if (shouldNavigate) {
-            intent.removeExtra(EXTRA_NAVIGATE_TO_UPLOAD_PROGRESS)
-        }
-        return shouldNavigate
-    }
-
     companion object {
-        const val EXTRA_NAVIGATE_TO_UPLOAD_PROGRESS = "extra_navigate_to_upload_progress"
         private const val EXTRA_OPEN_FILE_BROWSER_FILE_ID = "extra_open_file_browser_file_id"
         private const val EXTRA_OPEN_FILE_BROWSER_DISPLAY_PATH = "extra_open_file_browser_display_path"
 
@@ -245,8 +224,6 @@ private fun AppContent(
     extractJobCompletionWatcher: ExtractJobCompletionWatcher,
     extractJobRepository: ExtractJobRepository,
     storageRepository: StorageRepository,
-    navigateToUploadProgressOnStart: Boolean,
-    onUploadProgressNavigationHandled: () -> Unit,
     pendingFileBrowserNavigation: PendingFileBrowserNavigation?,
     onFileBrowserNavigationHandled: () -> Unit,
     modifier: Modifier = Modifier,
@@ -310,8 +287,6 @@ private fun AppContent(
                     navigator = navigator,
                     extractJobCompletionWatcher = extractJobCompletionWatcher,
                     extractJobRepository = extractJobRepository,
-                    navigateToUploadProgressOnStart = navigateToUploadProgressOnStart,
-                    onUploadProgressNavigationHandled = onUploadProgressNavigationHandled,
                     pendingFileBrowserNavigation = pendingFileBrowserNavigation,
                     onFileBrowserNavigationHandled = onFileBrowserNavigationHandled,
                 )
@@ -359,19 +334,9 @@ private fun GlobalNavigationEffect(
     navigator: Navigator,
     extractJobCompletionWatcher: ExtractJobCompletionWatcher,
     extractJobRepository: ExtractJobRepository,
-    navigateToUploadProgressOnStart: Boolean,
-    onUploadProgressNavigationHandled: () -> Unit,
     pendingFileBrowserNavigation: PendingFileBrowserNavigation?,
     onFileBrowserNavigationHandled: () -> Unit,
 ) {
-    LaunchedEffect(navigateToUploadProgressOnStart, pagerState.currentPage, pageIndex) {
-        if (!navigateToUploadProgressOnStart || pagerState.currentPage != pageIndex) {
-            return@LaunchedEffect
-        }
-        navigator.navigate(UploadProgress)
-        onUploadProgressNavigationHandled()
-    }
-
     LaunchedEffect(pendingFileBrowserNavigation, pagerState.currentPage, pageIndex) {
         val navigation = pendingFileBrowserNavigation ?: return@LaunchedEffect
         if (pagerState.currentPage != pageIndex) {
