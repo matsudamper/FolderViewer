@@ -27,6 +27,9 @@
       "automerge": true
     },
     {
+      "matchManagers": [
+        "gradle"
+      ],
       "matchPackageNames": [
         "net.engawapg.lib:zoomable",
         "com.google.protobuf:{/,}**",
@@ -34,7 +37,15 @@
         "androidx.compose.material3:material3",
         "androidx.core:core-ktx",
         "androidx.navigation3:navigation3-ui",
-        "androidx.work:work-runtime-ktx",
+        "androidx.work:work-runtime-ktx"
+      ],
+      "automerge": true
+    },
+    {
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchPackageNames": [
         "matsudamper/actions"
       ],
       "automerge": true
