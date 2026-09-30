@@ -21,13 +21,6 @@ Androidのファイルビューアです。
 ./gradlew ktlintFormat
 ```
 
-## Paparazzi
-```shell
-./gradlew :ui:recordPaparazziDebug
-./gradlew :ui:recordPaparazziDebug -Dpaparazzi.filter="PreviewName"
-```
-スナップショットは `ui/src/test/snapshots/images/`。
-
 ## その他
 - Composeの詳細は既存の `docs/compose-guidelines.md` も参照
 - private/internalをできる限り使用し、最小限のアクセスに絞る
@@ -38,10 +31,8 @@ Androidのファイルビューアです。
 リポジトリに存在する `docs/` 以下のエージェント向けドキュメントがあれば、必ず読んで従う。無いファイルは無視してよい。
 
 例:
-- `docs/agent-kotlin.md` — Kotlin 詳細スタイル
-- `docs/agent-compose.md` — Compose / UiState
-- `docs/agent-paparazzi.md` — Paparazzi
-- 既存の `docs/compose-guidelines.md` / `docs/coding_style.md` などリポ固有の詳細ガイド
+- `docs/agent-*.md`
+- `docs/*-guidelines.md` / `docs/*_style.md` など
 
 ## 言語
 - 応答・説明・コミットメッセージ・PR 文・レビュー返信は日本語
