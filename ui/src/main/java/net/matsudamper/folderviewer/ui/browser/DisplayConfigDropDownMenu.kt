@@ -134,6 +134,7 @@ internal fun DisplayConfigDropDownMenu(
                 Text(text = stringResource(R.string.display_size))
                 Slider(
                     state = sliderState,
+                    onValueChange = { sliderState.value = it },
                 )
             }
         }
