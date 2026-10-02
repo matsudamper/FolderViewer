@@ -37,7 +37,7 @@ paparazzi = "2.0.0-alpha05"
 composablePreviewScanner = "0.9.3"
 robolectric = "4.17"
 commonsCompress = "1.28.0"
-zstdJni = "1.5.7-19"
+zstdJni = "1.5.7-20"
 xz = "1.12"
 
 [libraries]
