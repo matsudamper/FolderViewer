@@ -8,8 +8,6 @@ import java.io.OutputStream
 internal object TarArchiveUtil {
     private const val BLOCK_SIZE = 512
     private const val MAX_ENTRY_COUNT = 10_000
-    private const val MAX_ENTRY_SIZE_BYTES = 512L * 1024 * 1024
-    private const val MAX_TOTAL_SIZE_BYTES = 2L * 1024 * 1024 * 1024
 
     sealed class ExtractException(message: String) : Exception(message) {
         class InvalidArchive(message: String) : ExtractException(message)
@@ -108,7 +106,13 @@ internal object TarArchiveUtil {
             return null
         }
         outputFile.outputStream().use { output ->
-            copyEntryData(input, output, current.size, progressListener)
+            copyEntryData(
+                input = input,
+                output = output,
+                size = current.size,
+                progressListener = progressListener,
+                storageCapacity = ExtractStorageCapacity.forOutputFile(outputFile),
+            )
         }
         return outputFile
     }
@@ -116,7 +120,7 @@ internal object TarArchiveUtil {
     private class ExtractContext(
         val destDir: File,
         val extractedFiles: MutableList<File>,
-        var totalBytes: Long,
+        val storageCapacity: ExtractStorageCapacity,
         val progressListener: ExtractProgressListener?,
     )
 
@@ -131,7 +135,7 @@ internal object TarArchiveUtil {
             val context = ExtractContext(
                 destDir = destDir,
                 extractedFiles = extractedFiles,
-                totalBytes = 0L,
+                storageCapacity = ExtractStorageCapacity(destDir),
                 progressListener = progressListener,
             )
             var header = readHeader(input)
@@ -169,12 +173,9 @@ internal object TarArchiveUtil {
             return
         }
         entryFile.parentFile?.mkdirs()
-        val written = entryFile.outputStream().use { output ->
-            copyEntryData(input, output, entry.size, context.progressListener)
+        entryFile.outputStream().use { output ->
+            copyEntryData(input, output, entry.size, context.progressListener, context.storageCapacity)
         }
-        val updatedTotal = context.totalBytes + written
-        ensureTotalSizeWithinLimit(updatedTotal)
-        context.totalBytes = updatedTotal
         context.extractedFiles += entryFile
         context.progressListener?.onFileCompleted()
     }
@@ -281,7 +282,8 @@ internal object TarArchiveUtil {
         output: OutputStream,
         size: Long,
         progressListener: ExtractProgressListener?,
-    ): Long {
+        storageCapacity: ExtractStorageCapacity,
+    ) {
         val buffer = ByteArray(BLOCK_SIZE)
         var remaining = size
         var total = 0L
@@ -291,7 +293,7 @@ internal object TarArchiveUtil {
             if (read == -1) {
                 throw ExtractException.InvalidArchive("tarエントリが途中で終端しています")
             }
-            ensureEntrySizeWithinLimit(total + read)
+            storageCapacity.consume(read.toLong()) { ExtractException.LimitExceeded(it) }
             output.write(buffer, 0, read)
             total += read
             remaining -= read
@@ -304,21 +306,6 @@ internal object TarArchiveUtil {
                 throw ExtractException.InvalidArchive("tarエントリが途中で終端しています")
             }
         }
-        return total
-    }
-
-    private fun ensureEntrySizeWithinLimit(total: Long) {
-        if (total <= MAX_ENTRY_SIZE_BYTES) {
-            return
-        }
-        throw ExtractException.LimitExceeded("エントリサイズが上限を超えています")
-    }
-
-    private fun ensureTotalSizeWithinLimit(totalBytes: Long) {
-        if (totalBytes <= MAX_TOTAL_SIZE_BYTES) {
-            return
-        }
-        throw ExtractException.LimitExceeded("展開サイズが上限を超えています")
     }
 
     private fun validateEntryName(name: String) {

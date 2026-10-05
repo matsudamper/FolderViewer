@@ -12,7 +12,6 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import org.tukaani.xz.XZInputStream
 
 internal object CompressedFileUtil {
-    private const val MAX_OUTPUT_SIZE_BYTES = 2L * 1024 * 1024 * 1024
     private const val XZ_MEMORY_LIMIT_KIB = 64 * 1024
 
     enum class Format(
@@ -60,10 +59,10 @@ internal object CompressedFileUtil {
                 .get()
                 .use { gzipIn ->
                     BufferedOutputStream(FileOutputStream(outputFile)).use { output ->
-                        copyWithLimit(
+                        copyWithinStorageCapacity(
                             input = gzipIn,
                             output = output,
-                            maxBytes = MAX_OUTPUT_SIZE_BYTES,
+                            storageCapacity = ExtractStorageCapacity.forOutputFile(outputFile),
                             onProgress = { progressListener?.onBytesTransferred(countingInput.bytesRead) },
                         )
                     }
@@ -79,10 +78,10 @@ internal object CompressedFileUtil {
         CountingInputStream(BufferedInputStream(FileInputStream(sourceFile))).use { countingInput ->
             ZstdInputStream(countingInput).use { zstInput ->
                 BufferedOutputStream(FileOutputStream(outputFile)).use { output ->
-                    copyWithLimit(
+                    copyWithinStorageCapacity(
                         input = zstInput,
                         output = output,
-                        maxBytes = MAX_OUTPUT_SIZE_BYTES,
+                        storageCapacity = ExtractStorageCapacity.forOutputFile(outputFile),
                         onProgress = { progressListener?.onBytesTransferred(countingInput.bytesRead) },
                     )
                 }
@@ -98,10 +97,10 @@ internal object CompressedFileUtil {
         CountingInputStream(BufferedInputStream(FileInputStream(sourceFile))).use { countingInput ->
             XZInputStream(countingInput, XZ_MEMORY_LIMIT_KIB).use { xzInput ->
                 BufferedOutputStream(FileOutputStream(outputFile)).use { output ->
-                    copyWithLimit(
+                    copyWithinStorageCapacity(
                         input = xzInput,
                         output = output,
-                        maxBytes = MAX_OUTPUT_SIZE_BYTES,
+                        storageCapacity = ExtractStorageCapacity.forOutputFile(outputFile),
                         onProgress = { progressListener?.onBytesTransferred(countingInput.bytesRead) },
                     )
                 }
@@ -109,21 +108,19 @@ internal object CompressedFileUtil {
         }
     }
 
-    private fun copyWithLimit(
+    private fun copyWithinStorageCapacity(
         input: InputStream,
         output: OutputStream,
-        maxBytes: Long,
+        storageCapacity: ExtractStorageCapacity,
         onProgress: (() -> Unit)? = null,
     ) {
         val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-        var total = 0L
         while (true) {
             val read = input.read(buffer)
             if (read == -1) {
                 break
             }
-            total += read
-            ensureOutputSizeWithinLimit(total, maxBytes)
+            storageCapacity.consume(read.toLong()) { DecompressException.LimitExceeded(it) }
             output.write(buffer, 0, read)
             onProgress?.invoke()
         }
@@ -154,12 +151,5 @@ internal object CompressedFileUtil {
         override fun close() {
             delegate.close()
         }
-    }
-
-    private fun ensureOutputSizeWithinLimit(total: Long, maxBytes: Long) {
-        if (total <= maxBytes) {
-            return
-        }
-        throw DecompressException.LimitExceeded("展開サイズが上限を超えています")
     }
 }
