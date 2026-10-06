@@ -2,7 +2,11 @@ package net.matsudamper.folderviewer.repository
 
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
@@ -124,8 +128,12 @@ internal class SmbSessionProvider private constructor(
     }
 
     private fun disconnect() {
-        cachedSession?.let { session -> runCatching { session.connection.close(true) } }
-        cachedSession = null
+        disconnectScope.launch {
+            sessionMutex.withLock {
+                cachedSession?.let { session -> runCatching { session.connection.close(true) } }
+                cachedSession = null
+            }
+        }
     }
 
     private data class Key(
@@ -149,6 +157,7 @@ internal class SmbSessionProvider private constructor(
             NtStatus.STATUS_INSUFF_SERVER_RESOURCES,
         )
 
+        private val disconnectScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
         private val providers = ConcurrentHashMap<StorageId, SmbSessionProvider>()
 
         fun get(config: StorageConfiguration.Smb): SmbSessionProvider {
