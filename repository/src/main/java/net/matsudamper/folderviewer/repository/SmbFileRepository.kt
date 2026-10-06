@@ -10,6 +10,7 @@ import java.util.EnumSet
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withPermit
@@ -27,6 +28,7 @@ import com.hierynomus.smbj.share.PipeShare
 import com.rapid7.client.dcerpc.Interface
 import com.rapid7.client.dcerpc.mssrvs.ServerService
 import com.rapid7.client.dcerpc.transport.SMBTransport
+import com.rapid7.helper.smbj.io.SMB2Exception
 import com.rapid7.helper.smbj.share.NamedPipe
 import net.matsudamper.folderviewer.common.FileObjectId
 
@@ -334,10 +336,10 @@ class SmbFileRepository(
         }
     }
 
-    private fun enumerateShares(session: Session): List<FileItem> {
+    private suspend fun enumerateShares(session: Session): List<FileItem> {
         val pipeShare = session.connectShare(IPC_SHARE_NAME) as? PipeShare
             ?: throw IOException("$IPC_SHARE_NAME is not a PipeShare")
-        val shares = NamedPipe(session, pipeShare, SRVSVC_PIPE_NAME).use { namedPipe ->
+        val shares = openSrvsvcPipe(session, pipeShare).use { namedPipe ->
             val transport = SMBTransport(namedPipe)
             transport.bind(Interface.SRVSVC_V3_0, Interface.NDR_32BIT_V2)
             ServerService(transport).shares1
@@ -354,6 +356,16 @@ class SmbFileRepository(
                     lastModified = 0,
                 )
             }
+    }
+
+    private suspend fun openSrvsvcPipe(session: Session, pipeShare: PipeShare): NamedPipe {
+        return try {
+            NamedPipe(session, pipeShare, SRVSVC_PIPE_NAME)
+        } catch (e: SMB2Exception) {
+            if (e.status != NtStatus.STATUS_PIPE_NOT_AVAILABLE) throw e
+            delay(PIPE_NOT_AVAILABLE_RETRY_DELAY_MILLIS)
+            NamedPipe(session, pipeShare, SRVSVC_PIPE_NAME)
+        }
     }
 
     private suspend fun listShareItems(path: String): List<FileItem> {
@@ -627,6 +639,7 @@ class SmbFileRepository(
         private const val PATH_SPLIT_LIMIT = 2
         private const val IPC_SHARE_NAME = "IPC$"
         private const val SRVSVC_PIPE_NAME = "srvsvc"
+        private const val PIPE_NOT_AVAILABLE_RETRY_DELAY_MILLIS = 3000L
         private const val MAX_THUMBNAIL_READ_SIZE = 1024 * 1024 // 1MB
         private const val DECODE_BUFFER_SIZE = 16 * 1024
     }
