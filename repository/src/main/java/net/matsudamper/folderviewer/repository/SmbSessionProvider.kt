@@ -42,6 +42,7 @@ internal class SmbSessionProvider private constructor(
     )
     private val sessionMutex = Mutex()
     private var cachedSession: Session? = null
+    private var released = false
 
     suspend fun <T> withSession(block: suspend (Session) -> T): T {
         return withRecovery(retryBody = true) { session -> block(session) }
@@ -87,6 +88,7 @@ internal class SmbSessionProvider private constructor(
     }
 
     private suspend fun acquireSession(): Session = sessionMutex.withLock {
+        check(!released) { "SMB storage has been deleted" }
         val current = cachedSession
         if (current != null && current.connection.isConnected) {
             return@withLock current
@@ -127,9 +129,10 @@ internal class SmbSessionProvider private constructor(
         }
     }
 
-    private fun disconnect() {
+    private fun disconnect(releaseProvider: Boolean) {
         disconnectScope.launch {
             sessionMutex.withLock {
+                if (releaseProvider) released = true
                 cachedSession?.let { session -> runCatching { session.connection.close(true) } }
                 cachedSession = null
             }
@@ -166,14 +169,14 @@ internal class SmbSessionProvider private constructor(
                 if (existing != null && existing.key == key) {
                     existing
                 } else {
-                    existing?.disconnect()
+                    existing?.disconnect(releaseProvider = false)
                     SmbSessionProvider(key)
                 }
             } ?: throw IllegalStateException("SmbSessionProvider was not created: ${config.id}")
         }
 
         fun release(storageId: StorageId) {
-            providers.remove(storageId)?.disconnect()
+            providers.remove(storageId)?.disconnect(releaseProvider = true)
         }
     }
 }
