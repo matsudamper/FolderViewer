@@ -14,6 +14,7 @@ import com.hierynomus.smbj.SmbConfig
 import com.hierynomus.smbj.auth.AuthenticationContext
 import com.hierynomus.smbj.session.Session
 import com.hierynomus.smbj.share.DiskShare
+import net.matsudamper.folderviewer.common.StorageId
 
 /**
  * 認証済みの SMB セッションを接続先ごとに1つだけ保持して使い回す。
@@ -117,6 +118,12 @@ internal class SmbSessionProvider private constructor(
         }
     }
 
+    private fun close() {
+        cachedSession?.let { session -> runCatching { session.connection.close(true) } }
+        cachedSession = null
+        runCatching { client.close() }
+    }
+
     private data class Key(
         val ip: String,
         val username: String,
@@ -138,11 +145,22 @@ internal class SmbSessionProvider private constructor(
             NtStatus.STATUS_INSUFF_SERVER_RESOURCES,
         )
 
-        private val providers = ConcurrentHashMap<Key, SmbSessionProvider>()
+        private val providers = ConcurrentHashMap<StorageId, SmbSessionProvider>()
 
         fun get(config: StorageConfiguration.Smb): SmbSessionProvider {
             val key = Key(ip = config.ip, username = config.username, password = config.password)
-            return providers.getOrPut(key) { SmbSessionProvider(key) }
+            return providers.compute(config.id) { _, existing ->
+                if (existing != null && existing.key == key) {
+                    existing
+                } else {
+                    existing?.close()
+                    SmbSessionProvider(key)
+                }
+            } ?: throw IllegalStateException("SmbSessionProvider was not created: ${config.id}")
+        }
+
+        fun release(storageId: StorageId) {
+            providers.remove(storageId)?.close()
         }
     }
 }

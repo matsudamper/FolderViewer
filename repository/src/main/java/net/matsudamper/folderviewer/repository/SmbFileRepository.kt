@@ -7,6 +7,7 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.util.EnumSet
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.FlowCollector
@@ -40,7 +41,14 @@ class SmbFileRepository(
             is FileObjectId.Item -> id.id
         }
         if (path.isEmpty()) {
-            sessionProvider.withSession { session -> enumerateShares(session) }
+            try {
+                sessionProvider.withSession { session -> enumerateShares(session) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                e.printStackTrace()
+                listOf()
+            }
         } else {
             listShareItems(path)
         }
@@ -327,30 +335,25 @@ class SmbFileRepository(
     }
 
     private fun enumerateShares(session: Session): List<FileItem> {
-        return try {
-            val pipeShare = session.connectShare(IPC_SHARE_NAME) as? PipeShare
-                ?: throw IOException("$IPC_SHARE_NAME is not a PipeShare")
-            val shares = NamedPipe(session, pipeShare, SRVSVC_PIPE_NAME).use { namedPipe ->
-                val transport = SMBTransport(namedPipe)
-                transport.bind(Interface.SRVSVC_V3_0, Interface.NDR_32BIT_V2)
-                ServerService(transport).shares1
-            }
-
-            shares
-                .filter { it.type == 0 } // STYPE_DISKTREE
-                .map {
-                    FileItem(
-                        displayPath = it.netName,
-                        id = FileObjectId.Item(storageId = config.id, id = it.netName),
-                        isDirectory = true,
-                        size = 0,
-                        lastModified = 0,
-                    )
-                }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            emptyList()
+        val pipeShare = session.connectShare(IPC_SHARE_NAME) as? PipeShare
+            ?: throw IOException("$IPC_SHARE_NAME is not a PipeShare")
+        val shares = NamedPipe(session, pipeShare, SRVSVC_PIPE_NAME).use { namedPipe ->
+            val transport = SMBTransport(namedPipe)
+            transport.bind(Interface.SRVSVC_V3_0, Interface.NDR_32BIT_V2)
+            ServerService(transport).shares1
         }
+
+        return shares
+            .filter { it.type == 0 } // STYPE_DISKTREE
+            .map {
+                FileItem(
+                    displayPath = it.netName,
+                    id = FileObjectId.Item(storageId = config.id, id = it.netName),
+                    isDirectory = true,
+                    size = 0,
+                    lastModified = 0,
+                )
+            }
     }
 
     private suspend fun listShareItems(path: String): List<FileItem> {
