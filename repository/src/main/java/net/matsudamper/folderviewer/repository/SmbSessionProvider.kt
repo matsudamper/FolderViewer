@@ -123,10 +123,9 @@ internal class SmbSessionProvider private constructor(
         }
     }
 
-    private fun close() {
+    private fun disconnect() {
         cachedSession?.let { session -> runCatching { session.connection.close(true) } }
         cachedSession = null
-        runCatching { client.close() }
     }
 
     private data class Key(
@@ -158,14 +157,14 @@ internal class SmbSessionProvider private constructor(
                 if (existing != null && existing.key == key) {
                     existing
                 } else {
-                    existing?.close()
+                    existing?.disconnect()
                     SmbSessionProvider(key)
                 }
             } ?: throw IllegalStateException("SmbSessionProvider was not created: ${config.id}")
         }
 
         fun release(storageId: StorageId) {
-            providers.remove(storageId)?.close()
+            providers.remove(storageId)?.disconnect()
         }
     }
 }
