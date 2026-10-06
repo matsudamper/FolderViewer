@@ -59,7 +59,16 @@ internal class SmbSessionProvider private constructor(
             if (!isSessionBroken(e)) throw e
             invalidate(firstSession)
             if (!retryBody) throw e
-            block(acquireSessionWithRetry())
+            runInvalidatingOnBroken(acquireSessionWithRetry(), block)
+        }
+    }
+
+    private suspend fun <T> runInvalidatingOnBroken(session: Session, block: suspend (Session) -> T): T {
+        return try {
+            block(session)
+        } catch (e: Exception) {
+            if (isSessionBroken(e)) invalidate(session)
+            throw e
         }
     }
 
@@ -68,7 +77,6 @@ internal class SmbSessionProvider private constructor(
             acquireSession()
         } catch (e: Exception) {
             if (!isSessionBroken(e)) throw e
-            invalidate(null)
             delay(RECOVERY_DELAY_MILLIS)
             acquireSession()
         }
@@ -92,14 +100,11 @@ internal class SmbSessionProvider private constructor(
         session
     }
 
-    private suspend fun invalidate(brokenSession: Session?) {
+    private suspend fun invalidate(brokenSession: Session) {
         sessionMutex.withLock {
-            val current = cachedSession
-            if (brokenSession != null && current !== brokenSession) return@withLock
+            if (cachedSession !== brokenSession) return@withLock
             cachedSession = null
-            if (current != null) {
-                runCatching { current.connection.close(true) }
-            }
+            runCatching { brokenSession.connection.close(true) }
         }
     }
 
