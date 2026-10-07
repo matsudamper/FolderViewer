@@ -37,9 +37,9 @@ android {
 
     buildTypes {
         debug {
-            val isCI = System.getenv("CI") != null
-            if (isCI) {
-                signingConfig = signingConfigs.getByName("ci")
+            val ciSigningConfig = signingConfigs.findByName("ci")
+            if (ciSigningConfig?.storeFile?.exists() == true) {
+                signingConfig = ciSigningConfig
             }
         }
         release {
