@@ -51,7 +51,7 @@ subprojects {
         }
     }
     plugins.withType<org.jetbrains.kotlin.gradle.plugin.KotlinBasePluginWrapper> {
-        the<org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension>().jvmToolchain(24)
+        the<org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension>().jvmToolchain(25)
     }
     tasks.withType<KotlinJvmCompile> {
         compilerOptions {
