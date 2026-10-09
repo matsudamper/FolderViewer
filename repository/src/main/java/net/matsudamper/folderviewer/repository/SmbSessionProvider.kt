@@ -41,7 +41,10 @@ internal class SmbSessionProvider private constructor(
             .build(),
     )
     private val sessionMutex = Mutex()
+    private val shareConnectMutexes = ConcurrentHashMap<String, Mutex>()
     private var cachedSession: Session? = null
+
+    @Volatile
     private var released = false
 
     suspend fun <T> withSession(block: suspend (Session) -> T): T {
@@ -114,9 +117,11 @@ internal class SmbSessionProvider private constructor(
         }
     }
 
-    private fun connectDiskShare(session: Session, shareName: String): DiskShare {
-        return session.connectShare(shareName) as? DiskShare
-            ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+    private suspend fun connectDiskShare(session: Session, shareName: String): DiskShare {
+        return shareConnectMutexes.getOrPut(shareName) { Mutex() }.withLock {
+            session.connectShare(shareName) as? DiskShare
+                ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+        }
     }
 
     private fun isSessionBroken(throwable: Throwable): Boolean {
@@ -130,9 +135,9 @@ internal class SmbSessionProvider private constructor(
     }
 
     private fun disconnect(releaseProvider: Boolean) {
+        if (releaseProvider) released = true
         disconnectScope.launch {
             sessionMutex.withLock {
-                if (releaseProvider) released = true
                 cachedSession?.let { session -> runCatching { session.connection.close(true) } }
                 cachedSession = null
             }
