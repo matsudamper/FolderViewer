@@ -18,6 +18,8 @@ import com.hierynomus.smbj.SmbConfig
 import com.hierynomus.smbj.auth.AuthenticationContext
 import com.hierynomus.smbj.session.Session
 import com.hierynomus.smbj.share.DiskShare
+import com.hierynomus.smbj.share.Share
+import com.rapid7.helper.smbj.io.SMB2Exception
 import net.matsudamper.folderviewer.common.StorageId
 
 /**
@@ -117,11 +119,15 @@ internal class SmbSessionProvider private constructor(
         }
     }
 
-    private suspend fun connectDiskShare(session: Session, shareName: String): DiskShare {
+    suspend fun connectShare(session: Session, shareName: String): Share {
         return shareConnectMutexes.getOrPut(shareName) { Mutex() }.withLock {
-            session.connectShare(shareName) as? DiskShare
-                ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
+            session.connectShare(shareName)
         }
+    }
+
+    private suspend fun connectDiskShare(session: Session, shareName: String): DiskShare {
+        return connectShare(session, shareName) as? DiskShare
+            ?: throw IllegalArgumentException("Share not found or not a DiskShare: $shareName")
     }
 
     private fun isSessionBroken(throwable: Throwable): Boolean {
@@ -129,6 +135,7 @@ internal class SmbSessionProvider private constructor(
             when (cause) {
                 is TransportException -> true
                 is SMBApiException -> cause.status in sessionBrokenStatuses
+                is SMB2Exception -> cause.status in sessionBrokenStatuses
                 else -> false
             }
         }

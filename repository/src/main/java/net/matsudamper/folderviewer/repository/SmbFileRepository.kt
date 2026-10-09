@@ -337,7 +337,7 @@ class SmbFileRepository(
     }
 
     private suspend fun enumerateShares(session: Session): List<FileItem> {
-        val pipeShare = session.connectShare(IPC_SHARE_NAME) as? PipeShare
+        val pipeShare = sessionProvider.connectShare(session, IPC_SHARE_NAME) as? PipeShare
             ?: throw IOException("$IPC_SHARE_NAME is not a PipeShare")
         val shares = openSrvsvcPipe(session, pipeShare).use { namedPipe ->
             val transport = SMBTransport(namedPipe)
@@ -374,7 +374,7 @@ class SmbFileRepository(
         val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
 
         return sessionProvider.withSession { session ->
-            val share = session.connectShare(shareName)
+            val share = sessionProvider.connectShare(session, shareName)
             if (share is DiskShare) {
                 listItems(share, shareName, subPath)
             } else {
