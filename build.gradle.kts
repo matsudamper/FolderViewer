@@ -1,5 +1,6 @@
 import dev.detekt.gradle.Detekt
 import dev.detekt.gradle.extensions.DetektExtension
+import dev.detekt.gradle.extensions.FailOnSeverity
 import dev.detekt.gradle.plugin.DetektPlugin
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 import org.jlleitschuh.gradle.ktlint.KtlintPlugin
@@ -30,6 +31,7 @@ subprojects {
         config.setFrom(rootProject.files("detekt.yml"))
         parallel = true
         buildUponDefaultConfig = true
+        failOnSeverity.set(FailOnSeverity.Info)
     }
     tasks.withType<Detekt>().configureEach {
         jvmTarget.set("22")
