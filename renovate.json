@@ -49,6 +49,15 @@
         "matsudamper/actions"
       ],
       "automerge": true
+    },
+    {
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchPackageNames": [
+        "/^actions\\//"
+      ],
+      "automerge": true
     }
   ]
 }
