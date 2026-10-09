@@ -1,6 +1,6 @@
-import io.gitlab.arturbosch.detekt.Detekt
-import io.gitlab.arturbosch.detekt.DetektPlugin
-import io.gitlab.arturbosch.detekt.extensions.DetektExtension
+import dev.detekt.gradle.Detekt
+import dev.detekt.gradle.extensions.DetektExtension
+import dev.detekt.gradle.plugin.DetektPlugin
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 import org.jlleitschuh.gradle.ktlint.KtlintPlugin
 
@@ -32,13 +32,12 @@ subprojects {
         buildUponDefaultConfig = true
     }
     tasks.withType<Detekt>().configureEach {
-        jvmTarget = "22"
+        jvmTarget.set("22")
         reports {
             html.required.set(false)
-            txt.required.set(true)
-            txt.outputLocation.set(file("build/reports/detekt.txt"))
+            markdown.required.set(true)
+            markdown.outputLocation.set(file("build/reports/detekt.txt"))
             sarif.required.set(false)
-            md.required.set(false)
         }
     }
     tasks.withType<Test> {
