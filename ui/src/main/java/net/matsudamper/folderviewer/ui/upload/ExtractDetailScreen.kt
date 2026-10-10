@@ -100,6 +100,14 @@ public fun ExtractDetailScreen(
                         }
                     }
                 }
+                item {
+                    Button(
+                        onClick = { uiState.callbacks.onCancelClick() },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
             }
 
             if (uiState.status == ExtractDetailUiState.Status.FAILED) {
@@ -208,6 +216,7 @@ private val previewExtractCallbacks = object : ExtractDetailUiState.Callbacks {
     override fun onBackClick() = Unit
     override fun onNavigateToOutputClick() = Unit
     override fun onOpenOutputFileClick() = Unit
+    override fun onCancelClick() = Unit
     override fun onExistingOutputLinkClick() = Unit
 }
 

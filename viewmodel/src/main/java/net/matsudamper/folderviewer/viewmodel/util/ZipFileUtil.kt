@@ -13,6 +13,7 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipException
 import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
+import kotlinx.coroutines.CancellationException
 
 internal object ZipFileUtil {
     private const val MAX_ENTRY_COUNT = 10_000
@@ -63,6 +64,7 @@ internal object ZipFileUtil {
         } catch (e: Exception) {
             destDir.deleteRecursively()
             throw when (e) {
+                is CancellationException -> e
                 is ExtractException, is SecurityException -> e
                 else -> toExtractException(e)
             }
@@ -112,7 +114,6 @@ internal object ZipFileUtil {
             val entries = zip.entries()
             var entryCount = 0
             var sawEntry = false
-            val storageCapacity = ExtractStorageCapacity(destDir)
             while (entries.hasMoreElements()) {
                 val entry = entries.nextElement()
                 sawEntry = true
@@ -120,7 +121,12 @@ internal object ZipFileUtil {
                 if (entryCount > MAX_ENTRY_COUNT) {
                     throw ExtractException.LimitExceeded("ZIPエントリ数が上限を超えています")
                 }
-                extractZipEntry(zip, entry, destDir, storageCapacity)
+                extractZipEntry(
+                    zip = zip,
+                    entry = entry,
+                    destDir = destDir,
+                    progressListener = progressListener,
+                )
                 if (!entry.isDirectory) {
                     extractedFiles += File(destDir, entry.name)
                     progressListener?.onFileCompleted()
@@ -145,8 +151,9 @@ internal object ZipFileUtil {
         zip: ZipFile,
         entry: ZipEntry,
         destDir: File,
-        storageCapacity: ExtractStorageCapacity,
+        progressListener: ExtractProgressListener?,
     ) {
+        progressListener?.checkCancellation()
         val entryFile = File(destDir, entry.name)
         validateZipEntryPath(destDir, entryFile)
         if (entry.isDirectory) {
@@ -156,25 +163,39 @@ internal object ZipFileUtil {
         entryFile.parentFile?.mkdirs()
         zip.getInputStream(entry).use { input ->
             entryFile.outputStream().use { output ->
-                copyWithinStorageCapacity(input, output, storageCapacity)
+                copyWithLimit(
+                    input = input,
+                    output = output,
+                    outputDirectory = destDir,
+                    progressListener = progressListener,
+                )
             }
         }
     }
 
-    private fun copyWithinStorageCapacity(
+    private fun copyWithLimit(
         input: InputStream,
         output: OutputStream,
-        storageCapacity: ExtractStorageCapacity,
+        outputDirectory: File,
+        progressListener: ExtractProgressListener?,
     ) {
         val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
         while (true) {
+            progressListener?.checkCancellation()
             val read = input.read(buffer)
             if (read == -1) {
                 break
             }
-            storageCapacity.consume(read.toLong()) { ExtractException.LimitExceeded(it) }
+            ensureOutputSpaceAvailable(outputDirectory, read.toLong())
             output.write(buffer, 0, read)
         }
+    }
+
+    private fun ensureOutputSpaceAvailable(outputDirectory: File, bytesToWrite: Long) {
+        if (ExtractStorageLimit.canWrite(outputDirectory, bytesToWrite)) {
+            return
+        }
+        throw ExtractException.LimitExceeded("展開サイズが上限を超えています")
     }
 
     private fun validateZipEntryPath(destDir: File, entryFile: File) {

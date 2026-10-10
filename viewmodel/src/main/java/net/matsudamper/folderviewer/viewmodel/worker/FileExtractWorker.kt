@@ -15,6 +15,8 @@ import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -46,22 +48,22 @@ internal class FileExtractWorker @AssistedInject constructor(
         val meta = extractJobRepository.getJobMeta(operationId) ?: return@withContext Result.failure()
 
         try {
-            extractJobRepository.updateStatus(
-                operationId = operationId,
-                status = OperationRepository.OperationStatus.RUNNING,
-                workerId = id.toString(),
-            )
+            val started = extractJobRepository.startJob(operationId, id.toString())
+            if (!started) {
+                deleteStagedSourceIfNeeded(meta)
+                return@withContext Result.success()
+            }
             executeJob(meta)
         } catch (e: CancellationException) {
             withContext(NonCancellable) {
-                extractJobRepository.updateStatus(
-                    operationId = operationId,
-                    status = OperationRepository.OperationStatus.CANCELLED,
-                )
+                deleteStagedSourceIfNeeded(meta)
+                ExtractTempFileSupport.clearMarker(workerContext, meta.id)
+                extractJobRepository.cancelJob(operationId)
             }
             throw e
         } catch (e: Throwable) {
             e.printStackTrace()
+            deleteStagedSourceIfNeeded(meta)
             extractJobRepository.updateError(
                 operationId = operationId,
                 errorMessage = e.message,
@@ -97,13 +99,22 @@ internal class FileExtractWorker @AssistedInject constructor(
         )
         return extractResult.fold(
             onSuccess = { outputFile ->
-                deleteStagedSourceIfNeeded(meta)
-                extractJobRepository.completeJob(meta.id, outputFile.absolutePath)
-                ExtractTempFileSupport.clearMarker(workerContext, meta.id)
-                notifyCompleted(meta, outputFile)
-                Result.success()
+                try {
+                    deleteStagedSourceIfNeeded(meta)
+                    val completed = extractJobRepository.completeJob(meta.id, outputFile.absolutePath)
+                    if (!completed) {
+                        throw CancellationException("解凍がキャンセルされました")
+                    }
+                    ExtractTempFileSupport.clearMarker(workerContext, meta.id)
+                    notifyCompleted(meta, outputFile)
+                    Result.success()
+                } catch (e: CancellationException) {
+                    cleanupOutputAfterCancellation(meta, outputFile)
+                    throw e
+                }
             },
             onFailure = { error ->
+                deleteStagedSourceIfNeeded(meta)
                 extractJobRepository.updateError(
                     operationId = meta.id,
                     errorMessage = error.message,
@@ -113,6 +124,11 @@ internal class FileExtractWorker @AssistedInject constructor(
                 Result.failure()
             },
         )
+    }
+
+    private fun cleanupOutputAfterCancellation(meta: ExtractJobRepository.ExtractJobMeta, outputFile: File) {
+        outputFile.deleteRecursively()
+        ExtractTempFileSupport.clearMarker(workerContext, meta.id)
     }
 
     private fun deleteStagedSourceIfNeeded(meta: ExtractJobRepository.ExtractJobMeta) {
@@ -329,6 +345,10 @@ internal object ExtractWorkerExecutor {
                     progressReporter = progressReporter,
                 )
             }
+        }.onFailure { error ->
+            if (error is CancellationException) {
+                throw error
+            }
         }
     }
 
@@ -419,7 +439,8 @@ internal object ExtractWorkerExecutor {
         try {
             decompress(sourceFile, tempTar, decompressListener)
             progressReporter.flushByteProgress()
-            val fileEntries = TarArchiveUtil.listEntries(tempTar).filter { !it.isDirectory && !it.isUnsupportedLink }
+            val fileEntries = TarArchiveUtil.listEntries(tempTar, decompressListener)
+                .filter { !it.isDirectory && !it.isUnsupportedLink }
             if (fileEntries.size == 1) {
                 return extractSingleTarEntry(
                     tempTar = tempTar,
@@ -495,18 +516,26 @@ internal object ExtractWorkerExecutor {
         return extractDir
     }
 
-    private fun createByteListener(progressReporter: ExtractProgressReporter): ExtractProgressListener {
+    private suspend fun createByteListener(progressReporter: ExtractProgressReporter): ExtractProgressListener {
+        val coroutineContext = currentCoroutineContext()
         return ExtractProgressListener(
             bytesTransferredHandler = { bytes ->
                 progressReporter.updateBytes(bytes)
             },
+            cancellationCheckHandler = {
+                coroutineContext.ensureActive()
+            },
         )
     }
 
-    private fun createFileCountListener(progressReporter: ExtractProgressReporter): ExtractProgressListener {
+    private suspend fun createFileCountListener(progressReporter: ExtractProgressReporter): ExtractProgressListener {
+        val coroutineContext = currentCoroutineContext()
         return ExtractProgressListener(
             fileCompletedHandler = {
                 progressReporter.onFileCompleted()
+            },
+            cancellationCheckHandler = {
+                coroutineContext.ensureActive()
             },
         )
     }

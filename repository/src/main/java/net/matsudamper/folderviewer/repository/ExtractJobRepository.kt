@@ -2,6 +2,7 @@ package net.matsudamper.folderviewer.repository
 
 import androidx.room.withTransaction
 import java.io.File
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
@@ -150,9 +151,13 @@ class ExtractJobRepository @Inject internal constructor(
         )
     }
 
-    suspend fun completeJob(operationId: Long, outputAbsolutePath: String) {
+    suspend fun completeJob(operationId: Long, outputAbsolutePath: String): Boolean {
         val outputFile = File(outputAbsolutePath)
-        database.withTransaction {
+        return database.withTransaction {
+            val operation = operationDao.getById(operationId) ?: return@withTransaction false
+            if (operation.status == OperationRepository.OperationStatus.CANCELLED.name) {
+                return@withTransaction false
+            }
             extractOperationDao.updateOutputAbsolutePath(operationId, outputAbsolutePath)
             if (outputFile.isFile) {
                 extractOperationDao.updateOutputName(operationId, outputFile.name)
@@ -163,6 +168,7 @@ class ExtractJobRepository @Inject internal constructor(
                 status = OperationRepository.OperationStatus.COMPLETED.name,
                 workerId = null,
             )
+            true
         }
     }
 
@@ -217,13 +223,41 @@ class ExtractJobRepository @Inject internal constructor(
         operationDao.updateStatusAndWorkerId(id = operationId, status = status.name, workerId = workerId)
     }
 
+    suspend fun startJob(operationId: Long, workerId: String): Boolean {
+        return operationDao.markRunningIfEnqueuedOrSameWorker(operationId, workerId) > 0
+    }
+
+    suspend fun cancelJob(operationId: Long): CancelJobResult? {
+        return database.withTransaction {
+            val operation = operationDao.getById(operationId) ?: return@withTransaction null
+            val status = OperationRepository.OperationStatus.entries.firstOrNull { it.name == operation.status }
+                ?: return@withTransaction null
+            if (
+                status != OperationRepository.OperationStatus.ENQUEUED &&
+                status != OperationRepository.OperationStatus.RUNNING
+            ) {
+                return@withTransaction null
+            }
+            if (operationDao.cancelIfActive(operationId) == 0) {
+                return@withTransaction null
+            }
+            CancelJobResult(
+                previousStatus = status,
+                workerId = operation.workerId,
+            )
+        }
+    }
+
     suspend fun updateError(operationId: Long, errorMessage: String?, errorCause: String?) {
-        operationDao.updateError(
+        val updated = operationDao.updateErrorIfRunning(
             id = operationId,
             status = OperationRepository.OperationStatus.FAILED.name,
             errorMessage = errorMessage,
             errorCause = errorCause,
         )
+        if (updated == 0) {
+            throw CancellationException("解凍がキャンセルされました")
+        }
     }
 
     suspend fun markOpenOnCompleteHandled(operationId: Long) {
@@ -241,6 +275,11 @@ class ExtractJobRepository @Inject internal constructor(
     suspend fun getPendingOpenOnCompleteJobIds(): List<Long> {
         return extractOperationDao.getPendingOpenOnCompleteOperationIds()
     }
+
+    data class CancelJobResult(
+        val previousStatus: OperationRepository.OperationStatus,
+        val workerId: String?,
+    )
 
     enum class ExtractType {
         Zip,
