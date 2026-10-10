@@ -58,7 +58,10 @@ internal class TextViewerDocumentLoader(
     private fun openInputStream(uri: Uri): InputStream? {
         val scheme = uri.scheme
         if (scheme == "http" || scheme == "https") {
-            return URL(uri.toString()).openStream()
+            val connection = URL(uri.toString()).openConnection()
+            connection.connectTimeout = HttpTimeoutMillis
+            connection.readTimeout = HttpTimeoutMillis
+            return connection.getInputStream()
         }
         return contentResolver.openInputStream(uri)
     }
@@ -107,5 +110,9 @@ internal class TextViewerDocumentLoader(
             TooLarge,
             Unreadable,
         }
+    }
+
+    private companion object {
+        const val HttpTimeoutMillis: Int = 15_000
     }
 }
