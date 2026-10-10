@@ -53,6 +53,7 @@ class TextViewerActivity : ComponentActivity() {
                 encodingMenu = null,
                 lineEndingLabel = null,
                 showLineNumbers = false,
+                wrapLines = true,
                 callbacks = object : TextViewerUiState.Callbacks {
                     override fun onBack() {
                         finish()
@@ -71,6 +72,8 @@ class TextViewerActivity : ComponentActivity() {
                     override fun onEncodingSelected(label: String) = Unit
 
                     override fun onShowLineNumbersChange(show: Boolean) = Unit
+
+                    override fun onWrapLinesChange(wrap: Boolean) = Unit
                 },
             )
         }

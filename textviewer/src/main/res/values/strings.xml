@@ -4,6 +4,7 @@
     <string name="text_viewer_default_title">テキスト</string>
     <string name="text_viewer_menu">メニュー</string>
     <string name="text_viewer_show_line_numbers">行数を表示</string>
+    <string name="text_viewer_wrap_lines">折り返す</string>
     <string name="text_viewer_encoding">文字コード</string>
     <string name="text_viewer_line_ending">改行コード</string>
     <string name="text_viewer_line_ending_lf">LF</string>
