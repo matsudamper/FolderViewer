@@ -955,14 +955,23 @@ private fun openWithExternalApp(
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             clipData = ClipData.newRawUri("", uri)
         }
-        Intent.createChooser(viewIntent, context.getString(net.matsudamper.folderviewer.ui.R.string.open)).apply {
-            putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(textViewerIntent))
-            putExtra(
-                Intent.EXTRA_EXCLUDE_COMPONENTS,
-                arrayOf(ComponentName(context, TextViewerActivity::class.java)),
-            )
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            clipData = ClipData.newRawUri("", uri)
+        val textViewerComponent = ComponentName(context, TextViewerActivity::class.java)
+        val hasOtherViewer = context.packageManager.queryIntentActivities(
+            viewIntent,
+            android.content.pm.PackageManager.MATCH_DEFAULT_ONLY,
+        ).any { info ->
+            val activityInfo = info.activityInfo
+            ComponentName(activityInfo.packageName, activityInfo.name) != textViewerComponent
+        }
+        if (hasOtherViewer) {
+            Intent.createChooser(viewIntent, context.getString(net.matsudamper.folderviewer.ui.R.string.open)).apply {
+                putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(textViewerIntent))
+                putExtra(Intent.EXTRA_EXCLUDE_COMPONENTS, arrayOf(textViewerComponent))
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                clipData = ClipData.newRawUri("", uri)
+            }
+        } else {
+            textViewerIntent
         }
     }
     runCatching {
