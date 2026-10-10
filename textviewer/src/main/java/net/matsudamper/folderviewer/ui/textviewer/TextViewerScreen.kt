@@ -8,6 +8,7 @@ import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -274,6 +275,8 @@ private fun TextViewerContent(
     modifier: Modifier = Modifier,
 ) {
     val verticalScrollState = rememberScrollState()
+    val horizontalScrollState = rememberScrollState()
+    val display = remember(text) { TextViewerDisplayText.from(text) }
     var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
     val topPadding = 8.dp
     val topPaddingPx = with(LocalDensity.current) { topPadding.toPx() }
@@ -282,7 +285,7 @@ private fun TextViewerContent(
     val currentBackground = MaterialTheme.colorScheme.primary
     val currentContent = MaterialTheme.colorScheme.onPrimary
     val annotatedText = remember(
-        text,
+        display,
         uiState.matches,
         uiState.currentMatchIndex,
         matchBackground,
@@ -291,15 +294,17 @@ private fun TextViewerContent(
         currentContent,
     ) {
         buildAnnotatedString {
-            append(text)
+            append(display.text)
             uiState.matches.forEachIndexed { index, match ->
                 val style = if (index == uiState.currentMatchIndex) {
                     SpanStyle(background = currentBackground, color = currentContent)
                 } else {
                     SpanStyle(background = matchBackground, color = matchContent)
                 }
-                if (match.start in 0 until text.length && match.endExclusive in (match.start + 1)..text.length) {
-                    addStyle(style, match.start, match.endExclusive)
+                val start = display.toDisplayOffset(match.start)
+                val end = display.toDisplayOffset(match.endExclusive)
+                if (start in 0 until display.text.length && end in (start + 1)..display.text.length) {
+                    addStyle(style, start, end)
                 }
             }
         }
@@ -316,12 +321,13 @@ private fun TextViewerContent(
         val match = uiState.matches.getOrNull(uiState.currentMatchIndex) ?: return@LaunchedEffect
         val ready = snapshotFlow { textLayoutResult to verticalScrollState.viewportSize }
             .first { (layout, viewport) ->
-                layout != null && viewport > 0 && layout.layoutInput.text.text == text
+                layout != null && viewport > 0 && layout.layoutInput.text.text == display.text
             }
         val layout = ready.first ?: return@LaunchedEffect
         val viewport = ready.second
-        if (match.start !in 0 until layout.layoutInput.text.length) return@LaunchedEffect
-        val box = layout.getBoundingBox(match.start)
+        val displayStart = display.toDisplayOffset(match.start)
+        if (displayStart !in 0 until layout.layoutInput.text.length) return@LaunchedEffect
+        val box = layout.getBoundingBox(displayStart)
         val matchTop = topPaddingPx + box.top
         val matchBottom = topPaddingPx + box.bottom
         val visibleTop = verticalScrollState.value.toFloat()
@@ -331,42 +337,49 @@ private fun TextViewerContent(
         verticalScrollState.animateScrollTo(target)
     }
 
-    Row(
-        modifier = modifier.verticalScroll(verticalScrollState),
-    ) {
+    val contentModifier = if (uiState.showLineNumbers) {
+        modifier
+            .verticalScroll(verticalScrollState)
+            .horizontalScroll(horizontalScrollState)
+    } else {
+        modifier.verticalScroll(verticalScrollState)
+    }
+    Row(modifier = contentModifier) {
         if (uiState.showLineNumbers) {
             Text(
-                text = lineNumberLabels(text),
+                text = display.lineNumberLabels(),
                 style = textStyle.copy(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.End,
                 ),
+                softWrap = false,
                 modifier = Modifier.padding(start = 8.dp, top = topPadding, end = 8.dp, bottom = topPadding),
             )
         }
-        SelectionContainer(modifier = Modifier.weight(1f)) {
+        val bodyModifier = if (uiState.showLineNumbers) {
+            Modifier
+        } else {
+            Modifier.weight(1f)
+        }
+        SelectionContainer(modifier = bodyModifier) {
+            val textModifier = if (uiState.showLineNumbers) {
+                Modifier
+            } else {
+                Modifier.fillMaxWidth()
+            }
             Text(
                 text = annotatedText,
                 style = textStyle,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        start = if (uiState.showLineNumbers) 0.dp else 12.dp,
-                        end = 12.dp,
-                        top = topPadding,
-                        bottom = topPadding,
-                    ),
+                softWrap = !uiState.showLineNumbers,
+                modifier = textModifier.padding(
+                    start = if (uiState.showLineNumbers) 0.dp else 12.dp,
+                    end = 12.dp,
+                    top = topPadding,
+                    bottom = topPadding,
+                ),
                 onTextLayout = { textLayoutResult = it },
             )
         }
-    }
-}
-
-private fun lineNumberLabels(text: String): String {
-    val lines = text.split('\n')
-    val width = lines.size.toString().length
-    return lines.indices.joinToString(separator = "\n") { index ->
-        (index + 1).toString().padStart(width)
     }
 }
 
