@@ -4,6 +4,8 @@ import android.content.ContentResolver
 import android.net.Uri
 import android.provider.OpenableColumns
 import java.io.IOException
+import java.io.InputStream
+import java.net.URL
 import net.matsudamper.folderviewer.viewmodel.util.TextFileDecoder
 
 internal class TextViewerDocumentLoader(
@@ -13,7 +15,7 @@ internal class TextViewerDocumentLoader(
     fun load(uri: Uri): Result {
         val title = resolveTitle(uri)
         val decoded = try {
-            contentResolver.openInputStream(uri)?.use { input ->
+            openInputStream(uri)?.use { input ->
                 TextFileDecoder.read(input)
             }
         } catch (_: IOException) {
@@ -31,6 +33,14 @@ internal class TextViewerDocumentLoader(
             TextFileDecoder.Result.TooLarge -> Result.Failure(title = title, reason = Result.Reason.TooLarge)
             TextFileDecoder.Result.Binary -> Result.Failure(title = title, reason = Result.Reason.Binary)
         }
+    }
+
+    private fun openInputStream(uri: Uri): InputStream? {
+        val scheme = uri.scheme
+        if (scheme == "http" || scheme == "https") {
+            return URL(uri.toString()).openStream()
+        }
+        return contentResolver.openInputStream(uri)
     }
 
     private fun resolveTitle(uri: Uri): String {

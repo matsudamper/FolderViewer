@@ -1,6 +1,8 @@
 package net.matsudamper.folderviewer
 
 import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ComponentName
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -937,12 +939,34 @@ private fun openWithExternalApp(
         }
         return
     }
-    val intent = Intent(Intent.ACTION_VIEW).apply {
-        setDataAndType(uri, mimeType ?: "*/*")
+    val textMimeType = FileUtil.textViewerMimeType(fileName)
+    val intentMimeType = textMimeType ?: mimeType ?: "*/*"
+    val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(uri, intentMimeType)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        clipData = ClipData.newRawUri("", uri)
+    }
+    val launchIntent = if (textMimeType == null) {
+        viewIntent
+    } else {
+        val textViewerIntent = Intent(context, TextViewerActivity::class.java).apply {
+            action = Intent.ACTION_VIEW
+            setDataAndType(uri, textMimeType)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            clipData = ClipData.newRawUri("", uri)
+        }
+        Intent.createChooser(viewIntent, context.getString(net.matsudamper.folderviewer.ui.R.string.open)).apply {
+            putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(textViewerIntent))
+            putExtra(
+                Intent.EXTRA_EXCLUDE_COMPONENTS,
+                arrayOf(ComponentName(context, TextViewerActivity::class.java)),
+            )
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            clipData = ClipData.newRawUri("", uri)
+        }
     }
     runCatching {
-        context.startActivity(intent)
+        context.startActivity(launchIntent)
     }
 }
 
