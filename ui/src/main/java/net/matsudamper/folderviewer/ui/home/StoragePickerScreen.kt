@@ -20,9 +20,11 @@ import net.matsudamper.folderviewer.ui.util.plus
 @Composable
 public fun StoragePickerScreen(
     uiState: StoragePickerUiState,
+    modifier: Modifier = Modifier,
     title: String = "ファイルを選択",
 ) {
     Scaffold(
+        modifier = modifier,
         topBar = {
             StoragePickerTopBar(title = title)
         },

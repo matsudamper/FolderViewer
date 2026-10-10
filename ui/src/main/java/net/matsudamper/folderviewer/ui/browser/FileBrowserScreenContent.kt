@@ -4,10 +4,8 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -72,13 +70,8 @@ internal fun FileBrowserScreenContent(
             if (uiState.isSelectionMode) {
                 FileBrowserSelectionTopBar(
                     selectedCount = uiState.selectedCount,
-                    visibleCompressMenu = uiState.visibleCompressMenu,
-                    visibleExtractMenu = uiState.visibleExtractMenu,
                     onCancelSelection = callbacks::onCancelSelection,
                     onSelectAllClick = callbacks::onSelectAllClick,
-                    onShareClick = callbacks::onShareClick,
-                    onCompressClick = callbacks::onCompressClick,
-                    onExtractClick = callbacks::onExtractClick,
                 )
             } else {
                 FileBrowserTopBar(
@@ -117,37 +110,19 @@ internal fun FileBrowserScreenContent(
                     }
                 }
             } else if (uiState.isSelectionMode) {
-                HorizontalFloatingToolbar(
+                FileBrowserSelectionFloatingToolbar(
                     modifier = Modifier.onSizeChanged { fabHeight = it.height },
-                    expanded = true,
-                    contentPadding = PaddingValues(0.dp),
-                    colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors(),
-                ) {
-                    TextButton(onClick = { callbacks.onCopyClick() }) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_content_copy),
-                            contentDescription = null,
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("コピー")
-                    }
-                    TextButton(onClick = { callbacks.onCutClick() }) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_content_cut),
-                            contentDescription = null,
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("切り取り")
-                    }
-                    TextButton(onClick = { callbacks.onDeleteClick() }) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_delete),
-                            contentDescription = null,
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("削除")
-                    }
-                }
+                    visibleOpenMenu = uiState.selectedCount == 1,
+                    visibleCompressMenu = uiState.visibleCompressMenu,
+                    visibleExtractMenu = uiState.visibleExtractMenu,
+                    onCopyClick = callbacks::onCopyClick,
+                    onCutClick = callbacks::onCutClick,
+                    onDeleteClick = callbacks::onDeleteClick,
+                    onShareClick = callbacks::onShareClick,
+                    onOpenClick = callbacks::onOpenSelectedClick,
+                    onCompressClick = callbacks::onCompressClick,
+                    onExtractClick = callbacks::onExtractClick,
+                )
             } else if (uiState.visibleFolderBrowserButton) {
                 HorizontalFloatingToolbar(
                     modifier = Modifier.onSizeChanged { fabHeight = it.height },
@@ -378,6 +353,7 @@ private fun Preview() {
                 override fun onCopyClick() = Unit
                 override fun onCutClick() = Unit
                 override fun onShareClick() = Unit
+                override fun onOpenSelectedClick() = Unit
                 override fun onCompressClick() = Unit
                 override fun onConfirmCompress(fileName: String) = Unit
                 override fun onExtractClick() = Unit

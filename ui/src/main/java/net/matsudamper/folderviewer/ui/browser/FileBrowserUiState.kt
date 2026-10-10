@@ -98,6 +98,7 @@ data class FileBrowserUiState(
         fun onCopyClick()
         fun onCutClick()
         fun onShareClick()
+        fun onOpenSelectedClick()
         fun onCompressClick()
         fun onConfirmCompress(fileName: String)
         fun onExtractClick()
