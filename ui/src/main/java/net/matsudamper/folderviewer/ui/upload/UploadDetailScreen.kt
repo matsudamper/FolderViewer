@@ -35,8 +35,12 @@ import net.matsudamper.folderviewer.ui.R
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun UploadDetailScreen(uiState: UploadDetailUiState) {
+fun UploadDetailScreen(
+    uiState: UploadDetailUiState,
+    modifier: Modifier = Modifier,
+) {
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 title = {
