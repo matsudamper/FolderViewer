@@ -336,9 +336,9 @@ class FileBrowserViewModel @AssistedInject constructor(
                 is ViewModelState.SelectionState.NonSelected -> return
                 is ViewModelState.SelectionState.Selected -> selectedState.items
             }
+            if (selectedIds.size != 1) return
             val sortedFiles = state.rawFiles.sortedWith(createComparator(state.sortConfig))
-            val selectedFiles = sortedFiles.filter { selectedIds.contains(it.id) }
-            val fileItem = selectedFiles.singleOrNull() ?: return
+            val fileItem = sortedFiles.find { it.id == selectedIds.first() } ?: return
             openFile(fileItem, sortedFiles)
             viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
             selectionModeRepository.setSelectionMode(false)
