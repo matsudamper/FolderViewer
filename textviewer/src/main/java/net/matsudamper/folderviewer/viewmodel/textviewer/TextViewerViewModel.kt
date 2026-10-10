@@ -5,6 +5,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -77,12 +78,15 @@ class TextViewerViewModel @AssistedInject constructor(
         override fun onEncodingSelected(label: String) {
             val encoding = TextFileDecoder.availableEncodings().find { it.label == label } ?: return
             val bytes = state.value.bytes ?: return
-            viewModelScope.launch {
+            val generation = ++encodingDecodeGeneration
+            encodingDecodeJob?.cancel()
+            encodingDecodeJob = viewModelScope.launch {
                 val decoded = withContext(Dispatchers.Default) {
                     val text = TextFileDecoder.decodeWith(bytes.value, encoding)
                     DecodedText(text = text, lineEnding = TextLineEndingDetector.detect(text))
                 }
                 state.update { current ->
+                    if (generation != encodingDecodeGeneration) return@update current
                     if (current.bytes !== bytes) return@update current
                     val textUnchanged = current.loadedText == decoded.text
                     current.copy(
@@ -100,6 +104,8 @@ class TextViewerViewModel @AssistedInject constructor(
     }
 
     private val preferences = TextViewerPreferences(context)
+    private var encodingDecodeJob: Job? = null
+    private var encodingDecodeGeneration: Int = 0
 
     private val state = MutableStateFlow(
         ViewerState(
