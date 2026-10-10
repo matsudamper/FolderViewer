@@ -12,8 +12,18 @@ data class TextViewerUiState(
     val matches: List<Match>,
     val currentMatchIndex: Int,
     val focusToken: Int,
+    val encodingMenu: EncodingMenu?,
     val callbacks: Callbacks,
 ) {
+    data class EncodingMenu(
+        val currentLabel: String,
+        val choices: List<Choice>,
+    ) {
+        data class Choice(
+            val label: String,
+            val selected: Boolean,
+        )
+    }
     data class Match(
         val start: Int,
         val endExclusive: Int,
@@ -46,5 +56,7 @@ data class TextViewerUiState(
         fun onNextMatch()
 
         fun onPreviousMatch()
+
+        fun onEncodingSelected(label: String)
     }
 }

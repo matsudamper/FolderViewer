@@ -17,6 +17,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -26,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -84,6 +87,9 @@ fun TextViewerScreen(
                             )
                         }
                     },
+                    actions = {
+                        EncodingMenuButton(encodingMenu = uiState.encodingMenu, onSelected = uiState.callbacks::onEncodingSelected)
+                    },
                 )
                 Box(
                     modifier = Modifier
@@ -108,6 +114,52 @@ fun TextViewerScreen(
                 .fillMaxSize()
                 .padding(innerPadding),
         )
+    }
+}
+
+@Composable
+private fun EncodingMenuButton(
+    encodingMenu: TextViewerUiState.EncodingMenu?,
+    onSelected: (String) -> Unit,
+) {
+    if (encodingMenu != null) {
+        var expanded by remember { mutableStateOf(false) }
+        val description = stringResource(R.string.text_viewer_encoding)
+        Box {
+            TextButton(
+                onClick = { expanded = true },
+                modifier = Modifier.semantics { contentDescription = "$description ${encodingMenu.currentLabel}" },
+            ) {
+                Text(text = encodingMenu.currentLabel)
+            }
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+            ) {
+                DropdownMenuItem(
+                    text = { Text(description) },
+                    onClick = {},
+                    enabled = false,
+                )
+                encodingMenu.choices.forEach { choice ->
+                    DropdownMenuItem(
+                        text = { Text(choice.label) },
+                        onClick = {
+                            expanded = false
+                            onSelected(choice.label)
+                        },
+                        leadingIcon = {
+                            if (choice.selected) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_check),
+                                    contentDescription = null,
+                                )
+                            }
+                        },
+                    )
+                }
+            }
+        }
     }
 }
 

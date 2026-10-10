@@ -11,26 +11,35 @@ internal class TextFileDecoderTest {
     @Test
     fun decode_readsUtf8() {
         val decoded = TextFileDecoder.decode("hello あ".toByteArray(Charsets.UTF_8))
-        assertEquals(TextFileDecoder.Result.Text("hello あ"), decoded)
+        assertEquals(TextFileDecoder.Result.Text("hello あ", TextFileDecoder.TextEncoding.Utf8), decoded)
     }
 
     @Test
     fun decode_stripsUtf8Bom() {
         val bytes = byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte()) + "abc".toByteArray(Charsets.UTF_8)
-        assertEquals(TextFileDecoder.Result.Text("abc"), TextFileDecoder.decode(bytes))
+        assertEquals(
+            TextFileDecoder.Result.Text("abc", TextFileDecoder.TextEncoding.Utf8),
+            TextFileDecoder.decode(bytes),
+        )
     }
 
     @Test
     fun decode_readsUtf16LeBom() {
         val payload = "A".toByteArray(Charsets.UTF_16LE)
         val bytes = byteArrayOf(0xFF.toByte(), 0xFE.toByte()) + payload
-        assertEquals(TextFileDecoder.Result.Text("A"), TextFileDecoder.decode(bytes))
+        assertEquals(
+            TextFileDecoder.Result.Text("A", TextFileDecoder.TextEncoding.Utf16Le),
+            TextFileDecoder.decode(bytes),
+        )
     }
 
     @Test
     fun decode_readsShiftJisWhenUtf8IsInvalid() {
         val bytes = "テスト".toByteArray(Charset.forName("MS932"))
-        assertEquals(TextFileDecoder.Result.Text("テスト"), TextFileDecoder.decode(bytes))
+        assertEquals(
+            TextFileDecoder.Result.Text("テスト", TextFileDecoder.TextEncoding.ShiftJis),
+            TextFileDecoder.decode(bytes),
+        )
     }
 
     @Test
@@ -40,7 +49,10 @@ internal class TextFileDecoderTest {
 
     @Test
     fun decode_emptyIsEmptyText() {
-        assertEquals(TextFileDecoder.Result.Text(""), TextFileDecoder.decode(byteArrayOf()))
+        assertEquals(
+            TextFileDecoder.Result.Text("", TextFileDecoder.TextEncoding.Utf8),
+            TextFileDecoder.decode(byteArrayOf()),
+        )
     }
 
     @Test
@@ -52,7 +64,10 @@ internal class TextFileDecoderTest {
     @Test
     fun read_decodesStreamWithinLimit() {
         val input = ByteArrayInputStream("line".toByteArray(Charsets.UTF_8))
-        assertEquals(TextFileDecoder.Result.Text("line"), TextFileDecoder.read(input))
+        assertEquals(
+            TextFileDecoder.Result.Text("line", TextFileDecoder.TextEncoding.Utf8),
+            TextFileDecoder.read(input),
+        )
     }
 
     @Test
@@ -61,6 +76,13 @@ internal class TextFileDecoderTest {
         val decoded = TextFileDecoder.read(input)
         assertTrue(decoded is TextFileDecoder.Result.Text)
         assertEquals(TextFileDecoder.MaxBytes, (decoded as TextFileDecoder.Result.Text).text.length)
+    }
+
+    @Test
+    fun decodeWith_reinterpretsBytesAsShiftJis() {
+        val bytes = "テスト".toByteArray(Charset.forName("MS932"))
+        assertEquals("テスト", TextFileDecoder.decodeWith(bytes, TextFileDecoder.TextEncoding.ShiftJis))
+        assertTrue(TextFileDecoder.decodeWith(bytes, TextFileDecoder.TextEncoding.Utf8) != "テスト")
     }
 
     private class RepeatingByteStream(

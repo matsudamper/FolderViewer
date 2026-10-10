@@ -14,9 +14,9 @@ internal class TextViewerDocumentLoader(
 ) {
     fun load(uri: Uri): Result {
         val title = resolveTitle(uri)
-        val decoded = try {
+        val payload = try {
             openInputStream(uri)?.use { input ->
-                TextFileDecoder.read(input)
+                TextFileDecoder.readPayload(input)
             }
         } catch (_: IOException) {
             return Result.Failure(title = title, reason = Result.Reason.Unreadable)
@@ -25,13 +25,29 @@ internal class TextViewerDocumentLoader(
         } catch (_: IllegalArgumentException) {
             return Result.Failure(title = title, reason = Result.Reason.Unreadable)
         }
-        if (decoded == null) {
+        if (payload == null) {
             return Result.Failure(title = title, reason = Result.Reason.Unreadable)
         }
-        return when (decoded) {
-            is TextFileDecoder.Result.Text -> Result.Success(title = title, text = decoded.text)
-            TextFileDecoder.Result.TooLarge -> Result.Failure(title = title, reason = Result.Reason.TooLarge)
-            TextFileDecoder.Result.Binary -> Result.Failure(title = title, reason = Result.Reason.Binary)
+        return when (payload) {
+            TextFileDecoder.Payload.TooLarge -> Result.Failure(title = title, reason = Result.Reason.TooLarge)
+
+            is TextFileDecoder.Payload.Ready -> when (val decoded = payload.decoded) {
+                is TextFileDecoder.Result.Text -> Result.Success(
+                    title = title,
+                    bytes = payload.bytes,
+                    text = decoded.text,
+                    encoding = decoded.encoding,
+                )
+
+                TextFileDecoder.Result.Binary -> Result.Success(
+                    title = title,
+                    bytes = payload.bytes,
+                    text = null,
+                    encoding = null,
+                )
+
+                TextFileDecoder.Result.TooLarge -> Result.Failure(title = title, reason = Result.Reason.TooLarge)
+            }
         }
     }
 
@@ -72,7 +88,9 @@ internal class TextViewerDocumentLoader(
     sealed interface Result {
         data class Success(
             val title: String,
-            val text: String,
+            val bytes: TextFileDecoder.FileBytes,
+            val text: String?,
+            val encoding: TextFileDecoder.TextEncoding?,
         ) : Result
 
         data class Failure(
@@ -82,7 +100,6 @@ internal class TextViewerDocumentLoader(
 
         enum class Reason {
             TooLarge,
-            Binary,
             Unreadable,
         }
     }

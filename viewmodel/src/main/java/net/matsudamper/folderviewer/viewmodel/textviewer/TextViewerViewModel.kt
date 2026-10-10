@@ -25,6 +25,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import net.matsudamper.folderviewer.ui.R
 import net.matsudamper.folderviewer.ui.textviewer.TextViewerUiState
+import net.matsudamper.folderviewer.viewmodel.util.TextFileDecoder
 import net.matsudamper.folderviewer.viewmodel.util.TextSearchMatcher
 
 data class TextViewerLaunchArgs(
@@ -63,6 +64,27 @@ class TextViewerViewModel @AssistedInject constructor(
         override fun onPreviousMatch() {
             moveMatch(step = -1)
         }
+
+        override fun onEncodingSelected(label: String) {
+            val encoding = TextFileDecoder.availableEncodings().find { it.label == label } ?: return
+            val bytes = state.value.bytes ?: return
+            viewModelScope.launch {
+                val text = withContext(Dispatchers.Default) {
+                    TextFileDecoder.decodeWith(bytes.value, encoding)
+                }
+                state.update { current ->
+                    if (current.bytes !== bytes) return@update current
+                    current.copy(
+                        body = TextViewerUiState.Body.Text(text),
+                        loadedText = text,
+                        encoding = encoding,
+                        matches = listOf(),
+                        currentMatchIndex = -1,
+                        patternInvalid = false,
+                    )
+                }
+            }
+        }
     }
 
     private val state = MutableStateFlow(
@@ -77,6 +99,8 @@ class TextViewerViewModel @AssistedInject constructor(
             matches = listOf(),
             currentMatchIndex = -1,
             focusToken = 0,
+            bytes = null,
+            encoding = null,
         ),
     )
 
@@ -192,22 +216,54 @@ class TextViewerViewModel @AssistedInject constructor(
             matches = matches,
             currentMatchIndex = currentMatchIndex,
             focusToken = focusToken,
+            encodingMenu = encodingMenu(),
             callbacks = callbacks,
+        )
+    }
+
+    private fun ViewerState.encodingMenu(): TextViewerUiState.EncodingMenu? {
+        if (bytes == null) return null
+        val choices = TextFileDecoder.availableEncodings().map { encodingOption ->
+            TextViewerUiState.EncodingMenu.Choice(
+                label = encodingOption.label,
+                selected = encodingOption == encoding,
+            )
+        }
+        return TextViewerUiState.EncodingMenu(
+            currentLabel = encoding?.label ?: context.getString(R.string.text_viewer_encoding),
+            choices = choices,
         )
     }
 
     private fun ViewerState.withLoadResult(loaded: TextViewerDocumentLoader.Result): ViewerState {
         return when (loaded) {
-            is TextViewerDocumentLoader.Result.Success -> copy(
-                title = loaded.title,
-                body = TextViewerUiState.Body.Text(loaded.text),
-                loadedText = loaded.text,
-            )
+            is TextViewerDocumentLoader.Result.Success -> {
+                val text = loaded.text
+                if (text == null) {
+                    copy(
+                        title = loaded.title,
+                        body = TextViewerUiState.Body.Failure(TextViewerUiState.Reason.Binary),
+                        loadedText = null,
+                        bytes = loaded.bytes,
+                        encoding = null,
+                    )
+                } else {
+                    copy(
+                        title = loaded.title,
+                        body = TextViewerUiState.Body.Text(text),
+                        loadedText = text,
+                        bytes = loaded.bytes,
+                        encoding = loaded.encoding,
+                    )
+                }
+            }
 
             is TextViewerDocumentLoader.Result.Failure -> copy(
                 title = loaded.title,
                 body = TextViewerUiState.Body.Failure(loaded.reason.toUiReason()),
                 loadedText = null,
+                bytes = null,
+                encoding = null,
             )
         }
     }
@@ -222,7 +278,6 @@ class TextViewerViewModel @AssistedInject constructor(
     private fun TextViewerDocumentLoader.Result.Reason.toUiReason(): TextViewerUiState.Reason {
         return when (this) {
             TextViewerDocumentLoader.Result.Reason.TooLarge -> TextViewerUiState.Reason.TooLarge
-            TextViewerDocumentLoader.Result.Reason.Binary -> TextViewerUiState.Reason.Binary
             TextViewerDocumentLoader.Result.Reason.Unreadable -> TextViewerUiState.Reason.Unreadable
         }
     }
@@ -238,6 +293,8 @@ class TextViewerViewModel @AssistedInject constructor(
         val matches: List<TextViewerUiState.Match>,
         val currentMatchIndex: Int,
         val focusToken: Int,
+        val bytes: TextFileDecoder.FileBytes?,
+        val encoding: TextFileDecoder.TextEncoding?,
     )
 
     private data class SearchRequest(

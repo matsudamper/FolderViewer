@@ -34,6 +34,13 @@ private fun TextViewerScreenPreview() {
                 matches = matches,
                 currentMatchIndex = 0,
                 focusToken = 0,
+                encodingMenu = TextViewerUiState.EncodingMenu(
+                    currentLabel = "UTF-8",
+                    choices = listOf(
+                        TextViewerUiState.EncodingMenu.Choice(label = "UTF-8", selected = true),
+                        TextViewerUiState.EncodingMenu.Choice(label = "Shift_JIS", selected = false),
+                    ),
+                ),
                 callbacks = object : TextViewerUiState.Callbacks {
                     override fun onBack() = Unit
                     override fun onSearchQueryChange(query: String) = Unit
@@ -41,6 +48,7 @@ private fun TextViewerScreenPreview() {
                     override fun onUseRegexChange(useRegex: Boolean) = Unit
                     override fun onNextMatch() = Unit
                     override fun onPreviousMatch() = Unit
+                    override fun onEncodingSelected(label: String) = Unit
                 },
             ),
         )

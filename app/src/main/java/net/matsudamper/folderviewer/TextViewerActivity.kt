@@ -50,6 +50,7 @@ class TextViewerActivity : ComponentActivity() {
                 matches = listOf(),
                 currentMatchIndex = -1,
                 focusToken = 0,
+                encodingMenu = null,
                 callbacks = object : TextViewerUiState.Callbacks {
                     override fun onBack() {
                         finish()
@@ -64,6 +65,8 @@ class TextViewerActivity : ComponentActivity() {
                     override fun onNextMatch() = Unit
 
                     override fun onPreviousMatch() = Unit
+
+                    override fun onEncodingSelected(label: String) = Unit
                 },
             )
         }
