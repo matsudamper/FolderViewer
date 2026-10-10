@@ -18,15 +18,28 @@ internal class TextViewerZoomMathTest {
     }
 
     @Test
-    fun textViewerZoomScrollTarget_includesCurrentScroll() {
+    fun textViewerZoomScrollTarget_keepsScrolledCentroid() {
         val target = textViewerZoomScrollTarget(
-            scrollX = 50f,
-            scrollY = 20f,
-            centroidX = 10f,
-            centroidY = 5f,
+            scrollX = 100f,
+            scrollY = 40f,
+            centroidX = 180f,
+            centroidY = 90f,
             factor = 2f,
         )
-        assertEquals(110f, target.x)
-        assertEquals(45f, target.y)
+        assertEquals(280f, target.x)
+        assertEquals(130f, target.y)
+    }
+
+    @Test
+    fun textViewerZoomScrollTarget_keepsCentroidWhenZoomingOut() {
+        val target = textViewerZoomScrollTarget(
+            scrollX = 100f,
+            scrollY = 80f,
+            centroidX = 150f,
+            centroidY = 120f,
+            factor = 0.5f,
+        )
+        assertEquals(25f, target.x)
+        assertEquals(20f, target.y)
     }
 }
