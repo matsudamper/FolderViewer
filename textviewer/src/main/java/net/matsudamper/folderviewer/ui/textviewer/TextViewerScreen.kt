@@ -661,14 +661,14 @@ private object FindStripShape : Shape {
         val chamfer = with(density) { 12.dp.toPx() }.coerceAtMost(size.height)
         val path = Path()
         if (layoutDirection == LayoutDirection.Ltr) {
-            path.moveTo(chamfer, 0f)
+            path.moveTo(0f, 0f)
             path.lineTo(size.width, 0f)
             path.lineTo(size.width, size.height)
-            path.lineTo(0f, size.height)
+            path.lineTo(chamfer, size.height)
         } else {
             path.moveTo(0f, 0f)
-            path.lineTo(size.width - chamfer, 0f)
-            path.lineTo(size.width, size.height)
+            path.lineTo(size.width, 0f)
+            path.lineTo(size.width - chamfer, size.height)
             path.lineTo(0f, size.height)
         }
         path.close()
