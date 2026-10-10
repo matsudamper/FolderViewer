@@ -239,6 +239,7 @@ internal fun FileBrowserSelectionTopBar(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun FileBrowserSelectionFloatingToolbar(
+    visibleOpenMenu: Boolean,
     visibleCompressMenu: Boolean,
     visibleExtractMenu: Boolean,
     onCopyClick: () -> Unit,
@@ -281,59 +282,63 @@ internal fun FileBrowserSelectionFloatingToolbar(
                 contentDescription = stringResource(R.string.share),
             )
         }
-        Box {
-            IconButton(onClick = { showMoreMenu = true }) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_more_vert),
-                    contentDescription = stringResource(R.string.more_options),
-                )
-            }
-            DropdownMenu(
-                expanded = showMoreMenu,
-                onDismissRequest = { showMoreMenu = false },
-            ) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.open)) },
-                    onClick = {
-                        showMoreMenu = false
-                        onOpenClick()
-                    },
-                    leadingIcon = {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_open_in_new),
-                            contentDescription = null,
-                        )
-                    },
-                )
-                if (visibleExtractMenu) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.extract)) },
-                        onClick = {
-                            showMoreMenu = false
-                            onExtractClick()
-                        },
-                        leadingIcon = {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_folder_zip),
-                                contentDescription = null,
-                            )
-                        },
+        if (visibleOpenMenu || visibleExtractMenu || visibleCompressMenu) {
+            Box {
+                IconButton(onClick = { showMoreMenu = true }) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_more_vert),
+                        contentDescription = stringResource(R.string.more_options),
                     )
                 }
-                if (visibleCompressMenu) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.compress)) },
-                        onClick = {
-                            showMoreMenu = false
-                            onCompressClick()
-                        },
-                        leadingIcon = {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_folder_zip),
-                                contentDescription = null,
-                            )
-                        },
-                    )
+                DropdownMenu(
+                    expanded = showMoreMenu,
+                    onDismissRequest = { showMoreMenu = false },
+                ) {
+                    if (visibleOpenMenu) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.open)) },
+                            onClick = {
+                                showMoreMenu = false
+                                onOpenClick()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_open_in_new),
+                                    contentDescription = null,
+                                )
+                            },
+                        )
+                    }
+                    if (visibleExtractMenu) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.extract)) },
+                            onClick = {
+                                showMoreMenu = false
+                                onExtractClick()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_folder_zip),
+                                    contentDescription = null,
+                                )
+                            },
+                        )
+                    }
+                    if (visibleCompressMenu) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.compress)) },
+                            onClick = {
+                                showMoreMenu = false
+                                onCompressClick()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_folder_zip),
+                                    contentDescription = null,
+                                )
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -378,6 +383,7 @@ private fun SelectionTopBarPreview() {
 @Preview
 private fun SelectionFloatingToolbarPreview() {
     FileBrowserSelectionFloatingToolbar(
+        visibleOpenMenu = true,
         visibleCompressMenu = true,
         visibleExtractMenu = true,
         onCopyClick = {},

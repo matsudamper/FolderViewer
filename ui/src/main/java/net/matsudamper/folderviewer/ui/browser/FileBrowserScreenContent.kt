@@ -112,6 +112,7 @@ internal fun FileBrowserScreenContent(
             } else if (uiState.isSelectionMode) {
                 FileBrowserSelectionFloatingToolbar(
                     modifier = Modifier.onSizeChanged { fabHeight = it.height },
+                    visibleOpenMenu = uiState.selectedCount == 1,
                     visibleCompressMenu = uiState.visibleCompressMenu,
                     visibleExtractMenu = uiState.visibleExtractMenu,
                     onCopyClick = callbacks::onCopyClick,

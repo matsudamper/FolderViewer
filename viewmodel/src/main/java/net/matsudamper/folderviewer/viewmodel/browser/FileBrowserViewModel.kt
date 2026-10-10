@@ -338,13 +338,8 @@ class FileBrowserViewModel @AssistedInject constructor(
             }
             val sortedFiles = state.rawFiles.sortedWith(createComparator(state.sortConfig))
             val selectedFiles = sortedFiles.filter { selectedIds.contains(it.id) }
-            if (selectedFiles.size != 1) {
-                viewModelScope.launch {
-                    uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("開くには1件だけ選択してください"))
-                }
-                return
-            }
-            openFile(selectedFiles.first(), sortedFiles)
+            val fileItem = selectedFiles.singleOrNull() ?: return
+            openFile(fileItem, sortedFiles)
             viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
             selectionModeRepository.setSelectionMode(false)
         }
