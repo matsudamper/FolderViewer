@@ -75,6 +75,12 @@ class TextViewerViewModel @AssistedInject constructor(
             }
         }
 
+        override fun onWrapLinesChange(wrap: Boolean) {
+            viewModelScope.launch {
+                preferences.setWrapLines(wrap)
+            }
+        }
+
         override fun onEncodingSelected(label: String) {
             val encoding = TextFileDecoder.availableEncodings().find { it.label == label } ?: return
             val bytes = state.value.bytes ?: return
@@ -123,6 +129,7 @@ class TextViewerViewModel @AssistedInject constructor(
             encoding = null,
             lineEnding = null,
             showLineNumbers = false,
+            wrapLines = true,
         ),
     )
 
@@ -147,6 +154,11 @@ class TextViewerViewModel @AssistedInject constructor(
         viewModelScope.launch {
             preferences.showLineNumbers.collect { show ->
                 state.update { current -> current.copy(showLineNumbers = show) }
+            }
+        }
+        viewModelScope.launch {
+            preferences.wrapLines.collect { wrap ->
+                state.update { current -> current.copy(wrapLines = wrap) }
             }
         }
         viewModelScope.launch {
@@ -246,6 +258,7 @@ class TextViewerViewModel @AssistedInject constructor(
             encodingMenu = encodingMenu(),
             lineEndingLabel = lineEnding?.label(),
             showLineNumbers = showLineNumbers,
+            wrapLines = wrapLines,
             callbacks = callbacks,
         )
     }
@@ -338,6 +351,7 @@ class TextViewerViewModel @AssistedInject constructor(
         val encoding: TextFileDecoder.TextEncoding?,
         val lineEnding: TextLineEnding?,
         val showLineNumbers: Boolean,
+        val wrapLines: Boolean,
     )
 
     private data class DecodedText(

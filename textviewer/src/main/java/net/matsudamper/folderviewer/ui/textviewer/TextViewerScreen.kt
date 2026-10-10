@@ -10,6 +10,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -41,6 +42,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -53,27 +55,34 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -113,7 +122,9 @@ fun TextViewerScreen(
                     LineEndingLabel(label = uiState.lineEndingLabel)
                     TextViewerMenu(
                         showLineNumbers = uiState.showLineNumbers,
+                        wrapLines = uiState.wrapLines,
                         onShowLineNumbersChange = uiState.callbacks::onShowLineNumbersChange,
+                        onWrapLinesChange = uiState.callbacks::onWrapLinesChange,
                     )
                 },
             )
@@ -155,7 +166,9 @@ private fun LineEndingLabel(label: String?) {
 @Composable
 private fun TextViewerMenu(
     showLineNumbers: Boolean,
+    wrapLines: Boolean,
     onShowLineNumbersChange: (Boolean) -> Unit,
+    onWrapLinesChange: (Boolean) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -169,20 +182,38 @@ private fun TextViewerMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
         ) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.text_viewer_show_line_numbers)) },
+            TextViewerCheckMenuItem(
+                label = stringResource(R.string.text_viewer_show_line_numbers),
+                checked = showLineNumbers,
                 onClick = { onShowLineNumbersChange(!showLineNumbers) },
-                trailingIcon = {
-                    if (showLineNumbers) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_check),
-                            contentDescription = null,
-                        )
-                    }
-                },
+            )
+            TextViewerCheckMenuItem(
+                label = stringResource(R.string.text_viewer_wrap_lines),
+                checked = wrapLines,
+                onClick = { onWrapLinesChange(!wrapLines) },
             )
         }
     }
+}
+
+@Composable
+private fun TextViewerCheckMenuItem(
+    label: String,
+    checked: Boolean,
+    onClick: () -> Unit,
+) {
+    DropdownMenuItem(
+        text = { Text(label) },
+        onClick = onClick,
+        trailingIcon = {
+            if (checked) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_check),
+                    contentDescription = null,
+                )
+            }
+        },
+    )
 }
 
 @Composable
@@ -276,9 +307,13 @@ private fun TextViewerContent(
 ) {
     val verticalScrollState = rememberScrollState()
     val horizontalScrollState = rememberScrollState()
+    val scale = remember { mutableFloatStateOf(1f) }
+    val scrollTarget = remember { mutableStateOf<Offset?>(null) }
     val display = remember(text) { TextViewerDisplayText.from(text) }
     var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
     val topPadding = 8.dp
+    val sidePadding = 12.dp
+    val gutterPadding = 8.dp
     val topPaddingPx = with(LocalDensity.current) { topPadding.toPx() }
     val matchBackground = MaterialTheme.colorScheme.secondaryContainer
     val matchContent = MaterialTheme.colorScheme.onSecondaryContainer
@@ -315,6 +350,24 @@ private fun TextViewerContent(
         lineHeight = 18.sp,
         color = MaterialTheme.colorScheme.onSurface,
     )
+    LaunchedEffect(Unit) {
+        snapshotFlow {
+            ZoomScrollSnapshot(
+                target = scrollTarget.value,
+                scale = scale.floatValue,
+                horizontalMax = horizontalScrollState.maxValue,
+                verticalMax = verticalScrollState.maxValue,
+            )
+        }.collect { snapshot ->
+            val target = snapshot.target ?: return@collect
+            horizontalScrollState.scrollTo(
+                target.x.roundToInt().coerceIn(0, snapshot.horizontalMax),
+            )
+            verticalScrollState.scrollTo(
+                target.y.roundToInt().coerceIn(0, snapshot.verticalMax),
+            )
+        }
+    }
 
     LaunchedEffect(uiState.focusToken, text) {
         if (uiState.focusToken == 0) return@LaunchedEffect
@@ -328,8 +381,9 @@ private fun TextViewerContent(
         val displayStart = display.toDisplayOffset(match.start)
         if (displayStart !in 0 until layout.layoutInput.text.length) return@LaunchedEffect
         val box = layout.getBoundingBox(displayStart)
-        val matchTop = topPaddingPx + box.top
-        val matchBottom = topPaddingPx + box.bottom
+        val visibleScale = scale.floatValue
+        val matchTop = (topPaddingPx + box.top) * visibleScale
+        val matchBottom = (topPaddingPx + box.bottom) * visibleScale
         val visibleTop = verticalScrollState.value.toFloat()
         val visibleBottom = visibleTop + viewport
         if (matchTop >= visibleTop && matchBottom <= visibleBottom) return@LaunchedEffect
@@ -337,48 +391,181 @@ private fun TextViewerContent(
         verticalScrollState.animateScrollTo(target)
     }
 
-    val contentModifier = if (uiState.showLineNumbers) {
-        modifier
-            .verticalScroll(verticalScrollState)
-            .horizontalScroll(horizontalScrollState)
-    } else {
-        modifier.verticalScroll(verticalScrollState)
-    }
-    Row(modifier = contentModifier) {
-        if (uiState.showLineNumbers) {
-            Text(
-                text = display.lineNumberLabels(),
-                style = textStyle.copy(
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.End,
+    BoxWithConstraints(modifier = modifier) {
+        val documentWidth = if (uiState.wrapLines) maxWidth else null
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(verticalScrollState)
+                .horizontalScroll(horizontalScrollState)
+                .pinchToZoom(
+                    scale = scale,
+                    scrollTarget = scrollTarget,
+                    verticalScroll = verticalScrollState,
+                    horizontalScroll = horizontalScrollState,
                 ),
-                softWrap = false,
-                modifier = Modifier.padding(start = 8.dp, top = topPadding, end = 8.dp, bottom = topPadding),
+        ) {
+            TextViewerDocument(
+                annotatedText = annotatedText,
+                display = display,
+                textStyle = textStyle,
+                showLineNumbers = uiState.showLineNumbers,
+                wrapLines = uiState.wrapLines,
+                documentWidth = documentWidth,
+                topPadding = topPadding,
+                sidePadding = sidePadding,
+                gutterPadding = gutterPadding,
+                gutterColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                onTextLayout = { textLayoutResult = it },
+                modifier = Modifier.gestureScale(scale.floatValue),
             )
         }
-        val bodyModifier = if (uiState.showLineNumbers) {
-            Modifier
-        } else {
-            Modifier.weight(1f)
-        }
-        SelectionContainer(modifier = bodyModifier) {
-            val textModifier = if (uiState.showLineNumbers) {
-                Modifier
-            } else {
-                Modifier.fillMaxWidth()
+    }
+}
+
+@Composable
+private fun TextViewerDocument(
+    annotatedText: AnnotatedString,
+    display: TextViewerDisplayText,
+    textStyle: TextStyle,
+    showLineNumbers: Boolean,
+    wrapLines: Boolean,
+    documentWidth: Dp?,
+    topPadding: Dp,
+    sidePadding: Dp,
+    gutterPadding: Dp,
+    gutterColor: Color,
+    onTextLayout: (TextLayoutResult) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val widthModifier = if (documentWidth == null) Modifier else Modifier.width(documentWidth)
+    if (showLineNumbers && wrapLines) {
+        WrappedLineNumberText(
+            text = annotatedText,
+            display = display,
+            textStyle = textStyle,
+            topPadding = topPadding,
+            endPadding = sidePadding,
+            gutterPadding = gutterPadding,
+            gutterColor = gutterColor,
+            onTextLayout = onTextLayout,
+            modifier = modifier.then(widthModifier),
+        )
+    } else {
+        Row(modifier = modifier.then(widthModifier)) {
+            if (showLineNumbers) {
+                Text(
+                    text = display.lineNumberLabels(),
+                    style = textStyle.copy(
+                        color = gutterColor,
+                        textAlign = TextAlign.End,
+                    ),
+                    softWrap = false,
+                    modifier = Modifier.padding(
+                        start = gutterPadding,
+                        top = topPadding,
+                        end = gutterPadding,
+                        bottom = topPadding,
+                    ),
+                )
             }
+            val bodyModifier = if (wrapLines) Modifier.fillMaxWidth() else Modifier
+            SelectionContainer(modifier = bodyModifier) {
+                Text(
+                    text = annotatedText,
+                    style = textStyle,
+                    softWrap = wrapLines,
+                    modifier = bodyModifier.padding(
+                        start = if (showLineNumbers) 0.dp else sidePadding,
+                        end = sidePadding,
+                        top = topPadding,
+                        bottom = topPadding,
+                    ),
+                    onTextLayout = onTextLayout,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WrappedLineNumberText(
+    text: AnnotatedString,
+    display: TextViewerDisplayText,
+    textStyle: TextStyle,
+    topPadding: Dp,
+    endPadding: Dp,
+    gutterPadding: Dp,
+    gutterColor: Color,
+    onTextLayout: (TextLayoutResult) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val gutterStyle = textStyle.copy(
+        color = gutterColor,
+        textAlign = TextAlign.End,
+    )
+    SubcomposeLayout(modifier = modifier) { constraints ->
+        val probe = subcompose("width") {
             Text(
-                text = annotatedText,
-                style = textStyle,
-                softWrap = !uiState.showLineNumbers,
-                modifier = textModifier.padding(
-                    start = if (uiState.showLineNumbers) 0.dp else 12.dp,
-                    end = 12.dp,
+                text = display.lineNumberLabels().substringBefore('\n'),
+                style = gutterStyle,
+                softWrap = false,
+                modifier = Modifier.padding(
+                    start = gutterPadding,
                     top = topPadding,
+                    end = gutterPadding,
                     bottom = topPadding,
                 ),
-                onTextLayout = { textLayoutResult = it },
             )
+        }.first().measure(
+            Constraints(
+                maxWidth = Constraints.Infinity,
+                maxHeight = Constraints.Infinity,
+            ),
+        )
+        val bodyWidth = (constraints.maxWidth - probe.width).coerceAtLeast(0)
+        var layoutResult: TextLayoutResult? = null
+        val body = subcompose("body") {
+            SelectionContainer(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = text,
+                    style = textStyle,
+                    softWrap = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(end = endPadding, top = topPadding, bottom = topPadding),
+                    onTextLayout = { result ->
+                        layoutResult = result
+                        onTextLayout(result)
+                    },
+                )
+            }
+        }.first().measure(constraints.copy(minWidth = bodyWidth, maxWidth = bodyWidth))
+        val counts = layoutResult?.let { result -> display.visualLineCounts(result::getLineForOffset) }
+        val labels = if (counts == null) display.lineNumberLabels() else display.lineNumberLabels(counts)
+        val gutter = subcompose("gutter") {
+            Text(
+                text = labels,
+                style = gutterStyle,
+                softWrap = false,
+                modifier = Modifier.padding(
+                    start = gutterPadding,
+                    top = topPadding,
+                    end = gutterPadding,
+                    bottom = topPadding,
+                ),
+            )
+        }.first().measure(
+            Constraints(
+                maxWidth = Constraints.Infinity,
+                maxHeight = Constraints.Infinity,
+            ),
+        )
+        val width = probe.width + body.width
+        val height = maxOf(gutter.height, body.height)
+        layout(width, height) {
+            gutter.place(0, 0)
+            body.place(probe.width, 0)
         }
     }
 }
@@ -641,6 +828,13 @@ private fun searchStatus(uiState: TextViewerUiState): String {
         )
     }
 }
+
+private data class ZoomScrollSnapshot(
+    val target: Offset?,
+    val scale: Float,
+    val horizontalMax: Int,
+    val verticalMax: Int,
+)
 
 private val FindBarHeight = 34.dp
 private val FindTabDiameter = 44.dp

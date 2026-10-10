@@ -10,7 +10,7 @@ fun main() {
 }
 
 fun greet(name: String) {
-    println(name)
+    println("a long line that should wrap or extend past the edge of the screen")
 }
 """
 
@@ -22,6 +22,7 @@ private fun TextViewerScreenCollapsedPreview() {
         useRegex = false,
         matches = listOf(),
         currentMatchIndex = -1,
+        wrapLines = false,
     )
 }
 
@@ -40,6 +41,7 @@ private fun TextViewerScreenPreview() {
         useRegex = true,
         matches = matches,
         currentMatchIndex = 0,
+        wrapLines = true,
     )
 }
 
@@ -49,6 +51,7 @@ private fun TextViewerPreview(
     useRegex: Boolean,
     matches: List<TextViewerUiState.Match>,
     currentMatchIndex: Int,
+    wrapLines: Boolean,
 ) {
     FolderViewerTheme(dynamicColor = false, darkTheme = false) {
         TextViewerScreen(
@@ -64,6 +67,7 @@ private fun TextViewerPreview(
                 focusToken = 0,
                 lineEndingLabel = "LF",
                 showLineNumbers = true,
+                wrapLines = wrapLines,
                 encodingMenu = TextViewerUiState.EncodingMenu(
                     currentLabel = "UTF-8",
                     choices = listOf(
@@ -80,6 +84,7 @@ private fun TextViewerPreview(
                     override fun onPreviousMatch() = Unit
                     override fun onEncodingSelected(label: String) = Unit
                     override fun onShowLineNumbersChange(show: Boolean) = Unit
+                    override fun onWrapLinesChange(wrap: Boolean) = Unit
                 },
             ),
         )
