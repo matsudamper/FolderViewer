@@ -45,6 +45,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
@@ -87,7 +88,9 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import net.matsudamper.folderviewer.textviewer.R
 import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
 
@@ -309,6 +312,26 @@ private fun TextViewerContent(
     val horizontalScrollState = rememberScrollState()
     val scale = remember { mutableFloatStateOf(1f) }
     val scrollTarget = remember { mutableStateOf<Offset?>(null) }
+    val scope = rememberCoroutineScope()
+    val zoomScrollJob = remember { mutableStateOf<Job?>(null) }
+    val gestureEnd = remember { TextViewerZoomGestureEnd() }
+    gestureEnd.onEnd = { finishedTarget ->
+        zoomScrollJob.value?.cancel()
+        zoomScrollJob.value = scope.launch {
+            withFrameNanos { }
+            withFrameNanos { }
+            if (scrollTarget.value != finishedTarget) return@launch
+            horizontalScrollState.scrollTo(
+                finishedTarget.x.roundToInt().coerceIn(0, horizontalScrollState.maxValue),
+            )
+            verticalScrollState.scrollTo(
+                finishedTarget.y.roundToInt().coerceIn(0, verticalScrollState.maxValue),
+            )
+            if (scrollTarget.value == finishedTarget) {
+                scrollTarget.value = null
+            }
+        }
+    }
     val display = remember(text) { TextViewerDisplayText.from(text) }
     var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
     val topPadding = 8.dp
@@ -352,20 +375,13 @@ private fun TextViewerContent(
     )
     LaunchedEffect(Unit) {
         snapshotFlow {
-            ZoomScrollSnapshot(
-                target = scrollTarget.value,
-                scale = scale.floatValue,
-                horizontalMax = horizontalScrollState.maxValue,
-                verticalMax = verticalScrollState.maxValue,
-            )
+            val target = scrollTarget.value ?: return@snapshotFlow null
+            Triple(target, horizontalScrollState.maxValue, verticalScrollState.maxValue)
         }.collect { snapshot ->
-            val target = snapshot.target ?: return@collect
-            horizontalScrollState.scrollTo(
-                target.x.roundToInt().coerceIn(0, snapshot.horizontalMax),
-            )
-            verticalScrollState.scrollTo(
-                target.y.roundToInt().coerceIn(0, snapshot.verticalMax),
-            )
+            if (snapshot == null) return@collect
+            val (target, horizontalMax, verticalMax) = snapshot
+            horizontalScrollState.scrollTo(target.x.roundToInt().coerceIn(0, horizontalMax))
+            verticalScrollState.scrollTo(target.y.roundToInt().coerceIn(0, verticalMax))
         }
     }
 
@@ -403,6 +419,7 @@ private fun TextViewerContent(
                     scrollTarget = scrollTarget,
                     verticalScroll = verticalScrollState,
                     horizontalScroll = horizontalScrollState,
+                    gestureEnd = gestureEnd,
                 ),
         ) {
             TextViewerDocument(
@@ -828,13 +845,6 @@ private fun searchStatus(uiState: TextViewerUiState): String {
         )
     }
 }
-
-private data class ZoomScrollSnapshot(
-    val target: Offset?,
-    val scale: Float,
-    val horizontalMax: Int,
-    val verticalMax: Int,
-)
 
 private val FindBarHeight = 34.dp
 private val FindTabDiameter = 44.dp

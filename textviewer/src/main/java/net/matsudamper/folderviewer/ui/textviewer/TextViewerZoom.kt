@@ -8,25 +8,31 @@ import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.runtime.MutableFloatState
 import androidx.compose.runtime.MutableState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
 
 internal const val TextViewerMinZoom = 0.5f
 internal const val TextViewerMaxZoom = 4f
+
+internal class TextViewerZoomGestureEnd {
+    var onEnd: (Offset) -> Unit = {}
+}
 
 internal fun Modifier.pinchToZoom(
     scale: MutableFloatState,
     scrollTarget: MutableState<Offset?>,
     verticalScroll: ScrollState,
     horizontalScroll: ScrollState,
+    gestureEnd: TextViewerZoomGestureEnd,
 ): Modifier {
     return pointerInput(Unit) {
         awaitEachGesture {
             awaitFirstDown(requireUnconsumed = false)
+            var latestTarget: Offset? = null
             do {
                 val event = awaitPointerEvent()
                 val pressedCount = event.changes.count { it.pressed }
@@ -45,7 +51,9 @@ internal fun Modifier.pinchToZoom(
                                 centroidY = centroid.y,
                                 factor = factor,
                             )
-                            scrollTarget.value = Offset(target.x, target.y)
+                            val nextTarget = Offset(target.x, target.y)
+                            latestTarget = nextTarget
+                            scrollTarget.value = nextTarget
                             scale.floatValue = next
                             event.changes.forEach { change ->
                                 if (change.pressed) change.consume()
@@ -54,6 +62,10 @@ internal fun Modifier.pinchToZoom(
                     }
                 }
             } while (event.changes.any { it.pressed })
+            val finishedTarget = latestTarget
+            if (finishedTarget != null) {
+                gestureEnd.onEnd(finishedTarget)
+            }
         }
     }
 }
@@ -65,11 +77,11 @@ internal fun Modifier.gestureScale(scale: Float): Modifier {
         val scaledWidth = (placeable.width * scale).roundToInt().coerceAtLeast(0)
         val scaledHeight = (placeable.height * scale).roundToInt().coerceAtLeast(0)
         layout(scaledWidth, scaledHeight) {
-            placeable.place(0, 0)
-        }
-    }.drawWithContent {
-        scale(scaleX = scale, scaleY = scale, pivot = Offset.Zero) {
-            this@drawWithContent.drawContent()
+            placeable.placeWithLayer(IntOffset.Zero) {
+                scaleX = scale
+                scaleY = scale
+                transformOrigin = TransformOrigin(0f, 0f)
+            }
         }
     }
 }
