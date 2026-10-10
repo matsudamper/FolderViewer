@@ -4,35 +4,63 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import net.matsudamper.folderviewer.ui.theme.FolderViewerTheme
 
+private const val PreviewText = """
+fun main() {
+    println("hello")
+}
+
+fun greet(name: String) {
+    println(name)
+}
+"""
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 640)
+@Composable
+private fun TextViewerScreenCollapsedPreview() {
+    TextViewerPreview(
+        searchQuery = "",
+        useRegex = false,
+        matches = listOf(),
+        currentMatchIndex = -1,
+    )
+}
+
 @Preview(showBackground = true, widthDp = 360, heightDp = 640)
 @Composable
 private fun TextViewerScreenPreview() {
-    val text = """
-        fun main() {
-            println("hello")
-        }
-
-        fun greet(name: String) {
-            println(name)
-        }
-    """.trimIndent()
+    val text = PreviewText.trimIndent()
     val matches = Regex("fun").findAll(text).map { result ->
         TextViewerUiState.Match(
             start = result.range.first,
             endExclusive = result.range.last + 1,
         )
     }.toList()
+    TextViewerPreview(
+        searchQuery = "fun",
+        useRegex = true,
+        matches = matches,
+        currentMatchIndex = 0,
+    )
+}
+
+@Composable
+private fun TextViewerPreview(
+    searchQuery: String,
+    useRegex: Boolean,
+    matches: List<TextViewerUiState.Match>,
+    currentMatchIndex: Int,
+) {
     FolderViewerTheme(dynamicColor = false, darkTheme = false) {
         TextViewerScreen(
             uiState = TextViewerUiState(
                 title = "Main.kt",
-                body = TextViewerUiState.Body.Text(text),
-                searchQuery = "fun",
+                body = TextViewerUiState.Body.Text(PreviewText.trimIndent()),
+                searchQuery = searchQuery,
                 matchCase = false,
-                useRegex = true,
+                useRegex = useRegex,
                 patternInvalid = false,
                 matches = matches,
-                currentMatchIndex = 0,
+                currentMatchIndex = currentMatchIndex,
                 focusToken = 0,
                 encodingMenu = TextViewerUiState.EncodingMenu(
                     currentLabel = "UTF-8",
