@@ -21,6 +21,11 @@ Androidのファイルビューアです。
 ./gradlew ktlintFormat
 ```
 
+## Cloud Agent
+- Android SDK は `/opt/android-sdk`。install が `local.properties` に `sdk.dir` を書く
+- 既定の `java` は JDK 21（Gradle Daemon）。Kotlin toolchain の JDK 25 は `/usr/lib/jvm/temurin-25-jdk-amd64`
+- `CI` 環境変数は付けない。付けると debug 署名に `debug.keystore` が必要になる
+
 ## その他
 - Composeの詳細は既存の `docs/compose-guidelines.md` も参照
 - private/internalをできる限り使用し、最小限のアクセスに絞る
