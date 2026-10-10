@@ -11,7 +11,8 @@
         "org.jetbrains.kotlin.plugin.serialization"
       ],
       "groupName": "kotlin monorepo",
-      "groupSlug": "kotlin-monorepo"
+      "groupSlug": "kotlin-monorepo",
+      "automerge": true
     },
     {
       "matchPackageNames": [
