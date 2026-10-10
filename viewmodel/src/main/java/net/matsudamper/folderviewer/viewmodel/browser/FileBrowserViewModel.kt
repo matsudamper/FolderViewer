@@ -330,6 +330,25 @@ class FileBrowserViewModel @AssistedInject constructor(
             }
         }
 
+        override fun onOpenSelectedClick() {
+            val state = viewModelStateFlow.value
+            val selectedIds = when (val selectedState = state.selectedState) {
+                is ViewModelState.SelectionState.NonSelected -> return
+                is ViewModelState.SelectionState.Selected -> selectedState.items
+            }
+            val sortedFiles = state.rawFiles.sortedWith(createComparator(state.sortConfig))
+            val selectedFiles = sortedFiles.filter { selectedIds.contains(it.id) }
+            if (selectedFiles.size != 1) {
+                viewModelScope.launch {
+                    uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("開くには1件だけ選択してください"))
+                }
+                return
+            }
+            openFile(selectedFiles.first(), sortedFiles)
+            viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
+            selectionModeRepository.setSelectionMode(false)
+        }
+
         override fun onCompressClick() {
             val selectedIds = when (val s = viewModelStateFlow.value.selectedState) {
                 is ViewModelState.SelectionState.NonSelected -> return
@@ -1173,52 +1192,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                 toggleSelection(fileItem.id)
                 return
             }
-            if (fileItem.isDirectory) {
-                viewModelScope.launch {
-                    viewModelEventChannel.send(
-                        ViewModelEvent.NavigateToFileBrowser(
-                            displayPath = "$displayName/${fileItem.displayPath}",
-                            id = fileItem.id,
-                        ),
-                    )
-                }
-            } else {
-                val isImage = FileUtil.isImage(fileItem.displayPath.lowercase())
-                val isVideo = FileUtil.isVideo(fileItem.displayPath.lowercase())
-
-                viewModelStateFlow.update { it.copy(lastOpenedFileKey = fileItem.id.id) }
-
-                when {
-                    isImage -> {
-                        viewModelScope.launch {
-                            viewModelEventChannel.send(
-                                ViewModelEvent.NavigateToImageViewer(
-                                    id = fileItem.id,
-                                    allPaths = sortedFiles.filter { FileUtil.isImage(it.displayPath) }.map { it.id },
-                                ),
-                            )
-                        }
-                    }
-
-                    isVideo -> {
-                        viewModelScope.launch {
-                            openWithExternalPlayer(fileItem)
-                        }
-                    }
-
-                    else -> FileBrowserExtractDialogPresenter.openNonMediaFile(
-                        fileItem = fileItem,
-                        context = FileBrowserExtractDialogPresenter.OpenNonMediaFileContext(
-                            localFolderPath = viewModelStateFlow.value.localFolderPath,
-                            zipHandler = zipHandler,
-                            viewModelScope = viewModelScope,
-                            pendingExtractFileItemSetter = { pendingExtractFileItem = it },
-                            viewModelStateFlow = viewModelStateFlow,
-                            openWithExternalPlayer = { item -> openWithExternalPlayer(item) },
-                        ),
-                    )
-                }
-            }
+            openFile(fileItem, sortedFiles)
         }
 
         override fun onLongClick() {
@@ -1240,6 +1214,23 @@ class FileBrowserViewModel @AssistedInject constructor(
                 )
             }
         }
+    }
+
+    private fun openFile(fileItem: FileItem, sortedFiles: List<FileItem>) {
+        FileBrowserFileOpener.open(
+            fileItem = fileItem,
+            sortedFiles = sortedFiles,
+            displayName = displayName,
+            context = FileBrowserExtractDialogPresenter.OpenNonMediaFileContext(
+                localFolderPath = viewModelStateFlow.value.localFolderPath,
+                zipHandler = zipHandler,
+                viewModelScope = viewModelScope,
+                pendingExtractFileItemSetter = { pendingExtractFileItem = it },
+                viewModelStateFlow = viewModelStateFlow,
+                openWithExternalPlayer = { openWithExternalPlayer(it) },
+            ),
+            sendEvent = { viewModelEventChannel.send(it) },
+        )
     }
 
     private suspend fun openWithExternalPlayer(fileItem: FileItem) {

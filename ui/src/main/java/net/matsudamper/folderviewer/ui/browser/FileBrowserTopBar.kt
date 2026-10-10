@@ -1,10 +1,15 @@
 package net.matsudamper.folderviewer.ui.browser
 
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingToolbarDefaults
+import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
@@ -22,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import net.matsudamper.folderviewer.ui.R
 import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
 
@@ -199,13 +205,8 @@ internal fun FileBrowserTopBar(
 @Composable
 internal fun FileBrowserSelectionTopBar(
     selectedCount: Int,
-    visibleCompressMenu: Boolean,
-    visibleExtractMenu: Boolean,
     onCancelSelection: () -> Unit,
     onSelectAllClick: () -> Unit,
-    onShareClick: () -> Unit,
-    onCompressClick: () -> Unit,
-    onExtractClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     TopAppBar(
@@ -231,10 +232,59 @@ internal fun FileBrowserSelectionTopBar(
                     contentDescription = stringResource(R.string.select_all),
                 )
             }
-            var showMoreMenu by remember { mutableStateOf(false) }
+        },
+    )
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+internal fun FileBrowserSelectionFloatingToolbar(
+    visibleCompressMenu: Boolean,
+    visibleExtractMenu: Boolean,
+    onCopyClick: () -> Unit,
+    onCutClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+    onShareClick: () -> Unit,
+    onOpenClick: () -> Unit,
+    onCompressClick: () -> Unit,
+    onExtractClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var showMoreMenu by remember { mutableStateOf(false) }
+    HorizontalFloatingToolbar(
+        modifier = modifier,
+        expanded = true,
+        contentPadding = PaddingValues(0.dp),
+        colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors(),
+    ) {
+        IconButton(onClick = onCopyClick) {
+            Icon(
+                painter = painterResource(R.drawable.ic_content_copy),
+                contentDescription = stringResource(R.string.copy),
+            )
+        }
+        IconButton(onClick = onCutClick) {
+            Icon(
+                painter = painterResource(R.drawable.ic_content_cut),
+                contentDescription = stringResource(R.string.cut),
+            )
+        }
+        IconButton(onClick = onDeleteClick) {
+            Icon(
+                painter = painterResource(R.drawable.ic_delete),
+                contentDescription = stringResource(R.string.delete),
+            )
+        }
+        IconButton(onClick = onShareClick) {
+            Icon(
+                painter = painterResource(R.drawable.ic_share),
+                contentDescription = stringResource(R.string.share),
+            )
+        }
+        Box {
             IconButton(onClick = { showMoreMenu = true }) {
                 Icon(
-                    painter = painterResource(id = R.drawable.ic_more_vert),
+                    painter = painterResource(R.drawable.ic_more_vert),
                     contentDescription = stringResource(R.string.more_options),
                 )
             }
@@ -243,14 +293,14 @@ internal fun FileBrowserSelectionTopBar(
                 onDismissRequest = { showMoreMenu = false },
             ) {
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.share)) },
+                    text = { Text(stringResource(R.string.open)) },
                     onClick = {
                         showMoreMenu = false
-                        onShareClick()
+                        onOpenClick()
                     },
                     leadingIcon = {
                         Icon(
-                            painter = painterResource(id = R.drawable.ic_share),
+                            painter = painterResource(id = R.drawable.ic_open_in_new),
                             contentDescription = null,
                         )
                     },
@@ -286,8 +336,8 @@ internal fun FileBrowserSelectionTopBar(
                     )
                 }
             }
-        },
-    )
+        }
+    }
 }
 
 @Composable
@@ -319,11 +369,22 @@ private fun FileBrowserTopBarPreview() {
 private fun SelectionTopBarPreview() {
     FileBrowserSelectionTopBar(
         selectedCount = 3,
-        visibleCompressMenu = true,
-        visibleExtractMenu = true,
         onCancelSelection = {},
         onSelectAllClick = {},
+    )
+}
+
+@Composable
+@Preview
+private fun SelectionFloatingToolbarPreview() {
+    FileBrowserSelectionFloatingToolbar(
+        visibleCompressMenu = true,
+        visibleExtractMenu = true,
+        onCopyClick = {},
+        onCutClick = {},
+        onDeleteClick = {},
         onShareClick = {},
+        onOpenClick = {},
         onCompressClick = {},
         onExtractClick = {},
     )
