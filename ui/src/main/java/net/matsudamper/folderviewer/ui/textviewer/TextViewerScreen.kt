@@ -1,16 +1,26 @@
 package net.matsudamper.folderviewer.ui.textviewer
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -22,11 +32,8 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -37,12 +44,24 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
@@ -53,6 +72,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
@@ -69,51 +90,45 @@ fun TextViewerScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
-            Column {
-                TopAppBar(
-                    colors = MyTopAppBarDefaults.topAppBarColors(),
-                    title = {
-                        Text(
-                            text = uiState.title,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = uiState.callbacks::onBack) {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_arrow_back),
-                                contentDescription = stringResource(R.string.back),
-                            )
-                        }
-                    },
-                    actions = {
-                        EncodingMenuButton(encodingMenu = uiState.encodingMenu, onSelected = uiState.callbacks::onEncodingSelected)
-                    },
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surface)
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    contentAlignment = Alignment.CenterEnd,
-                ) {
-                    TextViewerFindBar(
-                        uiState = uiState,
-                        modifier = Modifier
-                            .widthIn(max = 520.dp)
-                            .fillMaxWidth(),
+            TopAppBar(
+                colors = MyTopAppBarDefaults.topAppBarColors(),
+                title = {
+                    Text(
+                        text = uiState.title,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
-                }
-            }
+                },
+                navigationIcon = {
+                    IconButton(onClick = uiState.callbacks::onBack) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_arrow_back),
+                            contentDescription = stringResource(R.string.back),
+                        )
+                    }
+                },
+                actions = {
+                    EncodingMenuButton(encodingMenu = uiState.encodingMenu, onSelected = uiState.callbacks::onEncodingSelected)
+                },
+            )
         },
     ) { innerPadding ->
-        TextViewerBody(
-            uiState = uiState,
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
-        )
+        ) {
+            TextViewerBody(
+                uiState = uiState,
+                modifier = Modifier.fillMaxSize(),
+            )
+            TextViewerFindHost(
+                uiState = uiState,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(y = (-2).dp),
+            )
+        }
     }
 }
 
@@ -279,103 +294,173 @@ private fun TextViewerContent(
 }
 
 @Composable
-private fun TextViewerFindBar(
+private fun TextViewerFindHost(
     uiState: TextViewerUiState,
     modifier: Modifier = Modifier,
 ) {
-    val searchDescription = stringResource(R.string.text_viewer_search)
-    val borderColor = if (uiState.patternInvalid) {
-        MaterialTheme.colorScheme.error
-    } else {
-        MaterialTheme.colorScheme.outline
-    }
-    val status = searchStatus(uiState)
-    val statusColor = if (uiState.patternInvalid || (uiState.searchQuery.isNotEmpty() && uiState.matches.isEmpty())) {
-        MaterialTheme.colorScheme.error
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
+    var expanded by remember { mutableStateOf(uiState.searchQuery.isNotEmpty()) }
+    var focusSearch by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(focusSearch) {
+        if (focusSearch) {
+            withFrameNanos { }
+            focusRequester.requestFocus()
+            focusSearch = false
+        }
     }
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalAlignment = Alignment.End,
     ) {
-        Surface(
-            shape = MaterialTheme.shapes.small,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            border = BorderStroke(1.dp, borderColor),
-            shadowElevation = 2.dp,
+        AnimatedVisibility(
+            visible = expanded,
+            enter = fadeIn() + expandHorizontally(expandFrom = Alignment.End),
+            exit = fadeOut() + shrinkHorizontally(shrinkTowards = Alignment.End),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                BasicTextField(
-                    value = uiState.searchQuery,
-                    onValueChange = uiState.callbacks::onSearchQueryChange,
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(
-                        color = MaterialTheme.colorScheme.onSurface,
-                    ),
-                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { uiState.callbacks.onNextMatch() }),
-                    modifier = Modifier
-                        .weight(1f)
-                        .semantics { contentDescription = searchDescription }
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    decorationBox = { innerTextField ->
-                        Box(contentAlignment = Alignment.CenterStart) {
-                            if (uiState.searchQuery.isEmpty()) {
-                                Text(
-                                    text = searchDescription,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                            innerTextField()
-                        }
-                    },
-                )
-                FindToggleButton(
-                    checked = uiState.matchCase,
-                    label = "Aa",
-                    contentDescription = stringResource(R.string.text_viewer_match_case),
-                    onCheckedChange = uiState.callbacks::onMatchCaseChange,
-                )
-                FindToggleButton(
-                    checked = uiState.useRegex,
-                    label = ".*",
-                    contentDescription = stringResource(R.string.text_viewer_use_regex),
-                    onCheckedChange = uiState.callbacks::onUseRegexChange,
-                )
-            }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = status,
-                modifier = Modifier.weight(1f),
-                color = statusColor,
-                textAlign = TextAlign.End,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.labelMedium,
+            TextViewerFindBar(
+                uiState = uiState,
+                focusRequester = focusRequester,
             )
-            IconButton(
-                onClick = uiState.callbacks::onPreviousMatch,
-                enabled = uiState.matches.isNotEmpty(),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_keyboard_arrow_up),
-                    contentDescription = stringResource(R.string.text_viewer_previous_match),
-                )
-            }
-            IconButton(
-                onClick = uiState.callbacks::onNextMatch,
-                enabled = uiState.matches.isNotEmpty(),
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_keyboard_arrow_down),
-                    contentDescription = stringResource(R.string.text_viewer_next_match),
-                )
-            }
         }
+        FindSemicircleTab(
+            expanded = expanded,
+            onClick = {
+                if (!expanded) focusSearch = true
+                expanded = !expanded
+            },
+            modifier = Modifier.offset(y = if (expanded) (-1).dp else 0.dp),
+        )
+    }
+}
+
+@Composable
+private fun FindSemicircleTab(
+    expanded: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val description = stringResource(R.string.text_viewer_search)
+    val iconRes = if (expanded) R.drawable.ic_close else R.drawable.ic_search
+    Box(
+        modifier = modifier
+            .size(width = FindTabDiameter, height = FindTabRadius)
+            .shadow(elevation = 3.dp, shape = DownSemicircleShape)
+            .clip(DownSemicircleShape)
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        Icon(
+            painter = painterResource(iconRes),
+            contentDescription = null,
+            modifier = Modifier
+                .padding(top = 2.dp)
+                .size(14.dp),
+            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
+    }
+}
+
+@Composable
+private fun TextViewerFindBar(
+    uiState: TextViewerUiState,
+    focusRequester: FocusRequester,
+    modifier: Modifier = Modifier,
+) {
+    val searchDescription = stringResource(R.string.text_viewer_search)
+    val fieldBorder = if (uiState.patternInvalid) {
+        MaterialTheme.colorScheme.error
+    } else {
+        MaterialTheme.colorScheme.outlineVariant
+    }
+    val status = searchStatus(uiState)
+    val statusFailed = uiState.patternInvalid || (uiState.searchQuery.isNotEmpty() && uiState.matches.isEmpty())
+    val statusColor = if (statusFailed) {
+        MaterialTheme.colorScheme.error
+    } else {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    }
+    val fieldShape = RoundedCornerShape(6.dp)
+    Row(
+        modifier = modifier
+            .height(FindBarHeight)
+            .shadow(elevation = 3.dp, shape = FindStripShape)
+            .clip(FindStripShape)
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .padding(start = 16.dp, end = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        BasicTextField(
+            value = uiState.searchQuery,
+            onValueChange = uiState.callbacks::onSearchQueryChange,
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodySmall.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 13.sp,
+            ),
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { uiState.callbacks.onNextMatch() }),
+            modifier = Modifier
+                .width(148.dp)
+                .height(26.dp)
+                .focusRequester(focusRequester)
+                .semantics { contentDescription = searchDescription }
+                .clip(fieldShape)
+                .background(MaterialTheme.colorScheme.surface)
+                .border(width = 1.dp, color = fieldBorder, shape = fieldShape)
+                .padding(horizontal = 8.dp),
+            decorationBox = { innerTextField ->
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    if (uiState.searchQuery.isEmpty()) {
+                        Text(
+                            text = searchDescription,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 13.sp,
+                        )
+                    }
+                    innerTextField()
+                }
+            },
+        )
+        FindToggleButton(
+            checked = uiState.matchCase,
+            label = "Aa",
+            contentDescription = stringResource(R.string.text_viewer_match_case),
+            onCheckedChange = uiState.callbacks::onMatchCaseChange,
+        )
+        FindToggleButton(
+            checked = uiState.useRegex,
+            label = ".*",
+            contentDescription = stringResource(R.string.text_viewer_use_regex),
+            onCheckedChange = uiState.callbacks::onUseRegexChange,
+        )
+        Text(
+            text = status,
+            modifier = Modifier.widthIn(max = 72.dp),
+            color = statusColor,
+            textAlign = TextAlign.End,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.labelSmall,
+        )
+        FindStepButton(
+            enabled = uiState.matches.isNotEmpty(),
+            iconRes = R.drawable.ic_keyboard_arrow_up,
+            contentDescription = stringResource(R.string.text_viewer_previous_match),
+            onClick = uiState.callbacks::onPreviousMatch,
+        )
+        FindStepButton(
+            enabled = uiState.matches.isNotEmpty(),
+            iconRes = R.drawable.ic_keyboard_arrow_down,
+            contentDescription = stringResource(R.string.text_viewer_next_match),
+            onClick = uiState.callbacks::onNextMatch,
+        )
     }
 }
 
@@ -386,20 +471,57 @@ private fun FindToggleButton(
     contentDescription: String,
     onCheckedChange: (Boolean) -> Unit,
 ) {
-    IconToggleButton(
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-        modifier = Modifier.semantics { this.contentDescription = contentDescription },
-        colors = IconButtonDefaults.iconToggleButtonColors(
-            checkedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-            checkedContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        ),
+    val background = if (checked) {
+        MaterialTheme.colorScheme.surface
+    } else {
+        MaterialTheme.colorScheme.primaryContainer
+    }
+    val contentColor = if (checked) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    }
+    Box(
+        modifier = Modifier
+            .padding(start = 2.dp)
+            .size(26.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .background(background)
+            .clickable(role = Role.Checkbox, onClick = { onCheckedChange(!checked) })
+            .semantics { this.contentDescription = contentDescription },
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
+            color = contentColor,
             fontFamily = FontFamily.Monospace,
-            fontSize = 13.sp,
+            fontSize = 11.sp,
             fontWeight = if (checked) FontWeight.Bold else FontWeight.Normal,
+        )
+    }
+}
+
+@Composable
+private fun FindStepButton(
+    enabled: Boolean,
+    iconRes: Int,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(26.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .alpha(if (enabled) 1f else 0.38f)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .semantics { this.contentDescription = contentDescription },
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(iconRes),
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = MaterialTheme.colorScheme.onPrimaryContainer,
         )
     }
 }
@@ -427,5 +549,52 @@ private fun searchStatus(uiState: TextViewerUiState): String {
             uiState.currentMatchIndex + 1,
             uiState.matches.size,
         )
+    }
+}
+
+private val FindBarHeight = 34.dp
+private val FindTabDiameter = 44.dp
+private val FindTabRadius = 22.dp
+
+private object DownSemicircleShape : Shape {
+    override fun createOutline(
+        size: Size,
+        layoutDirection: LayoutDirection,
+        density: Density,
+    ): Outline {
+        val path = Path().apply {
+            arcTo(
+                rect = Rect(left = 0f, top = -size.height, right = size.width, bottom = size.height),
+                startAngleDegrees = 0f,
+                sweepAngleDegrees = 180f,
+                forceMoveTo = true,
+            )
+            close()
+        }
+        return Outline.Generic(path)
+    }
+}
+
+private object FindStripShape : Shape {
+    override fun createOutline(
+        size: Size,
+        layoutDirection: LayoutDirection,
+        density: Density,
+    ): Outline {
+        val chamfer = with(density) { 12.dp.toPx() }.coerceAtMost(size.height)
+        val path = Path()
+        if (layoutDirection == LayoutDirection.Ltr) {
+            path.moveTo(chamfer, 0f)
+            path.lineTo(size.width, 0f)
+            path.lineTo(size.width, size.height)
+            path.lineTo(0f, size.height)
+        } else {
+            path.moveTo(0f, 0f)
+            path.lineTo(size.width - chamfer, 0f)
+            path.lineTo(size.width, size.height)
+            path.lineTo(0f, size.height)
+        }
+        path.close()
+        return Outline.Generic(path)
     }
 }
