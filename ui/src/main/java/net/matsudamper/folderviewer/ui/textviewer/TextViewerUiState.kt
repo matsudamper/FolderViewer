@@ -13,6 +13,7 @@ data class TextViewerUiState(
     val currentMatchIndex: Int,
     val focusToken: Int,
     val encodingMenu: EncodingMenu?,
+    val lineEndingLabel: String?,
     val callbacks: Callbacks,
 ) {
     data class EncodingMenu(

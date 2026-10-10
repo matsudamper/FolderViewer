@@ -7,6 +7,8 @@ import java.io.IOException
 import java.io.InputStream
 import java.net.URL
 import net.matsudamper.folderviewer.viewmodel.util.TextFileDecoder
+import net.matsudamper.folderviewer.viewmodel.util.TextLineEnding
+import net.matsudamper.folderviewer.viewmodel.util.TextLineEndingDetector
 
 internal class TextViewerDocumentLoader(
     private val contentResolver: ContentResolver,
@@ -37,6 +39,7 @@ internal class TextViewerDocumentLoader(
                     bytes = payload.bytes,
                     text = decoded.text,
                     encoding = decoded.encoding,
+                    lineEnding = TextLineEndingDetector.detect(decoded.text),
                 )
 
                 TextFileDecoder.Result.Binary -> Result.Success(
@@ -44,6 +47,7 @@ internal class TextViewerDocumentLoader(
                     bytes = payload.bytes,
                     text = null,
                     encoding = null,
+                    lineEnding = null,
                 )
 
                 TextFileDecoder.Result.TooLarge -> Result.Failure(title = title, reason = Result.Reason.TooLarge)
@@ -91,6 +95,7 @@ internal class TextViewerDocumentLoader(
             val bytes: TextFileDecoder.FileBytes,
             val text: String?,
             val encoding: TextFileDecoder.TextEncoding?,
+            val lineEnding: TextLineEnding?,
         ) : Result
 
         data class Failure(

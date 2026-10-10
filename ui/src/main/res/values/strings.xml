@@ -137,6 +137,11 @@
     <string name="external_picker_deselect">選択解除</string>
     <string name="text_viewer_default_title">テキスト</string>
     <string name="text_viewer_encoding">文字コード</string>
+    <string name="text_viewer_line_ending">改行コード</string>
+    <string name="text_viewer_line_ending_lf">LF</string>
+    <string name="text_viewer_line_ending_crlf">CRLF</string>
+    <string name="text_viewer_line_ending_cr">CR</string>
+    <string name="text_viewer_line_ending_mixed">混在</string>
     <string name="text_viewer_search">検索</string>
     <string name="text_viewer_match_case">大文字と小文字を区別</string>
     <string name="text_viewer_use_regex">正規表現を使用</string>

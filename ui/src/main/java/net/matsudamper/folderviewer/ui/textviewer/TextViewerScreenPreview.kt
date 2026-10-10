@@ -62,6 +62,7 @@ private fun TextViewerPreview(
                 matches = matches,
                 currentMatchIndex = currentMatchIndex,
                 focusToken = 0,
+                lineEndingLabel = "LF",
                 encodingMenu = TextViewerUiState.EncodingMenu(
                     currentLabel = "UTF-8",
                     choices = listOf(

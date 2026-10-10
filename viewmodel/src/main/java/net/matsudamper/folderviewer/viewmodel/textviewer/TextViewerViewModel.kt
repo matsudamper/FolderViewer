@@ -26,6 +26,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import net.matsudamper.folderviewer.ui.R
 import net.matsudamper.folderviewer.ui.textviewer.TextViewerUiState
 import net.matsudamper.folderviewer.viewmodel.util.TextFileDecoder
+import net.matsudamper.folderviewer.viewmodel.util.TextLineEnding
+import net.matsudamper.folderviewer.viewmodel.util.TextLineEndingDetector
 import net.matsudamper.folderviewer.viewmodel.util.TextSearchMatcher
 
 data class TextViewerLaunchArgs(
@@ -69,15 +71,17 @@ class TextViewerViewModel @AssistedInject constructor(
             val encoding = TextFileDecoder.availableEncodings().find { it.label == label } ?: return
             val bytes = state.value.bytes ?: return
             viewModelScope.launch {
-                val text = withContext(Dispatchers.Default) {
-                    TextFileDecoder.decodeWith(bytes.value, encoding)
+                val decoded = withContext(Dispatchers.Default) {
+                    val text = TextFileDecoder.decodeWith(bytes.value, encoding)
+                    DecodedText(text = text, lineEnding = TextLineEndingDetector.detect(text))
                 }
                 state.update { current ->
                     if (current.bytes !== bytes) return@update current
                     current.copy(
-                        body = TextViewerUiState.Body.Text(text),
-                        loadedText = text,
+                        body = TextViewerUiState.Body.Text(decoded.text),
+                        loadedText = decoded.text,
                         encoding = encoding,
+                        lineEnding = decoded.lineEnding,
                         matches = listOf(),
                         currentMatchIndex = -1,
                         patternInvalid = false,
@@ -101,6 +105,7 @@ class TextViewerViewModel @AssistedInject constructor(
             focusToken = 0,
             bytes = null,
             encoding = null,
+            lineEnding = null,
         ),
     )
 
@@ -217,6 +222,7 @@ class TextViewerViewModel @AssistedInject constructor(
             currentMatchIndex = currentMatchIndex,
             focusToken = focusToken,
             encodingMenu = encodingMenu(),
+            lineEndingLabel = lineEnding?.label(),
             callbacks = callbacks,
         )
     }
@@ -246,6 +252,7 @@ class TextViewerViewModel @AssistedInject constructor(
                         loadedText = null,
                         bytes = loaded.bytes,
                         encoding = null,
+                        lineEnding = null,
                     )
                 } else {
                     copy(
@@ -254,6 +261,7 @@ class TextViewerViewModel @AssistedInject constructor(
                         loadedText = text,
                         bytes = loaded.bytes,
                         encoding = loaded.encoding,
+                        lineEnding = loaded.lineEnding,
                     )
                 }
             }
@@ -264,6 +272,7 @@ class TextViewerViewModel @AssistedInject constructor(
                 loadedText = null,
                 bytes = null,
                 encoding = null,
+                lineEnding = null,
             )
         }
     }
@@ -273,6 +282,15 @@ class TextViewerViewModel @AssistedInject constructor(
             searchQuery == request.query &&
             matchCase == request.matchCase &&
             useRegex == request.useRegex
+    }
+
+    private fun TextLineEnding.label(): String {
+        return when (this) {
+            TextLineEnding.Lf -> context.getString(R.string.text_viewer_line_ending_lf)
+            TextLineEnding.CrLf -> context.getString(R.string.text_viewer_line_ending_crlf)
+            TextLineEnding.Cr -> context.getString(R.string.text_viewer_line_ending_cr)
+            TextLineEnding.Mixed -> context.getString(R.string.text_viewer_line_ending_mixed)
+        }
     }
 
     private fun TextViewerDocumentLoader.Result.Reason.toUiReason(): TextViewerUiState.Reason {
@@ -295,6 +313,12 @@ class TextViewerViewModel @AssistedInject constructor(
         val focusToken: Int,
         val bytes: TextFileDecoder.FileBytes?,
         val encoding: TextFileDecoder.TextEncoding?,
+        val lineEnding: TextLineEnding?,
+    )
+
+    private data class DecodedText(
+        val text: String,
+        val lineEnding: TextLineEnding?,
     )
 
     private data class SearchRequest(

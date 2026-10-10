@@ -51,6 +51,7 @@ class TextViewerActivity : ComponentActivity() {
                 currentMatchIndex = -1,
                 focusToken = 0,
                 encodingMenu = null,
+                lineEndingLabel = null,
                 callbacks = object : TextViewerUiState.Callbacks {
                     override fun onBack() {
                         finish()

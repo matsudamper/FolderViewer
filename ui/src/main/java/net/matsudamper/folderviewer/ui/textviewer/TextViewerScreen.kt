@@ -109,6 +109,7 @@ fun TextViewerScreen(
                 },
                 actions = {
                     EncodingMenuButton(encodingMenu = uiState.encodingMenu, onSelected = uiState.callbacks::onEncodingSelected)
+                    LineEndingLabel(label = uiState.lineEndingLabel)
                 },
             )
         },
@@ -129,6 +130,20 @@ fun TextViewerScreen(
                     .offset(y = (-2).dp),
             )
         }
+    }
+}
+
+@Composable
+private fun LineEndingLabel(label: String?) {
+    if (label != null) {
+        val description = stringResource(R.string.text_viewer_line_ending)
+        Text(
+            text = label,
+            modifier = Modifier
+                .padding(end = 12.dp)
+                .semantics { contentDescription = "$description $label" },
+            style = MaterialTheme.typography.labelLarge,
+        )
     }
 }
 
