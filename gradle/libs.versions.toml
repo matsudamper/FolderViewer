@@ -74,6 +74,7 @@ detektCompose = { group = "io.nlopez.compose.rules", name = "detekt", version.re
 smbj = { group = "com.hierynomus", name = "smbj", version.ref = "smbj" }
 smbjRpc = { group = "com.rapid7.client", name = "dcerpc", version.ref = "rapid7Dcerpc" }
 androidxDatastore = { group = "androidx.datastore", name = "datastore", version.ref = "datastore" }
+androidxDatastorePreferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
 androidxDocumentfile = { group = "androidx.documentfile", name = "documentfile", version.ref = "androidxDocumentfile" }
 protobufKotlinLite = { group = "com.google.protobuf", name = "protobuf-kotlin-lite", version.ref = "protobuf" }
 protobufProtoc = { group = "com.google.protobuf", name = "protoc", version.ref = "protobuf" }
