@@ -77,14 +77,15 @@ class TextViewerViewModel @AssistedInject constructor(
                 }
                 state.update { current ->
                     if (current.bytes !== bytes) return@update current
+                    val textUnchanged = current.loadedText == decoded.text
                     current.copy(
                         body = TextViewerUiState.Body.Text(decoded.text),
                         loadedText = decoded.text,
                         encoding = encoding,
                         lineEnding = decoded.lineEnding,
-                        matches = listOf(),
-                        currentMatchIndex = -1,
-                        patternInvalid = false,
+                        matches = if (textUnchanged) current.matches else listOf(),
+                        currentMatchIndex = if (textUnchanged) current.currentMatchIndex else -1,
+                        patternInvalid = if (textUnchanged) current.patternInvalid else false,
                     )
                 }
             }
