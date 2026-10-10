@@ -12,7 +12,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
-import net.matsudamper.folderviewer.ui.R
+import net.matsudamper.folderviewer.textviewer.R
 import net.matsudamper.folderviewer.ui.textviewer.TextViewerScreen
 import net.matsudamper.folderviewer.ui.textviewer.TextViewerUiState
 import net.matsudamper.folderviewer.ui.theme.FolderViewerTheme
@@ -52,6 +52,7 @@ class TextViewerActivity : ComponentActivity() {
                 focusToken = 0,
                 encodingMenu = null,
                 lineEndingLabel = null,
+                showLineNumbers = false,
                 callbacks = object : TextViewerUiState.Callbacks {
                     override fun onBack() {
                         finish()
@@ -68,6 +69,8 @@ class TextViewerActivity : ComponentActivity() {
                     override fun onPreviousMatch() = Unit
 
                     override fun onEncodingSelected(label: String) = Unit
+
+                    override fun onShowLineNumbersChange(show: Boolean) = Unit
                 },
             )
         }

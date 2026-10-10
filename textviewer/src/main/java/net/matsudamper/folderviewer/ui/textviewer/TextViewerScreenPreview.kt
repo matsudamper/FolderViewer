@@ -63,6 +63,7 @@ private fun TextViewerPreview(
                 currentMatchIndex = currentMatchIndex,
                 focusToken = 0,
                 lineEndingLabel = "LF",
+                showLineNumbers = true,
                 encodingMenu = TextViewerUiState.EncodingMenu(
                     currentLabel = "UTF-8",
                     choices = listOf(
@@ -78,6 +79,7 @@ private fun TextViewerPreview(
                     override fun onNextMatch() = Unit
                     override fun onPreviousMatch() = Unit
                     override fun onEncodingSelected(label: String) = Unit
+                    override fun onShowLineNumbersChange(show: Boolean) = Unit
                 },
             ),
         )

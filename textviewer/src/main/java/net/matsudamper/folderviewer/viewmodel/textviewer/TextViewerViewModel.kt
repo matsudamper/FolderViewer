@@ -23,7 +23,8 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import net.matsudamper.folderviewer.ui.R
+import net.matsudamper.folderviewer.textviewer.R
+import net.matsudamper.folderviewer.textviewer.preferences.TextViewerPreferences
 import net.matsudamper.folderviewer.ui.textviewer.TextViewerUiState
 import net.matsudamper.folderviewer.viewmodel.util.TextFileDecoder
 import net.matsudamper.folderviewer.viewmodel.util.TextLineEnding
@@ -67,6 +68,12 @@ class TextViewerViewModel @AssistedInject constructor(
             moveMatch(step = -1)
         }
 
+        override fun onShowLineNumbersChange(show: Boolean) {
+            viewModelScope.launch {
+                preferences.setShowLineNumbers(show)
+            }
+        }
+
         override fun onEncodingSelected(label: String) {
             val encoding = TextFileDecoder.availableEncodings().find { it.label == label } ?: return
             val bytes = state.value.bytes ?: return
@@ -92,6 +99,8 @@ class TextViewerViewModel @AssistedInject constructor(
         }
     }
 
+    private val preferences = TextViewerPreferences(context)
+
     private val state = MutableStateFlow(
         ViewerState(
             title = context.getString(R.string.text_viewer_default_title),
@@ -107,6 +116,7 @@ class TextViewerViewModel @AssistedInject constructor(
             bytes = null,
             encoding = null,
             lineEnding = null,
+            showLineNumbers = false,
         ),
     )
 
@@ -127,6 +137,11 @@ class TextViewerViewModel @AssistedInject constructor(
                 ).load(args.uri.toUri())
             }
             state.update { current -> current.withLoadResult(loaded) }
+        }
+        viewModelScope.launch {
+            preferences.showLineNumbers.collect { show ->
+                state.update { current -> current.copy(showLineNumbers = show) }
+            }
         }
         viewModelScope.launch {
             state
@@ -224,6 +239,7 @@ class TextViewerViewModel @AssistedInject constructor(
             focusToken = focusToken,
             encodingMenu = encodingMenu(),
             lineEndingLabel = lineEnding?.label(),
+            showLineNumbers = showLineNumbers,
             callbacks = callbacks,
         )
     }
@@ -315,6 +331,7 @@ class TextViewerViewModel @AssistedInject constructor(
         val bytes: TextFileDecoder.FileBytes?,
         val encoding: TextFileDecoder.TextEncoding?,
         val lineEnding: TextLineEnding?,
+        val showLineNumbers: Boolean,
     )
 
     private data class DecodedText(

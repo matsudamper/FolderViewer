@@ -78,7 +78,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 import kotlinx.coroutines.flow.first
-import net.matsudamper.folderviewer.ui.R
+import net.matsudamper.folderviewer.textviewer.R
 import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -110,6 +110,10 @@ fun TextViewerScreen(
                 actions = {
                     EncodingMenuButton(encodingMenu = uiState.encodingMenu, onSelected = uiState.callbacks::onEncodingSelected)
                     LineEndingLabel(label = uiState.lineEndingLabel)
+                    TextViewerMenu(
+                        showLineNumbers = uiState.showLineNumbers,
+                        onShowLineNumbersChange = uiState.callbacks::onShowLineNumbersChange,
+                    )
                 },
             )
         },
@@ -144,6 +148,39 @@ private fun LineEndingLabel(label: String?) {
                 .semantics { contentDescription = "$description $label" },
             style = MaterialTheme.typography.labelLarge,
         )
+    }
+}
+
+@Composable
+private fun TextViewerMenu(
+    showLineNumbers: Boolean,
+    onShowLineNumbersChange: (Boolean) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(
+                painter = painterResource(R.drawable.ic_more_vert),
+                contentDescription = stringResource(R.string.text_viewer_menu),
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.text_viewer_show_line_numbers)) },
+                onClick = { onShowLineNumbersChange(!showLineNumbers) },
+                trailingIcon = {
+                    if (showLineNumbers) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_check),
+                            contentDescription = null,
+                        )
+                    }
+                },
+            )
+        }
     }
 }
 
@@ -294,17 +331,42 @@ private fun TextViewerContent(
         verticalScrollState.animateScrollTo(target)
     }
 
-    SelectionContainer(
+    Row(
         modifier = modifier.verticalScroll(verticalScrollState),
     ) {
-        Text(
-            text = annotatedText,
-            style = textStyle,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = topPadding),
-            onTextLayout = { textLayoutResult = it },
-        )
+        if (uiState.showLineNumbers) {
+            Text(
+                text = lineNumberLabels(text),
+                style = textStyle.copy(
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.End,
+                ),
+                modifier = Modifier.padding(start = 8.dp, top = topPadding, end = 8.dp, bottom = topPadding),
+            )
+        }
+        SelectionContainer(modifier = Modifier.weight(1f)) {
+            Text(
+                text = annotatedText,
+                style = textStyle,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        start = if (uiState.showLineNumbers) 0.dp else 12.dp,
+                        end = 12.dp,
+                        top = topPadding,
+                        bottom = topPadding,
+                    ),
+                onTextLayout = { textLayoutResult = it },
+            )
+        }
+    }
+}
+
+private fun lineNumberLabels(text: String): String {
+    val lines = text.split('\n')
+    val width = lines.size.toString().length
+    return lines.indices.joinToString(separator = "\n") { index ->
+        (index + 1).toString().padStart(width)
     }
 }
 

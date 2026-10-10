@@ -1,0 +1,3 @@
+package net.matsudamper.folderviewer.textviewer
+
+internal interface PaparazziTestCategory

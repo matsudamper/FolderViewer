@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="back">Back</string>
+    <string name="text_viewer_default_title">テキスト</string>
+    <string name="text_viewer_menu">メニュー</string>
+    <string name="text_viewer_show_line_numbers">行数を表示</string>
+    <string name="text_viewer_encoding">文字コード</string>
+    <string name="text_viewer_line_ending">改行コード</string>
+    <string name="text_viewer_line_ending_lf">LF</string>
+    <string name="text_viewer_line_ending_crlf">CRLF</string>
+    <string name="text_viewer_line_ending_cr">CR</string>
+    <string name="text_viewer_line_ending_mixed">混在</string>
+    <string name="text_viewer_search">検索</string>
+    <string name="text_viewer_match_case">大文字と小文字を区別</string>
+    <string name="text_viewer_use_regex">正規表現を使用</string>
+    <string name="text_viewer_previous_match">前の一致</string>
+    <string name="text_viewer_next_match">次の一致</string>
+    <string name="text_viewer_no_matches">該当なし</string>
+    <string name="text_viewer_match_position">%1$d/%2$d</string>
+    <string name="text_viewer_invalid_regex">正規表現が不正です</string>
+    <string name="text_viewer_too_large">ファイルが大きすぎます</string>
+    <string name="text_viewer_binary">テキストとして開けません</string>
+    <string name="text_viewer_unreadable">ファイルを読み込めませんでした</string>
+</resources>

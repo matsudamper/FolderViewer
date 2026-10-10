@@ -14,6 +14,7 @@ data class TextViewerUiState(
     val focusToken: Int,
     val encodingMenu: EncodingMenu?,
     val lineEndingLabel: String?,
+    val showLineNumbers: Boolean,
     val callbacks: Callbacks,
 ) {
     data class EncodingMenu(
@@ -59,5 +60,7 @@ data class TextViewerUiState(
         fun onPreviousMatch()
 
         fun onEncodingSelected(label: String)
+
+        fun onShowLineNumbersChange(show: Boolean)
     }
 }
