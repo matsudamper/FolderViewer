@@ -79,7 +79,7 @@ internal class FileExtractWorker @AssistedInject constructor(
         val notificationUpdater = ExtractProgressNotificationUpdater(
             context = workerContext,
             notificationId = notificationId,
-            contentIntent = operationNotificationIntentFactory.createUploadProgressIntent(),
+            contentIntent = operationNotificationIntentFactory.createExtractDetailIntent(meta.id),
         )
         notificationUpdater.update(meta.sourceFileName, null, null)
         setForeground(notificationUpdater.createForegroundInfo())
@@ -148,7 +148,7 @@ internal class FileExtractWorker @AssistedInject constructor(
                 text = text,
                 smallIcon = android.R.drawable.stat_sys_download_done,
             ),
-            contentIntent = operationNotificationIntentFactory.createUploadProgressIntent(),
+            contentIntent = operationNotificationIntentFactory.createExtractDetailIntent(meta.id),
         )
     }
 
@@ -187,7 +187,7 @@ internal class FileExtractWorker @AssistedInject constructor(
         return ExtractProgressNotificationUpdater(
             context = workerContext,
             notificationId = notificationId,
-            contentIntent = operationNotificationIntentFactory.createUploadProgressIntent(),
+            contentIntent = operationNotificationIntentFactory.createExtractDetailIntent(operationId),
         ).createForegroundInfo()
     }
 

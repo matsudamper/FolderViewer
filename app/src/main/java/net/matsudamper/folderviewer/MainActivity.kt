@@ -1,6 +1,8 @@
 package net.matsudamper.folderviewer
 
 import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ComponentName
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -151,12 +153,10 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var storageRepository: StorageRepository
 
-    private val navigateToUploadProgressRequest = mutableStateOf(false)
     private val pendingFileBrowserNavigation = mutableStateOf<PendingFileBrowserNavigation?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        updateUploadProgressNavigation(intent)
         updateFileBrowserNavigation(intent)
         enableEdgeToEdge()
         Coil.setImageLoader(imageLoader)
@@ -167,8 +167,6 @@ class MainActivity : ComponentActivity() {
                     extractJobCompletionWatcher = extractJobCompletionWatcher,
                     extractJobRepository = extractJobRepository,
                     storageRepository = storageRepository,
-                    navigateToUploadProgressOnStart = navigateToUploadProgressRequest.value,
-                    onUploadProgressNavigationHandled = { navigateToUploadProgressRequest.value = false },
                     pendingFileBrowserNavigation = pendingFileBrowserNavigation.value,
                     onFileBrowserNavigationHandled = { pendingFileBrowserNavigation.value = null },
                 )
@@ -179,7 +177,6 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        updateUploadProgressNavigation(intent)
         updateFileBrowserNavigation(intent)
     }
 
@@ -201,23 +198,7 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    private fun updateUploadProgressNavigation(intent: Intent?) {
-        navigateToUploadProgressRequest.value = consumeUploadProgressNavigationIntent(intent)
-    }
-
-    private fun consumeUploadProgressNavigationIntent(intent: Intent?): Boolean {
-        if (intent == null) {
-            return false
-        }
-        val shouldNavigate = intent.getBooleanExtra(EXTRA_NAVIGATE_TO_UPLOAD_PROGRESS, false)
-        if (shouldNavigate) {
-            intent.removeExtra(EXTRA_NAVIGATE_TO_UPLOAD_PROGRESS)
-        }
-        return shouldNavigate
-    }
-
     companion object {
-        const val EXTRA_NAVIGATE_TO_UPLOAD_PROGRESS = "extra_navigate_to_upload_progress"
         private const val EXTRA_OPEN_FILE_BROWSER_FILE_ID = "extra_open_file_browser_file_id"
         private const val EXTRA_OPEN_FILE_BROWSER_DISPLAY_PATH = "extra_open_file_browser_display_path"
 
@@ -245,8 +226,6 @@ private fun AppContent(
     extractJobCompletionWatcher: ExtractJobCompletionWatcher,
     extractJobRepository: ExtractJobRepository,
     storageRepository: StorageRepository,
-    navigateToUploadProgressOnStart: Boolean,
-    onUploadProgressNavigationHandled: () -> Unit,
     pendingFileBrowserNavigation: PendingFileBrowserNavigation?,
     onFileBrowserNavigationHandled: () -> Unit,
     modifier: Modifier = Modifier,
@@ -310,8 +289,6 @@ private fun AppContent(
                     navigator = navigator,
                     extractJobCompletionWatcher = extractJobCompletionWatcher,
                     extractJobRepository = extractJobRepository,
-                    navigateToUploadProgressOnStart = navigateToUploadProgressOnStart,
-                    onUploadProgressNavigationHandled = onUploadProgressNavigationHandled,
                     pendingFileBrowserNavigation = pendingFileBrowserNavigation,
                     onFileBrowserNavigationHandled = onFileBrowserNavigationHandled,
                 )
@@ -359,19 +336,9 @@ private fun GlobalNavigationEffect(
     navigator: Navigator,
     extractJobCompletionWatcher: ExtractJobCompletionWatcher,
     extractJobRepository: ExtractJobRepository,
-    navigateToUploadProgressOnStart: Boolean,
-    onUploadProgressNavigationHandled: () -> Unit,
     pendingFileBrowserNavigation: PendingFileBrowserNavigation?,
     onFileBrowserNavigationHandled: () -> Unit,
 ) {
-    LaunchedEffect(navigateToUploadProgressOnStart, pagerState.currentPage, pageIndex) {
-        if (!navigateToUploadProgressOnStart || pagerState.currentPage != pageIndex) {
-            return@LaunchedEffect
-        }
-        navigator.navigate(UploadProgress)
-        onUploadProgressNavigationHandled()
-    }
-
     LaunchedEffect(pendingFileBrowserNavigation, pagerState.currentPage, pageIndex) {
         val navigation = pendingFileBrowserNavigation ?: return@LaunchedEffect
         if (pagerState.currentPage != pageIndex) {
@@ -972,12 +939,43 @@ private fun openWithExternalApp(
         }
         return
     }
-    val intent = Intent(Intent.ACTION_VIEW).apply {
-        setDataAndType(uri, mimeType ?: "*/*")
+    val textMimeType = FileUtil.textViewerMimeType(fileName)
+    val intentMimeType = textMimeType ?: mimeType ?: "*/*"
+    val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+        setDataAndType(uri, intentMimeType)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        clipData = ClipData.newRawUri("", uri)
+    }
+    val launchIntent = if (textMimeType == null) {
+        viewIntent
+    } else {
+        val textViewerIntent = Intent(context, TextViewerActivity::class.java).apply {
+            action = Intent.ACTION_VIEW
+            setDataAndType(uri, textMimeType)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            clipData = ClipData.newRawUri("", uri)
+        }
+        val textViewerComponent = ComponentName(context, TextViewerActivity::class.java)
+        val hasOtherViewer = context.packageManager.queryIntentActivities(
+            viewIntent,
+            android.content.pm.PackageManager.MATCH_DEFAULT_ONLY,
+        ).any { info ->
+            val activityInfo = info.activityInfo
+            ComponentName(activityInfo.packageName, activityInfo.name) != textViewerComponent
+        }
+        if (hasOtherViewer) {
+            Intent.createChooser(viewIntent, context.getString(net.matsudamper.folderviewer.ui.R.string.open)).apply {
+                putExtra(Intent.EXTRA_INITIAL_INTENTS, arrayOf(textViewerIntent))
+                putExtra(Intent.EXTRA_EXCLUDE_COMPONENTS, arrayOf(textViewerComponent))
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                clipData = ClipData.newRawUri("", uri)
+            }
+        } else {
+            textViewerIntent
+        }
     }
     runCatching {
-        context.startActivity(intent)
+        context.startActivity(launchIntent)
     }
 }
 

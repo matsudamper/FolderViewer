@@ -9,7 +9,6 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import jakarta.inject.Inject
-import net.matsudamper.folderviewer.MainActivity
 import net.matsudamper.folderviewer.OperationDetailActivity
 import net.matsudamper.folderviewer.viewmodel.worker.OperationNotificationIntentFactory
 
@@ -53,15 +52,6 @@ internal class OperationNotificationIntentFactoryImpl @Inject constructor(
         )
     }
 
-    override fun createUploadProgressIntent(): PendingIntent {
-        return createPendingIntent(
-            requestCode = UPLOAD_PROGRESS_REQUEST_CODE,
-            intent = Intent(context, MainActivity::class.java).apply {
-                putExtra(MainActivity.EXTRA_NAVIGATE_TO_UPLOAD_PROGRESS, true)
-            },
-        )
-    }
-
     private fun createPendingIntent(requestCode: Int, intent: Intent): PendingIntent {
         return PendingIntent.getActivity(
             context,
@@ -72,7 +62,6 @@ internal class OperationNotificationIntentFactoryImpl @Inject constructor(
     }
 
     companion object {
-        private const val UPLOAD_PROGRESS_REQUEST_CODE = 9001
         private const val EXTRACT_DETAIL_REQUEST_CODE_BASE = 10000
     }
 }

@@ -177,6 +177,7 @@ class StorageRepository @Inject constructor(
                 currentList
             }
         }
+        SmbSessionProvider.release(id)
     }
 
     suspend fun addFavorite(fileId: FileObjectId.Item, displayPath: String, name: String) {

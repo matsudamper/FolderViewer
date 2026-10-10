@@ -20,14 +20,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up JDK 17
+      - name: Set up JDK 25
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: 'temurin'
-          java-version: '24'
+          java-version: '25'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
 
       - name: Decode debug keystore
         env:
@@ -54,7 +54,7 @@ jobs:
 
       - name: Upload APK
         id: upload_apk
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ env.APK_NAME || 'debug-apk' }}
           path: app/build/outputs/apk/debug/*.apk
@@ -62,45 +62,34 @@ jobs:
       - name: Compress APK for S3 upload
         if: github.event_name == 'pull_request'
         run: |
-          xz -0 -c "${APK_PATH}" > "${APK_PATH}.xz"
-          echo "S3_APK_PATH=${APK_PATH}.xz" >> "$GITHUB_ENV"
+          zstd -18 --long=27 -T0 -q -c "${APK_PATH}" > "${APK_PATH}.zst"
+          echo "S3_APK_PATH=${APK_PATH}.zst" >> "$GITHUB_ENV"
 
       - name: Upload APK to S3
         if: github.event_name == 'pull_request'
         id: upload_s3
-        uses: matsudamper/actions/upload-matsudamper-s3@a1ecf81b1a0ce320824a49711e456f396e4e8fea # v1.0.0
+        uses: matsudamper/actions/upload-matsudamper-s3@5c2f397727eaf53708de3f663fa9b754f55d80be # v1.1.1
         continue-on-error: true
         with:
           file_path: ${{ env.S3_APK_PATH }}
 
       - name: Generate and upload GitHub QR code
         if: github.event_name == 'pull_request'
-        id: upload_github_qr
-        run: |
-          pip install "qrcode[pil]" --quiet
-          python3 -c "import qrcode, sys; qrcode.make(sys.argv[1]).save('qrcode-github.png')" "${{ steps.upload_apk.outputs.artifact-url }}"
-
-      - name: Upload GitHub QR artifact
-        if: github.event_name == 'pull_request'
         id: github_qr_artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: matsudamper/actions/upload-qr-code@5c2f397727eaf53708de3f663fa9b754f55d80be # v1.1.1
         with:
-          name: apk-qr-code-github
-          path: qrcode-github.png
-          archive: false
+          url: ${{ steps.upload_apk.outputs.artifact-url }}
+          output_path: qrcode-github.png
+          artifact_name: apk-qr-code-github
 
-      - name: Generate S3 QR code
-        if: github.event_name == 'pull_request' && steps.upload_s3.outputs.url != ''
-        run: python3 -c "import qrcode, sys; qrcode.make(sys.argv[1]).save('qrcode-s3.png')" "${{ steps.upload_s3.outputs.url }}"
-
-      - name: Upload S3 QR artifact
+      - name: Generate and upload S3 QR code
         if: github.event_name == 'pull_request' && steps.upload_s3.outputs.url != ''
         id: s3_qr_artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: matsudamper/actions/upload-qr-code@5c2f397727eaf53708de3f663fa9b754f55d80be # v1.1.1
         with:
-          name: apk-qr-code-s3
-          path: qrcode-s3.png
-          archive: false
+          url: ${{ steps.upload_s3.outputs.url }}
+          output_path: qrcode-s3.png
+          artifact_name: apk-qr-code-s3
 
       - name: Comment APK download URLs
         if: github.event_name == 'pull_request'
@@ -113,6 +102,6 @@ jobs:
             | Storage | 圧縮方式 | Download Link | QR Code |
             | :--- | :--- | :--- | :--- |
             | 🐙 GitHub Artifacts | zip | [Download](${{ steps.upload_apk.outputs.artifact-url }}) | [View](${{ steps.github_qr_artifact.outputs.artifact-url }}) |
-            ${{ steps.upload_s3.outputs.url && format('| ☁️ S3 | xz | [Download]({0}) | [View]({1}) |', steps.upload_s3.outputs.url, steps.s3_qr_artifact.outputs.artifact-url) || format('| ☁️ S3 | - | ⚠️ アップロード失敗 ([run]({0}/{1}/actions/runs/{2})) | - |', github.server_url, github.repository, github.run_id) }}
+            ${{ steps.upload_s3.outputs.url && format('| ☁️ S3 | zstd | [Download]({0}) | [View]({1}) |', steps.upload_s3.outputs.url, steps.s3_qr_artifact.outputs.artifact-url) || format('| ☁️ S3 | - | ⚠️ アップロード失敗 ([run]({0}/{1}/actions/runs/{2})) | - |', github.server_url, github.repository, github.run_id) }}
             ---
             *Artifact Name: `${{ env.APK_NAME }}`*

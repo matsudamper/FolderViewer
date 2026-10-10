@@ -27,6 +27,7 @@ data class FileBrowserUiState(
         val isExtracting: Boolean,
         val isExtractComplete: Boolean,
         val statusMessage: String?,
+        val statusMessageLinkText: String?,
         val jobId: Long?,
         val mode: ExtractDialogMode,
         val progress: Float? = null,
@@ -97,6 +98,7 @@ data class FileBrowserUiState(
         fun onCopyClick()
         fun onCutClick()
         fun onShareClick()
+        fun onOpenSelectedClick()
         fun onCompressClick()
         fun onConfirmCompress(fileName: String)
         fun onExtractClick()

@@ -20,9 +20,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import net.matsudamper.folderviewer.ui.util.LinkedMessageText
 
 @Composable
 internal fun FileBrowserExtractDialog(
@@ -31,6 +33,8 @@ internal fun FileBrowserExtractDialog(
     isExtracting: Boolean,
     isExtractComplete: Boolean,
     statusMessage: String?,
+    statusMessageLinkText: String?,
+    onStatusMessageLinkClick: () -> Unit,
     showDeleteSourceOption: Boolean,
     onDismissRequest: () -> Unit,
     onConfirm: (String) -> Unit,
@@ -110,9 +114,12 @@ internal fun FileBrowserExtractDialog(
                     )
                 }
                 statusMessage?.let { message ->
-                    Text(
-                        text = message,
-                        style = MaterialTheme.typography.bodyMedium,
+                    LinkedMessageText(
+                        message = message,
+                        linkText = statusMessageLinkText,
+                        onLinkClick = onStatusMessageLinkClick,
+                        textStyle = MaterialTheme.typography.bodyMedium,
+                        textColor = Color.Unspecified,
                         modifier = Modifier.padding(top = 8.dp),
                     )
                 }
@@ -193,6 +200,8 @@ private fun FileBrowserExtractDialogZipPreview() {
         isExtracting = false,
         isExtractComplete = false,
         statusMessage = null,
+        statusMessageLinkText = null,
+        onStatusMessageLinkClick = {},
         showDeleteSourceOption = true,
         onDismissRequest = {},
         onConfirm = {},
@@ -211,6 +220,8 @@ private fun FileBrowserExtractDialogZstPreview() {
         isExtracting = false,
         isExtractComplete = false,
         statusMessage = null,
+        statusMessageLinkText = null,
+        onStatusMessageLinkClick = {},
         showDeleteSourceOption = true,
         onDismissRequest = {},
         onConfirm = {},
@@ -229,6 +240,8 @@ private fun FileBrowserExtractDialogXzPreview() {
         isExtracting = false,
         isExtractComplete = false,
         statusMessage = null,
+        statusMessageLinkText = null,
+        onStatusMessageLinkClick = {},
         showDeleteSourceOption = true,
         onDismissRequest = {},
         onConfirm = {},
@@ -247,6 +260,8 @@ private fun FileBrowserExtractDialogExtractingFileCountPreview() {
         isExtracting = true,
         isExtractComplete = false,
         statusMessage = null,
+        statusMessageLinkText = null,
+        onStatusMessageLinkClick = {},
         showDeleteSourceOption = true,
         progress = 0.35f,
         progressText = "35/100 ファイル",
@@ -267,6 +282,8 @@ private fun FileBrowserExtractDialogExtractingBytesPreview() {
         isExtracting = true,
         isExtractComplete = false,
         statusMessage = null,
+        statusMessageLinkText = null,
+        onStatusMessageLinkClick = {},
         showDeleteSourceOption = true,
         progress = 0.6f,
         progressText = "12.0 MB/20.0 MB",
@@ -287,6 +304,8 @@ private fun FileBrowserExtractDialogFailedPreview() {
         isExtracting = false,
         isExtractComplete = false,
         statusMessage = "同じ名前のフォルダが既に存在します: archive",
+        statusMessageLinkText = "archive",
+        onStatusMessageLinkClick = {},
         showDeleteSourceOption = true,
         onDismissRequest = {},
         onConfirm = {},
@@ -305,6 +324,8 @@ private fun FileBrowserExtractDialogCompletePreview() {
         isExtracting = false,
         isExtractComplete = true,
         statusMessage = "archiveに展開しました",
+        statusMessageLinkText = null,
+        onStatusMessageLinkClick = {},
         showDeleteSourceOption = true,
         onDismissRequest = {},
         onConfirm = {},

@@ -1,6 +1,7 @@
-import io.gitlab.arturbosch.detekt.Detekt
-import io.gitlab.arturbosch.detekt.DetektPlugin
-import io.gitlab.arturbosch.detekt.extensions.DetektExtension
+import dev.detekt.gradle.Detekt
+import dev.detekt.gradle.extensions.DetektExtension
+import dev.detekt.gradle.extensions.FailOnSeverity
+import dev.detekt.gradle.plugin.DetektPlugin
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 import org.jlleitschuh.gradle.ktlint.KtlintPlugin
 
@@ -30,15 +31,15 @@ subprojects {
         config.setFrom(rootProject.files("detekt.yml"))
         parallel = true
         buildUponDefaultConfig = true
+        failOnSeverity.set(FailOnSeverity.Info)
     }
     tasks.withType<Detekt>().configureEach {
-        jvmTarget = "22"
+        jvmTarget.set("22")
         reports {
             html.required.set(false)
-            txt.required.set(true)
-            txt.outputLocation.set(file("build/reports/detekt.txt"))
+            markdown.required.set(true)
+            markdown.outputLocation.set(file("build/reports/detekt.txt"))
             sarif.required.set(false)
-            md.required.set(false)
         }
     }
     tasks.withType<Test> {
@@ -51,7 +52,7 @@ subprojects {
         }
     }
     plugins.withType<org.jetbrains.kotlin.gradle.plugin.KotlinBasePluginWrapper> {
-        the<org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension>().jvmToolchain(24)
+        the<org.jetbrains.kotlin.gradle.dsl.KotlinProjectExtension>().jvmToolchain(25)
     }
     tasks.withType<KotlinJvmCompile> {
         compilerOptions {

@@ -3,6 +3,7 @@ package net.matsudamper.folderviewer.viewmodel.browser
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
+import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputLocationResolver
 
 internal fun FileBrowserExtractCoordinator.closeDialog(
     viewModelStateFlow: MutableStateFlow<FileBrowserViewModel.ViewModelState>,
@@ -73,6 +74,9 @@ internal fun mapExtractDialogUiState(
         isExtracting = dialog.isExtracting,
         isExtractComplete = dialog.isExtractComplete,
         statusMessage = dialog.statusMessage,
+        statusMessageLinkText = dialog.jobId?.let {
+            ExtractOutputLocationResolver.parseDuplicateOutputName(dialog.statusMessage)
+        },
         jobId = dialog.jobId,
         mode = dialog.mode,
         progress = progress?.progress,

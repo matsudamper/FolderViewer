@@ -205,8 +205,8 @@ internal class FileBrowserExtractCoordinator(
         val extractJobCompletionWatcher: ExtractJobCompletionWatcher,
     )
 
-    suspend fun openExtractResult(jobId: Long): Boolean {
-        return dependencies.extractJobCompletionWatcher.openExtractResult(jobId)
+    suspend fun openExtractResult(jobId: Long, errorMessage: String?): Boolean {
+        return dependencies.extractJobCompletionWatcher.openExtractResult(jobId, errorMessage)
     }
 
     private fun ExtractableFileType.toExtractJobType(): ExtractJobRepository.ExtractType {

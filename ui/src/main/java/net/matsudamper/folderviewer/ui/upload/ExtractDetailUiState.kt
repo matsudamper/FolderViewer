@@ -13,6 +13,7 @@ data class ExtractDetailUiState(
     val canOpenOutputFile: Boolean,
     val extractTypeLabel: String,
     val errorMessage: String?,
+    val errorMessageLinkText: String?,
     val errorCause: String?,
     val progress: Float?,
     val progressText: String?,
@@ -34,5 +35,7 @@ data class ExtractDetailUiState(
         fun onOpenOutputFileClick()
 
         fun onCancelClick()
+
+        fun onExistingOutputLinkClick()
     }
 }

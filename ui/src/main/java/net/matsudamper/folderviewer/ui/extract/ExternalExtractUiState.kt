@@ -8,6 +8,7 @@ data class ExternalExtractUiState(
     val isExtracting: Boolean,
     val isExtractComplete: Boolean,
     val statusMessage: String?,
+    val statusMessageLinkText: String?,
     val locationMessage: String?,
     val canDeleteSource: Boolean,
     val isResultActionInProgress: Boolean,

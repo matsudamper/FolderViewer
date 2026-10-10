@@ -75,6 +75,7 @@ dependencies {
     implementation(project(":repository"))
     implementation(project(":viewmodel"))
     implementation(project(":coil"))
+    implementation(project(":textviewer"))
 
     implementation(libs.androidxCoreKtx)
     implementation(libs.androidxLifecycleRuntimeKtx)

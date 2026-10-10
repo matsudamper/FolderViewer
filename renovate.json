@@ -11,11 +11,52 @@
         "org.jetbrains.kotlin.plugin.serialization"
       ],
       "groupName": "kotlin monorepo",
-      "groupSlug": "kotlin-monorepo"
+      "groupSlug": "kotlin-monorepo",
+      "automerge": true
     },
     {
       "matchPackageNames": [
-        "com.google.devtools.ksp"
+        "com.android.application:com.android.application.gradle.plugin",
+        "com.android.library:com.android.library.gradle.plugin"
+      ],
+      "automerge": true
+    },
+    {
+      "matchPackageNames": [
+        "com.google.devtools.ksp:com.google.devtools.ksp.gradle.plugin"
+      ],
+      "automerge": true
+    },
+    {
+      "matchManagers": [
+        "gradle"
+      ],
+      "matchPackageNames": [
+        "net.engawapg.lib:zoomable",
+        "com.google.protobuf:{/,}**",
+        "io.ktor:{/,}**",
+        "androidx.compose.material3:material3",
+        "androidx.core:core-ktx",
+        "androidx.navigation3:navigation3-ui",
+        "androidx.work:work-runtime-ktx"
+      ],
+      "automerge": true
+    },
+    {
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchPackageNames": [
+        "matsudamper/actions"
+      ],
+      "automerge": true
+    },
+    {
+      "matchManagers": [
+        "github-actions"
+      ],
+      "matchPackageNames": [
+        "/^actions\\//"
       ],
       "automerge": true
     }

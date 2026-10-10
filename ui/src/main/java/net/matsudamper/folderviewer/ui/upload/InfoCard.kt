@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import net.matsudamper.folderviewer.ui.util.LinkedMessageText
 
 private fun insertLineBreakOpportunities(value: String): String = buildString {
     value.codePoints().forEach { codePoint ->
@@ -67,6 +68,35 @@ internal fun InfoRow(
             text = remember(value) { insertLineBreakOpportunities(value) },
             style = MaterialTheme.typography.bodyMedium.merge(),
             color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
+}
+
+@Composable
+internal fun InfoLinkRow(
+    label: String,
+    value: String,
+    linkText: String?,
+    onLinkClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+    ) {
+        Text(
+            modifier = Modifier.fillMaxWidth(),
+            text = label,
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        LinkedMessageText(
+            modifier = Modifier.fillMaxWidth(),
+            message = remember(value) { insertLineBreakOpportunities(value) },
+            linkText = remember(linkText) { linkText?.let { insertLineBreakOpportunities(it) } },
+            onLinkClick = onLinkClick,
+            textStyle = MaterialTheme.typography.bodyMedium,
+            textColor = MaterialTheme.colorScheme.onSurface,
         )
     }
 }

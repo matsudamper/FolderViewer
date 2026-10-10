@@ -21,13 +21,6 @@ Androidのファイルビューアです。
 ./gradlew ktlintFormat
 ```
 
-## Paparazzi
-```shell
-./gradlew :ui:recordPaparazziDebug
-./gradlew :ui:recordPaparazziDebug -Dpaparazzi.filter="PreviewName"
-```
-スナップショットは `ui/src/test/snapshots/images/`。
-
 ## その他
 - Composeの詳細は既存の `docs/compose-guidelines.md` も参照
 - private/internalをできる限り使用し、最小限のアクセスに絞る
@@ -38,10 +31,8 @@ Androidのファイルビューアです。
 リポジトリに存在する `docs/` 以下のエージェント向けドキュメントがあれば、必ず読んで従う。無いファイルは無視してよい。
 
 例:
-- `docs/agent-kotlin.md` — Kotlin 詳細スタイル
-- `docs/agent-compose.md` — Compose / UiState
-- `docs/agent-paparazzi.md` — Paparazzi
-- 既存の `docs/compose-guidelines.md` / `docs/coding_style.md` などリポ固有の詳細ガイド
+- `docs/agent-*.md`
+- `docs/*-guidelines.md` / `docs/*_style.md` など
 
 ## 言語
 - 応答・説明・コミットメッセージ・PR 文・レビュー返信は日本語
@@ -58,14 +49,8 @@ Androidのファイルビューアです。
 - 処理の復唱（What）は書かない
 - 例外の緩さはリポジトリ固有セクションおよび docs に従う
 
-## Kotlin / 一般（該当する場合）
-- Kotlin 公式コーディング規約に従う（リポに docs があればそちら優先）
-- 基本は `.editorconfig`
-- `var` より `val`。`!!` 禁止（必要なら null チェック後に `val` へ載せ替え）
-- デフォルト引数はなるべく使わない（既存は可。Compose の `Modifier` だけは倣わない）
-- `@Suppress` / lint ignore の勝手追加禁止
+## 一般
 - ファイル移動は `git mv`
-- import はワイルドカード禁止。FQCN より import して短縮名
 - Markdown で `**` 太字は使わない
 
 ## Git
@@ -76,6 +61,7 @@ Androidのファイルビューアです。
 ## PR / レビュー
 - PR は1セッションにつき1つまで（明示指示がなければ）
 - 作成前にマージ先最新を取り込む
+- GitHub 上のコメント・質問・指示への返答は、同じ GitHub 上の会話に投稿する。Web チャットへの回答だけで済ませない
 
 ### レビューへの返信（必須）
 - レビューコメント（レビュースレッド）には必ずスレッドで返信する
@@ -84,7 +70,8 @@ Androidのファイルビューアです。
 - Resolve はユーザー指示があるまでしない
 
 ### PR へのコメント（一般コメント）
-- PR 本体へのトップレベルコメント（レビュースレッドではないコメント）は避ける
+- 新規に PR 本体へのトップレベルコメント（レビュースレッドではないコメント）を書くのは避ける
+- 既存のトップレベルコメントでユーザーから質問・指示があった場合は、その PR にトップレベルコメントで返信する
 - 変更の説明・経緯はコミットメッセージと PR 本文に書く
 - 「一般コメントを避ける」はレビュースレッドへの返信を禁止する意味ではない
 
@@ -125,6 +112,10 @@ PR を作成または更新して push した後、レビューと CI の結果�
 PR がマージまたはクローズされたら `cursor-subscriptions-unsubscribe` で購読を解除する。
 
 ## ビルド・検証（方針）
+- ビルドと lint はローカルで実行する
+- 包括的なテストスイートはローカルでは実行しない
+- テストのロジック（振る舞い・条件分岐・期待値など）を変更した場合に限り、変更対象のテストだけを絞って単体実行してよい
+- 引数・型・名前・呼び出し方の変更への追随など、テストのロジックが変わらない機械的な修正だけならテストは実行しない
 - ビルド / format / lint / test 等のタスクは並列実行しない。逐次実行する
 - 編集後は確認してからコミット
 - 命令を無視して無理通ししない
