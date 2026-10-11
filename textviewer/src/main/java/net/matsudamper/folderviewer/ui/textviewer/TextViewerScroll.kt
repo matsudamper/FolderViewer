@@ -1,6 +1,9 @@
 package net.matsudamper.folderviewer.ui.textviewer
 
 import androidx.compose.ui.geometry.Offset
+import kotlin.math.roundToInt
+
+private const val MatchScrollAnchor = 0.25f
 
 /**
  * [deltaX] と [deltaY] は指の移動量。
@@ -15,4 +18,23 @@ internal fun textViewerTwoAxisScrollConsumed(
     val consumedX = consumeScrollX(-deltaX)
     val consumedY = consumeScrollY(-deltaY)
     return Offset(x = -consumedX, y = -consumedY)
+}
+
+internal fun textViewerMatchDocumentPosition(
+    local: Float,
+    origin: Float,
+    scale: Float,
+): Float {
+    return (origin + local) * scale
+}
+
+internal fun textViewerMatchAxisScrollTarget(
+    start: Float,
+    end: Float,
+    scroll: Float,
+    viewport: Float,
+): Int? {
+    val visibleEnd = scroll + viewport
+    if (start >= scroll && end <= visibleEnd) return null
+    return (start - viewport * MatchScrollAnchor).roundToInt().coerceAtLeast(0)
 }

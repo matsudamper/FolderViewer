@@ -81,6 +81,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
@@ -91,6 +92,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import net.matsudamper.folderviewer.textviewer.R
@@ -347,7 +349,11 @@ private fun TextViewerContent(
     val topPadding = 8.dp
     val sidePadding = 12.dp
     val gutterPadding = 8.dp
-    val topPaddingPx = with(LocalDensity.current) { topPadding.toPx() }
+    val density = LocalDensity.current
+    val topPaddingPx = with(density) { topPadding.toPx() }
+    val sidePaddingPx = with(density) { sidePadding.toPx() }
+    val gutterPaddingPx = with(density) { gutterPadding.toPx() }
+    val textMeasurer = rememberTextMeasurer()
     val matchBackground = MaterialTheme.colorScheme.secondaryContainer
     val matchContent = MaterialTheme.colorScheme.onSecondaryContainer
     val currentBackground = MaterialTheme.colorScheme.primary
@@ -398,23 +404,60 @@ private fun TextViewerContent(
     LaunchedEffect(uiState.focusToken, text) {
         if (uiState.focusToken == 0) return@LaunchedEffect
         val match = uiState.matches.getOrNull(uiState.currentMatchIndex) ?: return@LaunchedEffect
-        val ready = snapshotFlow { textLayoutResult to verticalScrollState.viewportSize }
-            .first { (layout, viewport) ->
-                layout != null && viewport > 0 && layout.layoutInput.text.text == display.text
-            }
+        val ready = snapshotFlow {
+            Triple(
+                textLayoutResult,
+                verticalScrollState.viewportSize,
+                horizontalScrollState.viewportSize,
+            )
+        }.first { (layout, verticalViewport, horizontalViewport) ->
+            layout != null &&
+                verticalViewport > 0 &&
+                horizontalViewport > 0 &&
+                layout.layoutInput.text.text == display.text
+        }
         val layout = ready.first ?: return@LaunchedEffect
-        val viewport = ready.second
+        val verticalViewport = ready.second
+        val horizontalViewport = ready.third
         val displayStart = display.toDisplayOffset(match.start)
         if (displayStart !in 0 until layout.layoutInput.text.length) return@LaunchedEffect
         val box = layout.getBoundingBox(displayStart)
         val visibleScale = scale.floatValue
-        val matchTop = (topPaddingPx + box.top) * visibleScale
-        val matchBottom = (topPaddingPx + box.bottom) * visibleScale
-        val visibleTop = verticalScrollState.value.toFloat()
-        val visibleBottom = visibleTop + viewport
-        if (matchTop >= visibleTop && matchBottom <= visibleBottom) return@LaunchedEffect
-        val target = (matchTop - viewport * 0.25f).roundToInt().coerceAtLeast(0)
-        verticalScrollState.animateScrollTo(target)
+        val gutterWidth = if (uiState.showLineNumbers) {
+            val label = display.lineNumberLabels().substringBefore('\n')
+            textMeasurer.measure(
+                text = label,
+                style = textStyle.copy(textAlign = TextAlign.End),
+                softWrap = false,
+            ).size.width + gutterPaddingPx * 2f
+        } else {
+            0f
+        }
+        val originX = if (uiState.showLineNumbers) gutterWidth else sidePaddingPx
+        val matchLeft = textViewerMatchDocumentPosition(box.left, originX, visibleScale)
+        val matchRight = textViewerMatchDocumentPosition(box.right, originX, visibleScale)
+        val matchTop = textViewerMatchDocumentPosition(box.top, topPaddingPx, visibleScale)
+        val matchBottom = textViewerMatchDocumentPosition(box.bottom, topPaddingPx, visibleScale)
+        val targetX = textViewerMatchAxisScrollTarget(
+            start = matchLeft,
+            end = matchRight,
+            scroll = horizontalScrollState.value.toFloat(),
+            viewport = horizontalViewport.toFloat(),
+        )
+        val targetY = textViewerMatchAxisScrollTarget(
+            start = matchTop,
+            end = matchBottom,
+            scroll = verticalScrollState.value.toFloat(),
+            viewport = verticalViewport.toFloat(),
+        )
+        coroutineScope {
+            if (targetY != null) {
+                launch { verticalScrollState.animateScrollTo(targetY) }
+            }
+            if (targetX != null) {
+                launch { horizontalScrollState.animateScrollTo(targetX) }
+            }
+        }
     }
 
     BoxWithConstraints(modifier = modifier) {

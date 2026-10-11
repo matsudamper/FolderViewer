@@ -33,4 +33,31 @@ internal class TextViewerScrollTest {
         assertEquals(0f, consumed.x, 0f)
         assertEquals(6f, consumed.y, 0f)
     }
+
+    @Test
+    fun textViewerMatchDocumentPosition_includesOriginAndScale() {
+        assertEquals(280f, textViewerMatchDocumentPosition(local = 100f, origin = 40f, scale = 2f), 0f)
+    }
+
+    @Test
+    fun textViewerMatchAxisScrollTarget_skipsVisibleRange() {
+        val target = textViewerMatchAxisScrollTarget(
+            start = 20f,
+            end = 40f,
+            scroll = 0f,
+            viewport = 100f,
+        )
+        assertEquals(null, target)
+    }
+
+    @Test
+    fun textViewerMatchAxisScrollTarget_scrollsHiddenRangeIntoView() {
+        val target = textViewerMatchAxisScrollTarget(
+            start = 280f,
+            end = 300f,
+            scroll = 0f,
+            viewport = 200f,
+        )
+        assertEquals(230, target)
+    }
 }
