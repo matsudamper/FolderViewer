@@ -8,6 +8,8 @@ import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.rememberScrollable2DState
+import androidx.compose.foundation.gestures.scrollable2D
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -310,6 +312,14 @@ private fun TextViewerContent(
 ) {
     val verticalScrollState = rememberScrollState()
     val horizontalScrollState = rememberScrollState()
+    val twoAxisScroll = rememberScrollable2DState { delta ->
+        textViewerTwoAxisScrollConsumed(
+            deltaX = delta.x,
+            deltaY = delta.y,
+            consumeScrollX = horizontalScrollState::dispatchRawDelta,
+            consumeScrollY = verticalScrollState::dispatchRawDelta,
+        )
+    }
     val scale = remember { mutableFloatStateOf(1f) }
     val scrollTarget = remember { mutableStateOf<Offset?>(null) }
     val scope = rememberCoroutineScope()
@@ -412,8 +422,9 @@ private fun TextViewerContent(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(verticalScrollState)
-                .horizontalScroll(horizontalScrollState)
+                .verticalScroll(verticalScrollState, enabled = false)
+                .horizontalScroll(horizontalScrollState, enabled = false)
+                .scrollable2D(twoAxisScroll)
                 .pinchToZoom(
                     scale = scale,
                     scrollTarget = scrollTarget,
