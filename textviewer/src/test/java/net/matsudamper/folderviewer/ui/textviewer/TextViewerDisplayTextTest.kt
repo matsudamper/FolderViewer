@@ -35,4 +35,27 @@ internal class TextViewerDisplayTextTest {
         assertEquals(" 1", display.lineNumberLabels().lineSequence().first())
         assertEquals("10", display.lineNumberLabels().lineSequence().last())
     }
+
+    @Test
+    fun visualLineCounts_countsWrappedLogicalLine() {
+        val display = TextViewerDisplayText.from("abcdef\ng")
+        val counts = display.visualLineCounts { offset ->
+            when {
+                offset <= 2 -> 0
+                offset <= 6 -> 1
+                else -> 2
+            }
+        }
+        assertEquals(2, counts[0])
+        assertEquals(1, counts[1])
+        assertEquals("1\n\n2", display.lineNumberLabels(counts))
+    }
+
+    @Test
+    fun visualLineCounts_keepsEmptyLineAfterBreak() {
+        val display = TextViewerDisplayText.from("a\n")
+        val counts = display.visualLineCounts { 0 }
+        assertEquals(2, counts.size)
+        assertEquals("1\n2", display.lineNumberLabels(counts))
+    }
 }
