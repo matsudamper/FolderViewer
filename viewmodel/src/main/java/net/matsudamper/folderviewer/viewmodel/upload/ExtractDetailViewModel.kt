@@ -1,8 +1,11 @@
 package net.matsudamper.folderviewer.viewmodel.upload
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.WorkManager
 import java.io.File
+import java.util.UUID
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,15 +21,17 @@ import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.upload.ExtractDetailUiState
+import net.matsudamper.folderviewer.viewmodel.util.ExternalExtractStagingSupport
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputLocationResolver
 import net.matsudamper.folderviewer.viewmodel.util.ExtractProgressText
 
 @HiltViewModel
 class ExtractDetailViewModel @Inject constructor(
+    application: Application,
     private val operationRepository: OperationRepository,
     private val extractJobRepository: ExtractJobRepository,
     private val storageRepository: StorageRepository,
-) : ViewModel() {
+) : AndroidViewModel(application) {
 
     private val viewModelEventChannel = Channel<ViewModelEvent>(Channel.UNLIMITED)
     val viewModelEventFlow = viewModelEventChannel.receiveAsFlow()
@@ -59,6 +64,11 @@ class ExtractDetailViewModel @Inject constructor(
             }
         }
 
+        override fun onCancelClick() {
+            val operationId = currentOperationId ?: return
+            cancelExtractJob(operationId)
+        }
+
         override fun onExistingOutputLinkClick() {
             val operationId = currentOperationId ?: return
             viewModelScope.launch {
@@ -73,7 +83,10 @@ class ExtractDetailViewModel @Inject constructor(
         if (initJob?.isActive == true && currentOperationId == operationId) {
             return
         }
+        initJob?.cancel()
         currentOperationId = operationId
+        currentErrorMessage = null
+        _uiState.value = null
         initJob = viewModelScope.launch {
             operationRepository.observeProgressById(operationId).collect { progress ->
                 if (progress == null) {
@@ -151,6 +164,23 @@ class ExtractDetailViewModel @Inject constructor(
             progressText = progressText,
             callbacks = callbacks,
         )
+    }
+
+    private fun cancelExtractJob(operationId: Long) {
+        viewModelScope.launch {
+            val meta = extractJobRepository.getJobMeta(operationId)
+            val cancelResult = extractJobRepository.cancelJob(operationId) ?: return@launch
+            if (cancelResult.previousStatus == OperationRepository.OperationStatus.ENQUEUED) {
+                ExternalExtractStagingSupport.deleteStagedSourceIfNeeded(
+                    meta?.sourceAbsolutePath,
+                    getApplication<Application>().cacheDir,
+                )
+            }
+            val uuid = cancelResult.workerId?.let { value ->
+                runCatching { UUID.fromString(value) }.getOrNull()
+            } ?: return@launch
+            WorkManager.getInstance(getApplication()).cancelWorkById(uuid)
+        }
     }
 
     private suspend fun navigateToOutput(operationId: Long) {

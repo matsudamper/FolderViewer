@@ -52,6 +52,7 @@ internal object CompressedFileUtil {
         outputFile: File,
         progressListener: ExtractProgressListener? = null,
     ) {
+        val outputDirectory = outputFile.parentFile ?: outputFile
         CountingInputStream(BufferedInputStream(FileInputStream(sourceFile))).use { countingInput ->
             GzipCompressorInputStream.builder()
                 .setInputStream(countingInput)
@@ -59,10 +60,11 @@ internal object CompressedFileUtil {
                 .get()
                 .use { gzipIn ->
                     BufferedOutputStream(FileOutputStream(outputFile)).use { output ->
-                        copyWithinStorageCapacity(
+                        copyWithLimit(
                             input = gzipIn,
                             output = output,
-                            storageCapacity = ExtractStorageCapacity.forOutputFile(outputFile),
+                            outputDirectory = outputDirectory,
+                            cancellationCheck = { progressListener?.checkCancellation() },
                             onProgress = { progressListener?.onBytesTransferred(countingInput.bytesRead) },
                         )
                     }
@@ -75,13 +77,15 @@ internal object CompressedFileUtil {
         outputFile: File,
         progressListener: ExtractProgressListener?,
     ) {
+        val outputDirectory = outputFile.parentFile ?: outputFile
         CountingInputStream(BufferedInputStream(FileInputStream(sourceFile))).use { countingInput ->
             ZstdInputStream(countingInput).use { zstInput ->
                 BufferedOutputStream(FileOutputStream(outputFile)).use { output ->
-                    copyWithinStorageCapacity(
+                    copyWithLimit(
                         input = zstInput,
                         output = output,
-                        storageCapacity = ExtractStorageCapacity.forOutputFile(outputFile),
+                        outputDirectory = outputDirectory,
+                        cancellationCheck = { progressListener?.checkCancellation() },
                         onProgress = { progressListener?.onBytesTransferred(countingInput.bytesRead) },
                     )
                 }
@@ -94,13 +98,15 @@ internal object CompressedFileUtil {
         outputFile: File,
         progressListener: ExtractProgressListener?,
     ) {
+        val outputDirectory = outputFile.parentFile ?: outputFile
         CountingInputStream(BufferedInputStream(FileInputStream(sourceFile))).use { countingInput ->
             XZInputStream(countingInput, XZ_MEMORY_LIMIT_KIB).use { xzInput ->
                 BufferedOutputStream(FileOutputStream(outputFile)).use { output ->
-                    copyWithinStorageCapacity(
+                    copyWithLimit(
                         input = xzInput,
                         output = output,
-                        storageCapacity = ExtractStorageCapacity.forOutputFile(outputFile),
+                        outputDirectory = outputDirectory,
+                        cancellationCheck = { progressListener?.checkCancellation() },
                         onProgress = { progressListener?.onBytesTransferred(countingInput.bytesRead) },
                     )
                 }
@@ -108,19 +114,21 @@ internal object CompressedFileUtil {
         }
     }
 
-    private fun copyWithinStorageCapacity(
+    private fun copyWithLimit(
         input: InputStream,
         output: OutputStream,
-        storageCapacity: ExtractStorageCapacity,
+        outputDirectory: File,
+        cancellationCheck: (() -> Unit)? = null,
         onProgress: (() -> Unit)? = null,
     ) {
         val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
         while (true) {
+            cancellationCheck?.invoke()
             val read = input.read(buffer)
             if (read == -1) {
                 break
             }
-            storageCapacity.consume(read.toLong()) { DecompressException.LimitExceeded(it) }
+            ensureOutputSpaceAvailable(outputDirectory, read.toLong())
             output.write(buffer, 0, read)
             onProgress?.invoke()
         }
@@ -151,5 +159,12 @@ internal object CompressedFileUtil {
         override fun close() {
             delegate.close()
         }
+    }
+
+    private fun ensureOutputSpaceAvailable(outputDirectory: File, bytesToWrite: Long) {
+        if (ExtractStorageLimit.canWrite(outputDirectory, bytesToWrite)) {
+            return
+        }
+        throw DecompressException.LimitExceeded("展開サイズが上限を超えています")
     }
 }
