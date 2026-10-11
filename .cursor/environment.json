@@ -1,0 +1,4 @@
+{
+  "name": "FolderViewer",
+  "install": "./.cursor/cloud-agent-install.sh"
+}
