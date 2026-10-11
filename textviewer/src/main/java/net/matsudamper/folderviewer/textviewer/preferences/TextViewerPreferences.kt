@@ -16,14 +16,25 @@ internal class TextViewerPreferences(
         preferences[ShowLineNumbersKey] ?: false
     }
 
+    val wrapLines: Flow<Boolean> = appContext.textViewerDataStore.data.map { preferences ->
+        preferences[WrapLinesKey] ?: true
+    }
+
     suspend fun setShowLineNumbers(show: Boolean) {
         appContext.textViewerDataStore.edit { preferences ->
             preferences[ShowLineNumbersKey] = show
         }
     }
 
+    suspend fun setWrapLines(wrap: Boolean) {
+        appContext.textViewerDataStore.edit { preferences ->
+            preferences[WrapLinesKey] = wrap
+        }
+    }
+
     private companion object {
         val Context.textViewerDataStore by preferencesDataStore(name = "text_viewer")
         val ShowLineNumbersKey = booleanPreferencesKey("show_line_numbers")
+        val WrapLinesKey = booleanPreferencesKey("wrap_lines")
     }
 }

@@ -11,11 +11,52 @@ internal class TextViewerDisplayText private constructor(
     }
 
     fun lineNumberLabels(): String {
+        return formatLineNumberLabels(visualLineCounts = null)
+    }
+
+    fun lineNumberLabels(visualLineCounts: IntArray): String {
+        return formatLineNumberLabels(visualLineCounts = visualLineCounts)
+    }
+
+    fun visualLineCounts(lineForOffset: (Int) -> Int): IntArray {
+        if (text.isEmpty()) return intArrayOf(1)
+        return buildList {
+            var lineStart = 0
+            var index = 0
+            while (index < text.length) {
+                if (text[index] == '\n') {
+                    add(visualLineCount(lineStart, index, lineForOffset))
+                    lineStart = index + 1
+                }
+                index += 1
+            }
+            if (lineStart >= text.length) {
+                add(1)
+            } else {
+                add(visualLineCount(lineStart, text.lastIndex, lineForOffset))
+            }
+        }.toIntArray()
+    }
+
+    private fun formatLineNumberLabels(visualLineCounts: IntArray?): String {
         val lines = text.split('\n')
         val width = lines.size.toString().length
         return lines.indices.joinToString(separator = "\n") { index ->
-            (index + 1).toString().padStart(width)
+            val label = (index + 1).toString().padStart(width)
+            val visualCount = visualLineCounts?.getOrElse(index) { 1 } ?: 1
+            val extraBreaks = (visualCount - 1).coerceAtLeast(0)
+            if (extraBreaks == 0) label else label + "\n".repeat(extraBreaks)
         }
+    }
+
+    private fun visualLineCount(
+        start: Int,
+        endInclusive: Int,
+        lineForOffset: (Int) -> Int,
+    ): Int {
+        val startLine = lineForOffset(start)
+        val endLine = lineForOffset(endInclusive)
+        return (endLine - startLine + 1).coerceAtLeast(1)
     }
 
     companion object {
