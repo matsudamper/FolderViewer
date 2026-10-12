@@ -315,6 +315,7 @@ internal object TarArchiveUtil {
         outputDirectory: File,
     ) {
         val buffer = ByteArray(COPY_BUFFER_SIZE)
+        val outputSpaceGuard = OutputSpaceGuard(outputDirectory)
         var remaining = size
         var total = 0L
         while (remaining > 0) {
@@ -324,7 +325,9 @@ internal object TarArchiveUtil {
             if (read == -1) {
                 throw ExtractException.InvalidArchive("tarエントリが途中で終端しています")
             }
-            ensureOutputSpaceAvailable(outputDirectory, read.toLong())
+            if (!outputSpaceGuard.canWrite(read.toLong())) {
+                throw ExtractException.LimitExceeded("展開サイズが上限を超えています")
+            }
             output.write(buffer, 0, read)
             total += read
             remaining -= read
@@ -338,13 +341,6 @@ internal object TarArchiveUtil {
                 throw ExtractException.InvalidArchive("tarエントリが途中で終端しています")
             }
         }
-    }
-
-    private fun ensureOutputSpaceAvailable(outputDirectory: File, bytesToWrite: Long) {
-        if (ExtractStorageLimit.canWrite(outputDirectory, bytesToWrite)) {
-            return
-        }
-        throw ExtractException.LimitExceeded("展開サイズが上限を超えています")
     }
 
     private fun validateEntryName(name: String) {

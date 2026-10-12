@@ -1,9 +1,7 @@
 package net.matsudamper.folderviewer.viewmodel.util
 
-import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.File
-import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
@@ -16,6 +14,7 @@ import java.util.zip.ZipOutputStream
 import kotlinx.coroutines.CancellationException
 
 internal object ZipFileUtil {
+    private const val COPY_BUFFER_SIZE = 128 * 1024
     private const val MAX_ENTRY_COUNT = 10_000
     private val ZIP_NAME_CHARSET: Charset = Charset.forName("Cp437")
 
@@ -179,23 +178,19 @@ internal object ZipFileUtil {
         outputDirectory: File,
         progressListener: ExtractProgressListener?,
     ) {
-        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        val buffer = ByteArray(COPY_BUFFER_SIZE)
+        val outputSpaceGuard = OutputSpaceGuard(outputDirectory)
         while (true) {
             progressListener?.checkCancellation()
             val read = input.read(buffer)
             if (read == -1) {
                 break
             }
-            ensureOutputSpaceAvailable(outputDirectory, read.toLong())
+            if (!outputSpaceGuard.canWrite(read.toLong())) {
+                throw ExtractException.LimitExceeded("展開サイズが上限を超えています")
+            }
             output.write(buffer, 0, read)
         }
-    }
-
-    private fun ensureOutputSpaceAvailable(outputDirectory: File, bytesToWrite: Long) {
-        if (ExtractStorageLimit.canWrite(outputDirectory, bytesToWrite)) {
-            return
-        }
-        throw ExtractException.LimitExceeded("展開サイズが上限を超えています")
     }
 
     private fun validateZipEntryPath(destDir: File, entryFile: File) {
