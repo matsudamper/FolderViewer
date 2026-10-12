@@ -1,7 +1,5 @@
 package net.matsudamper.folderviewer.viewmodel.util
 
-import java.io.BufferedInputStream
-import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -12,6 +10,7 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import org.tukaani.xz.XZInputStream
 
 internal object CompressedFileUtil {
+    private const val COPY_BUFFER_SIZE = 128 * 1024
     private const val XZ_MEMORY_LIMIT_KIB = 64 * 1024
 
     enum class Format(
@@ -53,13 +52,13 @@ internal object CompressedFileUtil {
         progressListener: ExtractProgressListener? = null,
     ) {
         val outputDirectory = outputFile.parentFile ?: outputFile
-        CountingInputStream(BufferedInputStream(FileInputStream(sourceFile))).use { countingInput ->
+        CountingInputStream(FileInputStream(sourceFile)).use { countingInput ->
             GzipCompressorInputStream.builder()
                 .setInputStream(countingInput)
                 .setDecompressConcatenated(true)
                 .get()
                 .use { gzipIn ->
-                    BufferedOutputStream(FileOutputStream(outputFile)).use { output ->
+                    FileOutputStream(outputFile).use { output ->
                         copyWithLimit(
                             input = gzipIn,
                             output = output,
@@ -78,9 +77,9 @@ internal object CompressedFileUtil {
         progressListener: ExtractProgressListener?,
     ) {
         val outputDirectory = outputFile.parentFile ?: outputFile
-        CountingInputStream(BufferedInputStream(FileInputStream(sourceFile))).use { countingInput ->
+        CountingInputStream(FileInputStream(sourceFile)).use { countingInput ->
             ZstdInputStream(countingInput).use { zstInput ->
-                BufferedOutputStream(FileOutputStream(outputFile)).use { output ->
+                FileOutputStream(outputFile).use { output ->
                     copyWithLimit(
                         input = zstInput,
                         output = output,
@@ -99,9 +98,9 @@ internal object CompressedFileUtil {
         progressListener: ExtractProgressListener?,
     ) {
         val outputDirectory = outputFile.parentFile ?: outputFile
-        CountingInputStream(BufferedInputStream(FileInputStream(sourceFile))).use { countingInput ->
+        CountingInputStream(FileInputStream(sourceFile)).use { countingInput ->
             XZInputStream(countingInput, XZ_MEMORY_LIMIT_KIB).use { xzInput ->
-                BufferedOutputStream(FileOutputStream(outputFile)).use { output ->
+                FileOutputStream(outputFile).use { output ->
                     copyWithLimit(
                         input = xzInput,
                         output = output,
@@ -121,14 +120,17 @@ internal object CompressedFileUtil {
         cancellationCheck: (() -> Unit)? = null,
         onProgress: (() -> Unit)? = null,
     ) {
-        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        val buffer = ByteArray(COPY_BUFFER_SIZE)
+        val outputSpaceGuard = OutputSpaceGuard(outputDirectory)
         while (true) {
             cancellationCheck?.invoke()
             val read = input.read(buffer)
             if (read == -1) {
                 break
             }
-            ensureOutputSpaceAvailable(outputDirectory, read.toLong())
+            if (!outputSpaceGuard.canWrite(read.toLong())) {
+                throw DecompressException.LimitExceeded("展開サイズが上限を超えています")
+            }
             output.write(buffer, 0, read)
             onProgress?.invoke()
         }
@@ -159,12 +161,5 @@ internal object CompressedFileUtil {
         override fun close() {
             delegate.close()
         }
-    }
-
-    private fun ensureOutputSpaceAvailable(outputDirectory: File, bytesToWrite: Long) {
-        if (ExtractStorageLimit.canWrite(outputDirectory, bytesToWrite)) {
-            return
-        }
-        throw DecompressException.LimitExceeded("展開サイズが上限を超えています")
     }
 }
