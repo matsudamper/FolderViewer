@@ -10,6 +10,7 @@ import androidx.core.app.NotificationCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
+import androidx.work.WorkInfo
 import androidx.work.WorkerParameters
 import java.io.File
 import kotlinx.coroutines.CancellationException
@@ -55,6 +56,9 @@ internal class FileExtractWorker @AssistedInject constructor(
             }
             executeJob(meta)
         } catch (e: CancellationException) {
+            if (isStoppedBySystem()) {
+                throw e
+            }
             withContext(NonCancellable) {
                 deleteStagedSourceIfNeeded(meta)
                 ExtractTempFileSupport.clearMarker(workerContext, meta.id)
@@ -82,7 +86,7 @@ internal class FileExtractWorker @AssistedInject constructor(
             contentIntent = operationNotificationIntentFactory.createExtractDetailIntent(meta.id),
         )
         notificationUpdater.update(meta.sourceFileName, null, null)
-        setForeground(notificationUpdater.createForegroundInfo())
+        trySetForeground(notificationUpdater.createForegroundInfo())
 
         val progressReporter = ExtractProgressReporter(
             extractJobRepository = extractJobRepository,
@@ -124,6 +128,20 @@ internal class FileExtractWorker @AssistedInject constructor(
                 Result.failure()
             },
         )
+    }
+
+    private fun isStoppedBySystem(): Boolean {
+        return isStopped && stopReason != WorkInfo.STOP_REASON_CANCELLED_BY_APP
+    }
+
+    private suspend fun trySetForeground(foregroundInfo: ForegroundInfo) {
+        try {
+            setForeground(foregroundInfo)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IllegalStateException) {
+            e.printStackTrace()
+        }
     }
 
     private fun cleanupOutputAfterCancellation(meta: ExtractJobRepository.ExtractJobMeta, outputFile: File) {
