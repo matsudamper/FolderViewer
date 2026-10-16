@@ -8,6 +8,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import java.io.File
 import kotlinx.coroutines.CancellationException
@@ -195,6 +196,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
             val workRequest = OneTimeWorkRequestBuilder<FileExtractWorker>()
                 .setInputData(inputData)
                 .addTag(FileExtractWorker.TAG_EXTRACT)
+                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                 .build()
             extractJobRepository.updateStatus(
                 operationId = operationId,

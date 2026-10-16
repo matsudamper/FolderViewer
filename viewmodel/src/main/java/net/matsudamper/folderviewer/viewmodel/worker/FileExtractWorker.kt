@@ -82,7 +82,7 @@ internal class FileExtractWorker @AssistedInject constructor(
             contentIntent = operationNotificationIntentFactory.createExtractDetailIntent(meta.id),
         )
         notificationUpdater.update(meta.sourceFileName, null, null)
-        setForeground(notificationUpdater.createForegroundInfo())
+        trySetForeground(notificationUpdater.createForegroundInfo())
 
         val progressReporter = ExtractProgressReporter(
             extractJobRepository = extractJobRepository,
@@ -124,6 +124,16 @@ internal class FileExtractWorker @AssistedInject constructor(
                 Result.failure()
             },
         )
+    }
+
+    private suspend fun trySetForeground(foregroundInfo: ForegroundInfo) {
+        try {
+            setForeground(foregroundInfo)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IllegalStateException) {
+            e.printStackTrace()
+        }
     }
 
     private fun cleanupOutputAfterCancellation(meta: ExtractJobRepository.ExtractJobMeta, outputFile: File) {

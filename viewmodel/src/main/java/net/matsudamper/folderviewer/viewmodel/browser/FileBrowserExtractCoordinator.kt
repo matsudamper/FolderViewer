@@ -3,6 +3,7 @@ package net.matsudamper.folderviewer.viewmodel.browser
 import android.app.Application
 import androidx.work.Data
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -92,6 +93,7 @@ internal class FileBrowserExtractCoordinator(
             val workRequest = OneTimeWorkRequestBuilder<FileExtractWorker>()
                 .setInputData(inputData)
                 .addTag(FileExtractWorker.TAG_EXTRACT)
+                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                 .build()
             dependencies.extractJobRepository.updateStatus(
                 operationId = jobId,
