@@ -10,8 +10,7 @@
 ## リポジトリ固有ルール
 
 ### 画像の扱い
-- Paparazzi の参照画像（`ui/src/test/snapshots/images/` と `textviewer/src/test/snapshots/images/`）は Git で管理する。UI 変更に伴って内容が変わった参照画像は更新してコミットする
-- セッションのチャットへの共有用に撮影した画像は、参照画像とは区別し、コミットしない
+- Paparazzi の出力先（`ui/src/test/snapshots/images/` と `textviewer/src/test/snapshots/images/`）の画像は Git 管理しない。撮影結果はセッションのチャットで共有する
 
 ### 実行
 ```shell
