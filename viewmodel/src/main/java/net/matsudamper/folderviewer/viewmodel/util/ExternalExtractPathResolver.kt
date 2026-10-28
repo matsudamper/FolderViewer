@@ -8,6 +8,7 @@ import android.os.Environment
 import android.os.storage.StorageManager
 import android.provider.DocumentsContract
 import android.provider.MediaStore
+import android.provider.OpenableColumns
 import androidx.documentfile.provider.DocumentFile
 import java.io.File
 
@@ -113,7 +114,7 @@ internal object ExternalExtractPathResolver {
             }
 
             "content" -> runCatching { resolveDocumentUri(context, uri) }.getOrNull()
-                ?: runCatching { resolveMediaStoreFile(context, uri) }.getOrNull()
+                ?: runCatching { resolveProviderFile(context, uri) }.getOrNull()
 
             else -> null
         }
@@ -162,6 +163,23 @@ internal object ExternalExtractPathResolver {
             return null
         }
         return resolveQueriedFile(context, uri)
+    }
+
+    private fun resolveProviderFile(context: Context, uri: Uri): File? {
+        if (uri.authority == MediaStore.AUTHORITY) {
+            return resolveQueriedFile(context, uri)
+        }
+        val file = resolveQueriedFile(context, uri) ?: return null
+        val sharedName = queryString(context, uri, OpenableColumns.DISPLAY_NAME)
+        val sharedSize = context.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize }
+        return file.takeIf { matchesSharedContent(it, sharedName, sharedSize) }
+    }
+
+    internal fun matchesSharedContent(file: File, sharedName: String?, sharedSize: Long?): Boolean {
+        if (sharedName == null || sharedSize == null || sharedSize < 0) {
+            return false
+        }
+        return file.name == sharedName && file.length() == sharedSize
     }
 
     private fun resolveQueriedFile(context: Context, uri: Uri): File? {

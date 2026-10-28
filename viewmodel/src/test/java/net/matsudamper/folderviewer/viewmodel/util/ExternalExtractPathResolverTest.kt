@@ -5,7 +5,9 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -154,5 +156,16 @@ internal class ExternalExtractPathResolverTest {
             output = ByteArrayOutputStream(),
             maxBytes = 2,
         )
+    }
+
+    @Test
+    fun `共有元と名前とサイズが一致する実ファイルだけ採用する`() {
+        val archive = temporaryFolder.newFile("archive.zst").apply { writeText("archive") }
+
+        assertTrue(ExternalExtractPathResolver.matchesSharedContent(archive, "archive.zst", 7))
+        assertFalse(ExternalExtractPathResolver.matchesSharedContent(archive, "other.zst", 7))
+        assertFalse(ExternalExtractPathResolver.matchesSharedContent(archive, "archive.zst", 8))
+        assertFalse(ExternalExtractPathResolver.matchesSharedContent(archive, null, 7))
+        assertFalse(ExternalExtractPathResolver.matchesSharedContent(archive, "archive.zst", null))
     }
 }
