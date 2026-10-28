@@ -25,16 +25,17 @@ internal object ExternalExtractPathResolver {
         if (ExtractableFileNameUtil.detect(fileName) == null) {
             return null
         }
-        resolveAbsoluteFile(context, uri)?.let { sourceFile ->
-            val parentPath = sourceFile.parentFile?.absolutePath ?: return null
-            return ResolvedExtractFile(
-                sourceFile = sourceFile,
-                outputParentPath = parentPath,
-                fileName = fileName,
-                usedFallbackOutputLocation = false,
-            )
+        val sourceFile = resolveAbsoluteFile(context, uri)
+        val writableParent = sourceFile?.parentFile?.takeIf { it.canWrite() }
+        if (sourceFile == null || writableParent == null) {
+            return copyToFallbackLocation(context, uri, fileName)
         }
-        return copyToFallbackLocation(context, uri, fileName)
+        return ResolvedExtractFile(
+            sourceFile = sourceFile,
+            outputParentPath = writableParent.absolutePath,
+            fileName = fileName,
+            usedFallbackOutputLocation = false,
+        )
     }
 
     internal fun resolveQueriedFile(
