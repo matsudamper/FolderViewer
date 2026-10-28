@@ -67,7 +67,6 @@ internal class FileExtractWorker @AssistedInject constructor(
             throw e
         } catch (e: Throwable) {
             e.printStackTrace()
-            deleteStagedSourceIfNeeded(meta)
             extractJobRepository.updateError(
                 operationId = operationId,
                 errorMessage = e.message,
@@ -118,7 +117,6 @@ internal class FileExtractWorker @AssistedInject constructor(
                 }
             },
             onFailure = { error ->
-                deleteStagedSourceIfNeeded(meta)
                 extractJobRepository.updateError(
                     operationId = meta.id,
                     errorMessage = error.message,
