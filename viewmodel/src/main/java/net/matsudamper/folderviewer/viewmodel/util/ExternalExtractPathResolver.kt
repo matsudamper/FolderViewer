@@ -126,10 +126,10 @@ internal object ExternalExtractPathResolver {
             return null
         }
         val docId = DocumentsContract.getDocumentId(uri)
-        if (docId.startsWith("raw:")) {
-            return readableFile(docId.removePrefix("raw:"))
-        }
         if (uri.authority == "com.android.providers.downloads.documents") {
+            if (docId.startsWith("raw:")) {
+                return readableFile(docId.removePrefix("raw:"))
+            }
             return resolveDownloadFile(context, docId)
         }
         if (uri.authority != "com.android.externalstorage.documents") {
