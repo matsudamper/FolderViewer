@@ -113,7 +113,7 @@ internal object ExternalExtractPathResolver {
             }
 
             "content" -> runCatching { resolveDocumentUri(context, uri) }.getOrNull()
-                ?: runCatching { resolveQueriedFile(context, uri) }.getOrNull()
+                ?: runCatching { resolveMediaStoreFile(context, uri) }.getOrNull()
 
             else -> null
         }
@@ -152,8 +152,15 @@ internal object ExternalExtractPathResolver {
         return sequenceOf("public_downloads", "all_downloads").mapNotNull { collection ->
             val downloadUri = ContentUris.withAppendedId(Uri.parse("content://downloads/$collection"), id)
             resolveQueriedFile(context, downloadUri) ?: queryString(context, downloadUri, "mediaprovider_uri")
-                ?.let { resolveQueriedFile(context, Uri.parse(it)) }
+                ?.let { resolveMediaStoreFile(context, Uri.parse(it)) }
         }.firstOrNull()
+    }
+
+    private fun resolveMediaStoreFile(context: Context, uri: Uri): File? {
+        if (uri.authority != MediaStore.AUTHORITY) {
+            return null
+        }
+        return resolveQueriedFile(context, uri)
     }
 
     private fun resolveQueriedFile(context: Context, uri: Uri): File? {
