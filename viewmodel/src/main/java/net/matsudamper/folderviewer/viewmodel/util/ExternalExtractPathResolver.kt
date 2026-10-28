@@ -8,7 +8,7 @@ import android.os.Environment
 import android.os.storage.StorageManager
 import android.provider.DocumentsContract
 import android.provider.MediaStore
-import android.provider.OpenableColumns
+import android.system.Os
 import androidx.documentfile.provider.DocumentFile
 import java.io.File
 
@@ -96,13 +96,6 @@ internal object ExternalExtractPathResolver {
         }
     }
 
-    internal fun matchesSharedContent(file: File, sharedName: String?, sharedSize: Long?): Boolean {
-        if (sharedName == null || sharedSize == null || sharedSize < 0) {
-            return false
-        }
-        return file.name == sharedName && file.length() == sharedSize
-    }
-
     private fun resolveFileName(context: Context, uri: Uri): String? {
         return DocumentFile.fromSingleUri(context, uri)?.name
             ?.substringAfterLast('/')
@@ -177,9 +170,14 @@ internal object ExternalExtractPathResolver {
             return resolveQueriedFile(context, uri)
         }
         val file = resolveQueriedFile(context, uri) ?: return null
-        val sharedName = queryString(context, uri, OpenableColumns.DISPLAY_NAME)
-        val sharedSize = context.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize }
-        return file.takeIf { matchesSharedContent(it, sharedName, sharedSize) }
+        val sharedStat = context.contentResolver.openFileDescriptor(uri, "r")
+            ?.use { Os.fstat(it.fileDescriptor) }
+            ?: return null
+        val fileStat = Os.stat(file.path)
+        if (sharedStat.st_dev != fileStat.st_dev || sharedStat.st_ino != fileStat.st_ino) {
+            return null
+        }
+        return file
     }
 
     private fun resolveQueriedFile(context: Context, uri: Uri): File? {
