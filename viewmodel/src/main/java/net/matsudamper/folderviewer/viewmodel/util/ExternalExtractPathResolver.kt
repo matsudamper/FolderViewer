@@ -96,6 +96,13 @@ internal object ExternalExtractPathResolver {
         }
     }
 
+    internal fun matchesSharedContent(file: File, sharedName: String?, sharedSize: Long?): Boolean {
+        if (sharedName == null || sharedSize == null || sharedSize < 0) {
+            return false
+        }
+        return file.name == sharedName && file.length() == sharedSize
+    }
+
     private fun resolveFileName(context: Context, uri: Uri): String? {
         return DocumentFile.fromSingleUri(context, uri)?.name
             ?.substringAfterLast('/')
@@ -173,13 +180,6 @@ internal object ExternalExtractPathResolver {
         val sharedName = queryString(context, uri, OpenableColumns.DISPLAY_NAME)
         val sharedSize = context.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize }
         return file.takeIf { matchesSharedContent(it, sharedName, sharedSize) }
-    }
-
-    internal fun matchesSharedContent(file: File, sharedName: String?, sharedSize: Long?): Boolean {
-        if (sharedName == null || sharedSize == null || sharedSize < 0) {
-            return false
-        }
-        return file.name == sharedName && file.length() == sharedSize
     }
 
     private fun resolveQueriedFile(context: Context, uri: Uri): File? {
