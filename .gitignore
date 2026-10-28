@@ -22,3 +22,7 @@ build
 .kotlin
 */.claude/settings.local.json
 .idea/misc.xml
+
+# Paparazzi の生成スナップショット（コミットしない）
+**/src/test/snapshots/images/
+**/src/androidHostTest/snapshots/images/
