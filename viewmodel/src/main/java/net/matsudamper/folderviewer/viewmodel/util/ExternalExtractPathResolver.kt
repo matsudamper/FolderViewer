@@ -146,7 +146,8 @@ internal object ExternalExtractPathResolver {
     private fun resolveDownloadFile(context: Context, documentId: String): File? {
         if (documentId.startsWith("msf:") && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val id = documentId.removePrefix("msf:").toLongOrNull() ?: return null
-            return resolveQueriedFile(context, ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, id))
+            val downloadsUri = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL)
+            return resolveQueriedFile(context, ContentUris.withAppendedId(downloadsUri, id))
         }
         val id = documentId.toLongOrNull() ?: return null
         return sequenceOf("public_downloads", "all_downloads").mapNotNull { collection ->
