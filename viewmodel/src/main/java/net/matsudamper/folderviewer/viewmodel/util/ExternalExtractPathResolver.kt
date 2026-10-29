@@ -1,9 +1,14 @@
 package net.matsudamper.folderviewer.viewmodel.util
 
+import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
+import android.os.storage.StorageManager
 import android.provider.DocumentsContract
+import android.provider.MediaStore
+import android.system.Os
 import androidx.documentfile.provider.DocumentFile
 import java.io.File
 
@@ -20,16 +25,76 @@ internal object ExternalExtractPathResolver {
         if (ExtractableFileNameUtil.detect(fileName) == null) {
             return null
         }
-        resolveAbsoluteFile(context, uri)?.let { sourceFile ->
-            val parentPath = sourceFile.parentFile?.absolutePath ?: return null
-            return ResolvedExtractFile(
-                sourceFile = sourceFile,
-                outputParentPath = parentPath,
-                fileName = fileName,
-                usedFallbackOutputLocation = false,
-            )
+        val sourceFile = resolveAbsoluteFile(context, uri)
+        val writableParent = sourceFile?.parentFile?.takeIf { it.canWrite() }
+        if (sourceFile == null || writableParent == null) {
+            return copyToFallbackLocation(context, uri, fileName)
         }
-        return copyToFallbackLocation(context, uri, fileName)
+        return ResolvedExtractFile(
+            sourceFile = sourceFile,
+            outputParentPath = writableParent.absolutePath,
+            fileName = fileName,
+            usedFallbackOutputLocation = false,
+        )
+    }
+
+    internal fun resolveQueriedFile(
+        queryColumn: (String) -> String?,
+        volumeDirectory: (String) -> File?,
+    ): File? {
+        val dataFile = readableFile(queryColumn(MediaStore.MediaColumns.DATA))
+        if (dataFile != null) {
+            return dataFile
+        }
+        val volumeName = queryColumn(MediaStore.MediaColumns.VOLUME_NAME) ?: return null
+        val root = volumeDirectory(volumeName) ?: return null
+        val relativePath = queryColumn(MediaStore.MediaColumns.RELATIVE_PATH) ?: return null
+        val name = queryColumn(MediaStore.MediaColumns.DISPLAY_NAME) ?: return null
+        val containsPathSeparator = name.any { it == '/' || it == '\\' }
+        if (name.isBlank() || name in listOf(".", "..") || containsPathSeparator) {
+            return null
+        }
+        val filePath = if (relativePath.isEmpty()) name else "$relativePath/$name"
+        return runCatching { resolveRelativeFile(root, filePath) }.getOrNull()
+    }
+
+    internal fun readableFile(path: String?): File? {
+        if (path.isNullOrBlank()) {
+            return null
+        }
+        return File(path).takeIf { it.isAbsolute && it.isFile && it.canRead() }
+    }
+
+    internal fun resolveRelativeFile(root: File, relativePath: String): File? {
+        if (File(relativePath).isAbsolute) {
+            return null
+        }
+        val canonicalRoot = root.canonicalFile
+        val file = File(canonicalRoot, relativePath).canonicalFile
+        if (!file.toPath().startsWith(canonicalRoot.toPath())) {
+            return null
+        }
+        return readableFile(file.path)
+    }
+
+    internal fun copyWithLimit(
+        input: java.io.InputStream,
+        output: java.io.OutputStream,
+        maxBytes: Long,
+    ) {
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        var copiedBytes = 0L
+        while (true) {
+            val readBytes = input.read(buffer)
+            if (readBytes == -1) {
+                return
+            }
+            copiedBytes += readBytes
+            if (copiedBytes > maxBytes) {
+                error("コピー先のストレージ容量が不足しています")
+            }
+            output.write(buffer, 0, readBytes)
+        }
     }
 
     private fun resolveFileName(context: Context, uri: Uri): String? {
@@ -46,10 +111,11 @@ internal object ExternalExtractPathResolver {
         return when (uri.scheme) {
             "file" -> {
                 val path = uri.path ?: return null
-                File(path).takeIf { it.isFile }
+                readableFile(path)
             }
 
-            "content" -> resolveDocumentUri(context, uri)
+            "content" -> runCatching { resolveDocumentUri(context, uri) }.getOrNull()
+                ?: runCatching { resolveProviderFile(context, uri) }.getOrNull()
 
             else -> null
         }
@@ -60,8 +126,14 @@ internal object ExternalExtractPathResolver {
             return null
         }
         val docId = DocumentsContract.getDocumentId(uri)
-        if (docId.startsWith("raw:")) {
-            return File(docId.removePrefix("raw:")).takeIf { it.isFile }
+        if (uri.authority == "com.android.providers.downloads.documents") {
+            if (docId.startsWith("raw:")) {
+                return readableFile(docId.removePrefix("raw:"))
+            }
+            return resolveDownloadFile(context, docId)
+        }
+        if (uri.authority != "com.android.externalstorage.documents") {
+            return null
         }
         val split = docId.split(':', limit = 2)
         if (split.size != 2) {
@@ -69,10 +141,85 @@ internal object ExternalExtractPathResolver {
         }
         val type = split[0]
         val relativePath = split[1]
-        if (type.equals("primary", ignoreCase = true)) {
-            return File(Environment.getExternalStorageDirectory(), relativePath).takeIf { it.isFile }
+        val root = resolveVolumeDirectory(context, type) ?: return null
+        return resolveRelativeFile(root, relativePath)
+    }
+
+    private fun resolveDownloadFile(context: Context, documentId: String): File? {
+        if (documentId.startsWith("msf:") && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val id = documentId.removePrefix("msf:").toLongOrNull() ?: return null
+            val downloadsUri = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL)
+            return resolveQueriedFile(context, ContentUris.withAppendedId(downloadsUri, id))
         }
-        return null
+        val id = documentId.toLongOrNull() ?: return null
+        return sequenceOf("public_downloads", "all_downloads").mapNotNull { collection ->
+            val downloadUri = ContentUris.withAppendedId(Uri.parse("content://downloads/$collection"), id)
+            resolveQueriedFile(context, downloadUri) ?: queryString(context, downloadUri, "mediaprovider_uri")
+                ?.let { resolveMediaStoreFile(context, Uri.parse(it)) }
+        }.firstOrNull()
+    }
+
+    private fun resolveMediaStoreFile(context: Context, uri: Uri): File? {
+        if (uri.authority != MediaStore.AUTHORITY) {
+            return null
+        }
+        return resolveQueriedFile(context, uri)
+    }
+
+    private fun resolveProviderFile(context: Context, uri: Uri): File? {
+        if (uri.authority == MediaStore.AUTHORITY) {
+            return resolveQueriedFile(context, uri)
+        }
+        val file = resolveQueriedFile(context, uri) ?: return null
+        val sharedStat = context.contentResolver.openFileDescriptor(uri, "r")
+            ?.use { Os.fstat(it.fileDescriptor) }
+            ?: return null
+        val fileStat = Os.stat(file.path)
+        if (sharedStat.st_dev != fileStat.st_dev || sharedStat.st_ino != fileStat.st_ino) {
+            return null
+        }
+        return file
+    }
+
+    private fun resolveQueriedFile(context: Context, uri: Uri): File? {
+        return resolveQueriedFile(
+            queryColumn = { column ->
+                if (column == MediaStore.MediaColumns.DATA || Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    queryString(context, uri, column)
+                } else {
+                    null
+                }
+            },
+            volumeDirectory = { resolveVolumeDirectory(context, it) },
+        )
+    }
+
+    private fun queryString(context: Context, uri: Uri, column: String): String? {
+        return runCatching {
+            context.contentResolver.query(uri, arrayOf(column), null, null, null)?.use { cursor ->
+                val index = cursor.getColumnIndex(column)
+                if (index >= 0 && cursor.moveToFirst() && !cursor.isNull(index)) cursor.getString(index) else null
+            }
+        }.getOrNull()
+    }
+
+    private fun resolveVolumeDirectory(context: Context, volumeName: String): File? {
+        if (volumeName.equals("primary", ignoreCase = true) || volumeName == "external_primary") {
+            return Environment.getExternalStorageDirectory()
+        }
+        val storageManager = context.getSystemService(StorageManager::class.java) ?: return null
+        val volume = storageManager.storageVolumes
+            .firstOrNull { it.uuid.equals(volumeName, ignoreCase = true) } ?: return null
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            volume.directory
+        } else {
+            context.getExternalFilesDirs(null)
+                .filterNotNull()
+                .firstOrNull { storageManager.getStorageVolume(it) == volume }
+                ?.absolutePath
+                ?.substringBefore("/Android/")
+                ?.let { File(it) }
+        }
     }
 
     private fun copyToFallbackLocation(
@@ -106,26 +253,6 @@ internal object ExternalExtractPathResolver {
         }.onFailure {
             sourceFile?.delete()
         }.getOrNull()
-    }
-
-    internal fun copyWithLimit(
-        input: java.io.InputStream,
-        output: java.io.OutputStream,
-        maxBytes: Long,
-    ) {
-        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-        var copiedBytes = 0L
-        while (true) {
-            val readBytes = input.read(buffer)
-            if (readBytes == -1) {
-                return
-            }
-            copiedBytes += readBytes
-            if (copiedBytes > maxBytes) {
-                error("コピー先のストレージ容量が不足しています")
-            }
-            output.write(buffer, 0, readBytes)
-        }
     }
 
     private fun fallbackDocumentsDirectory(): File {

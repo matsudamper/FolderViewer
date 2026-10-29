@@ -118,7 +118,7 @@ internal class FileBrowserZipHandler(
                 }
             withContext(Dispatchers.IO) {
                 val extractedFiles = ZipFileUtil.extractZip(zipFile, extractDir)
-                ExtractMediaScanner.scanExtractedMediaFiles(appContext, extractedFiles)
+                ExtractMediaScanner.scanExtractedFiles(appContext, extractedFiles)
             }
             context.onCompleted()
             sendSnackbar("${extractDir.name}に展開しました")

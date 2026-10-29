@@ -5,16 +5,13 @@ import android.media.MediaScannerConnection
 import java.io.File
 
 internal object ExtractMediaScanner {
-    fun scanExtractedMediaFiles(context: Context, files: List<File>) {
-        val mediaPaths = files
-            .asSequence()
+    fun scanExtractedFiles(context: Context, files: List<File>) {
+        val filePaths = files
             .filter { !it.isDirectory }
-            .filter { FileUtil.isImage(it.name) || FileUtil.isVideo(it.name) }
             .map { it.absolutePath }
-            .toList()
-        if (mediaPaths.isEmpty()) {
+        if (filePaths.isEmpty()) {
             return
         }
-        MediaScannerConnection.scanFile(context, mediaPaths.toTypedArray(), null, null)
+        MediaScannerConnection.scanFile(context, filePaths.toTypedArray(), null, null)
     }
 }

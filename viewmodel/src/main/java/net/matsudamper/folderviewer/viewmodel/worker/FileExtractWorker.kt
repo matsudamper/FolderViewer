@@ -67,7 +67,6 @@ internal class FileExtractWorker @AssistedInject constructor(
             throw e
         } catch (e: Throwable) {
             e.printStackTrace()
-            deleteStagedSourceIfNeeded(meta)
             extractJobRepository.updateError(
                 operationId = operationId,
                 errorMessage = e.message,
@@ -118,7 +117,6 @@ internal class FileExtractWorker @AssistedInject constructor(
                 }
             },
             onFailure = { error ->
-                deleteStagedSourceIfNeeded(meta)
                 extractJobRepository.updateError(
                     operationId = meta.id,
                     errorMessage = error.message,
@@ -404,7 +402,7 @@ internal object ExtractWorkerExecutor {
             destDir = extractDir,
             progressListener = progressListener,
         )
-        ExtractMediaScanner.scanExtractedMediaFiles(appContext, extractedFiles)
+        ExtractMediaScanner.scanExtractedFiles(appContext, extractedFiles)
         return extractDir
     }
 
@@ -530,7 +528,7 @@ internal object ExtractWorkerExecutor {
             destDir = extractDir,
             progressListener = progressListener,
         )
-        ExtractMediaScanner.scanExtractedMediaFiles(appContext, extractedFiles)
+        ExtractMediaScanner.scanExtractedFiles(appContext, extractedFiles)
         return extractDir
     }
 
@@ -572,7 +570,7 @@ internal object ExtractWorkerExecutor {
             outputFile = outputFile,
         )?.let { recovered ->
             ExtractTempFileSupport.cleanupTempFile(tempFile)
-            ExtractMediaScanner.scanExtractedMediaFiles(appContext, listOf(recovered))
+            ExtractMediaScanner.scanExtractedFiles(appContext, listOf(recovered))
             return recovered
         }
         ExtractOutputConflictChecker.findConflict(
@@ -589,7 +587,7 @@ internal object ExtractWorkerExecutor {
             ExtractTempFileSupport.cleanupTempFile(tempFile)
             throw e
         }
-        ExtractMediaScanner.scanExtractedMediaFiles(appContext, listOf(outputFile))
+        ExtractMediaScanner.scanExtractedFiles(appContext, listOf(outputFile))
         return outputFile
     }
 }
