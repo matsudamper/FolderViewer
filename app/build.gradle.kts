@@ -64,6 +64,7 @@ android {
             excludes += "META-INF/INDEX.LIST"
             excludes += "META-INF/*.md"
             excludes += "META-INF/*.properties"
+            excludes += "META-INF/native-image/**"
             pickFirsts += "META-INF/license/**"
         }
     }
