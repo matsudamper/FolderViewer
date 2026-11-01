@@ -64,7 +64,7 @@ android {
             excludes += "META-INF/INDEX.LIST"
             excludes += "META-INF/*.md"
             excludes += "META-INF/*.properties"
-            pickFirsts += "META-INF/license/LICENSE.aalto-xml.txt"
+            pickFirsts += "META-INF/license/**"
         }
     }
 }
