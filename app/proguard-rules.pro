@@ -53,6 +53,7 @@
 -dontwarn java.rmi.UnmarshalException
 -dontwarn javax.el.**
 -dontwarn javax.naming.directory.**
+-dontwarn javax.naming.ldap.**
 -dontwarn org.apache.log4j.**
 -dontwarn org.apache.logging.log4j.**
 -dontwarn org.eclipse.jetty.alpn.**
