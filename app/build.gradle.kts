@@ -100,7 +100,6 @@ dependencies {
     implementation(libs.androidxDocumentfile)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidxJunit)
-    androidTestImplementation(libs.androidxEspressoCore)
     androidTestImplementation(libs.androidxComposeUiTestJunit4)
     debugImplementation(libs.androidxComposeUiTooling)
     debugImplementation(libs.androidxComposeUiTestManifest)

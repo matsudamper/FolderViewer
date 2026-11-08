@@ -5,6 +5,11 @@
   ],
   "packageRules": [
     {
+      "matchManagers": ["gradle"],
+      "matchPackageNames": ["/^androidx\\.test(?:[.:]|$)/"],
+      "automerge": true
+    },
+    {
       "matchPackageNames": [
         "org.jetbrains.kotlin.android",
         "org.jetbrains.kotlin.plugin.compose",
