@@ -60,3 +60,7 @@
 -dontwarn org.eclipse.jetty.npn.**
 -dontwarn org.ietf.jgss.**
 -dontwarn reactor.blockhound.**
+
+# zstd-jni はネイティブ側から GetFieldID でフィールド名(srcPos/dstPos 等)を参照するため、
+# リネームされると JNI でアボートする
+-keep class com.github.luben.zstd.** { *; }
