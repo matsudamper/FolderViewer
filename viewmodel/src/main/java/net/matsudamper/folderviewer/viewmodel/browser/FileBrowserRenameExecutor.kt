@@ -11,6 +11,10 @@ internal suspend fun executeRename(
     refreshFiles: suspend () -> Unit,
     sendSnackbar: suspend (String) -> Unit,
 ) {
+    if (!isValidFileName(newName)) {
+        sendSnackbar("ファイル名に使用できない文字が含まれています")
+        return
+    }
     runCatching {
         repository.rename(fileItem.id, newName)
         refreshFiles()
@@ -25,4 +29,11 @@ internal suspend fun executeRename(
             }
         }
     }
+}
+
+private fun isValidFileName(name: String): Boolean {
+    return name.isNotBlank() &&
+        name != "." &&
+        name != ".." &&
+        name.none { it == '/' || it == '\\' }
 }

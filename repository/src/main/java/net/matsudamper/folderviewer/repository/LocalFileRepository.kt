@@ -96,6 +96,9 @@ internal class LocalFileRepository(
         val source = buildAbsoluteFile(fileId.id)
         require(source.exists()) { "File not found: ${fileId.id}" }
         val destination = File(source.parentFile, newName)
+        require(destination.parentFile == source.parentFile && newName != "." && newName != "..") {
+            "Invalid file name: $newName"
+        }
         require(!destination.exists()) { "A file with the same name already exists: $newName" }
         require(source.renameTo(destination)) { "Failed to rename: ${fileId.id}" }
         notifyMediaScanner(listOf(source.absolutePath, destination.absolutePath))
