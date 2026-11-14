@@ -1,6 +1,8 @@
 package net.matsudamper.folderviewer.coil
 
 import android.content.Context
+import android.util.Log
+import java.io.IOException
 import java.io.InputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -108,12 +110,17 @@ private class FileRepositoryImageFetcher(
                 }
             }
             editor.commitAndOpenSnapshot()
-        } catch (e: Exception) {
+        } catch (e: IOException) {
             editor.abort()
-            throw e
-        } ?: throw IllegalStateException("Failed to write disk cache: ${fileImageSource.fileId}")
+            Log.w("FileRepositoryImageFetcher", "Failed to write disk cache: ${fileImageSource.fileId}", e)
+            null
+        }
 
-        return createSnapshotResult(diskCache, diskCacheKey, snapshot, DataSource.NETWORK)
+        return if (snapshot == null) {
+            createStreamResult(openInputStream(fileRepository, thumbnailSize))
+        } else {
+            createSnapshotResult(diskCache, diskCacheKey, snapshot, DataSource.NETWORK)
+        }
     }
 
     private suspend fun openInputStream(fileRepository: FileRepository, thumbnailSize: Int): InputStream {
