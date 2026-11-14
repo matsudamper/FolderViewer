@@ -133,7 +133,6 @@ internal object TarArchiveUtil {
 
     private class ExtractContext(
         val destDir: File,
-        val extractedFiles: MutableList<File>,
         val progressListener: ExtractProgressListener?,
     )
 
@@ -142,24 +141,27 @@ internal object TarArchiveUtil {
         destDir: File,
         progressListener: ExtractProgressListener?,
     ): List<File> {
-        val extractedFiles = mutableListOf<File>()
-        FileInputStream(tarFile).use { input ->
-            var entryCount = 0
-            val context = ExtractContext(
-                destDir = destDir,
-                extractedFiles = extractedFiles,
-                progressListener = progressListener,
-            )
-            var header = readHeader(input)
-            while (header != null) {
-                progressListener?.checkCancellation()
-                val entry = parseEntry(header)
-                entryCount++
-                if (entryCount > MAX_ENTRY_COUNT) {
-                    throw ExtractException.LimitExceeded("tarエントリ数が上限を超えています")
+        val extractedFiles = FileInputStream(tarFile).use { input ->
+            buildList {
+                var entryCount = 0
+                val context = ExtractContext(
+                    destDir = destDir,
+                    progressListener = progressListener,
+                )
+                var header = readHeader(input)
+                while (header != null) {
+                    progressListener?.checkCancellation()
+                    val entry = parseEntry(header)
+                    entryCount++
+                    if (entryCount > MAX_ENTRY_COUNT) {
+                        throw ExtractException.LimitExceeded("tarエントリ数が上限を超えています")
+                    }
+                    val extractedFile = extractEntry(input, entry, context)
+                    if (extractedFile != null) {
+                        add(extractedFile)
+                    }
+                    header = readHeader(input)
                 }
-                extractEntry(input, entry, context)
-                header = readHeader(input)
             }
         }
         if (extractedFiles.isEmpty()) {
@@ -172,7 +174,7 @@ internal object TarArchiveUtil {
         input: InputStream,
         entry: EntryInfo,
         context: ExtractContext,
-    ) {
+    ): File? {
         context.progressListener?.checkCancellation()
         validateEntryName(entry.name)
         if (entry.isUnsupportedLink) {
@@ -184,7 +186,7 @@ internal object TarArchiveUtil {
         if (entry.isDirectory) {
             entryFile.mkdirs()
             skipEntryData(input, entry.size, context.progressListener)
-            return
+            return null
         }
         entryFile.parentFile?.mkdirs()
         entryFile.outputStream().use { output ->
@@ -196,8 +198,8 @@ internal object TarArchiveUtil {
                 outputDirectory = context.destDir,
             )
         }
-        context.extractedFiles += entryFile
         context.progressListener?.onFileCompleted()
+        return entryFile
     }
 
     private fun readEntries(

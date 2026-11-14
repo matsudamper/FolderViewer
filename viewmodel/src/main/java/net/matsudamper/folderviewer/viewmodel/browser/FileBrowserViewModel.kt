@@ -1117,8 +1117,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         documentFile: androidx.documentfile.provider.DocumentFile,
         folderName: String,
     ) {
-        val files = mutableListOf<Pair<android.net.Uri, String>>()
-        collectFiles(documentFile, "", files)
+        val files = collectFiles(documentFile, "")
 
         val uriDataList = files.map { (uri, relativePath) ->
             FolderUploadWorker.UriData(uri = uri.toString(), relativePath = relativePath)
@@ -1157,25 +1156,17 @@ class FileBrowserViewModel @AssistedInject constructor(
     private fun collectFiles(
         folder: androidx.documentfile.provider.DocumentFile,
         relativePath: String,
-        files: MutableList<Pair<android.net.Uri, String>>,
-    ) {
-        folder.listFiles().forEach { file ->
-            if (file.isDirectory) {
-                val newRelativePath = if (relativePath.isEmpty()) {
-                    file.name.orEmpty()
-                } else {
-                    "$relativePath/${file.name}"
-                }
-                collectFiles(file, newRelativePath, files)
+    ): List<Pair<android.net.Uri, String>> {
+        return folder.listFiles().flatMap { file ->
+            val filePath = if (relativePath.isEmpty()) {
+                file.name.orEmpty()
             } else {
-                val filePath = if (relativePath.isEmpty()) {
-                    file.name.orEmpty()
-                } else {
-                    "$relativePath/${file.name}"
-                }
-                file.uri.let { uri ->
-                    files.add(uri to filePath)
-                }
+                "$relativePath/${file.name}"
+            }
+            if (file.isDirectory) {
+                collectFiles(file, filePath)
+            } else {
+                listOf(file.uri to filePath)
             }
         }
     }
