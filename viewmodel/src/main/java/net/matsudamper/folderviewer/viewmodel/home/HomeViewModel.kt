@@ -60,13 +60,9 @@ class HomeViewModel @Inject constructor(
                     }
                 }
 
-                is UiStorageConfiguration.Local -> {
-                    // 何もしない
-                }
+                is UiStorageConfiguration.Local -> Unit
 
-                is UiStorageConfiguration.External -> {
-                    // 何もしない
-                }
+                is UiStorageConfiguration.External -> Unit
 
                 is UiStorageConfiguration.SharePoint -> {
                     viewModelScope.launch {
