@@ -9,6 +9,5 @@ sealed interface FileBrowserUiEvent {
     ) : FileBrowserUiEvent
     data object ShowCreateDirectoryDialog : FileBrowserUiEvent
     data object ShowCompressDialog : FileBrowserUiEvent
-    data class ShowRenameDialog(val currentName: String) : FileBrowserUiEvent
     data class ShowDeleteConfirmDialog(val count: Int) : FileBrowserUiEvent
 }

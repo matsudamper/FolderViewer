@@ -31,7 +31,7 @@ internal suspend fun executeRename(
     }
 }
 
-private fun isValidFileName(name: String): Boolean {
+internal fun isValidFileName(name: String): Boolean {
     return name.isNotBlank() &&
         name != "." &&
         name != ".." &&

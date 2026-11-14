@@ -84,6 +84,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         trySendSnackbar = { message -> uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar(message)) },
     )
     private val fileObjectId = arg.fileId
+    private val renameDialogController = FileBrowserRenameDialogController()
     private var pendingPasteClipboardState: ClipboardRepository.ClipboardState? = null
     private var pendingDeleteItems: List<FileItem>? = null
     private var pendingExtractFileItem: FileItem? = null
@@ -350,26 +351,27 @@ class FileBrowserViewModel @AssistedInject constructor(
             return state.rawFiles.find { it.id == selectedId }
         }
 
-        private var pendingRenameFileItem: FileItem? = null
-
         override fun onRenameClick() {
-            val fileItem = findSingleSelectedFileItem() ?: return
-            pendingRenameFileItem = fileItem
-            viewModelScope.launch {
-                uiChannelEvent.send(FileBrowserUiEvent.ShowRenameDialog(fileItem.displayPath))
-            }
+            renameDialogController.open(findSingleSelectedFileItem() ?: return)
         }
 
-        override fun onConfirmRename(newName: String) {
-            val fileItem = pendingRenameFileItem ?: return
-            pendingRenameFileItem = null
+        override fun onRenameInputChange(input: String) {
+            renameDialogController.updateInput(input)
+        }
+
+        override fun onDismissRename() {
+            renameDialogController.dismiss()
+        }
+
+        override fun onConfirmRename() {
+            val request = renameDialogController.takeConfirmedRequest() ?: return
             viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
             selectionModeRepository.setSelectionMode(false)
             viewModelScope.launch {
                 executeRename(
                     repository = getRepository(),
-                    fileItem = fileItem,
-                    newName = newName,
+                    fileItem = request.target,
+                    newName = request.newName,
                     refreshFiles = { fetchFilesInternal() },
                     sendSnackbar = { message -> uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar(message)) },
                 )
@@ -628,7 +630,8 @@ class FileBrowserViewModel @AssistedInject constructor(
         selectionModeRepository.isSelectionMode,
         clipboardRepository.clipboardState,
         extractCoordinator.extractDialogProgress,
-    ) { viewModelState, isSelectionMode, clipboardState, extractDialogProgress ->
+        renameDialogController.dialogUiState,
+    ) { viewModelState, isSelectionMode, clipboardState, extractDialogProgress, renameDialog ->
         val sortedFiles = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig))
         val selectedItems = when (viewModelState.selectedState) {
             is ViewModelState.SelectionState.NonSelected -> setOf()
@@ -703,9 +706,8 @@ class FileBrowserViewModel @AssistedInject constructor(
             visibleExtractMenu = viewModelState.localFolderPath != null &&
                 zipHandler.isSingleExtractableFileSelected(selectedItems, viewModelState.rawFiles),
             isPasteMode = clipboardState != null,
-            extractDialog = viewModelState.extractDialog?.let { dialog ->
-                mapExtractDialogUiState(dialog, extractDialogProgress)
-            },
+            renameDialog = renameDialog,
+            extractDialog = viewModelState.extractDialog?.let { mapExtractDialogUiState(it, extractDialogProgress) },
             contentState = contentState,
         )
     }

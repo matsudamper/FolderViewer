@@ -52,9 +52,6 @@ internal fun FileBrowserScreenContent(
     showCompressDialog: Boolean = false,
     onCompressDialogDismiss: () -> Unit = {},
     onConfirmCompress: (String) -> Unit = {},
-    renameDialogCurrentName: String? = null,
-    onRenameDialogDismiss: () -> Unit = {},
-    onConfirmRename: (String) -> Unit = {},
     deleteConfirmCount: Int? = null,
     onDeleteConfirmDialogDismiss: () -> Unit = {},
     onConfirmDelete: () -> Unit = {},
@@ -264,11 +261,13 @@ internal fun FileBrowserScreenContent(
         )
     }
 
-    if (renameDialogCurrentName != null) {
+    if (uiState.renameDialog != null) {
         FileBrowserRenameDialog(
-            currentName = renameDialogCurrentName,
-            onDismissRequest = onRenameDialogDismiss,
-            onConfirm = onConfirmRename,
+            input = uiState.renameDialog.input,
+            confirmButtonEnabled = uiState.renameDialog.confirmButtonEnabled,
+            onInputChange = callbacks::onRenameInputChange,
+            onDismissRequest = callbacks::onDismissRename,
+            onConfirm = callbacks::onConfirmRename,
         )
     }
 
@@ -350,6 +349,7 @@ private fun Preview() {
             visibleExtractMenu = true,
             isPasteMode = false,
             extractDialog = null,
+            renameDialog = null,
             callbacks = object : FileBrowserUiState.Callbacks {
                 override fun onRefresh() = Unit
                 override fun onBack() = Unit
@@ -369,7 +369,9 @@ private fun Preview() {
                 override fun onShareClick() = Unit
                 override fun onOpenSelectedClick() = Unit
                 override fun onRenameClick() = Unit
-                override fun onConfirmRename(newName: String) = Unit
+                override fun onRenameInputChange(input: String) = Unit
+                override fun onDismissRename() = Unit
+                override fun onConfirmRename() = Unit
                 override fun onCompressClick() = Unit
                 override fun onConfirmCompress(fileName: String) = Unit
                 override fun onExtractClick() = Unit

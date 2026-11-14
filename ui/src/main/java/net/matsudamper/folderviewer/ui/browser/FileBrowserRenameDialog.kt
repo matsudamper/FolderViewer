@@ -6,10 +6,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -17,19 +13,19 @@ import net.matsudamper.folderviewer.ui.R
 
 @Composable
 internal fun FileBrowserRenameDialog(
-    currentName: String,
+    input: String,
+    confirmButtonEnabled: Boolean,
+    onInputChange: (String) -> Unit,
     onDismissRequest: () -> Unit,
-    onConfirm: (String) -> Unit,
+    onConfirm: () -> Unit,
 ) {
-    var renameInput by remember(currentName) { mutableStateOf(currentName) }
-    val confirmButtonEnabled = renameInput.isNotBlank() && renameInput != currentName
     AlertDialog(
         onDismissRequest = onDismissRequest,
         title = { Text(stringResource(R.string.rename)) },
         text = {
             TextField(
-                value = renameInput,
-                onValueChange = { renameInput = it },
+                value = input,
+                onValueChange = onInputChange,
                 label = { Text("新しい名前") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
@@ -37,7 +33,7 @@ internal fun FileBrowserRenameDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onConfirm(renameInput) },
+                onClick = onConfirm,
                 enabled = confirmButtonEnabled,
             ) {
                 Text("変更")
@@ -55,7 +51,9 @@ internal fun FileBrowserRenameDialog(
 @Preview
 private fun FileBrowserRenameDialogPreview() {
     FileBrowserRenameDialog(
-        currentName = "sample.txt",
+        input = "sample.txt",
+        confirmButtonEnabled = false,
+        onInputChange = {},
         onDismissRequest = {},
         onConfirm = {},
     )
