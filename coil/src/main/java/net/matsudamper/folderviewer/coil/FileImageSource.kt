@@ -4,10 +4,6 @@ import net.matsudamper.folderviewer.common.FileObjectId
 
 sealed interface FileImageSource {
     val fileId: FileObjectId.Item
-
-    /**
-     * ファイルの内容が更新されると変わる値。null の場合は読み込み時に取得する
-     */
     val cacheKey: String?
 
     data class Thumbnail(

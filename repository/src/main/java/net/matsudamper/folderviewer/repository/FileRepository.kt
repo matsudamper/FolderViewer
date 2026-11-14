@@ -90,7 +90,6 @@ data class FileToUpload(
 
 /**
  * @property size (Bytes)
- * @property cacheKey 内容が更新されると変わる値。画像キャッシュのキーに使う
  */
 data class FileItem(
     val id: FileObjectId.Item,
