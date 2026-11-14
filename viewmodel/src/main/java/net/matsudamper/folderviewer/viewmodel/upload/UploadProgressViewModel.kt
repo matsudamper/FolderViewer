@@ -44,35 +44,6 @@ class UploadProgressViewModel @Inject constructor(
             }
         }
 
-        override fun onItemClick(item: UploadProgressUiState.UploadItem) {
-            viewModelScope.launch {
-                when (item) {
-                    is UploadProgressUiState.UploadItem.Paste -> {
-                        val jobId = item.id.toLongOrNull() ?: return@launch
-                        viewModelEventChannel.send(ViewModelEvent.NavigateToPasteDetail(jobId))
-                    }
-
-                    is UploadProgressUiState.UploadItem.Delete -> {
-                        val opId = item.id.toLongOrNull() ?: return@launch
-                        viewModelEventChannel.send(ViewModelEvent.NavigateToDeleteDetail(opId))
-                    }
-
-                    is UploadProgressUiState.UploadItem.Extract -> {
-                        val opId = item.id.toLongOrNull() ?: return@launch
-                        viewModelEventChannel.send(ViewModelEvent.NavigateToExtractDetail(opId))
-                    }
-
-                    else -> {
-                        val uuid = runCatching { UUID.fromString(item.id) }.getOrNull()
-                            ?: return@launch
-                        viewModelEventChannel.send(
-                            ViewModelEvent.NavigateToUploadDetail(workerId = uuid.toString()),
-                        )
-                    }
-                }
-            }
-        }
-
         override fun onClearHistoryClick() {
             showClearConfirmDialog.value = true
         }
@@ -142,27 +113,32 @@ class UploadProgressViewModel @Inject constructor(
             UploadProgressUiState.UploadState.FAILED -> op.errorMessage ?: op.currentFileName ?: op.description
             else -> op.currentFileName ?: op.description
         }
-        val id = op.workerId ?: op.id.toString()
+        val key = op.workerId ?: op.id.toString()
+        val itemCallbacks = navigateCallbacks(
+            op.workerId?.let { workerId -> ViewModelEvent.NavigateToUploadDetail(workerId = workerId) },
+        )
         val name = "アップロード ${op.totalFiles}件"
         return if (isFolder) {
             UploadProgressUiState.UploadItem.Folder(
-                id = id,
+                key = key,
                 name = name,
                 description = description,
                 state = state,
                 canNavigate = op.workerId != null,
                 progress = progress,
                 progressText = progressText,
+                callbacks = itemCallbacks,
             )
         } else {
             UploadProgressUiState.UploadItem.File(
-                id = id,
+                key = key,
                 name = name,
                 description = description,
                 state = state,
                 canNavigate = op.workerId != null,
                 progress = progress,
                 progressText = progressText,
+                callbacks = itemCallbacks,
             )
         }
     }
@@ -195,7 +171,7 @@ class UploadProgressViewModel @Inject constructor(
         val progressText = createPasteProgressText(op, state, modeText)
 
         return UploadProgressUiState.UploadItem.Paste(
-            id = op.id.toString(),
+            key = op.id.toString(),
             name = "$modeText ${op.totalFiles}件",
             description = when (state) {
                 UploadProgressUiState.UploadState.FAILED -> op.errorMessage ?: op.currentFileName ?: op.description
@@ -206,6 +182,7 @@ class UploadProgressViewModel @Inject constructor(
             currentFileProgress = currentFileProgress,
             progress = overallProgress,
             progressText = progressText,
+            callbacks = navigateCallbacks(ViewModelEvent.NavigateToPasteDetail(op.id)),
             isPausable = state == UploadProgressUiState.UploadState.RUNNING && !op.pauseRequested,
             isPausePending = state == UploadProgressUiState.UploadState.RUNNING && op.pauseRequested,
             isResumable = state == UploadProgressUiState.UploadState.PAUSED ||
@@ -287,7 +264,7 @@ class UploadProgressViewModel @Inject constructor(
         }
 
         return UploadProgressUiState.UploadItem.Delete(
-            id = op.id.toString(),
+            key = op.id.toString(),
             name = base,
             description = when (state) {
                 UploadProgressUiState.UploadState.FAILED -> op.errorMessage ?: op.currentFileName ?: op.description
@@ -297,6 +274,7 @@ class UploadProgressViewModel @Inject constructor(
             canNavigate = true,
             progress = progress,
             progressText = progressText,
+            callbacks = navigateCallbacks(ViewModelEvent.NavigateToDeleteDetail(op.id)),
         )
     }
 
@@ -311,14 +289,26 @@ class UploadProgressViewModel @Inject constructor(
             else -> null
         }
         return UploadProgressUiState.UploadItem.Extract(
-            id = op.id.toString(),
+            key = op.id.toString(),
             name = op.name,
             description = op.errorMessage ?: op.description,
             state = state,
             canNavigate = true,
             progress = progress,
             progressText = progressText,
+            callbacks = navigateCallbacks(ViewModelEvent.NavigateToExtractDetail(op.id)),
         )
+    }
+
+    private fun navigateCallbacks(event: ViewModelEvent?): UploadProgressUiState.ItemCallbacks {
+        return object : UploadProgressUiState.ItemCallbacks {
+            override fun onClick() {
+                if (event == null) return
+                viewModelScope.launch {
+                    viewModelEventChannel.send(event)
+                }
+            }
+        }
     }
 
     private fun mapState(status: OperationRepository.OperationStatus): UploadProgressUiState.UploadState {

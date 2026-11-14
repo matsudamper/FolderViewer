@@ -85,27 +85,27 @@ public fun UploadProgressScreen(
             ) {
                 items(
                     items = uiState.uploadItems,
-                    key = { it.id },
+                    key = { it.key },
                 ) { item ->
                     when (item) {
                         is UploadProgressUiState.UploadItem.Paste -> {
                             PasteItemRow(
                                 item = item,
-                                onClick = { uiState.callbacks.onItemClick(item) },
+                                onClick = { item.callbacks.onClick() },
                             )
                         }
 
                         is UploadProgressUiState.UploadItem.Delete -> {
                             DeleteItemRow(
                                 item = item,
-                                onClick = { uiState.callbacks.onItemClick(item) },
+                                onClick = { item.callbacks.onClick() },
                             )
                         }
 
                         else -> {
                             UploadItemRow(
                                 item = item,
-                                onClick = { uiState.callbacks.onItemClick(item) },
+                                onClick = { item.callbacks.onClick() },
                             )
                         }
                     }
@@ -459,10 +459,13 @@ private fun UploadProgressTopBar(
 
 private val previewCallbacks = object : UploadProgressUiState.Callbacks {
     override fun onBackClick() = Unit
-    override fun onItemClick(item: UploadProgressUiState.UploadItem) = Unit
     override fun onClearHistoryClick() = Unit
     override fun onClearHistoryConfirm() = Unit
     override fun onClearHistoryDismiss() = Unit
+}
+
+private val previewItemCallbacks = object : UploadProgressUiState.ItemCallbacks {
+    override fun onClick() = Unit
 }
 
 private val previewPasteCallbacks = object : UploadProgressUiState.PasteCallbacks {
@@ -478,7 +481,7 @@ private fun UploadProgressScreenPastePreview() {
         uiState = UploadProgressUiState(
             uploadItems = listOf(
                 UploadProgressUiState.UploadItem.Paste(
-                    id = "1",
+                    key = "1",
                     name = "コピー 10件",
                     description = "folder/file1.txt",
                     state = UploadProgressUiState.UploadState.RUNNING,
@@ -486,6 +489,7 @@ private fun UploadProgressScreenPastePreview() {
                     currentFileProgress = 0.3f,
                     progress = 0.5f,
                     progressText = "コピー 10件 - 5完了 5未完了 (50.0MB/100.0MB)",
+                    callbacks = previewItemCallbacks,
                     isPausable = true,
                     isPausePending = false,
                     isResumable = false,
@@ -493,7 +497,7 @@ private fun UploadProgressScreenPastePreview() {
                     pasteCallbacks = previewPasteCallbacks,
                 ),
                 UploadProgressUiState.UploadItem.Paste(
-                    id = "2",
+                    key = "2",
                     name = "コピー 8件",
                     description = "folder/file2.txt",
                     state = UploadProgressUiState.UploadState.RUNNING,
@@ -501,6 +505,7 @@ private fun UploadProgressScreenPastePreview() {
                     currentFileProgress = 0.6f,
                     progress = 0.4f,
                     progressText = "コピー 8件 - 一時停止中",
+                    callbacks = previewItemCallbacks,
                     isPausable = false,
                     isPausePending = true,
                     isResumable = false,
@@ -508,7 +513,7 @@ private fun UploadProgressScreenPastePreview() {
                     pasteCallbacks = previewPasteCallbacks,
                 ),
                 UploadProgressUiState.UploadItem.Paste(
-                    id = "3",
+                    key = "3",
                     name = "カット 3件",
                     description = "folder/file3.txt",
                     state = UploadProgressUiState.UploadState.PAUSED,
@@ -516,6 +521,7 @@ private fun UploadProgressScreenPastePreview() {
                     currentFileProgress = null,
                     progress = 0.2f,
                     progressText = "カット 3件",
+                    callbacks = previewItemCallbacks,
                     isPausable = false,
                     isPausePending = false,
                     isResumable = true,

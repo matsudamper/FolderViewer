@@ -232,7 +232,7 @@ class PasteDetailViewModel @Inject constructor(
         }
         val isImage = !file.isDirectory && FileUtil.isImage(file.fileName)
         return PasteDetailUiState.DuplicateFileItem(
-            fileId = file.id,
+            key = file.id.toString(),
             fileName = file.fileName,
             sourcePath = "${file.sourceFileId.storageId}/${file.sourceFileId.id}",
             sourceSize = file.fileSize,

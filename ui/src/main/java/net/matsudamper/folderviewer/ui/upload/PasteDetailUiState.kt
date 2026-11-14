@@ -38,7 +38,7 @@ data class PasteDetailUiState(
     }
 
     data class DuplicateFileItem(
-        val fileId: Long,
+        val key: String,
         val fileName: String,
         val sourcePath: String,
         val sourceSize: Long,

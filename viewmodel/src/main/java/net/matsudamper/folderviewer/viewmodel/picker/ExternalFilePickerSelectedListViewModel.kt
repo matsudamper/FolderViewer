@@ -44,7 +44,7 @@ class ExternalFilePickerSelectedListViewModel @Inject constructor(
                     val isVideo = FileUtil.isVideo(pickerItem.name)
                     val isPreviewable = isImage || isVideo
                     ExternalFilePickerSelectedListUiState.Item(
-                        fileId = pickerItem.id,
+                        key = "${pickerItem.id.storageId.id}/${pickerItem.id.id}",
                         name = pickerItem.name,
                         thumbnail = if (isImage) FileImageSource.Thumbnail(fileId = pickerItem.id) else null,
                         isPreviewable = isPreviewable,

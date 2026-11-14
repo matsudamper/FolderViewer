@@ -10,43 +10,45 @@ data class UploadProgressUiState(
     @Immutable
     interface Callbacks {
         fun onBackClick()
-        fun onItemClick(item: UploadItem)
         fun onClearHistoryClick()
         fun onClearHistoryConfirm()
         fun onClearHistoryDismiss()
     }
 
     sealed interface UploadItem {
-        val id: String
+        val key: String
         val name: String
         val description: String
         val state: UploadState
         val canNavigate: Boolean
         val progress: Float?
         val progressText: String?
+        val callbacks: ItemCallbacks
 
         data class File(
-            override val id: String,
+            override val key: String,
             override val name: String,
             override val description: String,
             override val state: UploadState,
             override val canNavigate: Boolean,
             override val progress: Float?,
             override val progressText: String?,
+            override val callbacks: ItemCallbacks,
         ) : UploadItem
 
         data class Folder(
-            override val id: String,
+            override val key: String,
             override val name: String,
             override val description: String,
             override val state: UploadState,
             override val canNavigate: Boolean,
             override val progress: Float?,
             override val progressText: String?,
+            override val callbacks: ItemCallbacks,
         ) : UploadItem
 
         data class Paste(
-            override val id: String,
+            override val key: String,
             override val name: String,
             override val description: String,
             override val state: UploadState,
@@ -54,6 +56,7 @@ data class UploadProgressUiState(
             val currentFileProgress: Float?,
             override val progress: Float?,
             override val progressText: String?,
+            override val callbacks: ItemCallbacks,
             val isPausable: Boolean,
             val isPausePending: Boolean,
             val isResumable: Boolean,
@@ -62,24 +65,31 @@ data class UploadProgressUiState(
         ) : UploadItem
 
         data class Delete(
-            override val id: String,
+            override val key: String,
             override val name: String,
             override val description: String,
             override val state: UploadState,
             override val canNavigate: Boolean,
             override val progress: Float?,
             override val progressText: String?,
+            override val callbacks: ItemCallbacks,
         ) : UploadItem
 
         data class Extract(
-            override val id: String,
+            override val key: String,
             override val name: String,
             override val description: String,
             override val state: UploadState,
             override val canNavigate: Boolean,
             override val progress: Float?,
             override val progressText: String?,
+            override val callbacks: ItemCallbacks,
         ) : UploadItem
+    }
+
+    @Immutable
+    interface ItemCallbacks {
+        fun onClick()
     }
 
     @Immutable

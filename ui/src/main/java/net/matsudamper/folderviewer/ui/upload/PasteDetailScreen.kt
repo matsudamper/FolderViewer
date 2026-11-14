@@ -206,7 +206,7 @@ public fun PasteDetailScreen(
                 }
                 items(
                     items = uiState.duplicateFiles,
-                    key = { it.fileId },
+                    key = { it.key },
                 ) { item ->
                     DuplicateFileCard(item = item)
                 }
@@ -592,7 +592,7 @@ private fun PasteDetailScreenDuplicatePreview() {
             errorCause = null,
             duplicateFiles = listOf(
                 PasteDetailUiState.DuplicateFileItem(
-                    fileId = 1L,
+                    key = "1",
                     fileName = "photo.jpg",
                     sourcePath = "/sdcard/DCIM/photo.jpg",
                     sourceSize = 1024L * 512,
@@ -607,7 +607,7 @@ private fun PasteDetailScreenDuplicatePreview() {
                     onOverwriteWithSource = {},
                 ),
                 PasteDetailUiState.DuplicateFileItem(
-                    fileId = 2L,
+                    key = "2",
                     fileName = "document.pdf",
                     sourcePath = "/sdcard/Downloads/document.pdf",
                     sourceSize = 1024L * 1024 * 2,
@@ -652,7 +652,7 @@ private fun PasteDetailScreenCompletedWithPendingResolutionPreview() {
             errorCause = null,
             duplicateFiles = listOf(
                 PasteDetailUiState.DuplicateFileItem(
-                    fileId = 1L,
+                    key = "1",
                     fileName = "photo.jpg",
                     sourcePath = "/sdcard/DCIM/photo.jpg",
                     sourceSize = 1024L * 512,
@@ -753,7 +753,7 @@ private fun previewDuplicateFileItem(
     sourceThumbnail: FileImageSource.Thumbnail?,
     destinationThumbnail: FileImageSource.Thumbnail?,
 ) = PasteDetailUiState.DuplicateFileItem(
-    fileId = 1L,
+    key = "1",
     fileName = "photo.jpg",
     sourcePath = "storage/source/photo.jpg",
     sourceSize = 1024L * 1024,
