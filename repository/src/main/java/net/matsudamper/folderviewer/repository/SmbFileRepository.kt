@@ -161,6 +161,7 @@ class SmbFileRepository(
         val shareName = parts[0]
         val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
         require(subPath.isNotEmpty()) { "Cannot rename share root: $shareName" }
+        require(newName.none { it == '/' || it == '\\' }) { "Invalid file name: $newName" }
         val parentPath = subPath.substringBeforeLast("\\", missingDelimiterValue = "")
         val destinationPath = if (parentPath.isEmpty()) newName else "$parentPath\\$newName"
         sessionProvider.withDiskShareNoRetry(shareName) { diskShare ->

@@ -35,5 +35,5 @@ private fun isValidFileName(name: String): Boolean {
     return name.isNotBlank() &&
         name != "." &&
         name != ".." &&
-        name.none { it == '/' || it == '\\' }
+        name.none { it == '/' || it == '\\' || it == '\u0000' }
 }
