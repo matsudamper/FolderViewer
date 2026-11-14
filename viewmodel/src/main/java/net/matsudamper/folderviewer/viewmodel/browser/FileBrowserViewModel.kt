@@ -387,15 +387,17 @@ class FileBrowserViewModel @AssistedInject constructor(
 
         override fun onConfirmExtract(folderName: String) {
             val rawFiles = viewModelStateFlow.value.rawFiles
-            val zipFileItem = pendingExtractFileItem
-                ?: run {
-                    val selectedIds = when (val s = viewModelStateFlow.value.selectedState) {
-                        is ViewModelState.SelectionState.NonSelected -> return
-                        is ViewModelState.SelectionState.Selected -> s.items
-                    }
-                    if (selectedIds.size != 1) return
-                    selectedIds.firstNotNullOfOrNull { id -> rawFiles.find { it.id == id } } ?: return
+            val pendingItem = pendingExtractFileItem
+            val zipFileItem = if (pendingItem != null) {
+                pendingItem
+            } else {
+                val selectedIds = when (val s = viewModelStateFlow.value.selectedState) {
+                    is ViewModelState.SelectionState.NonSelected -> return
+                    is ViewModelState.SelectionState.Selected -> s.items
                 }
+                if (selectedIds.size != 1) return
+                selectedIds.firstNotNullOfOrNull { id -> rawFiles.find { it.id == id } } ?: return
+            }
             val extractType = zipHandler.getExtractableFileType(zipFileItem) ?: return
             val dialogMode = FileBrowserExtractDialogPresenter.dialogModeForConfirm(
                 fileItem = zipFileItem,
@@ -910,7 +912,8 @@ class FileBrowserViewModel @AssistedInject constructor(
         runCatching {
             val sourceRepo = storageRepository.getFileRepository(
                 clipboardState.items.first().id.storageId,
-            ) ?: run {
+            )
+            if (sourceRepo == null) {
                 uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ストレージが見つかりませんでした"))
                 return
             }
