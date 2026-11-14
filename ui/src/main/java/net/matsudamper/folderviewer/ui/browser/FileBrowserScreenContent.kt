@@ -260,36 +260,7 @@ internal fun FileBrowserScreenContent(
     }
 
     if (uiState.extractDialog != null) {
-        val extractDialog = uiState.extractDialog
-        FileBrowserExtractDialog(
-            defaultName = extractDialog.folderName,
-            mode = extractDialog.mode,
-            isExtracting = extractDialog.isExtracting,
-            isExtractComplete = extractDialog.isExtractComplete,
-            statusMessage = extractDialog.statusMessage,
-            statusMessageLinkText = extractDialog.statusMessageLinkText,
-            onStatusMessageLinkClick = {
-                extractDialog.jobId?.let { jobId ->
-                    uiState.callbacks.onOpenExtractResult(jobId)
-                }
-            },
-            showDeleteSourceOption = true,
-            progress = extractDialog.progress,
-            progressText = extractDialog.progressText,
-            onDismissRequest = { uiState.callbacks.onDismissExtract() },
-            onConfirm = { folderName -> uiState.callbacks.onConfirmExtract(folderName) },
-            onOpenResult = {
-                extractDialog.jobId?.let { jobId ->
-                    uiState.callbacks.onOpenExtractResult(jobId)
-                }
-            },
-            onOpenDetail = {
-                extractDialog.jobId?.let { jobId ->
-                    uiState.callbacks.onOpenExtractDetail(jobId)
-                }
-            },
-            onDeleteSourceRequested = callbacks::onDeleteExtractSource,
-        )
+        FileBrowserExtractDialog(uiState = uiState.extractDialog)
     }
 
     if (deleteConfirmCount != null) {
@@ -357,12 +328,8 @@ private fun Preview() {
                 override fun onCompressClick() = Unit
                 override fun onConfirmCompress(fileName: String) = Unit
                 override fun onExtractClick() = Unit
-                override fun onConfirmExtract(folderName: String) = Unit
-                override fun onDismissExtract() = Unit
                 override fun onExtractPermissionResult() = Unit
                 override fun onOpenExtractResult(jobId: Long) = Unit
-                override fun onOpenExtractDetail(jobId: Long) = Unit
-                override fun onDeleteExtractSource() = Unit
                 override fun onDeleteClick() = Unit
                 override fun onConfirmDelete() = Unit
                 override fun onPasteClick() = Unit

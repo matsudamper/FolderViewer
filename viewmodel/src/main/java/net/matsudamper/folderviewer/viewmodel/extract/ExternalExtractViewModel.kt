@@ -16,11 +16,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import dagger.assisted.Assisted
@@ -33,6 +35,7 @@ import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.ExtractDialogMode
+import net.matsudamper.folderviewer.ui.browser.ExtractDialogUiState
 import net.matsudamper.folderviewer.ui.extract.ExternalExtractUiState
 import net.matsudamper.folderviewer.viewmodel.browser.ExtractJobCompletionWatcher
 import net.matsudamper.folderviewer.viewmodel.util.ExternalExtractStagingSupport
@@ -55,9 +58,9 @@ class ExternalExtractViewModel @AssistedInject constructor(
     private var activeJobId: Long? = null
     private var deleteSourceRequested = false
 
-    private val callbacks = object : ExternalExtractUiState.Callbacks {
+    private val callbacks = object : ExtractDialogUiState.Callbacks {
         override fun onDismissRequest() {
-            val state = _uiState.value
+            val state = viewModelStateFlow.value
             if (state.isResultActionInProgress) {
                 return
             }
@@ -72,7 +75,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
         }
 
         override fun onClose() {
-            if (_uiState.value.isExtracting) {
+            if (viewModelStateFlow.value.isExtracting) {
                 viewModelEventChannel.trySend(ViewModelEvent.Finish)
                 return
             }
@@ -107,26 +110,52 @@ class ExternalExtractViewModel @AssistedInject constructor(
         override fun onDeleteSourceRequested() {
             deleteSourceRequested = true
         }
+
+        override fun onStatusMessageLinkClick() {
+            onOpenResult()
+        }
     }
 
-    private val _uiState = MutableStateFlow(createInitialState())
-    val uiState: StateFlow<ExternalExtractUiState> = _uiState.asStateFlow()
+    private val viewModelStateFlow = MutableStateFlow(createInitialState())
+    val uiState: StateFlow<ExternalExtractUiState> = viewModelStateFlow
+        .map { createUiState(it) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, createUiState(viewModelStateFlow.value))
 
     private val viewModelEventChannel = Channel<ViewModelEvent>(capacity = 1)
     val viewModelEventFlow = viewModelEventChannel.receiveAsFlow()
 
-    private fun createInitialState(): ExternalExtractUiState {
-        return ExternalExtractUiState(
+    private fun createInitialState(): ViewModelState {
+        return ViewModelState(
             defaultName = ExtractableFileNameUtil.defaultOutputName(args.fileName, args.extractType.toExtractableType()),
-            mode = args.extractType.toExtractDialogMode(),
             isExtracting = false,
             isExtractComplete = false,
             statusMessage = null,
             statusMessageLinkText = null,
-            locationMessage = args.locationMessage,
-            canDeleteSource = canDeleteSource(),
             isResultActionInProgress = false,
-            callbacks = callbacks,
+            progress = null,
+            progressText = null,
+        )
+    }
+
+    private fun createUiState(state: ViewModelState): ExternalExtractUiState {
+        val resultButtonsVisible = state.isExtracting || state.isExtractComplete
+        return ExternalExtractUiState(
+            dialog = ExtractDialogUiState(
+                defaultName = state.defaultName,
+                mode = args.extractType.toExtractDialogMode(),
+                hintMessage = args.locationMessage,
+                nameInputVisible = !resultButtonsVisible,
+                progressVisible = state.isExtracting,
+                progress = state.progress,
+                progressText = state.progressText,
+                statusMessage = state.statusMessage,
+                statusMessageLinkText = state.statusMessageLinkText,
+                deleteSourceCheckboxVisible = state.isExtractComplete && canDeleteSource(),
+                resultButtonsVisible = resultButtonsVisible,
+                resultButtonsEnabled = !state.isResultActionInProgress,
+                openButtonEnabled = state.isExtractComplete && !state.isResultActionInProgress,
+                callbacks = callbacks,
+            ),
         )
     }
 
@@ -141,10 +170,10 @@ class ExternalExtractViewModel @AssistedInject constructor(
     }
 
     private fun startResultAction(action: suspend () -> Boolean) {
-        if (_uiState.value.isResultActionInProgress) {
+        if (viewModelStateFlow.value.isResultActionInProgress) {
             return
         }
-        _uiState.value = _uiState.value.copy(isResultActionInProgress = true)
+        viewModelStateFlow.value = viewModelStateFlow.value.copy(isResultActionInProgress = true)
         viewModelScope.launch {
             val completed = try {
                 if (!deleteSourceIfRequested()) {
@@ -155,14 +184,14 @@ class ExternalExtractViewModel @AssistedInject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
-                _uiState.value = _uiState.value.copy(
+                viewModelStateFlow.value = viewModelStateFlow.value.copy(
                     statusMessage = e.message ?: "操作を完了できませんでした",
                     statusMessageLinkText = null,
                 )
                 false
             }
             if (!completed) {
-                _uiState.value = _uiState.value.copy(isResultActionInProgress = false)
+                viewModelStateFlow.value = viewModelStateFlow.value.copy(isResultActionInProgress = false)
             }
         }
     }
@@ -171,7 +200,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
         if (outputName.isBlank()) {
             return
         }
-        _uiState.value = _uiState.value.copy(
+        viewModelStateFlow.value = viewModelStateFlow.value.copy(
             defaultName = outputName,
             isExtracting = true,
             isExtractComplete = false,
@@ -210,7 +239,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
             operationId
         }.getOrElse { e ->
             activeJobId = null
-            _uiState.value = _uiState.value.copy(
+            viewModelStateFlow.value = viewModelStateFlow.value.copy(
                 isExtracting = false,
                 isExtractComplete = false,
                 statusMessage = "解凍開始失敗: ${e.message}",
@@ -228,7 +257,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
                 if (progress == null) {
                     return@collect
                 }
-                _uiState.value = _uiState.value.copy(
+                viewModelStateFlow.value = viewModelStateFlow.value.copy(
                     progress = ExtractProgressText.progressRatio(progress),
                     progressText = ExtractProgressText.fromOperationProgress(progress),
                 )
@@ -249,7 +278,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
             stopExtractProgressObservation()
             when (event) {
                 is ExtractJobCompletionWatcher.CompletionUiEvent.Completed -> {
-                    _uiState.value = _uiState.value.copy(
+                    viewModelStateFlow.value = viewModelStateFlow.value.copy(
                         isExtracting = false,
                         isExtractComplete = true,
                         statusMessage = event.message,
@@ -258,7 +287,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
                 }
 
                 is ExtractJobCompletionWatcher.CompletionUiEvent.Failed -> {
-                    _uiState.value = _uiState.value.copy(
+                    viewModelStateFlow.value = viewModelStateFlow.value.copy(
                         isExtracting = false,
                         isExtractComplete = false,
                         statusMessage = event.message,
@@ -268,7 +297,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
                 }
 
                 is ExtractJobCompletionWatcher.CompletionUiEvent.Cancelled -> {
-                    _uiState.value = _uiState.value.copy(
+                    viewModelStateFlow.value = viewModelStateFlow.value.copy(
                         isExtracting = false,
                         isExtractComplete = false,
                         statusMessage = event.message,
@@ -288,7 +317,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
             deleteOriginalSource()
         }
         if (!deleted) {
-            _uiState.value = _uiState.value.copy(
+            viewModelStateFlow.value = viewModelStateFlow.value.copy(
                 statusMessage = "元のファイルを削除できませんでした",
                 statusMessageLinkText = null,
             )
@@ -342,7 +371,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
             val result = ExtractOutputLocationResolver.resolveOpenExtractResult(
                 meta = meta,
                 storageRepository = storageRepository,
-                errorMessage = _uiState.value.statusMessage,
+                errorMessage = viewModelStateFlow.value.statusMessage,
             )
         ) {
             is ExtractOutputLocationResolver.OpenExtractResult.OpenFile -> {
@@ -374,7 +403,7 @@ class ExternalExtractViewModel @AssistedInject constructor(
             }
 
             null -> {
-                _uiState.value = _uiState.value.copy(
+                viewModelStateFlow.value = viewModelStateFlow.value.copy(
                     statusMessage = "解凍結果を開けませんでした",
                     statusMessageLinkText = null,
                 )
@@ -382,6 +411,17 @@ class ExternalExtractViewModel @AssistedInject constructor(
             }
         }
     }
+
+    private data class ViewModelState(
+        val defaultName: String,
+        val isExtracting: Boolean,
+        val isExtractComplete: Boolean,
+        val statusMessage: String?,
+        val statusMessageLinkText: String?,
+        val isResultActionInProgress: Boolean,
+        val progress: Float?,
+        val progressText: String?,
+    )
 
     sealed interface ViewModelEvent {
         data object Finish : ViewModelEvent

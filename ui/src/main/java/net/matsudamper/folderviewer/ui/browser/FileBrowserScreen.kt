@@ -25,7 +25,7 @@ fun FileBrowserScreen(
 ) {
     BackHandler {
         if (uiState.extractDialog != null) {
-            uiState.callbacks.onDismissExtract()
+            uiState.extractDialog.callbacks.onDismissRequest()
         } else {
             uiState.callbacks.onBack()
         }

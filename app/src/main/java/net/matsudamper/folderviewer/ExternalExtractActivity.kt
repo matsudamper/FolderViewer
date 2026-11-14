@@ -129,7 +129,7 @@ class ExternalExtractActivity : ComponentActivity() {
                 )
                 val uiState = viewModel.uiState.collectAsStateWithLifecycle().value
                 val displayUiState = if (openResultErrorMessage != null) {
-                    uiState.copy(statusMessage = openResultErrorMessage)
+                    uiState.copy(dialog = uiState.dialog.copy(statusMessage = openResultErrorMessage))
                 } else {
                     uiState
                 }
