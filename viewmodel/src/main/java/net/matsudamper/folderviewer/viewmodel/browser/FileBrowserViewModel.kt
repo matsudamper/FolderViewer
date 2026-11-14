@@ -466,13 +466,23 @@ class FileBrowserViewModel @AssistedInject constructor(
 
         override fun onConfirmRename() {
             viewModelScope.launch {
-                val newName = renameDialogController.confirm { target, name ->
+                val result = renameDialogController.confirm { target, name ->
                     getRepository().rename(target.id, name)
-                } ?: return@launch
-                viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
-                selectionModeRepository.setSelectionMode(false)
-                fetchFilesInternal()
-                uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("${newName}に名前を変更しました"))
+                }
+                when (result) {
+                    null -> Unit
+
+                    is FileBrowserRenameDialogController.RenameResult.Failure -> {
+                        uiChannelEvent.send(FileBrowserUiEvent.ShowToast("名前の変更に失敗しました"))
+                    }
+
+                    is FileBrowserRenameDialogController.RenameResult.Success -> {
+                        viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
+                        selectionModeRepository.setSelectionMode(false)
+                        fetchFilesInternal()
+                        uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("${result.newName}に名前を変更しました"))
+                    }
+                }
             }
         }
 

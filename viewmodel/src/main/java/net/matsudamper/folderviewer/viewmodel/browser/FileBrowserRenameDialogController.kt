@@ -19,7 +19,6 @@ internal class FileBrowserRenameDialogController {
                 confirmButtonEnabled = !it.isRenaming && it.canConfirm(),
                 closeEnabled = !it.isRenaming,
                 visibleRenamingProgress = it.isRenaming,
-                errorMessage = it.errorMessage,
             )
         }
     }
@@ -29,13 +28,12 @@ internal class FileBrowserRenameDialogController {
             target = target,
             input = target.displayPath,
             isRenaming = false,
-            errorMessage = null,
         )
     }
 
     fun updateInput(input: String) {
         dialogStateFlow.update { state ->
-            if (state == null || state.isRenaming) state else state.copy(input = input, errorMessage = null)
+            if (state == null || state.isRenaming) state else state.copy(input = input)
         }
     }
 
@@ -45,30 +43,34 @@ internal class FileBrowserRenameDialogController {
 
     /**
      * 名前変更が終わるまでダイアログを開いたままにする。
-     * 成功したらダイアログを閉じて新しい名前を返し、失敗したらエラーを表示したまま null を返す。
+     * 成功したらダイアログを閉じて [RenameResult.Success] を返し、失敗したらダイアログを開いたまま [RenameResult.Failure] を返す。
      */
-    suspend fun confirm(rename: suspend (target: FileItem, newName: String) -> Unit): String? {
+    suspend fun confirm(rename: suspend (target: FileItem, newName: String) -> Unit): RenameResult? {
         val state = dialogStateFlow.value ?: return null
         if (state.isRenaming || !state.canConfirm()) return null
-        dialogStateFlow.value = state.copy(isRenaming = true, errorMessage = null)
+        dialogStateFlow.value = state.copy(isRenaming = true)
         return try {
             rename(state.target, state.input)
             dialogStateFlow.value = null
-            state.input
+            RenameResult.Success(newName = state.input)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             e.printStackTrace()
-            dialogStateFlow.value = state.copy(isRenaming = false, errorMessage = "名前の変更に失敗しました")
-            null
+            dialogStateFlow.value = state.copy(isRenaming = false)
+            RenameResult.Failure
         }
+    }
+
+    sealed interface RenameResult {
+        data class Success(val newName: String) : RenameResult
+        data object Failure : RenameResult
     }
 
     private data class DialogState(
         val target: FileItem,
         val input: String,
         val isRenaming: Boolean,
-        val errorMessage: String?,
     ) {
         fun canConfirm(): Boolean = input != target.displayPath && isValidFileName(input)
     }

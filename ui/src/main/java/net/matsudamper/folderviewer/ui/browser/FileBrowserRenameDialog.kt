@@ -39,8 +39,6 @@ internal fun FileBrowserRenameDialog(
                 onValueChange = onInputChange,
                 enabled = uiState.inputEnabled,
                 label = { Text("新しい名前") },
-                isError = uiState.errorMessage != null,
-                supportingText = { Text(uiState.errorMessage.orEmpty()) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -86,7 +84,6 @@ private fun FileBrowserRenameDialogPreview() {
             confirmButtonEnabled = false,
             closeEnabled = true,
             visibleRenamingProgress = false,
-            errorMessage = null,
         ),
         onInputChange = {},
         onDismissRequest = {},
@@ -104,25 +101,6 @@ private fun FileBrowserRenameDialogRenamingPreview() {
             confirmButtonEnabled = false,
             closeEnabled = false,
             visibleRenamingProgress = true,
-            errorMessage = null,
-        ),
-        onInputChange = {},
-        onDismissRequest = {},
-        onConfirm = {},
-    )
-}
-
-@Composable
-@Preview
-private fun FileBrowserRenameDialogErrorPreview() {
-    FileBrowserRenameDialog(
-        uiState = FileBrowserUiState.RenameDialog(
-            input = "renamed.txt",
-            inputEnabled = true,
-            confirmButtonEnabled = true,
-            closeEnabled = true,
-            visibleRenamingProgress = false,
-            errorMessage = "名前の変更に失敗しました",
         ),
         onInputChange = {},
         onDismissRequest = {},

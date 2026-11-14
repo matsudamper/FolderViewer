@@ -31,7 +31,6 @@ data class FileBrowserUiState(
         val confirmButtonEnabled: Boolean,
         val closeEnabled: Boolean,
         val visibleRenamingProgress: Boolean,
-        val errorMessage: String?,
     )
 
     sealed interface ContentState {
