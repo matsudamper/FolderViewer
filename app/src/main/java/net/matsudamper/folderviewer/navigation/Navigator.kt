@@ -37,8 +37,8 @@ class Navigator(
         val currentStack = state.backStacks[state.topLevelRoute]
             ?: error("Stack for ${state.topLevelRoute} not found")
 
-        val index = currentStack.indexOf(route)
-        if (index != -1) {
+        val index = currentStack.indexOf(route).takeIf { it >= 0 }
+        if (index != null) {
             val removeCount = currentStack.size - (if (inclusive) index else index + 1)
             repeat(removeCount) {
                 currentStack.removeLastOrNull()
