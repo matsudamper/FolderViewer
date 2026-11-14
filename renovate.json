@@ -20,6 +20,25 @@
       "automerge": true
     },
     {
+      "matchManagers": ["gradle-wrapper"],
+      "automerge": true
+    },
+    {
+      "matchManagers": ["gradle"],
+      "matchPackageNames": [
+        "org.jetbrains.kotlin:{/,}**",
+        "org.jetbrains.kotlinx:{/,}**",
+        "org.jetbrains.kotlin.*",
+        "org.jetbrains.kotlinx.*"
+      ],
+      "automerge": true
+    },
+    {
+      "matchManagers": ["gradle"],
+      "matchPackageNames": ["org.robolectric:robolectric"],
+      "automerge": true
+    },
+    {
       "matchPackageNames": [
         "com.android.application:com.android.application.gradle.plugin",
         "com.android.library:com.android.library.gradle.plugin"
