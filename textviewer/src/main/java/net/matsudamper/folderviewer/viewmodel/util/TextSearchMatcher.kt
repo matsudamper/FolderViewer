@@ -27,8 +27,7 @@ internal object TextSearchMatcher {
         val ranges = buildList {
             var startIndex = 0
             while (startIndex < text.length && size < MaxMatches) {
-                val found = text.indexOf(query, startIndex, ignoreCase = !matchCase)
-                if (found < 0) break
+                val found = text.indexOf(query, startIndex, ignoreCase = !matchCase).takeIf { it >= 0 } ?: break
                 val endExclusive = found + query.length
                 add(Range(start = found, endExclusive = endExclusive))
                 startIndex = if (endExclusive > found) endExclusive else found + 1

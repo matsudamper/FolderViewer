@@ -191,7 +191,7 @@ class ExtractJobRepository @Inject internal constructor(
 
     suspend fun initializeFileCountProgress(operationId: Long, fileNames: List<String>): List<Long> {
         if (fileNames.isEmpty()) {
-            return emptyList()
+            return listOf()
         }
         return database.withTransaction {
             operationFileDao.insertAll(

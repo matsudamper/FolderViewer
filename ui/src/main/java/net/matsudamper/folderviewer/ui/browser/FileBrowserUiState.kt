@@ -1,5 +1,6 @@
 package net.matsudamper.folderviewer.ui.browser
 
+import android.net.Uri
 import androidx.compose.runtime.Immutable
 import net.matsudamper.folderviewer.coil.FileImageSource
 
@@ -18,24 +19,11 @@ data class FileBrowserUiState(
     val visibleRenameMenu: Boolean,
     val visibleExtractMenu: Boolean,
     val isPasteMode: Boolean,
-    val extractDialog: ExtractDialogState?,
+    val extractDialog: ExtractDialogUiState?,
     val renameDialog: RenameDialog?,
     val callbacks: Callbacks,
     val contentState: ContentState,
 ) {
-    @Immutable
-    data class ExtractDialogState(
-        val folderName: String,
-        val isExtracting: Boolean,
-        val isExtractComplete: Boolean,
-        val statusMessage: String?,
-        val statusMessageLinkText: String?,
-        val jobId: Long?,
-        val mode: ExtractDialogMode,
-        val progress: Float? = null,
-        val progressText: String? = null,
-    )
-
     @Immutable
     data class RenameDialog(
         val input: String,
@@ -64,8 +52,8 @@ data class FileBrowserUiState(
             val subText: String,
             val thumbnail: FileImageSource.Thumbnail?,
             val isSelected: Boolean,
-            val isLastOpened: Boolean = false,
-            val isEnabled: Boolean = true,
+            val isLastOpened: Boolean,
+            val enabled: Boolean,
             val callbacks: Callbacks,
         ) : UiFileItem {
             @Immutable
@@ -98,6 +86,8 @@ data class FileBrowserUiState(
         fun onFavoriteClick()
         fun onUploadFileClick()
         fun onUploadFolderClick()
+        fun onUploadFileSelected(uri: Uri, fileName: String)
+        fun onUploadFolderSelected(uri: Uri)
         fun onCreateDirectoryClick()
         fun onOpenFolderWithExternalAppClick()
         fun onConfirmCreateDirectory(directoryName: String)
@@ -114,12 +104,8 @@ data class FileBrowserUiState(
         fun onCompressClick()
         fun onConfirmCompress(fileName: String)
         fun onExtractClick()
-        fun onConfirmExtract(folderName: String)
-        fun onDismissExtract()
         fun onExtractPermissionResult()
         fun onOpenExtractResult(jobId: Long)
-        fun onOpenExtractDetail(jobId: Long)
-        fun onDeleteExtractSource()
         fun onDeleteClick()
         fun onConfirmDelete()
         fun onPasteClick()

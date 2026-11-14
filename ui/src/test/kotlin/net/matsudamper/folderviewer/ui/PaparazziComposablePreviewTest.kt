@@ -17,7 +17,7 @@ internal class PaparazziComposablePreviewTest {
 
     @Test
     fun snapshot() {
-        val filter = System.getProperty("paparazzi.filter", "") ?: ""
+        val filter = System.getProperty("paparazzi.filter").orEmpty()
         AndroidComposablePreviewScanner()
             .scanPackageTrees("net.matsudamper.folderviewer.ui")
             .includePrivatePreviews()

@@ -2,7 +2,7 @@ package net.matsudamper.folderviewer.viewmodel.browser
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
-import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
+import net.matsudamper.folderviewer.ui.browser.ExtractDialogUiState
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputLocationResolver
 
 internal fun FileBrowserExtractCoordinator.closeDialog(
@@ -10,6 +10,33 @@ internal fun FileBrowserExtractCoordinator.closeDialog(
 ) {
     stopProgressObservation()
     viewModelStateFlow.update { it.copy(extractDialog = null) }
+}
+
+internal suspend fun FileBrowserExtractCoordinator.openResultAndUpdateDialog(
+    jobId: Long,
+    viewModelStateFlow: MutableStateFlow<FileBrowserViewModel.ViewModelState>,
+) {
+    val opened = openExtractResult(
+        jobId = jobId,
+        errorMessage = viewModelStateFlow.value.extractDialog?.statusMessage,
+    )
+    if (opened) {
+        if (viewModelStateFlow.value.extractDialog?.jobId == jobId) {
+            closeDialog(viewModelStateFlow)
+        }
+        return
+    }
+    viewModelStateFlow.update { state ->
+        val dialog = state.extractDialog ?: return@update state
+        if (dialog.jobId != jobId) {
+            return@update state
+        }
+        state.copy(
+            extractDialog = dialog.copy(
+                statusMessage = "解凍結果を開けませんでした",
+            ),
+        )
+    }
 }
 
 internal fun isExtractDialogOpenForJob(
@@ -68,19 +95,26 @@ internal fun updateExtractDialogOnFailed(
 internal fun mapExtractDialogUiState(
     dialog: FileBrowserViewModel.ViewModelState.ExtractDialogState,
     progress: ExtractDialogProgress?,
-): FileBrowserUiState.ExtractDialogState {
-    return FileBrowserUiState.ExtractDialogState(
-        folderName = dialog.folderName,
-        isExtracting = dialog.isExtracting,
-        isExtractComplete = dialog.isExtractComplete,
+    callbacks: ExtractDialogUiState.Callbacks,
+): ExtractDialogUiState {
+    val resultButtonsVisible = dialog.isExtracting || dialog.isExtractComplete
+    return ExtractDialogUiState(
+        defaultName = dialog.folderName,
+        mode = dialog.mode,
+        hintMessage = null,
+        nameInputVisible = !resultButtonsVisible,
+        progressVisible = dialog.isExtracting,
+        progress = progress?.progress,
+        progressText = progress?.progressText,
         statusMessage = dialog.statusMessage,
         statusMessageLinkText = dialog.jobId?.let {
             ExtractOutputLocationResolver.parseDuplicateOutputName(dialog.statusMessage)
         },
-        jobId = dialog.jobId,
-        mode = dialog.mode,
-        progress = progress?.progress,
-        progressText = progress?.progressText,
+        deleteSourceCheckboxVisible = dialog.isExtractComplete,
+        resultButtonsVisible = resultButtonsVisible,
+        resultButtonsEnabled = true,
+        openButtonEnabled = dialog.isExtractComplete,
+        callbacks = callbacks,
     )
 }
 

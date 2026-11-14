@@ -14,7 +14,7 @@ internal class ExtractProgressReporter(
     private var latestTransferredBytes: Long = 0
     private var lastPersistedBytes: Long = -1
     private var lastPersistedAtMs: Long = 0
-    private var fileProgressIds: List<Long> = emptyList()
+    private var fileProgressIds: List<Long> = listOf()
     private var nextFileIndex = 0
 
     suspend fun startByteProgress(totalBytes: Long, label: String) {
@@ -101,7 +101,7 @@ internal class ExtractProgressReporter(
         latestTransferredBytes = 0
         lastPersistedBytes = -1
         lastPersistedAtMs = 0
-        fileProgressIds = emptyList()
+        fileProgressIds = listOf()
         nextFileIndex = 0
     }
 

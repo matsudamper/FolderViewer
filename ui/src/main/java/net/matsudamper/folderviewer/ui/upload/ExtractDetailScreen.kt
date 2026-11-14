@@ -187,7 +187,7 @@ public fun ExtractDetailScreen(
                 }
             }
 
-            if (uiState.canNavigateToOutput) {
+            if (uiState.navigateToOutputButtonVisible) {
                 item {
                     Button(
                         onClick = { uiState.callbacks.onNavigateToOutputClick() },
@@ -198,7 +198,7 @@ public fun ExtractDetailScreen(
                 }
             }
 
-            if (uiState.canOpenOutputFile) {
+            if (uiState.openOutputFileButtonVisible) {
                 item {
                     Button(
                         onClick = { uiState.callbacks.onOpenOutputFileClick() },
@@ -232,8 +232,8 @@ private fun ExtractDetailScreenDuplicateFilePreview() {
                 sourceFile = "/sdcard/Download/app.apk.xz",
                 outputName = "app",
                 outputPath = "/sdcard/Download/app.apk",
-                canNavigateToOutput = true,
-                canOpenOutputFile = true,
+                navigateToOutputButtonVisible = true,
+                openOutputFileButtonVisible = true,
                 extractTypeLabel = "XZ（.xz）",
                 errorMessage = "同じ名前のファイルが既に存在します: app.apk",
                 errorMessageLinkText = "app.apk",
@@ -258,8 +258,8 @@ private fun ExtractDetailScreenPreview() {
                 sourceFile = "/sdcard/Download/archive.zip",
                 outputName = "archive",
                 outputPath = "/sdcard/Download/archive",
-                canNavigateToOutput = true,
-                canOpenOutputFile = false,
+                navigateToOutputButtonVisible = true,
+                openOutputFileButtonVisible = false,
                 extractTypeLabel = "ZIP（フォルダ）",
                 errorMessage = "同じ名前のフォルダが既に存在します: archive",
                 errorMessageLinkText = "archive",
@@ -284,8 +284,8 @@ private fun ExtractDetailScreenRunningPreview() {
                 sourceFile = "/sdcard/Download/archive.zip",
                 outputName = "archive",
                 outputPath = "/sdcard/Download/archive",
-                canNavigateToOutput = false,
-                canOpenOutputFile = false,
+                navigateToOutputButtonVisible = false,
+                openOutputFileButtonVisible = false,
                 extractTypeLabel = "ZIP（フォルダ）",
                 errorMessage = null,
                 errorMessageLinkText = null,

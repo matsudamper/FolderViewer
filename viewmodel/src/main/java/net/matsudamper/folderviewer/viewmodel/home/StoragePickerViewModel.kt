@@ -33,7 +33,7 @@ class StoragePickerViewModel @Inject constructor(
     }
 
     val uiState: StateFlow<StoragePickerUiState> = MutableStateFlow(
-        StoragePickerUiState(storages = emptyList(), callbacks = callbacks),
+        StoragePickerUiState(storages = listOf(), callbacks = callbacks),
     ).also { mutableUiState ->
         viewModelScope.launch {
             storageRepository.storageList.collect { storages ->

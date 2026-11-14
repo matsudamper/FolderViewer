@@ -60,13 +60,9 @@ class HomeViewModel @Inject constructor(
                     }
                 }
 
-                is UiStorageConfiguration.Local -> {
-                    // 何もしない
-                }
+                is UiStorageConfiguration.Local -> Unit
 
-                is UiStorageConfiguration.External -> {
-                    // 何もしない
-                }
+                is UiStorageConfiguration.External -> Unit
 
                 is UiStorageConfiguration.SharePoint -> {
                     viewModelScope.launch {
@@ -83,7 +79,7 @@ class HomeViewModel @Inject constructor(
 
     val uiState: StateFlow<HomeUiState> = MutableStateFlow(
         HomeUiState(
-            storages = emptyList(),
+            storages = listOf(),
             callbacks = callbacks,
         ),
     ).also { mutableUiState ->
@@ -160,6 +156,6 @@ class HomeViewModel @Inject constructor(
     }
 
     private data class ViewModelState(
-        val storages: List<StorageConfiguration> = emptyList(),
+        val storages: List<StorageConfiguration> = listOf(),
     )
 }

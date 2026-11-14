@@ -4,7 +4,6 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import java.util.Locale
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,8 +12,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import jakarta.inject.Inject
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
@@ -24,8 +25,9 @@ import net.matsudamper.folderviewer.ui.upload.OperationFileRow
 import net.matsudamper.folderviewer.ui.upload.OperationFileStatus
 import net.matsudamper.folderviewer.ui.upload.UploadDetailUiState
 
-@HiltViewModel
-class UploadDetailViewModel @Inject internal constructor(
+@HiltViewModel(assistedFactory = UploadDetailViewModel.Companion.Factory::class)
+class UploadDetailViewModel @AssistedInject internal constructor(
+    @Assisted private val workerId: String,
     application: Application,
     private val operationRepository: OperationRepository,
     private val uploadJobRepository: UploadJobRepository,
@@ -62,31 +64,6 @@ class UploadDetailViewModel @Inject internal constructor(
     val viewModelEventFlow = viewModelEventChannel.receiveAsFlow()
 
     private val filterState = MutableStateFlow(FileFilterState())
-
-    private var initJob: Job? = null
-
-    fun init(workerId: String) {
-        if (initJob?.isActive == true) return
-        initJob = viewModelScope.launch {
-            val job = uploadJobRepository.getJob(workerId) ?: return@launch
-            fileObjectId = job.fileObjectId
-            displayPath = job.displayPath
-
-            val storageName = storageRepository.storageList.first()
-                .find { it.id == job.fileObjectId.storageId }?.name ?: ""
-
-            combine(
-                operationRepository.observeProgressById(job.operationId),
-                uploadJobRepository.observeFiles(job.operationId),
-                filterState,
-            ) { progress, files, filter ->
-                if (progress == null) return@combine null
-                createUiState(job, storageName, progress, files, filter)
-            }.collect { state ->
-                _uiState.value = state
-            }
-        }
-    }
 
     private fun createUiState(
         job: UploadJobRepository.UploadJob,
@@ -226,5 +203,34 @@ class UploadDetailViewModel @Inject internal constructor(
             val fileObjectId: FileObjectId,
             val displayPath: String,
         ) : ViewModelEvent
+    }
+
+    init {
+        viewModelScope.launch {
+            val job = uploadJobRepository.getJob(workerId) ?: return@launch
+            fileObjectId = job.fileObjectId
+            displayPath = job.displayPath
+
+            val storageName = storageRepository.storageList.first()
+                .find { it.id == job.fileObjectId.storageId }?.name.orEmpty()
+
+            combine(
+                operationRepository.observeProgressById(job.operationId),
+                uploadJobRepository.observeFiles(job.operationId),
+                filterState,
+            ) { progress, files, filter ->
+                if (progress == null) return@combine null
+                createUiState(job, storageName, progress, files, filter)
+            }.collect { state ->
+                _uiState.value = state
+            }
+        }
+    }
+
+    companion object {
+        @AssistedFactory
+        interface Factory {
+            fun create(workerId: String): UploadDetailViewModel
+        }
     }
 }

@@ -1,6 +1,7 @@
 package net.matsudamper.folderviewer.coil
 
 import coil.ImageLoader
+import coil.annotation.ExperimentalCoilApi
 import jakarta.inject.Inject
 
 class CoilManager @Inject constructor(
@@ -10,7 +11,7 @@ class CoilManager @Inject constructor(
         imageLoader.memoryCache?.clear()
     }
 
-    @Suppress("OPT_IN_USAGE")
+    @OptIn(ExperimentalCoilApi::class)
     fun clearDiskCache() {
         imageLoader.diskCache?.clear()
     }

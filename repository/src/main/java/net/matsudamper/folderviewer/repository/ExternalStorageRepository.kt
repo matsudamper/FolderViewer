@@ -65,7 +65,7 @@ class ExternalStorageRepository @Inject constructor(
 
     private fun loadExternalStorages(): List<StorageConfiguration.External> {
         val storageManager = context.getSystemService(StorageManager::class.java)
-            ?: return emptyList()
+            ?: return listOf()
         return storageManager.storageVolumes
             .mapNotNull { volume ->
                 if (!volume.isRemovable) return@mapNotNull null

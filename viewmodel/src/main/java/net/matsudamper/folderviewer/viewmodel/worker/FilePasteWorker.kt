@@ -84,12 +84,14 @@ internal class FilePasteWorker @AssistedInject constructor(
         }
 
         val sourceStorageId = pendingFiles.first().sourceFileId.storageId
-        val sourceRepo = storageRepository.getFileRepository(sourceStorageId) ?: run {
+        val sourceRepo = storageRepository.getFileRepository(sourceStorageId)
+        if (sourceRepo == null) {
             pasteJobRepository.updateError(jobId, "ソースストレージが見つかりません: $sourceStorageId", null)
             return Result.failure()
         }
         val destStorageId = meta.destinationFileObjectId.storageId
-        val destRepo = storageRepository.getFileRepository(destStorageId) ?: run {
+        val destRepo = storageRepository.getFileRepository(destStorageId)
+        if (destRepo == null) {
             pasteJobRepository.updateError(jobId, "宛先ストレージが見つかりません: $destStorageId", null)
             return Result.failure()
         }

@@ -69,7 +69,7 @@ fun ExternalFilePickerSelectedListScreen(
             ) {
                 items(
                     items = uiState.items,
-                    key = { "${it.fileId.storageId.id}/${it.fileId.id}" },
+                    key = { it.key },
                 ) { item ->
                     SelectedFileItem(item = item)
                 }
@@ -109,7 +109,7 @@ private fun SelectedFileItem(
         modifier = modifier
             .fillMaxWidth()
             .combinedClickable(
-                onClick = { if (item.isPreviewable) item.callbacks.onTap() },
+                onClick = item.callbacks::onTap,
             )
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,

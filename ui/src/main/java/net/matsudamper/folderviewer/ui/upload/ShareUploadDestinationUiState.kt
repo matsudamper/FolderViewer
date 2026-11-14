@@ -5,8 +5,8 @@ import androidx.compose.runtime.Immutable
 data class ShareUploadDestinationUiState(
     val title: String,
     val pendingCount: Int,
-    val canUpload: Boolean,
-    val canCreateDirectory: Boolean,
+    val uploadButtonVisible: Boolean,
+    val createDirectoryButtonVisible: Boolean,
     val isRefreshing: Boolean,
     val contentState: ContentState,
     val callbacks: Callbacks,

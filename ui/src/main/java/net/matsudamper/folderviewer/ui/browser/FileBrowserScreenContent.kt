@@ -1,5 +1,6 @@
 package net.matsudamper.folderviewer.ui.browser
 
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -272,36 +273,7 @@ internal fun FileBrowserScreenContent(
     }
 
     if (uiState.extractDialog != null) {
-        val extractDialog = uiState.extractDialog
-        FileBrowserExtractDialog(
-            defaultName = extractDialog.folderName,
-            mode = extractDialog.mode,
-            isExtracting = extractDialog.isExtracting,
-            isExtractComplete = extractDialog.isExtractComplete,
-            statusMessage = extractDialog.statusMessage,
-            statusMessageLinkText = extractDialog.statusMessageLinkText,
-            onStatusMessageLinkClick = {
-                extractDialog.jobId?.let { jobId ->
-                    uiState.callbacks.onOpenExtractResult(jobId)
-                }
-            },
-            showDeleteSourceOption = true,
-            progress = extractDialog.progress,
-            progressText = extractDialog.progressText,
-            onDismissRequest = { uiState.callbacks.onDismissExtract() },
-            onConfirm = { folderName -> uiState.callbacks.onConfirmExtract(folderName) },
-            onOpenResult = {
-                extractDialog.jobId?.let { jobId ->
-                    uiState.callbacks.onOpenExtractResult(jobId)
-                }
-            },
-            onOpenDetail = {
-                extractDialog.jobId?.let { jobId ->
-                    uiState.callbacks.onOpenExtractDetail(jobId)
-                }
-            },
-            onDeleteSourceRequested = callbacks::onDeleteExtractSource,
-        )
+        FileBrowserExtractDialog(uiState = uiState.extractDialog)
     }
 
     if (deleteConfirmCount != null) {
@@ -359,6 +331,8 @@ private fun Preview() {
                 override fun onFavoriteClick() = Unit
                 override fun onUploadFileClick() = Unit
                 override fun onUploadFolderClick() = Unit
+                override fun onUploadFileSelected(uri: Uri, fileName: String) = Unit
+                override fun onUploadFolderSelected(uri: Uri) = Unit
                 override fun onCreateDirectoryClick() = Unit
                 override fun onConfirmCreateDirectory(directoryName: String) = Unit
                 override fun onOpenFolderWithExternalAppClick() = Unit
@@ -375,12 +349,8 @@ private fun Preview() {
                 override fun onCompressClick() = Unit
                 override fun onConfirmCompress(fileName: String) = Unit
                 override fun onExtractClick() = Unit
-                override fun onConfirmExtract(folderName: String) = Unit
-                override fun onDismissExtract() = Unit
                 override fun onExtractPermissionResult() = Unit
                 override fun onOpenExtractResult(jobId: Long) = Unit
-                override fun onOpenExtractDetail(jobId: Long) = Unit
-                override fun onDeleteExtractSource() = Unit
                 override fun onDeleteClick() = Unit
                 override fun onConfirmDelete() = Unit
                 override fun onPasteClick() = Unit
@@ -397,6 +367,8 @@ private fun Preview() {
                         subText = "2026/01/01 00:00",
                         thumbnail = null,
                         isSelected = false,
+                        isLastOpened = false,
+                        enabled = true,
                         callbacks = object : FileBrowserUiState.UiFileItem.File.Callbacks {
                             override fun onClick() = Unit
                             override fun onLongClick() = Unit
@@ -410,6 +382,8 @@ private fun Preview() {
                         subText = "2026/01/01 00:00  1.0 KB",
                         thumbnail = null,
                         isSelected = false,
+                        isLastOpened = false,
+                        enabled = true,
                         callbacks = object : FileBrowserUiState.UiFileItem.File.Callbacks {
                             override fun onClick() = Unit
                             override fun onLongClick() = Unit
@@ -417,7 +391,7 @@ private fun Preview() {
                         },
                     ),
                 ),
-                favorites = emptyList(),
+                favorites = listOf(),
             ),
         ),
         snackbarHostState = SnackbarHostState(),
