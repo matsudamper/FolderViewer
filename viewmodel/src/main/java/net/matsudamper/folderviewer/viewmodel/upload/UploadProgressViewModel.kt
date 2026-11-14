@@ -91,7 +91,7 @@ class UploadProgressViewModel @Inject constructor(
 
     val uiState: StateFlow<UploadProgressUiState> = MutableStateFlow(
         UploadProgressUiState(
-            uploadItems = emptyList(),
+            uploadItems = listOf(),
             showClearConfirmDialog = false,
             callbacks = callbacks,
         ),

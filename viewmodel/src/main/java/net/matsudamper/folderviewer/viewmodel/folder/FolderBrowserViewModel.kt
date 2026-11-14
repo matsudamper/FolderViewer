@@ -420,7 +420,7 @@ class FolderBrowserViewModel @AssistedInject constructor(
             displaySize = UiDisplayConfig.DisplaySize.Medium,
         ),
         val favoriteId: String? = null,
-        val favorites: List<FavoriteConfiguration> = emptyList(),
+        val favorites: List<FavoriteConfiguration> = listOf(),
     ) {
         data class Folder(
             val fileObjectId: FileObjectId,

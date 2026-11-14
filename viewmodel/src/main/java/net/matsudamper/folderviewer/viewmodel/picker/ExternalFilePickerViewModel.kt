@@ -478,8 +478,8 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
         val isLoading: Boolean = false,
         val isRefreshing: Boolean = false,
         val storageName: String? = null,
-        val rawFiles: List<FileItem> = emptyList(),
-        val favorites: List<FavoriteConfiguration> = emptyList(),
+        val rawFiles: List<FileItem> = listOf(),
+        val favorites: List<FavoriteConfiguration> = listOf(),
         val sortConfig: FileBrowserUiState.FileSortConfig = FileBrowserUiState.FileSortConfig(
             key = FileBrowserUiState.FileSortKey.Name,
             isAscending = true,

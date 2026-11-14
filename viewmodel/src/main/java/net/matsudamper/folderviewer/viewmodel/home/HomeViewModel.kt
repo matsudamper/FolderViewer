@@ -79,7 +79,7 @@ class HomeViewModel @Inject constructor(
 
     val uiState: StateFlow<HomeUiState> = MutableStateFlow(
         HomeUiState(
-            storages = emptyList(),
+            storages = listOf(),
             callbacks = callbacks,
         ),
     ).also { mutableUiState ->
@@ -156,6 +156,6 @@ class HomeViewModel @Inject constructor(
     }
 
     private data class ViewModelState(
-        val storages: List<StorageConfiguration> = emptyList(),
+        val storages: List<StorageConfiguration> = listOf(),
     )
 }

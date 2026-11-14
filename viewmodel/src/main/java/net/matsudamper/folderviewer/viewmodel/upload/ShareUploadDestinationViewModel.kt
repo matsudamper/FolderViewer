@@ -256,7 +256,7 @@ class ShareUploadDestinationViewModel @AssistedInject constructor(
         val isLoading: Boolean = false,
         val isRefreshing: Boolean = false,
         val storageName: String? = null,
-        val rawFiles: List<FileItem> = emptyList(),
+        val rawFiles: List<FileItem> = listOf(),
         val rootWritable: Boolean = false,
         val hasError: Boolean = false,
     )

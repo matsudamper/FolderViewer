@@ -399,7 +399,7 @@ private fun Preview() {
                         },
                     ),
                 ),
-                favorites = emptyList(),
+                favorites = listOf(),
             ),
         ),
         snackbarHostState = SnackbarHostState(),

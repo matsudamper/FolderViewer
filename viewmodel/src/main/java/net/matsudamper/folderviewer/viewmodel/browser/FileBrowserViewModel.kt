@@ -1302,7 +1302,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         val isLoading: Boolean = false,
         val isRefreshing: Boolean = false,
         val storageName: String? = null,
-        val rawFiles: List<FileItem> = emptyList(),
+        val rawFiles: List<FileItem> = listOf(),
         val sortConfig: FileBrowserUiState.FileSortConfig = FileBrowserUiState.FileSortConfig(
             key = FileBrowserUiState.FileSortKey.Name,
             isAscending = true,
@@ -1312,7 +1312,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             displaySize = UiDisplayConfig.DisplaySize.Medium,
         ),
         val favoriteId: String? = null,
-        val favorites: List<FavoriteConfiguration> = emptyList(),
+        val favorites: List<FavoriteConfiguration> = listOf(),
         val hasError: Boolean = false,
         val selectedState: SelectionState = SelectionState.NonSelected,
         val rootWritable: Boolean = false,

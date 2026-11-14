@@ -101,7 +101,7 @@ class ShareUploadActivity : ComponentActivity() {
                     .orEmpty()
             }
 
-            else -> emptyList()
+            else -> listOf()
         }
     }
 

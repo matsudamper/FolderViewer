@@ -378,7 +378,7 @@ class SmbFileRepository(
             if (share is DiskShare) {
                 listItems(share, shareName, subPath)
             } else {
-                emptyList()
+                listOf()
             }
         }
     }

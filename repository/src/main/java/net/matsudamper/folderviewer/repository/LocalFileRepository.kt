@@ -29,7 +29,7 @@ internal class LocalFileRepository(
         val targetDir = buildAbsoluteFile(path)
 
         if (!targetDir.exists() || !targetDir.canRead()) {
-            return@withContext emptyList()
+            return@withContext listOf()
         }
 
         targetDir.listFiles()?.mapNotNull { file ->

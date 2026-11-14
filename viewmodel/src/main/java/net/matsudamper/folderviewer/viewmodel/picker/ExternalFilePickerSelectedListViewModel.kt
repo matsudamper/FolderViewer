@@ -81,7 +81,7 @@ class ExternalFilePickerSelectedListViewModel @Inject constructor(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = ExternalFilePickerSelectedListUiState(
-                items = emptyList(),
+                items = listOf(),
                 callbacks = callbacks,
             ),
         )
