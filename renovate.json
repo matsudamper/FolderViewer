@@ -25,7 +25,12 @@
     },
     {
       "matchManagers": ["gradle"],
-      "matchPackageNames": ["/^org\\.jetbrains\\.(?:kotlin|kotlinx)(?:[.:]|$)/"],
+      "matchPackageNames": [
+        "org.jetbrains.kotlin:{/,}**",
+        "org.jetbrains.kotlinx:{/,}**",
+        "org.jetbrains.kotlin.*",
+        "org.jetbrains.kotlinx.*"
+      ],
       "automerge": true
     },
     {
