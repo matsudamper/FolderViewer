@@ -73,7 +73,7 @@ class UploadDetailViewModel @Inject internal constructor(
             displayPath = job.displayPath
 
             val storageName = storageRepository.storageList.first()
-                .find { it.id == job.fileObjectId.storageId }?.name ?: ""
+                .find { it.id == job.fileObjectId.storageId }?.name.orEmpty()
 
             combine(
                 operationRepository.observeProgressById(job.operationId),
