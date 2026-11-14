@@ -20,6 +20,20 @@
       "automerge": true
     },
     {
+      "matchManagers": ["gradle-wrapper"],
+      "automerge": true
+    },
+    {
+      "matchManagers": ["gradle"],
+      "matchPackageNames": ["/^org\\.jetbrains\\.(?:kotlin|kotlinx)(?:[.:]|$)/"],
+      "automerge": true
+    },
+    {
+      "matchManagers": ["gradle"],
+      "matchPackageNames": ["org.robolectric:robolectric"],
+      "automerge": true
+    },
+    {
       "matchPackageNames": [
         "com.android.application:com.android.application.gradle.plugin",
         "com.android.library:com.android.library.gradle.plugin"
