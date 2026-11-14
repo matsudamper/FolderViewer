@@ -14,6 +14,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 import net.matsudamper.folderviewer.ui.util.showDismissibleSnackbar
 
 @Composable
@@ -53,21 +54,23 @@ fun FileBrowserScreen(
                         event.showAction -> "表示"
                         else -> null
                     }
-                    val result = snackbarHostState.showDismissibleSnackbar(
-                        message = event.message,
-                        actionLabel = actionLabel,
-                    )
-                    when {
-                        result == SnackbarResult.ActionPerformed && event.openExtractJobId != null -> {
-                            onOpenExtractResult(event.openExtractJobId)
-                        }
+                    launch {
+                        val result = snackbarHostState.showDismissibleSnackbar(
+                            message = event.message,
+                            actionLabel = actionLabel,
+                        )
+                        when {
+                            result == SnackbarResult.ActionPerformed && event.openExtractJobId != null -> {
+                                onOpenExtractResult(event.openExtractJobId)
+                            }
 
-                        result == SnackbarResult.ActionPerformed && event.extractDetailJobId != null -> {
-                            onNavigateToExtractDetail(event.extractDetailJobId)
-                        }
+                            result == SnackbarResult.ActionPerformed && event.extractDetailJobId != null -> {
+                                onNavigateToExtractDetail(event.extractDetailJobId)
+                            }
 
-                        result == SnackbarResult.ActionPerformed && event.showAction -> {
-                            onNavigateToUploadProgress()
+                            result == SnackbarResult.ActionPerformed && event.showAction -> {
+                                onNavigateToUploadProgress()
+                            }
                         }
                     }
                 }
