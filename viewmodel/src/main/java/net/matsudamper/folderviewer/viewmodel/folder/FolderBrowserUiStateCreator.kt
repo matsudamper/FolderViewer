@@ -9,8 +9,8 @@ import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiState
 import net.matsudamper.folderviewer.viewmodel.folder.FolderBrowserViewModel.ViewModelEvent
-import net.matsudamper.folderviewer.viewmodel.util.FileSortComparator
 import net.matsudamper.folderviewer.viewmodel.util.FileUtil
+import net.matsudamper.folderviewer.viewmodel.util.fileSortComparator
 
 class FolderBrowserUiStateCreator(
     private val callbacks: FolderBrowserUiState.Callbacks,
@@ -65,7 +65,7 @@ class FolderBrowserUiStateCreator(
     ) {
         addAll(
             folder.files.sortedWith(
-                FileSortComparator(
+                fileSortComparator(
                     config = fileSortConfig,
                     sizeProvider = { it.size },
                     lastModifiedProvider = { it.lastModified },
@@ -74,7 +74,7 @@ class FolderBrowserUiStateCreator(
             ),
         )
         folder.folders.sortedWith(
-            FileSortComparator(
+            fileSortComparator(
                 config = folderSortConfig,
                 sizeProvider = { 0L },
                 lastModifiedProvider = { 0L },
@@ -107,7 +107,7 @@ class FolderBrowserUiStateCreator(
         }
 
         folder.files.sortedWith(
-            FileSortComparator(
+            fileSortComparator(
                 config = fileSortConfig,
                 sizeProvider = { it.size },
                 lastModifiedProvider = { it.lastModified },
@@ -135,7 +135,7 @@ class FolderBrowserUiStateCreator(
             )
         }
         folder.folders.sortedWith(
-            FileSortComparator(
+            fileSortComparator(
                 config = folderSortConfig,
                 sizeProvider = { 0L },
                 lastModifiedProvider = { 0L },

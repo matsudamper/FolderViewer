@@ -34,8 +34,8 @@ import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiEvent
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiState
 import net.matsudamper.folderviewer.viewmodel.util.BrowserSortConfigHelper
-import net.matsudamper.folderviewer.viewmodel.util.FileSortComparator
 import net.matsudamper.folderviewer.viewmodel.util.FileUtil
+import net.matsudamper.folderviewer.viewmodel.util.fileSortComparator
 
 @HiltViewModel(assistedFactory = FolderBrowserViewModel.Companion.Factory::class)
 class FolderBrowserViewModel @AssistedInject constructor(
@@ -315,7 +315,7 @@ class FolderBrowserViewModel @AssistedInject constructor(
         val files = items.filter { !it.isDirectory }
         val folders = items.filter { it.isDirectory }
             .sortedWith(
-                FileSortComparator(
+                fileSortComparator(
                     config = viewModelStateFlow.value.folderSortConfig,
                     sizeProvider = { it.size },
                     lastModifiedProvider = { it.lastModified },
