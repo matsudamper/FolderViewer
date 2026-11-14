@@ -7,7 +7,6 @@ import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,8 +15,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import jakarta.inject.Inject
 import net.matsudamper.folderviewer.repository.DeleteJobRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
 import net.matsudamper.folderviewer.ui.upload.DeleteDetailUiState
@@ -26,8 +27,9 @@ import net.matsudamper.folderviewer.ui.upload.OperationFileRow
 import net.matsudamper.folderviewer.ui.upload.OperationFileStatus
 import net.matsudamper.folderviewer.viewmodel.worker.FileDeleteWorker
 
-@HiltViewModel
-class DeleteDetailViewModel @Inject constructor(
+@HiltViewModel(assistedFactory = DeleteDetailViewModel.Companion.Factory::class)
+class DeleteDetailViewModel @AssistedInject constructor(
+    @Assisted private val operationId: Long,
     application: Application,
     private val operationRepository: OperationRepository,
     private val deleteJobRepository: DeleteJobRepository,
@@ -40,24 +42,6 @@ class DeleteDetailViewModel @Inject constructor(
     val uiState: StateFlow<DeleteDetailUiState?> = _uiState.asStateFlow()
 
     private val filterState = MutableStateFlow(FileFilterState())
-
-    private var initJob: Job? = null
-
-    fun init(operationId: Long) {
-        if (initJob?.isActive == true) return
-        initJob = viewModelScope.launch {
-            combine(
-                operationRepository.observeProgressById(operationId),
-                deleteJobRepository.observeFiles(operationId),
-                filterState,
-            ) { progress, files, filter ->
-                if (progress == null) return@combine null
-                createUiState(operationId, progress, files, filter)
-            }.collect { state ->
-                _uiState.value = state
-            }
-        }
-    }
 
     private fun createUiState(
         operationId: Long,
@@ -189,5 +173,27 @@ class DeleteDetailViewModel @Inject constructor(
 
     sealed interface ViewModelEvent {
         data object NavigateBack : ViewModelEvent
+    }
+
+    init {
+        viewModelScope.launch {
+            combine(
+                operationRepository.observeProgressById(operationId),
+                deleteJobRepository.observeFiles(operationId),
+                filterState,
+            ) { progress, files, filter ->
+                if (progress == null) return@combine null
+                createUiState(operationId, progress, files, filter)
+            }.collect { state ->
+                _uiState.value = state
+            }
+        }
+    }
+
+    companion object {
+        @AssistedFactory
+        interface Factory {
+            fun create(operationId: Long): DeleteDetailViewModel
+        }
     }
 }

@@ -1,5 +1,6 @@
 package net.matsudamper.folderviewer.ui.browser
 
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -316,6 +317,8 @@ private fun Preview() {
                 override fun onFavoriteClick() = Unit
                 override fun onUploadFileClick() = Unit
                 override fun onUploadFolderClick() = Unit
+                override fun onUploadFileSelected(uri: Uri, fileName: String) = Unit
+                override fun onUploadFolderSelected(uri: Uri) = Unit
                 override fun onCreateDirectoryClick() = Unit
                 override fun onConfirmCreateDirectory(directoryName: String) = Unit
                 override fun onOpenFolderWithExternalAppClick() = Unit

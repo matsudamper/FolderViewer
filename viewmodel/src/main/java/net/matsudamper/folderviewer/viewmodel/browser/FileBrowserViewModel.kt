@@ -298,6 +298,18 @@ class FileBrowserViewModel @AssistedInject constructor(
             }
         }
 
+        override fun onUploadFileSelected(uri: android.net.Uri, fileName: String) {
+            viewModelScope.launch {
+                handleFileUpload(uri, fileName)
+            }
+        }
+
+        override fun onUploadFolderSelected(uri: android.net.Uri) {
+            viewModelScope.launch {
+                handleFolderUpload(uri)
+            }
+        }
+
         override fun onCreateDirectoryClick() {
             viewModelScope.launch {
                 uiChannelEvent.send(FileBrowserUiEvent.ShowCreateDirectoryDialog)
@@ -883,7 +895,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         }
     }
 
-    suspend fun handleFileUpload(uri: android.net.Uri, fileName: String) {
+    private suspend fun handleFileUpload(uri: android.net.Uri, fileName: String) {
         val inputData = Data.Builder()
             .putString(FileUploadWorker.KEY_FILE_OBJECT_ID, Json.encodeToString(fileObjectId))
             .putString(FileUploadWorker.KEY_URI, uri.toString())
@@ -1076,7 +1088,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         }
     }
 
-    suspend fun handleFolderUpload(folderUri: android.net.Uri) {
+    private suspend fun handleFolderUpload(folderUri: android.net.Uri) {
         runCatching {
             val documentFile = androidx.documentfile.provider.DocumentFile.fromTreeUri(
                 getApplication(),

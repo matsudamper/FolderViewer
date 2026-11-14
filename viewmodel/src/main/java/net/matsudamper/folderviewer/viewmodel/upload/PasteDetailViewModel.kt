@@ -9,7 +9,6 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import java.util.Locale
 import java.util.UUID
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,8 +17,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import jakarta.inject.Inject
 import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.repository.ClipboardRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
@@ -31,8 +32,9 @@ import net.matsudamper.folderviewer.ui.upload.PasteDetailUiState
 import net.matsudamper.folderviewer.viewmodel.util.FileUtil
 import net.matsudamper.folderviewer.viewmodel.worker.FilePasteWorker
 
-@HiltViewModel
-class PasteDetailViewModel @Inject constructor(
+@HiltViewModel(assistedFactory = PasteDetailViewModel.Companion.Factory::class)
+class PasteDetailViewModel @AssistedInject constructor(
+    @Assisted private val jobId: Long,
     application: Application,
     private val operationRepository: OperationRepository,
     private val pasteJobRepository: PasteJobRepository,
@@ -45,33 +47,6 @@ class PasteDetailViewModel @Inject constructor(
     val uiState: StateFlow<PasteDetailUiState?> = _uiState.asStateFlow()
 
     private val filterState = MutableStateFlow(FileFilterState())
-
-    private var initJob: Job? = null
-
-    fun init(jobId: Long) {
-        if (initJob?.isActive == true) return
-        initJob = viewModelScope.launch {
-            val meta = pasteJobRepository.getJobMeta(jobId) ?: return@launch
-            combine(
-                operationRepository.observeProgressById(jobId),
-                pasteJobRepository.observeDuplicateFiles(jobId),
-                pasteJobRepository.observeFiles(jobId),
-                filterState,
-            ) { progress, duplicates, allFiles, filter ->
-                if (progress == null) return@combine null
-                createUiState(
-                    jobId = jobId,
-                    meta = meta,
-                    progress = progress,
-                    duplicates = duplicates,
-                    allFiles = allFiles,
-                    filter = filter,
-                )
-            }.collect { state ->
-                _uiState.value = state
-            }
-        }
-    }
 
     private fun createUiState(
         jobId: Long,
@@ -406,5 +381,36 @@ class PasteDetailViewModel @Inject constructor(
 
     sealed interface ViewModelEvent {
         data object NavigateBack : ViewModelEvent
+    }
+
+    init {
+        viewModelScope.launch {
+            val meta = pasteJobRepository.getJobMeta(jobId) ?: return@launch
+            combine(
+                operationRepository.observeProgressById(jobId),
+                pasteJobRepository.observeDuplicateFiles(jobId),
+                pasteJobRepository.observeFiles(jobId),
+                filterState,
+            ) { progress, duplicates, allFiles, filter ->
+                if (progress == null) return@combine null
+                createUiState(
+                    jobId = jobId,
+                    meta = meta,
+                    progress = progress,
+                    duplicates = duplicates,
+                    allFiles = allFiles,
+                    filter = filter,
+                )
+            }.collect { state ->
+                _uiState.value = state
+            }
+        }
+    }
+
+    companion object {
+        @AssistedFactory
+        interface Factory {
+            fun create(jobId: Long): PasteDetailViewModel
+        }
     }
 }

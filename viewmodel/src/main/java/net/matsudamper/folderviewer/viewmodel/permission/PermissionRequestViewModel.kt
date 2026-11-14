@@ -56,7 +56,7 @@ class PermissionRequestViewModel @Inject constructor(
         }
     }
 
-    fun checkPermission() {
+    private fun checkPermission() {
         viewModelStateFlow.value = ViewModelState(
             hasPermission = PermissionUtil.hasManageExternalStoragePermission(context),
         )
@@ -67,6 +67,10 @@ class PermissionRequestViewModel @Inject constructor(
                 viewModelEventChannel.send(ViewModelEvent.PermissionGranted)
             }
         }
+    }
+
+    init {
+        checkPermission()
     }
 
     sealed interface ViewModelEvent {

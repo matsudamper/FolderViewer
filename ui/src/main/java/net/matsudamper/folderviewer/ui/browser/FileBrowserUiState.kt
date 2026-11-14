@@ -1,5 +1,6 @@
 package net.matsudamper.folderviewer.ui.browser
 
+import android.net.Uri
 import androidx.compose.runtime.Immutable
 import net.matsudamper.folderviewer.coil.FileImageSource
 
@@ -77,6 +78,8 @@ data class FileBrowserUiState(
         fun onFavoriteClick()
         fun onUploadFileClick()
         fun onUploadFolderClick()
+        fun onUploadFileSelected(uri: Uri, fileName: String)
+        fun onUploadFolderSelected(uri: Uri)
         fun onCreateDirectoryClick()
         fun onOpenFolderWithExternalAppClick()
         fun onConfirmCreateDirectory(directoryName: String)

@@ -6,15 +6,16 @@ import androidx.lifecycle.viewModelScope
 import androidx.work.WorkManager
 import java.io.File
 import java.util.UUID
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import jakarta.inject.Inject
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.repository.ExtractJobRepository
 import net.matsudamper.folderviewer.repository.OperationRepository
@@ -25,8 +26,9 @@ import net.matsudamper.folderviewer.viewmodel.util.ExternalExtractStagingSupport
 import net.matsudamper.folderviewer.viewmodel.util.ExtractOutputLocationResolver
 import net.matsudamper.folderviewer.viewmodel.util.ExtractProgressText
 
-@HiltViewModel
-class ExtractDetailViewModel @Inject constructor(
+@HiltViewModel(assistedFactory = ExtractDetailViewModel.Companion.Factory::class)
+class ExtractDetailViewModel @AssistedInject constructor(
+    @Assisted private val operationId: Long,
     application: Application,
     private val operationRepository: OperationRepository,
     private val extractJobRepository: ExtractJobRepository,
@@ -39,8 +41,6 @@ class ExtractDetailViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<ExtractDetailUiState?>(null)
     val uiState: StateFlow<ExtractDetailUiState?> = _uiState.asStateFlow()
 
-    private var initJob: Job? = null
-    private var currentOperationId: Long? = null
     private var currentErrorMessage: String? = null
 
     private val callbacks = object : ExtractDetailUiState.Callbacks {
@@ -51,51 +51,26 @@ class ExtractDetailViewModel @Inject constructor(
         }
 
         override fun onNavigateToOutputClick() {
-            val operationId = currentOperationId ?: return
             viewModelScope.launch {
                 navigateToOutput(operationId)
             }
         }
 
         override fun onOpenOutputFileClick() {
-            val operationId = currentOperationId ?: return
             viewModelScope.launch {
                 openOutputFile(operationId)
             }
         }
 
         override fun onCancelClick() {
-            val operationId = currentOperationId ?: return
             cancelExtractJob(operationId)
         }
 
         override fun onExistingOutputLinkClick() {
-            val operationId = currentOperationId ?: return
             viewModelScope.launch {
                 if (!openOutputFile(operationId)) {
                     navigateToOutput(operationId)
                 }
-            }
-        }
-    }
-
-    fun init(operationId: Long) {
-        if (initJob?.isActive == true && currentOperationId == operationId) {
-            return
-        }
-        initJob?.cancel()
-        currentOperationId = operationId
-        currentErrorMessage = null
-        _uiState.value = null
-        initJob = viewModelScope.launch {
-            operationRepository.observeProgressById(operationId).collect { progress ->
-                if (progress == null) {
-                    _uiState.value = null
-                    return@collect
-                }
-                val meta = extractJobRepository.getJobMeta(operationId)
-                currentErrorMessage = progress.errorMessage
-                _uiState.value = createUiState(progress, meta)
             }
         }
     }
@@ -244,5 +219,26 @@ class ExtractDetailViewModel @Inject constructor(
         data class OpenOutputFolder(
             val absolutePath: String,
         ) : ViewModelEvent
+    }
+
+    init {
+        viewModelScope.launch {
+            operationRepository.observeProgressById(operationId).collect { progress ->
+                if (progress == null) {
+                    _uiState.value = null
+                    return@collect
+                }
+                val meta = extractJobRepository.getJobMeta(operationId)
+                currentErrorMessage = progress.errorMessage
+                _uiState.value = createUiState(progress, meta)
+            }
+        }
+    }
+
+    companion object {
+        @AssistedFactory
+        interface Factory {
+            fun create(operationId: Long): ExtractDetailViewModel
+        }
     }
 }
