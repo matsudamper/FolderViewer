@@ -110,8 +110,9 @@ private class FileRepositoryImageFetcher(
                 }
             }
             editor.commitAndOpenSnapshot()
-        } catch (e: IOException) {
+        } catch (e: Exception) {
             editor.abort()
+            if (e !is IOException) throw e
             Log.w("FileRepositoryImageFetcher", "Failed to write disk cache: ${fileImageSource.fileId}", e)
             null
         }
