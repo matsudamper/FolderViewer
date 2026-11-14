@@ -264,8 +264,7 @@ internal fun FileBrowserScreenContent(
 
     if (uiState.renameDialog != null) {
         FileBrowserRenameDialog(
-            input = uiState.renameDialog.input,
-            confirmButtonEnabled = uiState.renameDialog.confirmButtonEnabled,
+            uiState = uiState.renameDialog,
             onInputChange = callbacks::onRenameInputChange,
             onDismissRequest = callbacks::onDismissRename,
             onConfirm = callbacks::onConfirmRename,

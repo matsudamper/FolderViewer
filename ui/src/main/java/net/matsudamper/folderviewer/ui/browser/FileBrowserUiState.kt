@@ -27,7 +27,11 @@ data class FileBrowserUiState(
     @Immutable
     data class RenameDialog(
         val input: String,
+        val inputEnabled: Boolean,
         val confirmButtonEnabled: Boolean,
+        val closeEnabled: Boolean,
+        val visibleRenamingProgress: Boolean,
+        val errorMessage: String?,
     )
 
     sealed interface ContentState {

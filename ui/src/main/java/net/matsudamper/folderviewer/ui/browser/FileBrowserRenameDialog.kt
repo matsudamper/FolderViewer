@@ -1,32 +1,46 @@
 package net.matsudamper.folderviewer.ui.browser
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import net.matsudamper.folderviewer.ui.R
 
 @Composable
 internal fun FileBrowserRenameDialog(
-    input: String,
-    confirmButtonEnabled: Boolean,
+    uiState: FileBrowserUiState.RenameDialog,
     onInputChange: (String) -> Unit,
     onDismissRequest: () -> Unit,
     onConfirm: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismissRequest,
+        properties = DialogProperties(
+            dismissOnBackPress = uiState.closeEnabled,
+            dismissOnClickOutside = uiState.closeEnabled,
+        ),
         title = { Text(stringResource(R.string.rename)) },
         text = {
             TextField(
-                value = input,
+                value = uiState.input,
                 onValueChange = onInputChange,
+                enabled = uiState.inputEnabled,
                 label = { Text("新しい名前") },
+                isError = uiState.errorMessage != null,
+                supportingText = { Text(uiState.errorMessage.orEmpty()) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -34,13 +48,28 @@ internal fun FileBrowserRenameDialog(
         confirmButton = {
             TextButton(
                 onClick = onConfirm,
-                enabled = confirmButtonEnabled,
+                enabled = uiState.confirmButtonEnabled,
             ) {
-                Text("変更")
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "変更",
+                        modifier = Modifier.alpha(if (uiState.visibleRenamingProgress) 0f else 1f),
+                    )
+                    if (uiState.visibleRenamingProgress) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismissRequest) {
+            TextButton(
+                onClick = onDismissRequest,
+                enabled = uiState.closeEnabled,
+            ) {
                 Text("キャンセル")
             }
         },
@@ -51,8 +80,50 @@ internal fun FileBrowserRenameDialog(
 @Preview
 private fun FileBrowserRenameDialogPreview() {
     FileBrowserRenameDialog(
-        input = "sample.txt",
-        confirmButtonEnabled = false,
+        uiState = FileBrowserUiState.RenameDialog(
+            input = "sample.txt",
+            inputEnabled = true,
+            confirmButtonEnabled = false,
+            closeEnabled = true,
+            visibleRenamingProgress = false,
+            errorMessage = null,
+        ),
+        onInputChange = {},
+        onDismissRequest = {},
+        onConfirm = {},
+    )
+}
+
+@Composable
+@Preview
+private fun FileBrowserRenameDialogRenamingPreview() {
+    FileBrowserRenameDialog(
+        uiState = FileBrowserUiState.RenameDialog(
+            input = "renamed.txt",
+            inputEnabled = false,
+            confirmButtonEnabled = false,
+            closeEnabled = false,
+            visibleRenamingProgress = true,
+            errorMessage = null,
+        ),
+        onInputChange = {},
+        onDismissRequest = {},
+        onConfirm = {},
+    )
+}
+
+@Composable
+@Preview
+private fun FileBrowserRenameDialogErrorPreview() {
+    FileBrowserRenameDialog(
+        uiState = FileBrowserUiState.RenameDialog(
+            input = "renamed.txt",
+            inputEnabled = true,
+            confirmButtonEnabled = true,
+            closeEnabled = true,
+            visibleRenamingProgress = false,
+            errorMessage = "名前の変更に失敗しました",
+        ),
         onInputChange = {},
         onDismissRequest = {},
         onConfirm = {},
