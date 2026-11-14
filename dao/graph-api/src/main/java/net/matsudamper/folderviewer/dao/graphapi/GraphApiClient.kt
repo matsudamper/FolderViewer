@@ -74,6 +74,7 @@ class GraphApiClient(
             "folder",
             "size",
             "lastModifiedDateTime",
+            "eTag",
         ).joinToString(",")
         return client.get(
             if (itemId == null) {

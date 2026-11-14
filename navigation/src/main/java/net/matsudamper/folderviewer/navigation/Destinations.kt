@@ -30,7 +30,10 @@ data class FileBrowser(val displayPath: String?, val fileId: FileObjectId) : Nav
 data class FolderBrowser(val displayPath: String?, val fileId: FileObjectId) : NavKey
 
 @Serializable
-data class ImageViewer(val fileId: FileObjectId.Item, val allPaths: List<FileObjectId.Item>) : NavKey
+data class ImageViewer(val fileId: FileObjectId.Item, val images: List<ImageViewerImage>) : NavKey
+
+@Serializable
+data class ImageViewerImage(val fileId: FileObjectId.Item, val cacheKey: String?)
 
 @Serializable
 object UploadProgress : NavKey

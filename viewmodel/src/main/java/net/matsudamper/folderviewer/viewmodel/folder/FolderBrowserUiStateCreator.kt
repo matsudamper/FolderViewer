@@ -6,6 +6,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.common.FileObjectId
+import net.matsudamper.folderviewer.navigation.ImageViewerImage
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiState
 import net.matsudamper.folderviewer.viewmodel.folder.FolderBrowserViewModel.ViewModelEvent
@@ -32,7 +33,7 @@ class FolderBrowserUiStateCreator(
         }
 
         val allImagePaths = allFiles.filter { !it.isDirectory && FileUtil.isImage(it.displayPath) }
-            .map { it.id }
+            .map { ImageViewerImage(fileId = it.id, cacheKey = it.cacheKey) }
 
         val uiItems = buildList {
             addUiItemsRecursive(
@@ -94,7 +95,7 @@ class FolderBrowserUiStateCreator(
         isRoot: Boolean,
         folderSortConfig: FolderBrowserUiState.FileSortConfig,
         fileSortConfig: FolderBrowserUiState.FileSortConfig,
-        allImagePaths: List<FileObjectId.Item>,
+        allImagePaths: List<ImageViewerImage>,
     ) {
         if (!isRoot) {
             val folderPath = folder.displayPath
@@ -123,7 +124,7 @@ class FolderBrowserUiStateCreator(
                     size = file.size,
                     lastModified = file.lastModified,
                     thumbnail = if (isImage) {
-                        FileImageSource.Thumbnail(fileId = file.id)
+                        FileImageSource.Thumbnail(fileId = file.id, cacheKey = file.cacheKey)
                     } else {
                         null
                     },
@@ -154,7 +155,7 @@ class FolderBrowserUiStateCreator(
 
     private inner class FileItemCallbacks(
         private val file: FileItem,
-        private val allImagePaths: List<FileObjectId.Item>,
+        private val allImagePaths: List<ImageViewerImage>,
     ) : FolderBrowserUiState.UiFileItem.File.Callbacks {
         override fun onClick() {
             val isImage = FileUtil.isImage(file.displayPath)
@@ -175,7 +176,7 @@ class FolderBrowserUiStateCreator(
                         viewModelEventChannel.send(
                             ViewModelEvent.NavigateToImageViewer(
                                 fileId = file.id,
-                                allPaths = allImagePaths,
+                                images = allImagePaths,
                             ),
                         )
                     }

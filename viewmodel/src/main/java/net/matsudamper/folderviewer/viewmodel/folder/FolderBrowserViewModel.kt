@@ -24,6 +24,7 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.navigation.FolderBrowser
+import net.matsudamper.folderviewer.navigation.ImageViewerImage
 import net.matsudamper.folderviewer.repository.FavoriteConfiguration
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
@@ -362,7 +363,7 @@ class FolderBrowserViewModel @AssistedInject constructor(
 
         data class NavigateToImageViewer(
             val fileId: FileObjectId.Item,
-            val allPaths: List<FileObjectId.Item>,
+            val images: List<ImageViewerImage>,
         ) : ViewModelEvent
 
         data class NavigateToFolderBrowser(

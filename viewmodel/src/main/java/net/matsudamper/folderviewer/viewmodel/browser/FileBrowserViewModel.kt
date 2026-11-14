@@ -31,6 +31,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.navigation.FileBrowser
+import net.matsudamper.folderviewer.navigation.ImageViewerImage
 import net.matsudamper.folderviewer.repository.ClipboardRepository
 import net.matsudamper.folderviewer.repository.DeleteJobRepository
 import net.matsudamper.folderviewer.repository.ExtractJobRepository
@@ -668,6 +669,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                 thumbnail = if (isImage) {
                     FileImageSource.Thumbnail(
                         fileId = fileItem.id,
+                        cacheKey = fileItem.cacheKey,
                     )
                 } else {
                     null
@@ -688,6 +690,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                 thumbnail = if (FileUtil.isImage(favorite.displayPath)) {
                     FileImageSource.Thumbnail(
                         fileId = favorite.fileId,
+                        cacheKey = null,
                     )
                 } else {
                     null
@@ -897,7 +900,7 @@ class FileBrowserViewModel @AssistedInject constructor(
 
         data class NavigateToImageViewer(
             val id: FileObjectId.Item,
-            val allPaths: List<FileObjectId.Item>,
+            val images: List<ImageViewerImage>,
         ) : ViewModelEvent
 
         data class NavigateToFolderBrowser(

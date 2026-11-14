@@ -13,6 +13,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.common.FileObjectId
+import net.matsudamper.folderviewer.navigation.ImageViewerImage
 import net.matsudamper.folderviewer.repository.ExternalPickerRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
@@ -46,7 +47,7 @@ class ExternalFilePickerSelectedListViewModel @Inject constructor(
                     ExternalFilePickerSelectedListUiState.Item(
                         key = "${pickerItem.id.storageId.id}/${pickerItem.id.id}",
                         name = pickerItem.name,
-                        thumbnail = if (isImage) FileImageSource.Thumbnail(fileId = pickerItem.id) else null,
+                        thumbnail = if (isImage) FileImageSource.Thumbnail(fileId = pickerItem.id, cacheKey = pickerItem.cacheKey) else null,
                         callbacks = object : ExternalFilePickerSelectedListUiState.Item.ItemCallbacks {
                             override fun onRemove() {
                                 externalPickerRepository.removeItem(pickerItem.id)
@@ -58,11 +59,11 @@ class ExternalFilePickerSelectedListViewModel @Inject constructor(
                                     if (isImage) {
                                         val allImages = externalPickerRepository.selectedItems.value.values
                                             .filter { FileUtil.isImage(it.name) }
-                                            .map { it.id }
+                                            .map { ImageViewerImage(fileId = it.id, cacheKey = it.cacheKey) }
                                         viewModelEventChannel.send(
                                             ViewModelEvent.NavigateToImageViewer(
                                                 fileId = pickerItem.id,
-                                                allPaths = allImages,
+                                                images = allImages,
                                             ),
                                         )
                                     } else {
@@ -107,7 +108,7 @@ class ExternalFilePickerSelectedListViewModel @Inject constructor(
         data object PopBackStack : ViewModelEvent
         data class NavigateToImageViewer(
             val fileId: FileObjectId.Item,
-            val allPaths: List<FileObjectId.Item>,
+            val images: List<ImageViewerImage>,
         ) : ViewModelEvent
         data class OpenWithExternalPlayer(
             val viewSourceUri: ViewSourceUri,

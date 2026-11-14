@@ -28,18 +28,19 @@ class ImageViewerViewModel @AssistedInject constructor(
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> =
         MutableStateFlow(
             ViewModelState(
-                currentIndex = args.allPaths.indexOf(args.fileId).takeIf { it >= 0 } ?: 0,
+                currentIndex = args.images.indexOfFirst { it.fileId == args.fileId }.takeIf { it >= 0 } ?: 0,
             ),
         )
 
     val uiState: StateFlow<ImageViewerUiState> =
         MutableStateFlow(
             ImageViewerUiState(
-                images = args.allPaths.map { fileId ->
+                images = args.images.map { image ->
                     ImageViewerUiState.ImageItem(
-                        title = fileId.id.substringAfterLast('/').substringAfterLast('\\'),
+                        title = image.fileId.id.substringAfterLast('/').substringAfterLast('\\'),
                         imageSource = FileImageSource.Original(
-                            fileId = fileId,
+                            fileId = image.fileId,
+                            cacheKey = image.cacheKey,
                         ),
                     )
                 },

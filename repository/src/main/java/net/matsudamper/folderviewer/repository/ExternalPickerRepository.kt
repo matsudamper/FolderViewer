@@ -15,6 +15,7 @@ class ExternalPickerRepository @Inject constructor() {
         val name: String,
         val size: Long,
         val lastModified: Long,
+        val cacheKey: String,
     )
 
     private val _selectedItems: MutableStateFlow<LinkedHashMap<FileObjectId.Item, PickerFileItem>> =

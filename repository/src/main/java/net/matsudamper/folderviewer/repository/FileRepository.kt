@@ -97,4 +97,5 @@ data class FileItem(
     val isDirectory: Boolean,
     val size: Long,
     val lastModified: Long,
+    val cacheKey: String,
 )
