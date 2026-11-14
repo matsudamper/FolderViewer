@@ -350,15 +350,19 @@ class FileBrowserViewModel @AssistedInject constructor(
             return state.rawFiles.find { it.id == selectedId }
         }
 
+        private var pendingRenameFileItem: FileItem? = null
+
         override fun onRenameClick() {
             val fileItem = findSingleSelectedFileItem() ?: return
+            pendingRenameFileItem = fileItem
             viewModelScope.launch {
                 uiChannelEvent.send(FileBrowserUiEvent.ShowRenameDialog(fileItem.displayPath))
             }
         }
 
         override fun onConfirmRename(newName: String) {
-            val fileItem = findSingleSelectedFileItem() ?: return
+            val fileItem = pendingRenameFileItem ?: return
+            pendingRenameFileItem = null
             viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
             selectionModeRepository.setSelectionMode(false)
             viewModelScope.launch {
