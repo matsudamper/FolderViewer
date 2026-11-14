@@ -2,8 +2,7 @@ package net.matsudamper.folderviewer.viewmodel.util
 
 import net.matsudamper.folderviewer.ui.folder.FolderBrowserUiState
 
-@Suppress("FunctionName")
-fun <T> FileSortComparator(
+fun <T> fileSortComparator(
     config: FolderBrowserUiState.FileSortConfig,
     sizeProvider: (T) -> Comparable<*>,
     lastModifiedProvider: (T) -> Comparable<*>,

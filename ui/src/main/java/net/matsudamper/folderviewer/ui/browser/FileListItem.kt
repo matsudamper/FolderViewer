@@ -79,7 +79,7 @@ internal fun FileSmallListItem(
     isPasteMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    DisabledContentProvider(file.isEnabled) {
+    DisabledContentProvider(file.enabled) {
         Row(
             modifier = modifier
                 .fillMaxWidth()
@@ -91,7 +91,7 @@ internal fun FileSmallListItem(
                     },
                 )
                 .combinedClickable(
-                    enabled = file.isEnabled,
+                    enabled = file.enabled,
                     onClick = file.callbacks::onClick,
                     onLongClick = if (isPasteMode) null else file.callbacks::onLongClick,
                 )
@@ -101,7 +101,7 @@ internal fun FileSmallListItem(
             if (isSelectionMode) {
                 Checkbox(
                     checked = file.isSelected,
-                    enabled = file.isEnabled,
+                    enabled = file.enabled,
                     onCheckedChange = file.callbacks::onCheckedChange,
                 )
                 Spacer(modifier = Modifier.width(4.dp))
@@ -132,7 +132,7 @@ internal fun FileMediumListItem(
     isPasteMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    DisabledContentProvider(file.isEnabled) {
+    DisabledContentProvider(file.enabled) {
         Row(
             modifier = modifier
                 .fillMaxWidth()
@@ -144,7 +144,7 @@ internal fun FileMediumListItem(
                     },
                 )
                 .combinedClickable(
-                    enabled = file.isEnabled,
+                    enabled = file.enabled,
                     onClick = file.callbacks::onClick,
                     onLongClick = if (isPasteMode) null else file.callbacks::onLongClick,
                 )
@@ -154,7 +154,7 @@ internal fun FileMediumListItem(
             if (isSelectionMode) {
                 Checkbox(
                     checked = file.isSelected,
-                    enabled = file.isEnabled,
+                    enabled = file.enabled,
                     onCheckedChange = file.callbacks::onCheckedChange,
                 )
                 Spacer(modifier = Modifier.width(4.dp))
@@ -193,7 +193,7 @@ internal fun FileLargeListItem(
     isPasteMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    DisabledContentProvider(file.isEnabled) {
+    DisabledContentProvider(file.enabled) {
         Row(
             modifier = modifier
                 .fillMaxWidth()
@@ -205,7 +205,7 @@ internal fun FileLargeListItem(
                     },
                 )
                 .combinedClickable(
-                    enabled = file.isEnabled,
+                    enabled = file.enabled,
                     onClick = file.callbacks::onClick,
                     onLongClick = if (isPasteMode) null else file.callbacks::onLongClick,
                 )
@@ -215,7 +215,7 @@ internal fun FileLargeListItem(
             if (isSelectionMode) {
                 Checkbox(
                     checked = file.isSelected,
-                    enabled = file.isEnabled,
+                    enabled = file.enabled,
                     onCheckedChange = file.callbacks::onCheckedChange,
                 )
                 Spacer(modifier = Modifier.width(4.dp))
@@ -307,7 +307,7 @@ private fun FileGridItem(
     isPasteMode: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    DisabledContentProvider(file.isEnabled) {
+    DisabledContentProvider(file.enabled) {
         Column(
             modifier = modifier
                 .then(
@@ -318,7 +318,7 @@ private fun FileGridItem(
                     },
                 )
                 .combinedClickable(
-                    enabled = file.isEnabled,
+                    enabled = file.enabled,
                     onClick = file.callbacks::onClick,
                     onLongClick = if (isPasteMode) null else file.callbacks::onLongClick,
                 )
@@ -337,7 +337,7 @@ private fun FileGridItem(
                 if (isSelectionMode) {
                     Checkbox(
                         checked = file.isSelected,
-                        enabled = file.isEnabled,
+                        enabled = file.enabled,
                         onCheckedChange = file.callbacks::onCheckedChange,
                         modifier = Modifier.align(Alignment.TopStart),
                     )
@@ -472,6 +472,8 @@ private fun previewUiFileItem() = FileBrowserUiState.UiFileItem.File(
     subText = "1970/01/01 09:00  1.0 MB",
     thumbnail = null,
     isSelected = false,
+    isLastOpened = false,
+    enabled = true,
     callbacks = object : FileBrowserUiState.UiFileItem.File.Callbacks {
         override fun onClick() = Unit
         override fun onLongClick() = Unit

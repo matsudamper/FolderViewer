@@ -146,7 +146,8 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
                 subText = buildSubText(fileItem.isDirectory, fileItem.lastModified, fileItem.size),
                 thumbnail = if (isImage) FileImageSource.Thumbnail(fileId = fileItem.id) else null,
                 isSelected = selectedItems.containsKey(fileItem.id),
-                isEnabled = isEnabled,
+                enabled = isEnabled,
+                isLastOpened = false,
                 callbacks = FileItemCallbacks(fileItem, sortedFiles),
             )
         }
@@ -163,6 +164,8 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
                     null
                 },
                 isSelected = false,
+                isLastOpened = false,
+                enabled = true,
                 callbacks = FavoriteItemCallbacks(favorite),
             )
         }
@@ -478,8 +481,8 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
         val isLoading: Boolean = false,
         val isRefreshing: Boolean = false,
         val storageName: String? = null,
-        val rawFiles: List<FileItem> = emptyList(),
-        val favorites: List<FavoriteConfiguration> = emptyList(),
+        val rawFiles: List<FileItem> = listOf(),
+        val favorites: List<FavoriteConfiguration> = listOf(),
         val sortConfig: FileBrowserUiState.FileSortConfig = FileBrowserUiState.FileSortConfig(
             key = FileBrowserUiState.FileSortKey.Name,
             isAscending = true,

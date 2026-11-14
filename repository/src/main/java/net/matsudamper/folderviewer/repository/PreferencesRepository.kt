@@ -361,13 +361,10 @@ internal object BrowserPreferencesSerializer : Serializer<BrowserPreferencesProt
         .build()
 
     override suspend fun readFrom(input: InputStream): BrowserPreferencesProto {
-        @Suppress("TooGenericExceptionCaught")
         try {
             return BrowserPreferencesProto.parseFrom(input)
         } catch (exception: InvalidProtocolBufferException) {
             throw CorruptionException("Cannot read proto.", exception)
-        } catch (exception: Exception) {
-            throw CorruptionException("Unexpected error reading proto.", exception)
         }
     }
 

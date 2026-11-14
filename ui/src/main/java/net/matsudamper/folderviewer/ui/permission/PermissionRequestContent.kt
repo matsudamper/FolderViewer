@@ -51,7 +51,7 @@ internal fun PermissionRequestContent(
             Text("設定を開く")
         }
 
-        if (uiState.hasPermission) {
+        if (uiState.grantedMessageVisible) {
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(

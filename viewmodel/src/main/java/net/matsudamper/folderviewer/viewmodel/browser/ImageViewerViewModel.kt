@@ -28,7 +28,7 @@ class ImageViewerViewModel @AssistedInject constructor(
     private val viewModelStateFlow: MutableStateFlow<ViewModelState> =
         MutableStateFlow(
             ViewModelState(
-                currentIndex = args.allPaths.indexOf(args.fileId).coerceAtLeast(0),
+                currentIndex = args.allPaths.indexOf(args.fileId).takeIf { it >= 0 } ?: 0,
             ),
         )
 

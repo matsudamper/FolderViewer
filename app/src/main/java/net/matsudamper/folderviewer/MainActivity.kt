@@ -689,10 +689,6 @@ private fun EntryProviderScope<NavKey>.permissionRequestEntry(
             }
         }
 
-        LaunchedEffect(Unit) {
-            viewModel.checkPermission()
-        }
-
         PermissionRequestScreen(
             uiState = uiState,
         )
@@ -1003,7 +999,6 @@ private fun EntryProviderScope<NavKey>.fileBrowserEntry(navigator: Navigator) {
         )
         val uiState = viewModel.uiState.collectAsStateWithLifecycle(initialValue = null)
         val uiStateValue = uiState.value ?: return@entry
-        val scope = rememberCoroutineScope()
         val context = LocalContext.current
 
         val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -1023,9 +1018,7 @@ private fun EntryProviderScope<NavKey>.fileBrowserEntry(navigator: Navigator) {
                 val name = documentFile.name
                 if (name == null) "uploaded_file" else name
             }
-            scope.launch {
-                viewModel.handleFileUpload(uri, fileName)
-            }
+            uiStateValue.callbacks.onUploadFileSelected(uri, fileName)
         }
 
         val folderPickerLauncher = rememberLauncherForActivityResult(
@@ -1033,9 +1026,7 @@ private fun EntryProviderScope<NavKey>.fileBrowserEntry(navigator: Navigator) {
         ) { uri ->
             if (uri == null) return@rememberLauncherForActivityResult
             requestNotificationPermissionIfNeeded(context, notificationPermissionLauncher)
-            scope.launch {
-                viewModel.handleFolderUpload(uri)
-            }
+            uiStateValue.callbacks.onUploadFolderSelected(uri)
         }
 
         val pasteNotificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -1221,12 +1212,10 @@ private fun EntryProviderScope<NavKey>.uploadDetailEntry(
     navigator: Navigator,
 ) {
     entry<UploadDetail> { key ->
-        val viewModel: UploadDetailViewModel = hiltViewModel()
+        val viewModel = hiltViewModel<UploadDetailViewModel, UploadDetailViewModel.Companion.Factory>(
+            creationCallback = { factory -> factory.create(key.workerId) },
+        )
         val uiState by viewModel.uiState.collectAsState()
-
-        LaunchedEffect(key.workerId) {
-            viewModel.init(key.workerId)
-        }
 
         LaunchedEffect(viewModel.viewModelEventFlow) {
             viewModel.viewModelEventFlow.collect { event ->
@@ -1254,12 +1243,10 @@ private fun EntryProviderScope<NavKey>.uploadDetailEntry(
 
 private fun EntryProviderScope<NavKey>.pasteDetailEntry(navigator: Navigator) {
     entry<PasteDetail> { key ->
-        val viewModel: PasteDetailViewModel = hiltViewModel()
+        val viewModel = hiltViewModel<PasteDetailViewModel, PasteDetailViewModel.Companion.Factory>(
+            creationCallback = { factory -> factory.create(key.jobId) },
+        )
         val uiState by viewModel.uiState.collectAsState()
-
-        LaunchedEffect(key.jobId) {
-            viewModel.init(key.jobId)
-        }
 
         LaunchedEffect(viewModel.viewModelEventFlow) {
             viewModel.viewModelEventFlow.collect { event ->
@@ -1278,12 +1265,10 @@ private fun EntryProviderScope<NavKey>.pasteDetailEntry(navigator: Navigator) {
 
 private fun EntryProviderScope<NavKey>.deleteDetailEntry(navigator: Navigator) {
     entry<DeleteDetail> { key ->
-        val viewModel: DeleteDetailViewModel = hiltViewModel()
+        val viewModel = hiltViewModel<DeleteDetailViewModel, DeleteDetailViewModel.Companion.Factory>(
+            creationCallback = { factory -> factory.create(key.operationId) },
+        )
         val uiState by viewModel.uiState.collectAsState()
-
-        LaunchedEffect(key.operationId) {
-            viewModel.init(key.operationId)
-        }
 
         LaunchedEffect(viewModel.viewModelEventFlow) {
             viewModel.viewModelEventFlow.collect { event ->
@@ -1302,13 +1287,11 @@ private fun EntryProviderScope<NavKey>.deleteDetailEntry(navigator: Navigator) {
 
 private fun EntryProviderScope<NavKey>.extractDetailEntry(navigator: Navigator) {
     entry<ExtractDetail> { key ->
-        val viewModel: ExtractDetailViewModel = hiltViewModel()
+        val viewModel = hiltViewModel<ExtractDetailViewModel, ExtractDetailViewModel.Companion.Factory>(
+            creationCallback = { factory -> factory.create(key.operationId) },
+        )
         val uiState by viewModel.uiState.collectAsState()
         val context = androidx.compose.ui.platform.LocalContext.current
-
-        LaunchedEffect(key.operationId) {
-            viewModel.init(key.operationId)
-        }
 
         LaunchedEffect(viewModel.viewModelEventFlow) {
             viewModel.viewModelEventFlow.collect { event ->

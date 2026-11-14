@@ -77,7 +77,7 @@ fun ShareUploadDestinationScreen(
                     }
                 },
                 actions = {
-                    if (uiState.canCreateDirectory) {
+                    if (uiState.createDirectoryButtonVisible) {
                         IconButton(onClick = { showCreateDirectoryDialog = true }) {
                             Icon(
                                 painter = painterResource(id = R.drawable.ic_folder_add),
@@ -90,7 +90,7 @@ fun ShareUploadDestinationScreen(
         },
         floatingActionButtonPosition = FabPosition.Center,
         floatingActionButton = {
-            if (uiState.canUpload) {
+            if (uiState.uploadButtonVisible) {
                 ExtendedFloatingActionButton(
                     onClick = uiState.callbacks::onUploadHere,
                     icon = {
@@ -288,8 +288,8 @@ private fun PreviewContent(
             uiState = ShareUploadDestinationUiState(
                 title = "サンプルストレージ",
                 pendingCount = 3,
-                canUpload = canUpload,
-                canCreateDirectory = true,
+                uploadButtonVisible = canUpload,
+                createDirectoryButtonVisible = true,
                 isRefreshing = false,
                 contentState = contentState,
                 callbacks = object : ShareUploadDestinationUiState.Callbacks {

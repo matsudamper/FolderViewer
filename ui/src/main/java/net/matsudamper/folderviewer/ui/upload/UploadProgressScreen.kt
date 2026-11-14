@@ -85,27 +85,27 @@ public fun UploadProgressScreen(
             ) {
                 items(
                     items = uiState.uploadItems,
-                    key = { it.id },
+                    key = { it.key },
                 ) { item ->
                     when (item) {
                         is UploadProgressUiState.UploadItem.Paste -> {
                             PasteItemRow(
                                 item = item,
-                                onClick = { uiState.callbacks.onItemClick(item) },
+                                onClick = { item.callbacks.onClick() },
                             )
                         }
 
                         is UploadProgressUiState.UploadItem.Delete -> {
                             DeleteItemRow(
                                 item = item,
-                                onClick = { uiState.callbacks.onItemClick(item) },
+                                onClick = { item.callbacks.onClick() },
                             )
                         }
 
                         else -> {
                             UploadItemRow(
                                 item = item,
-                                onClick = { uiState.callbacks.onItemClick(item) },
+                                onClick = { item.callbacks.onClick() },
                             )
                         }
                     }
@@ -126,7 +126,7 @@ private fun UploadItemRow(
         modifier = modifier
             .fillMaxWidth()
             .then(
-                if (item.canNavigate) {
+                if (item.detailNavigationEnabled) {
                     Modifier.clickable(onClick = onClick)
                 } else {
                     Modifier
@@ -213,7 +213,7 @@ private fun PasteItemRow(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .then(if (item.canNavigate) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(if (item.detailNavigationEnabled) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(vertical = 8.dp, horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
@@ -242,7 +242,7 @@ private fun PasteItemRow(
                     maxLines = 1,
                 )
             }
-            if (item.isPausable) {
+            if (item.pauseButtonVisible) {
                 IconButton(onClick = { item.pasteCallbacks.onPauseClick() }) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_pause),
@@ -250,7 +250,7 @@ private fun PasteItemRow(
                     )
                 }
             }
-            if (item.isPausePending) {
+            if (item.pausePendingIndicatorVisible) {
                 Box(contentAlignment = Alignment.Center) {
                     CircularWavyProgressIndicator(modifier = Modifier.size(40.dp))
                     IconButton(
@@ -264,7 +264,7 @@ private fun PasteItemRow(
                     }
                 }
             }
-            if (item.isResumable) {
+            if (item.resumeButtonVisible) {
                 IconButton(onClick = { item.pasteCallbacks.onResumeClick() }) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_play),
@@ -272,7 +272,7 @@ private fun PasteItemRow(
                     )
                 }
             }
-            if (item.isCancelable) {
+            if (item.cancelButtonVisible) {
                 IconButton(onClick = { item.pasteCallbacks.onCancelClick() }) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_close),
@@ -331,7 +331,7 @@ private fun DeleteItemRow(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .then(if (item.canNavigate) Modifier.clickable(onClick = onClick) else Modifier)
+            .then(if (item.detailNavigationEnabled) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(vertical = 8.dp, horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
@@ -459,10 +459,13 @@ private fun UploadProgressTopBar(
 
 private val previewCallbacks = object : UploadProgressUiState.Callbacks {
     override fun onBackClick() = Unit
-    override fun onItemClick(item: UploadProgressUiState.UploadItem) = Unit
     override fun onClearHistoryClick() = Unit
     override fun onClearHistoryConfirm() = Unit
     override fun onClearHistoryDismiss() = Unit
+}
+
+private val previewItemCallbacks = object : UploadProgressUiState.ItemCallbacks {
+    override fun onClick() = Unit
 }
 
 private val previewPasteCallbacks = object : UploadProgressUiState.PasteCallbacks {
@@ -478,48 +481,51 @@ private fun UploadProgressScreenPastePreview() {
         uiState = UploadProgressUiState(
             uploadItems = listOf(
                 UploadProgressUiState.UploadItem.Paste(
-                    id = "1",
+                    key = "1",
                     name = "コピー 10件",
                     description = "folder/file1.txt",
                     state = UploadProgressUiState.UploadState.RUNNING,
-                    canNavigate = true,
+                    detailNavigationEnabled = true,
                     currentFileProgress = 0.3f,
                     progress = 0.5f,
                     progressText = "コピー 10件 - 5完了 5未完了 (50.0MB/100.0MB)",
-                    isPausable = true,
-                    isPausePending = false,
-                    isResumable = false,
-                    isCancelable = true,
+                    callbacks = previewItemCallbacks,
+                    pauseButtonVisible = true,
+                    pausePendingIndicatorVisible = false,
+                    resumeButtonVisible = false,
+                    cancelButtonVisible = true,
                     pasteCallbacks = previewPasteCallbacks,
                 ),
                 UploadProgressUiState.UploadItem.Paste(
-                    id = "2",
+                    key = "2",
                     name = "コピー 8件",
                     description = "folder/file2.txt",
                     state = UploadProgressUiState.UploadState.RUNNING,
-                    canNavigate = true,
+                    detailNavigationEnabled = true,
                     currentFileProgress = 0.6f,
                     progress = 0.4f,
                     progressText = "コピー 8件 - 一時停止中",
-                    isPausable = false,
-                    isPausePending = true,
-                    isResumable = false,
-                    isCancelable = true,
+                    callbacks = previewItemCallbacks,
+                    pauseButtonVisible = false,
+                    pausePendingIndicatorVisible = true,
+                    resumeButtonVisible = false,
+                    cancelButtonVisible = true,
                     pasteCallbacks = previewPasteCallbacks,
                 ),
                 UploadProgressUiState.UploadItem.Paste(
-                    id = "3",
+                    key = "3",
                     name = "カット 3件",
                     description = "folder/file3.txt",
                     state = UploadProgressUiState.UploadState.PAUSED,
-                    canNavigate = true,
+                    detailNavigationEnabled = true,
                     currentFileProgress = null,
                     progress = 0.2f,
                     progressText = "カット 3件",
-                    isPausable = false,
-                    isPausePending = false,
-                    isResumable = true,
-                    isCancelable = false,
+                    callbacks = previewItemCallbacks,
+                    pauseButtonVisible = false,
+                    pausePendingIndicatorVisible = false,
+                    resumeButtonVisible = true,
+                    cancelButtonVisible = false,
                     pasteCallbacks = previewPasteCallbacks,
                 ),
             ),

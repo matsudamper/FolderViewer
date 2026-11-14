@@ -69,7 +69,8 @@ internal class FileBrowserZipHandler(
                     }
                 }
             }
-            val parentPath = localFolderPath ?: run {
+            val parentPath = localFolderPath
+            if (parentPath == null) {
                 sendSnackbar("圧縮はローカルストレージのみ対応しています")
                 return
             }
@@ -107,15 +108,16 @@ internal class FileBrowserZipHandler(
     ) {
         runCatching {
             val zipFile = resolveLocalFile(zipFileItem, context.repository) ?: return@runCatching
-            val parentPath = context.localFolderPath ?: run {
+            val parentPath = context.localFolderPath
+            if (parentPath == null) {
                 sendSnackbar("解凍はローカルストレージのみ対応しています")
                 return
             }
             val extractDir = ExtractOutputNameValidator.resolveChildFile(parentPath, folderName)
-                ?: run {
-                    sendSnackbar("無効なフォルダ名です")
-                    return
-                }
+            if (extractDir == null) {
+                sendSnackbar("無効なフォルダ名です")
+                return
+            }
             withContext(Dispatchers.IO) {
                 val extractedFiles = ZipFileUtil.extractZip(zipFile, extractDir)
                 ExtractMediaScanner.scanExtractedFiles(appContext, extractedFiles)

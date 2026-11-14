@@ -82,22 +82,22 @@ public fun PasteDetailScreen(
             )
         },
         bottomBar = {
-            if (uiState.duplicateFiles.isNotEmpty() || uiState.canRetry) {
+            if (uiState.bottomBarVisible) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
                     horizontalArrangement = Arrangement.End,
                 ) {
-                    if (uiState.canRetry) {
+                    if (uiState.retryButtonVisible) {
                         Button(onClick = { uiState.callbacks.onRetryClick() }) {
                             Text(stringResource(R.string.operation_detail_retry))
                         }
                     }
-                    if (uiState.duplicateFiles.isNotEmpty()) {
+                    if (uiState.applyButtonVisible) {
                         Button(
                             onClick = { uiState.callbacks.onApplyResolutions() },
-                            enabled = uiState.canApply,
+                            enabled = uiState.applyButtonEnabled,
                             modifier = Modifier.padding(start = 8.dp),
                         ) {
                             Text(stringResource(R.string.paste_detail_apply_resolutions))
@@ -117,7 +117,7 @@ public fun PasteDetailScreen(
             ),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            if (uiState.hasControls) {
+            if (uiState.controlRowVisible) {
                 item {
                     PasteControlRow(
                         uiState = uiState,
@@ -206,7 +206,7 @@ public fun PasteDetailScreen(
                 }
                 items(
                     items = uiState.duplicateFiles,
-                    key = { it.fileId },
+                    key = { it.key },
                 ) { item ->
                     DuplicateFileCard(item = item)
                 }
@@ -234,7 +234,7 @@ private fun PasteControlRow(
         horizontalArrangement = Arrangement.End,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (uiState.isPausable) {
+        if (uiState.pauseButtonVisible) {
             IconButton(onClick = { uiState.callbacks.onPauseClick() }) {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_pause),
@@ -242,7 +242,7 @@ private fun PasteControlRow(
                 )
             }
         }
-        if (uiState.isPausePending) {
+        if (uiState.pausePendingIndicatorVisible) {
             Box(contentAlignment = Alignment.Center) {
                 CircularWavyProgressIndicator(modifier = Modifier.size(40.dp))
                 IconButton(
@@ -256,7 +256,7 @@ private fun PasteControlRow(
                 }
             }
         }
-        if (uiState.isResumable) {
+        if (uiState.resumeButtonVisible) {
             IconButton(onClick = { uiState.callbacks.onResumeClick() }) {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_play),
@@ -264,7 +264,7 @@ private fun PasteControlRow(
                 )
             }
         }
-        if (uiState.isCancelable) {
+        if (uiState.cancelButtonVisible) {
             IconButton(onClick = { uiState.callbacks.onCancelClick() }) {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_close),
@@ -523,20 +523,23 @@ private fun PasteDetailScreenRunningPreview() {
             status = Status.RUNNING,
             errorMessage = null,
             errorCause = null,
-            duplicateFiles = emptyList(),
-            files = emptyList(),
+            duplicateFiles = listOf(),
+            files = listOf(),
             fileFilter = previewPasteFileFilter,
-            canRetry = false,
-            canApply = false,
+            bottomBarVisible = false,
+            retryButtonVisible = false,
+            applyButtonVisible = false,
+            applyButtonEnabled = false,
             progress = 0.4f,
             fileCountText = "4/10",
             sizeProgressText = "40.0MB / 100.0MB",
             currentFileName = "folder/file.txt",
             currentFileProgress = 0.6f,
-            isPausable = true,
-            isPausePending = false,
-            isResumable = false,
-            isCancelable = true,
+            controlRowVisible = true,
+            pauseButtonVisible = true,
+            pausePendingIndicatorVisible = false,
+            resumeButtonVisible = false,
+            cancelButtonVisible = true,
             callbacks = previewPasteCallbacks,
         ),
     )
@@ -552,20 +555,23 @@ private fun PasteDetailScreenPausedPreview() {
             status = Status.PAUSED,
             errorMessage = null,
             errorCause = null,
-            duplicateFiles = emptyList(),
-            files = emptyList(),
+            duplicateFiles = listOf(),
+            files = listOf(),
             fileFilter = previewPasteFileFilter,
-            canRetry = false,
-            canApply = false,
+            bottomBarVisible = false,
+            retryButtonVisible = false,
+            applyButtonVisible = false,
+            applyButtonEnabled = false,
             progress = null,
             fileCountText = null,
             sizeProgressText = null,
             currentFileName = null,
             currentFileProgress = null,
-            isPausable = false,
-            isPausePending = false,
-            isResumable = true,
-            isCancelable = false,
+            controlRowVisible = true,
+            pauseButtonVisible = false,
+            pausePendingIndicatorVisible = false,
+            resumeButtonVisible = true,
+            cancelButtonVisible = false,
             callbacks = previewPasteCallbacks,
         ),
     )
@@ -592,7 +598,7 @@ private fun PasteDetailScreenDuplicatePreview() {
             errorCause = null,
             duplicateFiles = listOf(
                 PasteDetailUiState.DuplicateFileItem(
-                    fileId = 1L,
+                    key = "1",
                     fileName = "photo.jpg",
                     sourcePath = "/sdcard/DCIM/photo.jpg",
                     sourceSize = 1024L * 512,
@@ -607,7 +613,7 @@ private fun PasteDetailScreenDuplicatePreview() {
                     onOverwriteWithSource = {},
                 ),
                 PasteDetailUiState.DuplicateFileItem(
-                    fileId = 2L,
+                    key = "2",
                     fileName = "document.pdf",
                     sourcePath = "/sdcard/Downloads/document.pdf",
                     sourceSize = 1024L * 1024 * 2,
@@ -622,15 +628,22 @@ private fun PasteDetailScreenDuplicatePreview() {
                     onOverwriteWithSource = {},
                 ),
             ),
-            files = emptyList(),
+            files = listOf(),
             fileFilter = previewPasteFileFilter,
-            canRetry = false,
-            canApply = false,
+            bottomBarVisible = true,
+            retryButtonVisible = false,
+            applyButtonVisible = true,
+            applyButtonEnabled = false,
             progress = null,
             fileCountText = null,
             sizeProgressText = null,
             currentFileName = null,
             currentFileProgress = null,
+            controlRowVisible = false,
+            pauseButtonVisible = false,
+            pausePendingIndicatorVisible = false,
+            resumeButtonVisible = false,
+            cancelButtonVisible = false,
             callbacks = previewPasteCallbacks,
         ),
     )
@@ -648,7 +661,7 @@ private fun PasteDetailScreenCompletedWithPendingResolutionPreview() {
             errorCause = null,
             duplicateFiles = listOf(
                 PasteDetailUiState.DuplicateFileItem(
-                    fileId = 1L,
+                    key = "1",
                     fileName = "photo.jpg",
                     sourcePath = "/sdcard/DCIM/photo.jpg",
                     sourceSize = 1024L * 512,
@@ -682,13 +695,20 @@ private fun PasteDetailScreenCompletedWithPendingResolutionPreview() {
                 ),
             ),
             fileFilter = previewPasteFileFilter,
-            canRetry = true,
-            canApply = true,
+            bottomBarVisible = true,
+            retryButtonVisible = true,
+            applyButtonVisible = true,
+            applyButtonEnabled = true,
             progress = null,
             fileCountText = null,
             sizeProgressText = null,
             currentFileName = null,
             currentFileProgress = null,
+            controlRowVisible = false,
+            pauseButtonVisible = false,
+            pausePendingIndicatorVisible = false,
+            resumeButtonVisible = false,
+            cancelButtonVisible = false,
             callbacks = previewPasteCallbacks,
         ),
     )
@@ -745,7 +765,7 @@ private fun previewDuplicateFileItem(
     sourceThumbnail: FileImageSource.Thumbnail?,
     destinationThumbnail: FileImageSource.Thumbnail?,
 ) = PasteDetailUiState.DuplicateFileItem(
-    fileId = 1L,
+    key = "1",
     fileName = "photo.jpg",
     sourcePath = "storage/source/photo.jpg",
     sourceSize = 1024L * 1024,

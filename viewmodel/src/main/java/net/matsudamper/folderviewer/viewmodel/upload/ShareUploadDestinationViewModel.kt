@@ -143,8 +143,8 @@ class ShareUploadDestinationViewModel @AssistedInject constructor(
         ShareUploadDestinationUiState(
             title = arg.displayPath ?: viewModelState.storageName ?: "アップロード先を選択",
             pendingCount = pendingCount,
-            canUpload = viewModelState.rootWritable && pendingCount > 0,
-            canCreateDirectory = viewModelState.rootWritable,
+            uploadButtonVisible = viewModelState.rootWritable && pendingCount > 0,
+            createDirectoryButtonVisible = viewModelState.rootWritable,
             isRefreshing = viewModelState.isRefreshing,
             contentState = contentState,
             callbacks = callbacks,
@@ -256,7 +256,7 @@ class ShareUploadDestinationViewModel @AssistedInject constructor(
         val isLoading: Boolean = false,
         val isRefreshing: Boolean = false,
         val storageName: String? = null,
-        val rawFiles: List<FileItem> = emptyList(),
+        val rawFiles: List<FileItem> = listOf(),
         val rootWritable: Boolean = false,
         val hasError: Boolean = false,
     )

@@ -46,6 +46,7 @@ import net.matsudamper.folderviewer.repository.StorageRepository
 import net.matsudamper.folderviewer.repository.UploadJobRepository
 import net.matsudamper.folderviewer.repository.ViewSourceUri
 import net.matsudamper.folderviewer.ui.browser.ExtractDialogMode
+import net.matsudamper.folderviewer.ui.browser.ExtractDialogUiState
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiEvent
 import net.matsudamper.folderviewer.ui.browser.FileBrowserUiState
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
@@ -116,6 +117,94 @@ class FileBrowserViewModel @AssistedInject constructor(
                 extractJobCompletionWatcher = extractJobCompletionWatcher,
             ),
         )
+    }
+
+    private val extractDialogCallbacks: ExtractDialogUiState.Callbacks = object : ExtractDialogUiState.Callbacks {
+        override fun onConfirm(outputName: String) {
+            val rawFiles = viewModelStateFlow.value.rawFiles
+            val pendingItem = pendingExtractFileItem
+            val zipFileItem = if (pendingItem != null) {
+                pendingItem
+            } else {
+                val selectedIds = when (val s = viewModelStateFlow.value.selectedState) {
+                    is ViewModelState.SelectionState.NonSelected -> return
+                    is ViewModelState.SelectionState.Selected -> s.items
+                }
+                if (selectedIds.size != 1) return
+                selectedIds.firstNotNullOfOrNull { id -> rawFiles.find { it.id == id } } ?: return
+            }
+            val extractType = zipHandler.getExtractableFileType(zipFileItem) ?: return
+            val dialogMode = FileBrowserExtractDialogPresenter.dialogModeForConfirm(
+                fileItem = zipFileItem,
+                zipHandler = zipHandler,
+                currentMode = viewModelStateFlow.value.extractDialog?.mode,
+            )
+            pendingExtractFileItem = zipFileItem
+            pendingExtractRequest = PendingExtractRequest(
+                fileItem = zipFileItem,
+                outputName = outputName,
+                extractType = extractType,
+            )
+            viewModelStateFlow.update { state ->
+                state.copy(
+                    extractDialog = ViewModelState.ExtractDialogState(
+                        folderName = outputName,
+                        isExtracting = false,
+                        isExtractComplete = false,
+                        statusMessage = null,
+                        jobId = null,
+                        mode = dialogMode,
+                    ),
+                )
+            }
+            viewModelScope.launch {
+                viewModelEventChannel.send(ViewModelEvent.RequestNotificationPermissionForExtract)
+            }
+        }
+
+        override fun onDismissRequest() {
+            val dialogState = viewModelStateFlow.value.extractDialog
+            if (dialogState?.isExtracting == true && dialogState.jobId != null) {
+                viewModelScope.launch {
+                    extractJobRepository.disableOpenOnComplete(dialogState.jobId)
+                }
+            }
+            pendingExtractFileItem = null
+            pendingExtractRequest = null
+            extractCoordinator.closeDialog(viewModelStateFlow)
+        }
+
+        override fun onClose() {
+            onDismissRequest()
+        }
+
+        override fun onOpenResult() {
+            val jobId = viewModelStateFlow.value.extractDialog?.jobId ?: return
+            viewModelScope.launch {
+                extractCoordinator.openResultAndUpdateDialog(jobId, viewModelStateFlow)
+            }
+        }
+
+        override fun onOpenDetail() {
+            val jobId = viewModelStateFlow.value.extractDialog?.jobId ?: return
+            viewModelScope.launch {
+                viewModelEventChannel.send(ViewModelEvent.NavigateToExtractDetail(jobId))
+                if (viewModelStateFlow.value.extractDialog?.jobId == jobId) {
+                    extractCoordinator.closeDialog(viewModelStateFlow)
+                }
+            }
+        }
+
+        override fun onStatusMessageLinkClick() {
+            onOpenResult()
+        }
+
+        override fun onDeleteSourceRequested() {
+            val sourceFile = pendingExtractFileItem ?: return
+            pendingExtractFileItem = null
+            pendingDeleteItems = listOf(sourceFile)
+            viewModelEventChannel.trySend(ViewModelEvent.RequestNotificationPermissionForDelete)
+        }
     }
 
     private val callbacks: FileBrowserUiState.Callbacks = object : FileBrowserUiState.Callbacks {
@@ -206,6 +295,18 @@ class FileBrowserViewModel @AssistedInject constructor(
         override fun onUploadFolderClick() {
             viewModelScope.launch {
                 viewModelEventChannel.send(ViewModelEvent.LaunchFolderPicker)
+            }
+        }
+
+        override fun onUploadFileSelected(uri: android.net.Uri, fileName: String) {
+            viewModelScope.launch {
+                handleFileUpload(uri, fileName)
+            }
+        }
+
+        override fun onUploadFolderSelected(uri: android.net.Uri) {
+            viewModelScope.launch {
+                handleFolderUpload(uri)
             }
         }
 
@@ -385,56 +486,10 @@ class FileBrowserViewModel @AssistedInject constructor(
             )
         }
 
-        override fun onConfirmExtract(folderName: String) {
-            val rawFiles = viewModelStateFlow.value.rawFiles
-            val zipFileItem = pendingExtractFileItem
-                ?: run {
-                    val selectedIds = when (val s = viewModelStateFlow.value.selectedState) {
-                        is ViewModelState.SelectionState.NonSelected -> return
-                        is ViewModelState.SelectionState.Selected -> s.items
-                    }
-                    if (selectedIds.size != 1) return
-                    selectedIds.firstNotNullOfOrNull { id -> rawFiles.find { it.id == id } } ?: return
-                }
-            val extractType = zipHandler.getExtractableFileType(zipFileItem) ?: return
-            val dialogMode = FileBrowserExtractDialogPresenter.dialogModeForConfirm(
-                fileItem = zipFileItem,
-                zipHandler = zipHandler,
-                currentMode = viewModelStateFlow.value.extractDialog?.mode,
-            )
-            pendingExtractFileItem = zipFileItem
-            pendingExtractRequest = PendingExtractRequest(
-                fileItem = zipFileItem,
-                outputName = folderName,
-                extractType = extractType,
-            )
-            viewModelStateFlow.update { state ->
-                state.copy(
-                    extractDialog = ViewModelState.ExtractDialogState(
-                        folderName = folderName,
-                        isExtracting = false,
-                        isExtractComplete = false,
-                        statusMessage = null,
-                        jobId = null,
-                        mode = dialogMode,
-                    ),
-                )
-            }
+        override fun onOpenExtractResult(jobId: Long) {
             viewModelScope.launch {
-                viewModelEventChannel.send(ViewModelEvent.RequestNotificationPermissionForExtract)
+                extractCoordinator.openResultAndUpdateDialog(jobId, viewModelStateFlow)
             }
-        }
-
-        override fun onDismissExtract() {
-            val dialogState = viewModelStateFlow.value.extractDialog
-            if (dialogState?.isExtracting == true && dialogState.jobId != null) {
-                viewModelScope.launch {
-                    extractJobRepository.disableOpenOnComplete(dialogState.jobId)
-                }
-            }
-            pendingExtractFileItem = null
-            pendingExtractRequest = null
-            extractCoordinator.closeDialog(viewModelStateFlow)
         }
 
         override fun onExtractPermissionResult() {
@@ -488,48 +543,6 @@ class FileBrowserViewModel @AssistedInject constructor(
                 }
                 extractCoordinator.startProgressObservation(viewModelScope, jobId)
             }
-        }
-
-        override fun onOpenExtractResult(jobId: Long) {
-            viewModelScope.launch {
-                val opened = extractCoordinator.openExtractResult(
-                    jobId = jobId,
-                    errorMessage = viewModelStateFlow.value.extractDialog?.statusMessage,
-                )
-                if (opened) {
-                    if (viewModelStateFlow.value.extractDialog?.jobId == jobId) {
-                        extractCoordinator.closeDialog(viewModelStateFlow)
-                    }
-                } else {
-                    viewModelStateFlow.update { state ->
-                        val dialog = state.extractDialog ?: return@update state
-                        if (dialog.jobId != jobId) {
-                            return@update state
-                        }
-                        state.copy(
-                            extractDialog = dialog.copy(
-                                statusMessage = "解凍結果を開けませんでした",
-                            ),
-                        )
-                    }
-                }
-            }
-        }
-
-        override fun onOpenExtractDetail(jobId: Long) {
-            viewModelScope.launch {
-                viewModelEventChannel.send(ViewModelEvent.NavigateToExtractDetail(jobId))
-                if (viewModelStateFlow.value.extractDialog?.jobId == jobId) {
-                    extractCoordinator.closeDialog(viewModelStateFlow)
-                }
-            }
-        }
-
-        override fun onDeleteExtractSource() {
-            val sourceFile = pendingExtractFileItem ?: return
-            pendingExtractFileItem = null
-            pendingDeleteItems = listOf(sourceFile)
-            viewModelEventChannel.trySend(ViewModelEvent.RequestNotificationPermissionForDelete)
         }
 
         override fun onDeleteClick() {
@@ -619,6 +632,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                 },
                 isSelected = selectedItems.contains(fileItem.id),
                 isLastOpened = fileItem.id.id == viewModelState.lastOpenedFileKey,
+                enabled = true,
                 callbacks = FileItemCallbacks(fileItem, sortedFiles, isSelectionMode),
             )
         }
@@ -637,6 +651,8 @@ class FileBrowserViewModel @AssistedInject constructor(
                     null
                 },
                 isSelected = false,
+                isLastOpened = false,
+                enabled = true,
                 callbacks = FavoriteItemCallbacks(favorite),
             )
         }
@@ -671,7 +687,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                 zipHandler.isSingleExtractableFileSelected(selectedItems, viewModelState.rawFiles),
             isPasteMode = clipboardState != null,
             extractDialog = viewModelState.extractDialog?.let { dialog ->
-                mapExtractDialogUiState(dialog, extractDialogProgress)
+                mapExtractDialogUiState(dialog, extractDialogProgress, extractDialogCallbacks)
             },
             contentState = contentState,
         )
@@ -879,7 +895,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         }
     }
 
-    suspend fun handleFileUpload(uri: android.net.Uri, fileName: String) {
+    private suspend fun handleFileUpload(uri: android.net.Uri, fileName: String) {
         val inputData = Data.Builder()
             .putString(FileUploadWorker.KEY_FILE_OBJECT_ID, Json.encodeToString(fileObjectId))
             .putString(FileUploadWorker.KEY_URI, uri.toString())
@@ -910,7 +926,8 @@ class FileBrowserViewModel @AssistedInject constructor(
         runCatching {
             val sourceRepo = storageRepository.getFileRepository(
                 clipboardState.items.first().id.storageId,
-            ) ?: run {
+            )
+            if (sourceRepo == null) {
                 uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("ストレージが見つかりませんでした"))
                 return
             }
@@ -1071,7 +1088,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         }
     }
 
-    suspend fun handleFolderUpload(folderUri: android.net.Uri) {
+    private suspend fun handleFolderUpload(folderUri: android.net.Uri) {
         runCatching {
             val documentFile = androidx.documentfile.provider.DocumentFile.fromTreeUri(
                 getApplication(),
@@ -1114,8 +1131,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         documentFile: androidx.documentfile.provider.DocumentFile,
         folderName: String,
     ) {
-        val files = mutableListOf<Pair<android.net.Uri, String>>()
-        collectFiles(documentFile, "", files)
+        val files = collectFiles(documentFile, "")
 
         val uriDataList = files.map { (uri, relativePath) ->
             FolderUploadWorker.UriData(uri = uri.toString(), relativePath = relativePath)
@@ -1154,25 +1170,17 @@ class FileBrowserViewModel @AssistedInject constructor(
     private fun collectFiles(
         folder: androidx.documentfile.provider.DocumentFile,
         relativePath: String,
-        files: MutableList<Pair<android.net.Uri, String>>,
-    ) {
-        folder.listFiles().forEach { file ->
-            if (file.isDirectory) {
-                val newRelativePath = if (relativePath.isEmpty()) {
-                    file.name.orEmpty()
-                } else {
-                    "$relativePath/${file.name}"
-                }
-                collectFiles(file, newRelativePath, files)
+    ): List<Pair<android.net.Uri, String>> {
+        return folder.listFiles().flatMap { file ->
+            val filePath = if (relativePath.isEmpty()) {
+                file.name.orEmpty()
             } else {
-                val filePath = if (relativePath.isEmpty()) {
-                    file.name.orEmpty()
-                } else {
-                    "$relativePath/${file.name}"
-                }
-                file.uri.let { uri ->
-                    files.add(uri to filePath)
-                }
+                "$relativePath/${file.name}"
+            }
+            if (file.isDirectory) {
+                collectFiles(file, filePath)
+            } else {
+                listOf(file.uri to filePath)
             }
         }
     }
@@ -1302,7 +1310,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         val isLoading: Boolean = false,
         val isRefreshing: Boolean = false,
         val storageName: String? = null,
-        val rawFiles: List<FileItem> = emptyList(),
+        val rawFiles: List<FileItem> = listOf(),
         val sortConfig: FileBrowserUiState.FileSortConfig = FileBrowserUiState.FileSortConfig(
             key = FileBrowserUiState.FileSortKey.Name,
             isAscending = true,
@@ -1312,7 +1320,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             displaySize = UiDisplayConfig.DisplaySize.Medium,
         ),
         val favoriteId: String? = null,
-        val favorites: List<FavoriteConfiguration> = emptyList(),
+        val favorites: List<FavoriteConfiguration> = listOf(),
         val hasError: Boolean = false,
         val selectedState: SelectionState = SelectionState.NonSelected,
         val rootWritable: Boolean = false,

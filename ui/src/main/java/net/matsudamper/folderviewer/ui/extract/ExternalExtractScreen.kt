@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import net.matsudamper.folderviewer.ui.browser.ExtractDialogMode
+import net.matsudamper.folderviewer.ui.browser.ExtractDialogUiState
 import net.matsudamper.folderviewer.ui.browser.FileBrowserExtractDialog
 
 @Composable
@@ -15,30 +16,11 @@ fun ExternalExtractScreen(
     modifier: Modifier = Modifier,
 ) {
     BackHandler {
-        uiState.callbacks.onDismissRequest()
+        uiState.dialog.callbacks.onDismissRequest()
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        FileBrowserExtractDialog(
-            defaultName = uiState.defaultName,
-            mode = uiState.mode,
-            isExtracting = uiState.isExtracting,
-            isExtractComplete = uiState.isExtractComplete,
-            statusMessage = uiState.statusMessage,
-            statusMessageLinkText = uiState.statusMessageLinkText,
-            onStatusMessageLinkClick = uiState.callbacks::onOpenResult,
-            showDeleteSourceOption = uiState.canDeleteSource,
-            resultActionsEnabled = !uiState.isResultActionInProgress,
-            hintMessage = uiState.locationMessage,
-            progress = uiState.progress,
-            progressText = uiState.progressText,
-            onDismissRequest = uiState.callbacks::onDismissRequest,
-            onClose = uiState.callbacks::onClose,
-            onConfirm = uiState.callbacks::onConfirm,
-            onOpenResult = uiState.callbacks::onOpenResult,
-            onOpenDetail = uiState.callbacks::onOpenDetail,
-            onDeleteSourceRequested = uiState.callbacks::onDeleteSourceRequested,
-        )
+        FileBrowserExtractDialog(uiState = uiState.dialog)
     }
 }
 
@@ -47,28 +29,36 @@ fun ExternalExtractScreen(
 private fun ExternalExtractScreenPreview() {
     ExternalExtractScreen(
         uiState = ExternalExtractUiState(
-            defaultName = "archive",
-            mode = ExtractDialogMode.ZipFolder,
-            isExtracting = false,
-            isExtractComplete = true,
-            statusMessage = "archiveに展開しました",
-            statusMessageLinkText = null,
-            locationMessage = null,
-            canDeleteSource = true,
-            isResultActionInProgress = false,
-            callbacks = object : ExternalExtractUiState.Callbacks {
-                override fun onDismissRequest() = Unit
+            dialog = ExtractDialogUiState(
+                defaultName = "archive",
+                mode = ExtractDialogMode.ZipFolder,
+                hintMessage = null,
+                nameInputVisible = false,
+                progressVisible = false,
+                progress = null,
+                progressText = null,
+                statusMessage = "archiveに展開しました",
+                statusMessageLinkText = null,
+                deleteSourceCheckboxVisible = true,
+                resultButtonsVisible = true,
+                resultButtonsEnabled = true,
+                openButtonEnabled = true,
+                callbacks = object : ExtractDialogUiState.Callbacks {
+                    override fun onDismissRequest() = Unit
 
-                override fun onClose() = Unit
+                    override fun onClose() = Unit
 
-                override fun onConfirm(outputName: String) = Unit
+                    override fun onConfirm(outputName: String) = Unit
 
-                override fun onOpenResult() = Unit
+                    override fun onOpenResult() = Unit
 
-                override fun onOpenDetail() = Unit
+                    override fun onOpenDetail() = Unit
 
-                override fun onDeleteSourceRequested() = Unit
-            },
+                    override fun onDeleteSourceRequested() = Unit
+
+                    override fun onStatusMessageLinkClick() = Unit
+                },
+            ),
         ),
     )
 }

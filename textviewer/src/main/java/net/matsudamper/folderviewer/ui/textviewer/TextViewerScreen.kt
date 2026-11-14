@@ -100,7 +100,7 @@ import net.matsudamper.folderviewer.ui.theme.MyTopAppBarDefaults
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TextViewerScreen(
+internal fun TextViewerScreen(
     uiState: TextViewerUiState,
     modifier: Modifier = Modifier,
 ) {
