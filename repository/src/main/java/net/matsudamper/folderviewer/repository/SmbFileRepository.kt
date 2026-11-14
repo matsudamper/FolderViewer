@@ -110,7 +110,7 @@ class SmbFileRepository(
                 isDirectory = isDirectory,
                 size = size,
                 lastModified = lastModified,
-                cacheKey = lastModified.toString(),
+                cacheKey = "$lastModified:$size",
             )
         }
     }
@@ -419,7 +419,7 @@ class SmbFileRepository(
                     isDirectory = isDirectory,
                     size = info.endOfFile,
                     lastModified = info.changeTime.toEpochMillis(),
-                    cacheKey = info.changeTime.toEpochMillis().toString(),
+                    cacheKey = "${info.changeTime.toEpochMillis()}:${info.endOfFile}",
                 )
             }
     }

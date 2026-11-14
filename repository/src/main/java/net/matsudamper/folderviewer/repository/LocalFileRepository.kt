@@ -45,7 +45,7 @@ internal class LocalFileRepository(
                 isDirectory = file.isDirectory,
                 size = if (file.isDirectory) 0 else file.length(),
                 lastModified = file.lastModified(),
-                cacheKey = file.lastModified().toString(),
+                cacheKey = "${file.lastModified()}:${file.length()}",
             )
         }?.sortedWith(
             compareBy<FileItem> { !it.isDirectory }
@@ -76,7 +76,7 @@ internal class LocalFileRepository(
             isDirectory = file.isDirectory,
             size = if (file.isDirectory) 0 else file.length(),
             lastModified = file.lastModified(),
-            cacheKey = file.lastModified().toString(),
+            cacheKey = "${file.lastModified()}:${file.length()}",
         )
     }
 
