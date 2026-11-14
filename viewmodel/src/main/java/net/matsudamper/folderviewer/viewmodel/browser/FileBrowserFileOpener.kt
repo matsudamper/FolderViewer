@@ -2,6 +2,7 @@ package net.matsudamper.folderviewer.viewmodel.browser
 
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import net.matsudamper.folderviewer.navigation.ImageViewerImage
 import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.viewmodel.util.FileUtil
 
@@ -33,7 +34,9 @@ internal object FileBrowserFileOpener {
                     sendEvent(
                         FileBrowserViewModel.ViewModelEvent.NavigateToImageViewer(
                             id = fileItem.id,
-                            allPaths = sortedFiles.filter { FileUtil.isImage(it.displayPath) }.map { it.id },
+                            images = sortedFiles
+                                .filter { FileUtil.isImage(it.displayPath) }
+                                .map { ImageViewerImage(fileId = it.id, cacheKey = it.cacheKey) },
                         ),
                     )
                 }

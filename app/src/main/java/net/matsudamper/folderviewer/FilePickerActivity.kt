@@ -211,7 +211,7 @@ private fun ExternalFilePickerEventHandler(
 
                 is ExternalFilePickerViewModel.ViewModelEvent.NavigateToImageViewer -> {
                     navigator.navigate(
-                        ImageViewer(fileId = event.fileId, allPaths = event.allPaths),
+                        ImageViewer(fileId = event.fileId, images = event.images),
                     )
                 }
 
@@ -289,7 +289,7 @@ private fun ExternalFilePickerSelectedListEventHandler(
 
                 is ExternalFilePickerSelectedListViewModel.ViewModelEvent.NavigateToImageViewer -> {
                     navigator.navigate(
-                        ImageViewer(fileId = event.fileId, allPaths = event.allPaths),
+                        ImageViewer(fileId = event.fileId, images = event.images),
                     )
                 }
 

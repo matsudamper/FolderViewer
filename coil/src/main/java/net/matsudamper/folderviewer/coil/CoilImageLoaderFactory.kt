@@ -20,7 +20,6 @@ import coil.size.Dimension
 import coil.size.Precision
 import coil.size.Size
 import coil.util.DebugLogger
-import net.matsudamper.folderviewer.repository.FileItem
 import net.matsudamper.folderviewer.repository.FileRepository
 import net.matsudamper.folderviewer.repository.StorageRepository
 import okio.buffer
@@ -43,9 +42,10 @@ object CoilImageLoaderFactory {
 
 private class FileImageSourceKeyer : Keyer<FileImageSource> {
     override fun key(data: FileImageSource, options: Options): String? {
+        val fileKey = "${data.fileId.storageId.id}:${data.fileId.id}"
         return when (data) {
-            is FileImageSource.Thumbnail -> "thumbnail:${data.fileId.storageId.id}:${data.fileId.id}"
-            is FileImageSource.Original -> null
+            is FileImageSource.Thumbnail -> "thumbnail:$fileKey:${data.cacheKey.orEmpty()}"
+            is FileImageSource.Original -> data.cacheKey?.let { "original:$fileKey:$it" }
         }
     }
 }
@@ -82,7 +82,9 @@ private class FileRepositoryImageFetcher(
             return createStreamResult(openInputStream(fileRepository, thumbnailSize))
         }
 
-        val diskCacheKey = createDiskCacheKey(fileRepository.getFileInfo(fileImageSource.fileId), thumbnailSize)
+        val fileCacheKey = fileImageSource.cacheKey
+            ?: fileRepository.getFileInfo(fileImageSource.fileId).cacheKey
+        val diskCacheKey = createDiskCacheKey(fileCacheKey, thumbnailSize)
 
         if (options.diskCachePolicy.readEnabled) {
             val snapshot = diskCache.openSnapshot(diskCacheKey)
@@ -121,8 +123,9 @@ private class FileRepositoryImageFetcher(
         } ?: throw IllegalStateException("Failed to image load: ${fileImageSource.fileId}")
     }
 
-    private fun createDiskCacheKey(fileItem: FileItem, thumbnailSize: Int): String {
-        val fileKey = "${fileItem.id.storageId.id}:${fileItem.id.id}:${fileItem.lastModified}:${fileItem.size}"
+    private fun createDiskCacheKey(fileCacheKey: String, thumbnailSize: Int): String {
+        val fileId = fileImageSource.fileId
+        val fileKey = "${fileId.storageId.id}:${fileId.id}:$fileCacheKey"
         return when (fileImageSource) {
             is FileImageSource.Thumbnail -> "thumbnail:$thumbnailSize:$fileKey"
             is FileImageSource.Original -> "original:$fileKey"

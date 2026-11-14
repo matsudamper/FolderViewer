@@ -17,6 +17,7 @@ import com.microsoft.graph.models.DriveItem
 import com.microsoft.graph.models.DriveItemUploadableProperties
 import com.microsoft.graph.serviceclient.GraphServiceClient
 import net.matsudamper.folderviewer.common.FileObjectId
+import net.matsudamper.folderviewer.dao.graphapi.DriveItemResponse
 import net.matsudamper.folderviewer.dao.graphapi.GraphApiClient
 
 class SharePointFileRepository(
@@ -52,15 +53,7 @@ class SharePointFileRepository(
             )
 
             driveItems.value.map { item ->
-                val itemName = item.name
-
-                FileItem(
-                    displayPath = itemName,
-                    id = FileObjectId.Item(storageId = config.id, id = item.id),
-                    isDirectory = item.folder != null,
-                    size = item.size ?: 0L,
-                    lastModified = item.lastModifiedDateTime?.let { OffsetDateTime.parse(it).toInstant().toEpochMilli() } ?: 0L,
-                )
+                item.toFileItem(FileObjectId.Item(storageId = config.id, id = item.id))
             }.sortedWith(
                 compareBy<FileItem> { !it.isDirectory }
                     .thenBy { it.displayPath.lowercase() },
@@ -92,14 +85,7 @@ class SharePointFileRepository(
     }
 
     override suspend fun getFileInfo(fileId: FileObjectId.Item): FileItem = withContext(Dispatchers.IO) {
-        val item = graphApiClient.getDriveItem(fileId.id)
-        FileItem(
-            id = fileId,
-            displayPath = item.name,
-            isDirectory = item.folder != null,
-            size = item.size ?: 0L,
-            lastModified = item.lastModifiedDateTime?.let { OffsetDateTime.parse(it).toInstant().toEpochMilli() } ?: 0L,
-        )
+        graphApiClient.getDriveItem(fileId.id).toFileItem(fileId)
     }
 
     override suspend fun deleteFile(fileId: FileObjectId.Item): Unit = withContext(Dispatchers.IO) {
@@ -307,6 +293,18 @@ class SharePointFileRepository(
             val folderId = createOrGetFolder(driveId, parentId, directoryName)
             FileObjectId.Item(config.id, folderId)
         }
+    }
+
+    private fun DriveItemResponse.toFileItem(fileId: FileObjectId.Item): FileItem {
+        val lastModified = lastModifiedDateTime?.let { OffsetDateTime.parse(it).toInstant().toEpochMilli() } ?: 0L
+        return FileItem(
+            id = fileId,
+            displayPath = name,
+            isDirectory = folder != null,
+            size = size ?: 0L,
+            lastModified = lastModified,
+            cacheKey = eTag ?: lastModified.toString(),
+        )
     }
 
     private companion object {

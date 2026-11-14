@@ -782,6 +782,7 @@ private fun previewDuplicateFileItem(
 
 private fun previewThumbnail(id: String) = FileImageSource.Thumbnail(
     fileId = FileObjectId.Item(storageId = StorageId("preview"), id = id),
+    cacheKey = null,
 )
 
 @Preview(showBackground = true)

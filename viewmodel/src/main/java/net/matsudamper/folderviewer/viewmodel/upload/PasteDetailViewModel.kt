@@ -224,12 +224,12 @@ class PasteDetailViewModel @AssistedInject constructor(
             destinationSize = file.destinationFileSize,
             destinationSizeText = formatFileSize(file.destinationFileSize),
             sourceThumbnail = if (isImage) {
-                FileImageSource.Thumbnail(fileId = file.sourceFileId)
+                FileImageSource.Thumbnail(fileId = file.sourceFileId, cacheKey = null)
             } else {
                 null
             },
             destinationThumbnail = if (isImage) {
-                file.destinationFileId?.let { FileImageSource.Thumbnail(fileId = it) }
+                file.destinationFileId?.let { FileImageSource.Thumbnail(fileId = it, cacheKey = null) }
             } else {
                 null
             },

@@ -24,6 +24,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.common.FileObjectId
 import net.matsudamper.folderviewer.navigation.ExternalFilePicker
+import net.matsudamper.folderviewer.navigation.ImageViewerImage
 import net.matsudamper.folderviewer.repository.ExternalPickerRepository
 import net.matsudamper.folderviewer.repository.FavoriteConfiguration
 import net.matsudamper.folderviewer.repository.FileItem
@@ -144,7 +145,7 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
                 key = fileItem.id.id,
                 isDirectory = fileItem.isDirectory,
                 subText = buildSubText(fileItem.isDirectory, fileItem.lastModified, fileItem.size),
-                thumbnail = if (isImage) FileImageSource.Thumbnail(fileId = fileItem.id) else null,
+                thumbnail = if (isImage) FileImageSource.Thumbnail(fileId = fileItem.id, cacheKey = fileItem.cacheKey) else null,
                 isSelected = selectedItems.containsKey(fileItem.id),
                 enabled = isEnabled,
                 isLastOpened = false,
@@ -159,7 +160,7 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
                 isDirectory = true,
                 subText = "",
                 thumbnail = if (FileUtil.isImage(favorite.displayPath)) {
-                    FileImageSource.Thumbnail(fileId = favorite.fileId)
+                    FileImageSource.Thumbnail(fileId = favorite.fileId, cacheKey = null)
                 } else {
                     null
                 },
@@ -329,6 +330,7 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
                         name = fileItem.displayPath,
                         size = fileItem.size,
                         lastModified = fileItem.lastModified,
+                        cacheKey = fileItem.cacheKey,
                     ),
                 )
             } else {
@@ -371,9 +373,9 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
                                         viewModelEventChannel.send(
                                             ViewModelEvent.NavigateToImageViewer(
                                                 fileId = fileItem.id,
-                                                allPaths = sortedFiles
+                                                images = sortedFiles
                                                     .filter { FileUtil.isImage(it.displayPath) }
-                                                    .map { it.id },
+                                                    .map { ImageViewerImage(fileId = it.id, cacheKey = it.cacheKey) },
                                             ),
                                         )
                                     } else {
@@ -393,6 +395,7 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
                 name = fileItem.displayPath,
                 size = fileItem.size,
                 lastModified = fileItem.lastModified,
+                cacheKey = fileItem.cacheKey,
             )
             if (checked) {
                 if (!externalPickerRepository.isSelected(fileItem.id)) {
@@ -451,7 +454,7 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
         data object NavigateToSelectedList : ViewModelEvent
         data class NavigateToImageViewer(
             val fileId: FileObjectId.Item,
-            val allPaths: List<FileObjectId.Item>,
+            val images: List<ImageViewerImage>,
         ) : ViewModelEvent
         data class OpenWithExternalPlayer(
             val viewSourceUri: ViewSourceUri,

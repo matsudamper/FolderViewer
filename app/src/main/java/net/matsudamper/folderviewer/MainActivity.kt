@@ -775,7 +775,7 @@ private fun FileBrowserEventHandler(
                 }
 
                 is FileBrowserViewModel.ViewModelEvent.NavigateToImageViewer -> {
-                    navigator.navigate(ImageViewer(fileId = event.id, allPaths = event.allPaths))
+                    navigator.navigate(ImageViewer(fileId = event.id, images = event.images))
                 }
 
                 is FileBrowserViewModel.ViewModelEvent.NavigateToFolderBrowser -> {
@@ -1103,7 +1103,7 @@ private fun EntryProviderScope<NavKey>.folderBrowserEntry(navigator: Navigator) 
                         navigator.navigate(
                             ImageViewer(
                                 fileId = event.fileId,
-                                allPaths = event.allPaths,
+                                images = event.images,
                             ),
                         )
                     }
