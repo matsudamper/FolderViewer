@@ -346,6 +346,8 @@ private fun Preview() {
                         subText = "2026/01/01 00:00",
                         thumbnail = null,
                         isSelected = false,
+                        isLastOpened = false,
+                        isEnabled = true,
                         callbacks = object : FileBrowserUiState.UiFileItem.File.Callbacks {
                             override fun onClick() = Unit
                             override fun onLongClick() = Unit
@@ -359,6 +361,8 @@ private fun Preview() {
                         subText = "2026/01/01 00:00  1.0 KB",
                         thumbnail = null,
                         isSelected = false,
+                        isLastOpened = false,
+                        isEnabled = true,
                         callbacks = object : FileBrowserUiState.UiFileItem.File.Callbacks {
                             override fun onClick() = Unit
                             override fun onLongClick() = Unit

@@ -19,10 +19,10 @@ data class PasteDetailUiState(
     val sizeProgressText: String?,
     val currentFileName: String?,
     val currentFileProgress: Float?,
-    val isPausable: Boolean = false,
-    val isPausePending: Boolean = false,
-    val isResumable: Boolean = false,
-    val isCancelable: Boolean = false,
+    val isPausable: Boolean,
+    val isPausePending: Boolean,
+    val isResumable: Boolean,
+    val isCancelable: Boolean,
     val callbacks: Callbacks,
 ) {
     val hasControls: Boolean

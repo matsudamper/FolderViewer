@@ -620,6 +620,7 @@ class FileBrowserViewModel @AssistedInject constructor(
                 },
                 isSelected = selectedItems.contains(fileItem.id),
                 isLastOpened = fileItem.id.id == viewModelState.lastOpenedFileKey,
+                isEnabled = true,
                 callbacks = FileItemCallbacks(fileItem, sortedFiles, isSelectionMode),
             )
         }
@@ -638,6 +639,8 @@ class FileBrowserViewModel @AssistedInject constructor(
                     null
                 },
                 isSelected = false,
+                isLastOpened = false,
+                isEnabled = true,
                 callbacks = FavoriteItemCallbacks(favorite),
             )
         }

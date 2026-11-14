@@ -631,6 +631,10 @@ private fun PasteDetailScreenDuplicatePreview() {
             sizeProgressText = null,
             currentFileName = null,
             currentFileProgress = null,
+            isPausable = false,
+            isPausePending = false,
+            isResumable = false,
+            isCancelable = false,
             callbacks = previewPasteCallbacks,
         ),
     )
@@ -689,6 +693,10 @@ private fun PasteDetailScreenCompletedWithPendingResolutionPreview() {
             sizeProgressText = null,
             currentFileName = null,
             currentFileProgress = null,
+            isPausable = false,
+            isPausePending = false,
+            isResumable = false,
+            isCancelable = false,
             callbacks = previewPasteCallbacks,
         ),
     )
