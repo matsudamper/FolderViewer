@@ -344,6 +344,34 @@ class FileBrowserViewModel @AssistedInject constructor(
             selectionModeRepository.setSelectionMode(false)
         }
 
+        private fun findSingleSelectedFileItem(): FileItem? {
+            val state = viewModelStateFlow.value
+            val selectedId = (state.selectedState as? ViewModelState.SelectionState.Selected)?.items?.singleOrNull()
+            return state.rawFiles.find { it.id == selectedId }
+        }
+
+        override fun onRenameClick() {
+            val fileItem = findSingleSelectedFileItem() ?: return
+            viewModelScope.launch {
+                uiChannelEvent.send(FileBrowserUiEvent.ShowRenameDialog(fileItem.displayPath))
+            }
+        }
+
+        override fun onConfirmRename(newName: String) {
+            val fileItem = findSingleSelectedFileItem() ?: return
+            viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
+            selectionModeRepository.setSelectionMode(false)
+            viewModelScope.launch {
+                executeRename(
+                    repository = getRepository(),
+                    fileItem = fileItem,
+                    newName = newName,
+                    refreshFiles = { fetchFilesInternal() },
+                    sendSnackbar = { message -> uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar(message)) },
+                )
+            }
+        }
+
         override fun onCompressClick() {
             val selectedIds = when (val s = viewModelStateFlow.value.selectedState) {
                 is ViewModelState.SelectionState.NonSelected -> return
@@ -667,6 +695,7 @@ class FileBrowserViewModel @AssistedInject constructor(
             isSelectionMode = isSelectionMode,
             selectedCount = selectedItems.size,
             visibleCompressMenu = viewModelState.localFolderPath != null,
+            visibleRenameMenu = selectedItems.size == 1,
             visibleExtractMenu = viewModelState.localFolderPath != null &&
                 zipHandler.isSingleExtractableFileSelected(selectedItems, viewModelState.rawFiles),
             isPasteMode = clipboardState != null,

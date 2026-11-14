@@ -92,6 +92,15 @@ internal class LocalFileRepository(
         notifyMediaScanner(listOf(dir.absolutePath))
     }
 
+    override suspend fun rename(fileId: FileObjectId.Item, newName: String): Unit = withContext(Dispatchers.IO) {
+        val source = buildAbsoluteFile(fileId.id)
+        require(source.exists()) { "File not found: ${fileId.id}" }
+        val destination = File(source.parentFile, newName)
+        require(!destination.exists()) { "A file with the same name already exists: $newName" }
+        require(source.renameTo(destination)) { "Failed to rename: ${fileId.id}" }
+        notifyMediaScanner(listOf(source.absolutePath, destination.absolutePath))
+    }
+
     override suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream = withContext(Dispatchers.IO) {
         try {
             val file = buildAbsoluteFile(fileId.id)

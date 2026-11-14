@@ -34,6 +34,7 @@ fun FileBrowserScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val showCreateDirectoryDialog = remember { mutableStateOf(false) }
     val showCompressDialog = remember { mutableStateOf(false) }
+    val renameDialogCurrentName = remember { mutableStateOf<String?>(null) }
     val deleteConfirmCount = remember { mutableStateOf<Int?>(null) }
     val currentExtractDialog by rememberUpdatedState(uiState.extractDialog)
 
@@ -77,6 +78,10 @@ fun FileBrowserScreen(
                     showCompressDialog.value = true
                 }
 
+                is FileBrowserUiEvent.ShowRenameDialog -> {
+                    renameDialogCurrentName.value = event.currentName
+                }
+
                 is FileBrowserUiEvent.ShowDeleteConfirmDialog -> {
                     deleteConfirmCount.value = event.count
                 }
@@ -99,6 +104,12 @@ fun FileBrowserScreen(
             onConfirmCompress = { fileName ->
                 uiState.callbacks.onConfirmCompress(fileName)
                 showCompressDialog.value = false
+            },
+            renameDialogCurrentName = renameDialogCurrentName.value,
+            onRenameDialogDismiss = { renameDialogCurrentName.value = null },
+            onConfirmRename = { newName ->
+                uiState.callbacks.onConfirmRename(newName)
+                renameDialogCurrentName.value = null
             },
             deleteConfirmCount = deleteConfirmCount.value,
             onDeleteConfirmDialogDismiss = { deleteConfirmCount.value = null },

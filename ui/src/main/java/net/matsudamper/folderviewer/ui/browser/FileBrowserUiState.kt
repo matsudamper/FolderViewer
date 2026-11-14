@@ -15,6 +15,7 @@ data class FileBrowserUiState(
     val isSelectionMode: Boolean,
     val selectedCount: Int,
     val visibleCompressMenu: Boolean,
+    val visibleRenameMenu: Boolean,
     val visibleExtractMenu: Boolean,
     val isPasteMode: Boolean,
     val extractDialog: ExtractDialogState?,
@@ -99,6 +100,8 @@ data class FileBrowserUiState(
         fun onCutClick()
         fun onShareClick()
         fun onOpenSelectedClick()
+        fun onRenameClick()
+        fun onConfirmRename(newName: String)
         fun onCompressClick()
         fun onConfirmCompress(fileName: String)
         fun onExtractClick()

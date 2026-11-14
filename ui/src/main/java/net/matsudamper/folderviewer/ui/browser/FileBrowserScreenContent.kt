@@ -52,6 +52,9 @@ internal fun FileBrowserScreenContent(
     showCompressDialog: Boolean = false,
     onCompressDialogDismiss: () -> Unit = {},
     onConfirmCompress: (String) -> Unit = {},
+    renameDialogCurrentName: String? = null,
+    onRenameDialogDismiss: () -> Unit = {},
+    onConfirmRename: (String) -> Unit = {},
     deleteConfirmCount: Int? = null,
     onDeleteConfirmDialogDismiss: () -> Unit = {},
     onConfirmDelete: () -> Unit = {},
@@ -113,6 +116,7 @@ internal fun FileBrowserScreenContent(
                 FileBrowserSelectionFloatingToolbar(
                     modifier = Modifier.onSizeChanged { fabHeight = it.height },
                     visibleOpenMenu = uiState.selectedCount == 1,
+                    visibleRenameMenu = uiState.visibleRenameMenu,
                     visibleCompressMenu = uiState.visibleCompressMenu,
                     visibleExtractMenu = uiState.visibleExtractMenu,
                     onCopyClick = callbacks::onCopyClick,
@@ -120,6 +124,7 @@ internal fun FileBrowserScreenContent(
                     onDeleteClick = callbacks::onDeleteClick,
                     onShareClick = callbacks::onShareClick,
                     onOpenClick = callbacks::onOpenSelectedClick,
+                    onRenameClick = callbacks::onRenameClick,
                     onCompressClick = callbacks::onCompressClick,
                     onExtractClick = callbacks::onExtractClick,
                 )
@@ -259,6 +264,14 @@ internal fun FileBrowserScreenContent(
         )
     }
 
+    if (renameDialogCurrentName != null) {
+        FileBrowserRenameDialog(
+            currentName = renameDialogCurrentName,
+            onDismissRequest = onRenameDialogDismiss,
+            onConfirm = onConfirmRename,
+        )
+    }
+
     if (uiState.extractDialog != null) {
         val extractDialog = uiState.extractDialog
         FileBrowserExtractDialog(
@@ -333,6 +346,7 @@ private fun Preview() {
             isSelectionMode = false,
             selectedCount = 0,
             visibleCompressMenu = true,
+            visibleRenameMenu = false,
             visibleExtractMenu = true,
             isPasteMode = false,
             extractDialog = null,
@@ -354,6 +368,8 @@ private fun Preview() {
                 override fun onCutClick() = Unit
                 override fun onShareClick() = Unit
                 override fun onOpenSelectedClick() = Unit
+                override fun onRenameClick() = Unit
+                override fun onConfirmRename(newName: String) = Unit
                 override fun onCompressClick() = Unit
                 override fun onConfirmCompress(fileName: String) = Unit
                 override fun onExtractClick() = Unit

@@ -240,6 +240,7 @@ internal fun FileBrowserSelectionTopBar(
 @Composable
 internal fun FileBrowserSelectionFloatingToolbar(
     visibleOpenMenu: Boolean,
+    visibleRenameMenu: Boolean,
     visibleCompressMenu: Boolean,
     visibleExtractMenu: Boolean,
     onCopyClick: () -> Unit,
@@ -247,6 +248,7 @@ internal fun FileBrowserSelectionFloatingToolbar(
     onDeleteClick: () -> Unit,
     onShareClick: () -> Unit,
     onOpenClick: () -> Unit,
+    onRenameClick: () -> Unit,
     onCompressClick: () -> Unit,
     onExtractClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -282,7 +284,7 @@ internal fun FileBrowserSelectionFloatingToolbar(
                 contentDescription = stringResource(R.string.share),
             )
         }
-        if (visibleOpenMenu || visibleExtractMenu || visibleCompressMenu) {
+        if (listOf(visibleOpenMenu, visibleRenameMenu, visibleExtractMenu, visibleCompressMenu).any { it }) {
             Box {
                 IconButton(onClick = { showMoreMenu = true }) {
                     Icon(
@@ -304,6 +306,21 @@ internal fun FileBrowserSelectionFloatingToolbar(
                             leadingIcon = {
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_open_in_new),
+                                    contentDescription = null,
+                                )
+                            },
+                        )
+                    }
+                    if (visibleRenameMenu) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.rename)) },
+                            onClick = {
+                                showMoreMenu = false
+                                onRenameClick()
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_edit),
                                     contentDescription = null,
                                 )
                             },
@@ -384,6 +401,7 @@ private fun SelectionTopBarPreview() {
 private fun SelectionFloatingToolbarPreview() {
     FileBrowserSelectionFloatingToolbar(
         visibleOpenMenu = true,
+        visibleRenameMenu = true,
         visibleCompressMenu = true,
         visibleExtractMenu = true,
         onCopyClick = {},
@@ -391,6 +409,7 @@ private fun SelectionFloatingToolbarPreview() {
         onDeleteClick = {},
         onShareClick = {},
         onOpenClick = {},
+        onRenameClick = {},
         onCompressClick = {},
         onExtractClick = {},
     )

@@ -156,6 +156,27 @@ class SmbFileRepository(
      * 読み取り専用属性が付与されたファイル/ディレクトリは削除時に STATUS_CANNOT_DELETE を返すため、
      * FILE_ATTRIBUTE_NORMAL を設定して属性をクリアする。
      */
+    override suspend fun rename(fileId: FileObjectId.Item, newName: String): Unit = withContext(Dispatchers.IO) {
+        val parts = fileId.id.split("/", limit = PATH_SPLIT_LIMIT)
+        val shareName = parts[0]
+        val subPath = parts.getOrNull(1)?.replace("/", "\\").orEmpty()
+        require(subPath.isNotEmpty()) { "Cannot rename share root: $shareName" }
+        val parentPath = subPath.substringBeforeLast("\\", missingDelimiterValue = "")
+        val destinationPath = if (parentPath.isEmpty()) newName else "$parentPath\\$newName"
+        sessionProvider.withDiskShareNoRetry(shareName) { diskShare ->
+            diskShare.open(
+                subPath,
+                EnumSet.of(AccessMask.DELETE),
+                null,
+                SMB2ShareAccess.ALL,
+                SMB2CreateDisposition.FILE_OPEN,
+                null,
+            ).use { entry ->
+                entry.rename(destinationPath, false)
+            }
+        }
+    }
+
     private fun clearReadOnlyAttribute(share: DiskShare, path: String) {
         val basicInfo = FileBasicInformation(
             FileBasicInformation.DONT_SET,
