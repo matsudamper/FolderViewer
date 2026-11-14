@@ -150,8 +150,8 @@ class ExtractDetailViewModel @Inject constructor(
             sourceFile = sourceFile,
             outputName = meta?.outputName ?: progress.name,
             outputPath = outputPath,
-            canNavigateToOutput = canNavigateToOutput,
-            canOpenOutputFile = canOpenOutputFile,
+            navigateToOutputButtonVisible = canNavigateToOutput,
+            openOutputFileButtonVisible = canOpenOutputFile,
             extractTypeLabel = meta?.extractType.toLabel(),
             errorMessage = progress.errorMessage,
             errorMessageLinkText = if (canNavigateToOutput || canOpenOutputFile) {

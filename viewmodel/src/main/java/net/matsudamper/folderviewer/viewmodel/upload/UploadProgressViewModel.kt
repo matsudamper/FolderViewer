@@ -124,7 +124,7 @@ class UploadProgressViewModel @Inject constructor(
                 name = name,
                 description = description,
                 state = state,
-                canNavigate = op.workerId != null,
+                detailNavigationEnabled = op.workerId != null,
                 progress = progress,
                 progressText = progressText,
                 callbacks = itemCallbacks,
@@ -135,7 +135,7 @@ class UploadProgressViewModel @Inject constructor(
                 name = name,
                 description = description,
                 state = state,
-                canNavigate = op.workerId != null,
+                detailNavigationEnabled = op.workerId != null,
                 progress = progress,
                 progressText = progressText,
                 callbacks = itemCallbacks,
@@ -178,16 +178,16 @@ class UploadProgressViewModel @Inject constructor(
                 else -> op.currentFileName ?: op.description
             },
             state = state,
-            canNavigate = true,
+            detailNavigationEnabled = true,
             currentFileProgress = currentFileProgress,
             progress = overallProgress,
             progressText = progressText,
             callbacks = navigateCallbacks(ViewModelEvent.NavigateToPasteDetail(op.id)),
-            isPausable = state == UploadProgressUiState.UploadState.RUNNING && !op.pauseRequested,
-            isPausePending = state == UploadProgressUiState.UploadState.RUNNING && op.pauseRequested,
-            isResumable = state == UploadProgressUiState.UploadState.PAUSED ||
+            pauseButtonVisible = state == UploadProgressUiState.UploadState.RUNNING && !op.pauseRequested,
+            pausePendingIndicatorVisible = state == UploadProgressUiState.UploadState.RUNNING && op.pauseRequested,
+            resumeButtonVisible = state == UploadProgressUiState.UploadState.PAUSED ||
                 state == UploadProgressUiState.UploadState.FAILED,
-            isCancelable = state == UploadProgressUiState.UploadState.RUNNING,
+            cancelButtonVisible = state == UploadProgressUiState.UploadState.RUNNING,
             pasteCallbacks = object : UploadProgressUiState.PasteCallbacks {
                 override fun onPauseClick() {
                     requestPausePasteJob(op)
@@ -271,7 +271,7 @@ class UploadProgressViewModel @Inject constructor(
                 else -> op.currentFileName ?: op.description
             },
             state = state,
-            canNavigate = true,
+            detailNavigationEnabled = true,
             progress = progress,
             progressText = progressText,
             callbacks = navigateCallbacks(ViewModelEvent.NavigateToDeleteDetail(op.id)),
@@ -293,7 +293,7 @@ class UploadProgressViewModel @Inject constructor(
             name = op.name,
             description = op.errorMessage ?: op.description,
             state = state,
-            canNavigate = true,
+            detailNavigationEnabled = true,
             progress = progress,
             progressText = progressText,
             callbacks = navigateCallbacks(ViewModelEvent.NavigateToExtractDetail(op.id)),

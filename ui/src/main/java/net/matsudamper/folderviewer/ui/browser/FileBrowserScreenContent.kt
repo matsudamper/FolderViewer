@@ -347,7 +347,7 @@ private fun Preview() {
                         thumbnail = null,
                         isSelected = false,
                         isLastOpened = false,
-                        isEnabled = true,
+                        enabled = true,
                         callbacks = object : FileBrowserUiState.UiFileItem.File.Callbacks {
                             override fun onClick() = Unit
                             override fun onLongClick() = Unit
@@ -362,7 +362,7 @@ private fun Preview() {
                         thumbnail = null,
                         isSelected = false,
                         isLastOpened = false,
-                        isEnabled = true,
+                        enabled = true,
                         callbacks = object : FileBrowserUiState.UiFileItem.File.Callbacks {
                             override fun onClick() = Unit
                             override fun onLongClick() = Unit

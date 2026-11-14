@@ -5,7 +5,7 @@ import net.matsudamper.folderviewer.coil.FileImageSource
 import net.matsudamper.folderviewer.ui.browser.UiDisplayConfig
 
 data class FolderBrowserUiState(
-    val isLoading: Boolean,
+    val loadingIndicatorVisible: Boolean,
     val isRefreshing: Boolean,
     val visibleFavoriteButton: Boolean,
     val title: String,

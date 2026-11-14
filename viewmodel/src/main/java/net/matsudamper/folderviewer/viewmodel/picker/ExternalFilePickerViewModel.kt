@@ -146,7 +146,7 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
                 subText = buildSubText(fileItem.isDirectory, fileItem.lastModified, fileItem.size),
                 thumbnail = if (isImage) FileImageSource.Thumbnail(fileId = fileItem.id) else null,
                 isSelected = selectedItems.containsKey(fileItem.id),
-                isEnabled = isEnabled,
+                enabled = isEnabled,
                 isLastOpened = false,
                 callbacks = FileItemCallbacks(fileItem, sortedFiles),
             )
@@ -165,7 +165,7 @@ class ExternalFilePickerViewModel @AssistedInject constructor(
                 },
                 isSelected = false,
                 isLastOpened = false,
-                isEnabled = true,
+                enabled = true,
                 callbacks = FavoriteItemCallbacks(favorite),
             )
         }

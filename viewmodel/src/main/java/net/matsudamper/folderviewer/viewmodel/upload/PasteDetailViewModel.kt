@@ -191,6 +191,11 @@ class PasteDetailViewModel @Inject constructor(
         }
 
         val canRetry = uiStatus == PasteDetailUiState.Status.FAILED && progress.failedFiles > 0
+        val pauseButtonVisible = isRunning && !progress.pauseRequested
+        val pausePendingIndicatorVisible = isRunning && progress.pauseRequested
+        val resumeButtonVisible = progress.status == OperationRepository.OperationStatus.PAUSED ||
+            progress.status == OperationRepository.OperationStatus.FAILED
+        val cancelButtonVisible = isRunning
 
         return PasteDetailUiState(
             jobName = "${progress.totalFiles}ファイルを$modeText",
@@ -201,18 +206,21 @@ class PasteDetailViewModel @Inject constructor(
             duplicateFiles = duplicateItems,
             files = fileRows,
             fileFilter = filter.toUiFilter(),
-            canRetry = canRetry,
-            canApply = canApply,
+            bottomBarVisible = duplicateItems.isNotEmpty() || canRetry,
+            retryButtonVisible = canRetry,
+            applyButtonVisible = duplicateItems.isNotEmpty(),
+            applyButtonEnabled = canApply,
             progress = overallProgress,
             fileCountText = fileCountText,
             sizeProgressText = sizeProgressText,
             currentFileName = if (isRunning) progress.currentFileName else null,
             currentFileProgress = currentFileProgress,
-            isPausable = isRunning && !progress.pauseRequested,
-            isPausePending = isRunning && progress.pauseRequested,
-            isResumable = progress.status == OperationRepository.OperationStatus.PAUSED ||
-                progress.status == OperationRepository.OperationStatus.FAILED,
-            isCancelable = isRunning,
+            controlRowVisible = pauseButtonVisible || pausePendingIndicatorVisible ||
+                resumeButtonVisible || cancelButtonVisible,
+            pauseButtonVisible = pauseButtonVisible,
+            pausePendingIndicatorVisible = pausePendingIndicatorVisible,
+            resumeButtonVisible = resumeButtonVisible,
+            cancelButtonVisible = cancelButtonVisible,
             callbacks = callbacks,
         )
     }

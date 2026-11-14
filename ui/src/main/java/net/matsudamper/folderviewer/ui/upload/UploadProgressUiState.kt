@@ -20,7 +20,7 @@ data class UploadProgressUiState(
         val name: String
         val description: String
         val state: UploadState
-        val canNavigate: Boolean
+        val detailNavigationEnabled: Boolean
         val progress: Float?
         val progressText: String?
         val callbacks: ItemCallbacks
@@ -30,7 +30,7 @@ data class UploadProgressUiState(
             override val name: String,
             override val description: String,
             override val state: UploadState,
-            override val canNavigate: Boolean,
+            override val detailNavigationEnabled: Boolean,
             override val progress: Float?,
             override val progressText: String?,
             override val callbacks: ItemCallbacks,
@@ -41,7 +41,7 @@ data class UploadProgressUiState(
             override val name: String,
             override val description: String,
             override val state: UploadState,
-            override val canNavigate: Boolean,
+            override val detailNavigationEnabled: Boolean,
             override val progress: Float?,
             override val progressText: String?,
             override val callbacks: ItemCallbacks,
@@ -52,15 +52,15 @@ data class UploadProgressUiState(
             override val name: String,
             override val description: String,
             override val state: UploadState,
-            override val canNavigate: Boolean,
+            override val detailNavigationEnabled: Boolean,
             val currentFileProgress: Float?,
             override val progress: Float?,
             override val progressText: String?,
             override val callbacks: ItemCallbacks,
-            val isPausable: Boolean,
-            val isPausePending: Boolean,
-            val isResumable: Boolean,
-            val isCancelable: Boolean,
+            val pauseButtonVisible: Boolean,
+            val pausePendingIndicatorVisible: Boolean,
+            val resumeButtonVisible: Boolean,
+            val cancelButtonVisible: Boolean,
             val pasteCallbacks: PasteCallbacks,
         ) : UploadItem
 
@@ -69,7 +69,7 @@ data class UploadProgressUiState(
             override val name: String,
             override val description: String,
             override val state: UploadState,
-            override val canNavigate: Boolean,
+            override val detailNavigationEnabled: Boolean,
             override val progress: Float?,
             override val progressText: String?,
             override val callbacks: ItemCallbacks,
@@ -80,7 +80,7 @@ data class UploadProgressUiState(
             override val name: String,
             override val description: String,
             override val state: UploadState,
-            override val canNavigate: Boolean,
+            override val detailNavigationEnabled: Boolean,
             override val progress: Float?,
             override val progressText: String?,
             override val callbacks: ItemCallbacks,

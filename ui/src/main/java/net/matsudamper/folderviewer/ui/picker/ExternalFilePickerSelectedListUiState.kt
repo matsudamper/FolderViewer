@@ -11,7 +11,6 @@ data class ExternalFilePickerSelectedListUiState(
         val key: String,
         val name: String,
         val thumbnail: FileImageSource.Thumbnail?,
-        val isPreviewable: Boolean,
         val callbacks: ItemCallbacks,
     ) {
         @Immutable

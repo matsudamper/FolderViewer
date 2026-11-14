@@ -12,22 +12,22 @@ data class PasteDetailUiState(
     val duplicateFiles: List<DuplicateFileItem>,
     val files: List<OperationFileRow>,
     val fileFilter: OperationFileFilter,
-    val canRetry: Boolean,
-    val canApply: Boolean,
+    val bottomBarVisible: Boolean,
+    val retryButtonVisible: Boolean,
+    val applyButtonVisible: Boolean,
+    val applyButtonEnabled: Boolean,
     val progress: Float?,
     val fileCountText: String?,
     val sizeProgressText: String?,
     val currentFileName: String?,
     val currentFileProgress: Float?,
-    val isPausable: Boolean,
-    val isPausePending: Boolean,
-    val isResumable: Boolean,
-    val isCancelable: Boolean,
+    val controlRowVisible: Boolean,
+    val pauseButtonVisible: Boolean,
+    val pausePendingIndicatorVisible: Boolean,
+    val resumeButtonVisible: Boolean,
+    val cancelButtonVisible: Boolean,
     val callbacks: Callbacks,
 ) {
-    val hasControls: Boolean
-        get() = isPausable || isPausePending || isResumable || isCancelable
-
     enum class Status {
         ENQUEUED,
         RUNNING,

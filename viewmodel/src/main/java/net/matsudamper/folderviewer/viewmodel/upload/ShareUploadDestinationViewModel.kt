@@ -143,8 +143,8 @@ class ShareUploadDestinationViewModel @AssistedInject constructor(
         ShareUploadDestinationUiState(
             title = arg.displayPath ?: viewModelState.storageName ?: "アップロード先を選択",
             pendingCount = pendingCount,
-            canUpload = viewModelState.rootWritable && pendingCount > 0,
-            canCreateDirectory = viewModelState.rootWritable,
+            uploadButtonVisible = viewModelState.rootWritable && pendingCount > 0,
+            createDirectoryButtonVisible = viewModelState.rootWritable,
             isRefreshing = viewModelState.isRefreshing,
             contentState = contentState,
             callbacks = callbacks,

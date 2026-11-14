@@ -47,7 +47,6 @@ class ExternalFilePickerSelectedListViewModel @Inject constructor(
                         key = "${pickerItem.id.storageId.id}/${pickerItem.id.id}",
                         name = pickerItem.name,
                         thumbnail = if (isImage) FileImageSource.Thumbnail(fileId = pickerItem.id) else null,
-                        isPreviewable = isPreviewable,
                         callbacks = object : ExternalFilePickerSelectedListUiState.Item.ItemCallbacks {
                             override fun onRemove() {
                                 externalPickerRepository.removeItem(pickerItem.id)

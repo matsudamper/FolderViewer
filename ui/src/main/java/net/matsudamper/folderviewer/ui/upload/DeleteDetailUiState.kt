@@ -13,7 +13,7 @@ data class DeleteDetailUiState(
     val errorCause: String?,
     val files: List<OperationFileRow>,
     val fileFilter: OperationFileFilter,
-    val canRetry: Boolean,
+    val retryButtonVisible: Boolean,
     val callbacks: Callbacks,
 ) {
     enum class Status {

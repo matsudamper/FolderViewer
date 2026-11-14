@@ -46,7 +46,7 @@ class FolderBrowserUiStateCreator(
 
         return FolderBrowserUiState(
             callbacks = callbacks,
-            isLoading = viewModelState.isLoading,
+            loadingIndicatorVisible = viewModelState.isLoading && uiItems.isEmpty(),
             isRefreshing = viewModelState.isRefreshing,
             title = displayPath ?: viewModelState.storageName ?: "null",
             files = uiItems,

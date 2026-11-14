@@ -119,7 +119,7 @@ fun FolderBrowserScreen(
             onRefresh = uiState.callbacks::onRefresh,
             state = pullToRefreshState,
         ) {
-            if (uiState.isLoading && uiState.files.isEmpty()) {
+            if (uiState.loadingIndicatorVisible) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,
@@ -649,7 +649,7 @@ private fun PreviewBase(
 ) {
     FolderBrowserScreen(
         uiState = FolderBrowserUiState(
-            isLoading = false,
+            loadingIndicatorVisible = false,
             isRefreshing = false,
             visibleFavoriteButton = true,
             title = "/storage/emulated/0/Documents",

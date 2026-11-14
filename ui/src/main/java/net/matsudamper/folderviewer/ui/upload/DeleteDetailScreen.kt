@@ -63,7 +63,7 @@ public fun DeleteDetailScreen(
             )
         },
         bottomBar = {
-            if (uiState.canRetry) {
+            if (uiState.retryButtonVisible) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -227,7 +227,7 @@ private fun DeleteDetailScreenPreview() {
                     onTogglePending = {},
                     onToggleFailed = {},
                 ),
-                canRetry = true,
+                retryButtonVisible = true,
                 callbacks = previewDeleteCallbacks,
             ),
         )

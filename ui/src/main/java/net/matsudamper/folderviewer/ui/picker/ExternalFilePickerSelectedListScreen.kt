@@ -109,7 +109,7 @@ private fun SelectedFileItem(
         modifier = modifier
             .fillMaxWidth()
             .combinedClickable(
-                onClick = { if (item.isPreviewable) item.callbacks.onTap() },
+                onClick = item.callbacks::onTap,
             )
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,

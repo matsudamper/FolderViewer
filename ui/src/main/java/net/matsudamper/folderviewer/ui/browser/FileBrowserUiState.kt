@@ -44,7 +44,7 @@ data class FileBrowserUiState(
             val thumbnail: FileImageSource.Thumbnail?,
             val isSelected: Boolean,
             val isLastOpened: Boolean,
-            val isEnabled: Boolean,
+            val enabled: Boolean,
             val callbacks: Callbacks,
         ) : UiFileItem {
             @Immutable

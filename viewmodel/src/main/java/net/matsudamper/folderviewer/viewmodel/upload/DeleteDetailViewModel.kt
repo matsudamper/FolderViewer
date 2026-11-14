@@ -109,7 +109,7 @@ class DeleteDetailViewModel @Inject constructor(
             errorCause = progress.errorCause,
             files = fileRows,
             fileFilter = filter.toUiFilter(),
-            canRetry = canRetry,
+            retryButtonVisible = canRetry,
             callbacks = object : DeleteDetailUiState.Callbacks {
                 override fun onBackClick() {
                     viewModelScope.launch {
