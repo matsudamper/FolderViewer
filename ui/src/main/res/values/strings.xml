@@ -44,6 +44,7 @@
     <string name="cut">切り取り</string>
     <string name="delete">削除</string>
     <string name="compress">圧縮</string>
+    <string name="rename">名前を変更</string>
     <string name="extract">解凍</string>
     <string name="more_options">その他</string>
     <string name="upload_progress">操作状況</string>

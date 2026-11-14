@@ -12,6 +12,7 @@ interface FileRepository {
     suspend fun getFileInfo(fileId: FileObjectId.Item): FileItem
     suspend fun deleteFile(fileId: FileObjectId.Item)
     suspend fun deleteDirectory(dirId: FileObjectId.Item)
+    suspend fun rename(fileId: FileObjectId.Item, newName: String)
     suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream?
 
     suspend fun uploadFile(

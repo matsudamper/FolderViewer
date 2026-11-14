@@ -16,12 +16,23 @@ data class FileBrowserUiState(
     val isSelectionMode: Boolean,
     val selectedCount: Int,
     val visibleCompressMenu: Boolean,
+    val visibleRenameMenu: Boolean,
     val visibleExtractMenu: Boolean,
     val isPasteMode: Boolean,
     val extractDialog: ExtractDialogUiState?,
+    val renameDialog: RenameDialog?,
     val callbacks: Callbacks,
     val contentState: ContentState,
 ) {
+    @Immutable
+    data class RenameDialog(
+        val input: String,
+        val inputEnabled: Boolean,
+        val confirmButtonEnabled: Boolean,
+        val closeEnabled: Boolean,
+        val visibleRenamingProgress: Boolean,
+    )
+
     sealed interface ContentState {
         data object Loading : ContentState
         data object Error : ContentState
@@ -89,6 +100,10 @@ data class FileBrowserUiState(
         fun onCutClick()
         fun onShareClick()
         fun onOpenSelectedClick()
+        fun onRenameClick()
+        fun onRenameInputChange(input: String)
+        fun onDismissRename()
+        fun onConfirmRename()
         fun onCompressClick()
         fun onConfirmCompress(fileName: String)
         fun onExtractClick()

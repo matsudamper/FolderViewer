@@ -116,6 +116,13 @@ class SharePointFileRepository(
         graphApiClient.deleteDriveItem(dirId.id, eTag)
     }
 
+    override suspend fun rename(fileId: FileObjectId.Item, newName: String): Unit = withContext(Dispatchers.IO) {
+        val driveId = getDriveId()
+        graphServiceClient.drives().byDriveId(driveId)
+            .items().byDriveItemId(fileId.id)
+            .patch(DriveItem().also { it.name = newName })
+    }
+
     override suspend fun getThumbnail(fileId: FileObjectId.Item, thumbnailSize: Int): InputStream? {
         return withContext(Dispatchers.IO) {
             val driveId = getDriveId()

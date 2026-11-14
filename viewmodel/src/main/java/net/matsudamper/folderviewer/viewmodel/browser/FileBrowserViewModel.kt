@@ -85,6 +85,7 @@ class FileBrowserViewModel @AssistedInject constructor(
         trySendSnackbar = { message -> uiChannelEvent.trySend(FileBrowserUiEvent.ShowSnackbar(message)) },
     )
     private val fileObjectId = arg.fileId
+    private val renameDialogController = FileBrowserRenameDialogController()
     private var pendingPasteClipboardState: ClipboardRepository.ClipboardState? = null
     private var pendingDeleteItems: List<FileItem>? = null
     private var pendingExtractFileItem: FileItem? = null
@@ -445,6 +446,46 @@ class FileBrowserViewModel @AssistedInject constructor(
             selectionModeRepository.setSelectionMode(false)
         }
 
+        private fun findSingleSelectedFileItem(): FileItem? {
+            val state = viewModelStateFlow.value
+            val selectedId = (state.selectedState as? ViewModelState.SelectionState.Selected)?.items?.singleOrNull()
+            return state.rawFiles.find { it.id == selectedId }
+        }
+
+        override fun onRenameClick() {
+            renameDialogController.open(findSingleSelectedFileItem() ?: return)
+        }
+
+        override fun onRenameInputChange(input: String) {
+            renameDialogController.updateInput(input)
+        }
+
+        override fun onDismissRename() {
+            renameDialogController.dismiss()
+        }
+
+        override fun onConfirmRename() {
+            viewModelScope.launch {
+                val result = renameDialogController.confirm { target, name ->
+                    getRepository().rename(target.id, name)
+                }
+                when (result) {
+                    null -> Unit
+
+                    is FileBrowserRenameDialogController.RenameResult.Failure -> {
+                        uiChannelEvent.send(FileBrowserUiEvent.ShowToast("名前の変更に失敗しました"))
+                    }
+
+                    is FileBrowserRenameDialogController.RenameResult.Success -> {
+                        viewModelStateFlow.update { it.copy(selectedState = ViewModelState.SelectionState.NonSelected) }
+                        selectionModeRepository.setSelectionMode(false)
+                        fetchFilesInternal()
+                        uiChannelEvent.send(FileBrowserUiEvent.ShowSnackbar("${result.newName}に名前を変更しました"))
+                    }
+                }
+            }
+        }
+
         override fun onCompressClick() {
             val selectedIds = when (val s = viewModelStateFlow.value.selectedState) {
                 is ViewModelState.SelectionState.NonSelected -> return
@@ -609,7 +650,8 @@ class FileBrowserViewModel @AssistedInject constructor(
         selectionModeRepository.isSelectionMode,
         clipboardRepository.clipboardState,
         extractCoordinator.extractDialogProgress,
-    ) { viewModelState, isSelectionMode, clipboardState, extractDialogProgress ->
+        renameDialogController.dialogUiState,
+    ) { viewModelState, isSelectionMode, clipboardState, extractDialogProgress, renameDialog ->
         val sortedFiles = viewModelState.rawFiles.sortedWith(createComparator(viewModelState.sortConfig))
         val selectedItems = when (viewModelState.selectedState) {
             is ViewModelState.SelectionState.NonSelected -> setOf()
@@ -683,9 +725,11 @@ class FileBrowserViewModel @AssistedInject constructor(
             isSelectionMode = isSelectionMode,
             selectedCount = selectedItems.size,
             visibleCompressMenu = viewModelState.localFolderPath != null,
+            visibleRenameMenu = selectedItems.size == 1,
             visibleExtractMenu = viewModelState.localFolderPath != null &&
                 zipHandler.isSingleExtractableFileSelected(selectedItems, viewModelState.rawFiles),
             isPasteMode = clipboardState != null,
+            renameDialog = renameDialog,
             extractDialog = viewModelState.extractDialog?.let { dialog ->
                 mapExtractDialogUiState(dialog, extractDialogProgress, extractDialogCallbacks)
             },

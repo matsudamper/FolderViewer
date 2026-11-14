@@ -114,6 +114,7 @@ internal fun FileBrowserScreenContent(
                 FileBrowserSelectionFloatingToolbar(
                     modifier = Modifier.onSizeChanged { fabHeight = it.height },
                     visibleOpenMenu = uiState.selectedCount == 1,
+                    visibleRenameMenu = uiState.visibleRenameMenu,
                     visibleCompressMenu = uiState.visibleCompressMenu,
                     visibleExtractMenu = uiState.visibleExtractMenu,
                     onCopyClick = callbacks::onCopyClick,
@@ -121,6 +122,7 @@ internal fun FileBrowserScreenContent(
                     onDeleteClick = callbacks::onDeleteClick,
                     onShareClick = callbacks::onShareClick,
                     onOpenClick = callbacks::onOpenSelectedClick,
+                    onRenameClick = callbacks::onRenameClick,
                     onCompressClick = callbacks::onCompressClick,
                     onExtractClick = callbacks::onExtractClick,
                 )
@@ -260,6 +262,15 @@ internal fun FileBrowserScreenContent(
         )
     }
 
+    if (uiState.renameDialog != null) {
+        FileBrowserRenameDialog(
+            uiState = uiState.renameDialog,
+            onInputChange = callbacks::onRenameInputChange,
+            onDismissRequest = callbacks::onDismissRename,
+            onConfirm = callbacks::onConfirmRename,
+        )
+    }
+
     if (uiState.extractDialog != null) {
         FileBrowserExtractDialog(uiState = uiState.extractDialog)
     }
@@ -305,9 +316,11 @@ private fun Preview() {
             isSelectionMode = false,
             selectedCount = 0,
             visibleCompressMenu = true,
+            visibleRenameMenu = false,
             visibleExtractMenu = true,
             isPasteMode = false,
             extractDialog = null,
+            renameDialog = null,
             callbacks = object : FileBrowserUiState.Callbacks {
                 override fun onRefresh() = Unit
                 override fun onBack() = Unit
@@ -328,6 +341,10 @@ private fun Preview() {
                 override fun onCutClick() = Unit
                 override fun onShareClick() = Unit
                 override fun onOpenSelectedClick() = Unit
+                override fun onRenameClick() = Unit
+                override fun onRenameInputChange(input: String) = Unit
+                override fun onDismissRename() = Unit
+                override fun onConfirmRename() = Unit
                 override fun onCompressClick() = Unit
                 override fun onConfirmCompress(fileName: String) = Unit
                 override fun onExtractClick() = Unit
